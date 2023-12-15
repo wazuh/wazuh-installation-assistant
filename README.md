@@ -1,0 +1,1 @@
+# wazuh-installation-assistant
