@@ -24,7 +24,7 @@ function indexer_configure() {
     if [ -n "${AIO}" ]; then
         eval "installCommon_getConfig indexer/indexer_all_in_one.yml /etc/wazuh-indexer/opensearch.yml ${debug}"
     else
-        eval "installCommon_getConfig indexer/indexer_unattended_distributed.yml /etc/wazuh-indexer/opensearch.yml ${debug}"
+        eval "installCommon_getConfig indexer/indexer_assistant_distributed.yml /etc/wazuh-indexer/opensearch.yml ${debug}"
         if [ "${#indexer_node_names[@]}" -eq 1 ]; then
             pos=0
             {
