@@ -7,8 +7,8 @@
 # Foundation.
 
 ## Package vars
-readonly wazuh_major="4.10"
-readonly wazuh_version="4.10.0"
+readonly wazuh_major="4.9"
+readonly wazuh_version="4.9.0"
 readonly filebeat_version="7.10.2"
 readonly wazuh_install_vesion="0.1"
 readonly source_branch="v${wazuh_version}"
@@ -22,7 +22,7 @@ config_file="${base_path}/config.yml"
 readonly tar_file_name="wazuh-install-files.tar"
 tar_file="${base_path}/${tar_file_name}"
 
-readonly filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
+filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
 
 readonly dashboard_cert_path="/etc/wazuh-dashboard/certs"
 readonly filebeat_cert_path="/etc/filebeat/certs"

@@ -41,7 +41,7 @@ function getHelp() {
     echo -e "                Overwrites previously installed components. This will erase all the existing configuration and data."
     echo -e ""
     echo -e "        -of,  --offline-installation"
-    echo -e "                Perform an offline installation. This option must be used with -a, -ws, -wi, or -wd."
+    echo -e "                Perform an offline installation. This option must be used with -a, -ws, -s, -wi, or -wd."
     echo -e ""
     echo -e "        -p,  --port"
     echo -e "                Specifies the Wazuh web user interface port. By default is the 443 TCP port. Recommended ports are: 8443, 8444, 8080, 8888, 9000."
@@ -251,10 +251,6 @@ function main() {
 
 # -------------- Preliminary checks and Prerequisites --------------------------------
 
-    if [ -z "${uninstall}" ]; then
-        installCommon_installCheckDependencies
-    fi
-
     if [ -z "${configurations}" ] && [ -z "${AIO}" ] && [ -z "${download}" ]; then
         checks_previousCertificate
     fi
@@ -368,12 +364,10 @@ function main() {
             manager_startCluster
         fi
         installCommon_startService "wazuh-manager"
-        manager_checkService
         filebeat_install
         filebeat_configure
         installCommon_changePasswords
         installCommon_startService "filebeat"
-        filebeat_checkService
         installCommon_removeWIADependencies
     fi
 
@@ -390,11 +384,9 @@ function main() {
         manager_install
         manager_configure
         installCommon_startService "wazuh-manager"
-        manager_checkService
         filebeat_install
         filebeat_configure
         installCommon_startService "filebeat"
-        filebeat_checkService
         common_logger "--- Wazuh dashboard ---"
         dashboard_install
         dashboard_configure
