@@ -47,7 +47,7 @@ function manager_checkService() {
     eval "TOKEN=$(curl -k -s -X POST -u "wazuh-wui:wazuh-wui" https://127.0.0.1:55000/security/user/authenticate/run_as?raw=true -d '{"user_name":"wzread"}' -H "content-type:application/json")"
     wm_error=$(curl -k -s -X GET "https://127.0.0.1:55000/agents/outdated?pretty=true" -H "Authorization: Bearer ${TOKEN}")
 
-    if  [[ ${wm_error,,} = '"error": 0' ]]; then
+    if  [[ ${wm_error,,} =~ '"error": 0' ]]; then
         common_logger "Wazuh API connection successful"
     else
         common_logger -e "Wazuh API connection Error. $wm_error"
