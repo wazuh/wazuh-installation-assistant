@@ -1,4 +1,4 @@
-# Wazuh Installation assistant
+# Wazuh installation assistant
 
 [![Slack](https://img.shields.io/badge/slack-join-blue.svg)](https://wazuh.com/community/join-us-on-slack/)
 [![Email](https://img.shields.io/badge/email-join-blue.svg)](https://groups.google.com/forum/#!forum/wazuh)
@@ -15,11 +15,12 @@
 5. [Options Table](#options-table)
 6. [Contribute](#contribute)
 7. [Development Guide](#development-guide)
-8. [Authors](#authors)
+7. [More Information](#more-information)
+9. [Authors](#authors)
 
 ## Overview
 
-The Wazuh Installation Assistant is a tool designed to simplify the deployment of Wazuh. It guides users through the process of installing Wazuh components. Key features include:
+The Wazuh installation Assistant is a tool designed to simplify the deployment of Wazuh. It guides users through the process of installing Wazuh components. Key features include:
 
 - **Guided Installation**: Step-by-step instructions for easy setup.
 - **Component Selection**: Install only the Wazuh components you need.
@@ -29,7 +30,7 @@ The Wazuh Installation Assistant is a tool designed to simplify the deployment o
 
 ## Tools
 
-The Wazuh Installation assistant uses the following tools to enhance security during the installation process:
+The Wazuh installation assistant uses the following tools to enhance security during the installation process:
 
 - **Wazuh password tool**: Securely generate and manage passwords. [Learn more](https://documentation.wazuh.com/current/user-manual/user-administration/password-management.html).
 - **Wazuh cert tool**: Manage SSL/TLS certificates for secure communications. [Learn more](https://documentation.wazuh.com/current/user-manual/wazuh-dashboard/certificates.html).
@@ -44,7 +45,7 @@ The Wazuh Installation assistant uses the following tools to enhance security du
 - [Download the Wazuh cert tool.](https://packages.wazuh.com/4.10/wazuh-certs-tool.sh)
 
 ### Build the scripts
-As an alternative to downloading, use the `builder.sh` script to build the Wazuh Installation assistant and tools:
+As an alternative to downloading, use the `builder.sh` script to build the Wazuh installation assistant and tools:
 
 
 1. Build the Wazuh installation assistant - `wazuh-install.sh`:
@@ -64,41 +65,48 @@ As an alternative to downloading, use the `builder.sh` script to build the Wazuh
 
 ## Use Cases
 
-Start by downloading the [configuration file](https://packages.wazuh.com/4.10/config.yml) and replace the node names and IP values with the corresponding names and IP addresses.
+Start by downloading the [configuration file](https://packages.wazuh.com/4.10/config.yml) and replace the node names and IP values with the corresponding ones.
+
+> [!NOTE]
+> It is not necessary to download the Wazuh password tool and the Wazuh cert tool to use the Wazuh installation assistant. The Wazuh installation assistant has embedded the previous tools.
 
 ### Common commands
 
-1. Install all central components on the local machine:
+1. Generate the passwords and certificates. Needs the [configuration file](https://packages.wazuh.com/4.10/config.yml).
+   ```bash
+   bash wazuh-install.sh -g
+   ```
+2. Install all central components on the local machine:
    ```bash
    bash wazuh-install.sh -a
    ```
 
-2. Uninstall all central components:
+3. Uninstall all central components:
    ```bash
    bash wazuh-install.sh -u
    ```
 
-3. Install the Wazuh indexer specifying the same name as specified in the configuration file:
+4. Install the Wazuh indexer specifying the same name as specified in the configuration file:
    ```bash
    bash wazuh-install.sh --wazuh-indexer <NODE_NAME>
    ```
 
-4. Initialize the Wazuh indexer cluster:
+5. Initialize the Wazuh indexer cluster:
    ```bash
    bash wazuh-install.sh --start-cluster
    ```
 
-5. Install the Wazuh server specifying the same name as specified in the configuration file:
+6. Install the Wazuh server specifying the same name as specified in the configuration file:
    ```bash
    bash wazuh-install.sh --wazuh-server <NODE_NAME>
    ```
 
-6. Install the Wazuh dashboard specifying the same name as specified in the configuration file:
+7. Install the Wazuh dashboard specifying the same name as specified in the configuration file:
    ```bash
    bash wazuh-install.sh --wazuh-dashboard <NODE_NAME>
    ```
 
-7. Display all options and help:
+8. Display all options and help:
    ```bash
    bash wazuh-install.sh -h
    ```
@@ -106,8 +114,8 @@ Start by downloading the [configuration file](https://packages.wazuh.com/4.10/co
 ## Options Table
 
 All the options for the Wazuh installation assistant are listed in the following table:
-| Option                                | Description                                                                                                                                                                                                                                                                                                     |
-|---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Option | Description |
+|---------------------------------------|----------------------------------------|
 | `-a`, `--all-in-one`                  | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard.  |
 | `-c`, `--config-file <path-to-config-yml>` | Path to the configuration file used to generate `wazuh-install-files.tar` file containing the files needed for installation. By default, the Wazuh installation assistant will search for a file named `config.yml` in the same path as the script.  |
 | `-dw`, `--download-wazuh <deb,rpm>`   | Download all the packages necessary for offline installation. Specify the type of packages to download for offline installation (`rpm`, `deb`).  |
@@ -116,7 +124,7 @@ All the options for the Wazuh installation assistant are listed in the following
 | `-h`, `--help`                        | Display this help and exit.  |
 | `-i`, `--ignore-check`                | Ignore the check for minimum hardware requirements.  |
 | `-o`, `--overwrite`                   | Overwrite previously installed components. This will erase all the existing configuration and data.  |
-| `-of`, `--offline-installation`       | Perform an offline installation. This option must be used with `-a`, `-ws`, `-wi`, or `-wd`.  |
+| `-of`, `--offline-installation`       | Perform an offline installation. This option must be used with `-a`, `-ws`, `-s`, `-wi`, or `-wd`.  |
 | `-p`, `--port`                        | Specify the Wazuh web user interface port. Default is the `443` TCP port. Recommended ports are: `8443`, `8444`, `8080`, `8888`, `9000`.  |
 | `-s`, `--start-cluster`               | Initialize Wazuh indexer cluster security settings.  |
 | `-t`, `--tar <path-to-certs-tar>`     | Path to tar file containing certificate files. By default, the Wazuh installation assistant will search for a file named `wazuh-install-files.tar` in the same path as the script.  |
@@ -157,6 +165,10 @@ To ensure consistency in development, please follow these guidelines:
 Some useful links and acknowledgment:
 - [Bash meets solid](https://codewizardly.com/bash-meets-solid/)
 - [Shellcheck](https://github.com/koalaman/shellcheck#gallery-of-bad-code)
+
+## More Information
+
+For more detailed instructions and advanced use cases, please refer to the [Wazuh Quickstart Guide](https://documentation.wazuh.com/current/quickstart.html).
 
 
 ## Authors
