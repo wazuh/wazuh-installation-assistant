@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
 
 - Fixed Wazuh API validation ([#29](https://github.com/wazuh/wazuh-installation-assistant/pull/29))
 
+## [4.9.1]
+
+- https://github.com/wazuh/wazuh-packages/releases/tag/v4.9.1
+
 ## [4.9.0]
 
 - https://github.com/wazuh/wazuh-packages/releases/tag/v4.9.0
