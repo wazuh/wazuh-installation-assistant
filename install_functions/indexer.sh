@@ -213,6 +213,4 @@ function indexer_startCluster() {
     else
         common_logger -d "Inserted wazuh-alerts template into the Wazuh indexer cluster."
     fi
-
-
 }
