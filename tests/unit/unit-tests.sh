@@ -12,7 +12,7 @@ install_dir="install_functions"
 cert_dir="cert_tool"
 passwords_dir="passwords_tool"
 common_dir="common_functions"
-IMAGE_NAME="unattended-installer-unit-tests-launcher"
+IMAGE_NAME="assistant-unit-tests-launcher"
 SHARED_VOLUME="$(pwd -P)/tmp/"
 
 function common_logger() {
@@ -72,19 +72,19 @@ function testFile() {
 
     eval "cp suites/test-${1}.sh ${SHARED_VOLUME}"
     if printf '%s\n' "${install_files[@]}" | grep -F -x -q "${1}" ; then
-        eval "cp ../../../unattended_installer/${install_dir}/${1}.sh ${SHARED_VOLUME} ${debug}"
+        eval "cp ../../${install_dir}/${1}.sh ${SHARED_VOLUME} ${debug}"
     elif printf '%s\n' "${passwords_files[@]}" | grep -F -x -q "${1}"; then
-        eval "cp ../../../unattended_installer/${passwords_dir}/${1}.sh ${SHARED_VOLUME} ${debug}"
+        eval "cp ../../${passwords_dir}/${1}.sh ${SHARED_VOLUME} ${debug}"
     elif printf '%s\n' "${cert_files[@]}" | grep -F -x -q "${1}"; then
-        eval "cp ../../../unattended_installer/${cert_dir}/${1}.sh ${SHARED_VOLUME} ${debug}"
+        eval "cp ../../${cert_dir}/${1}.sh ${SHARED_VOLUME} ${debug}"
     elif printf '%s\n' "${common_files[@]}" | grep -F -x -q "${1}"; then
-        eval "cp ../../../unattended_installer/${common_dir}/${1}.sh ${SHARED_VOLUME} ${debug}"
+        eval "cp ../../${common_dir}/${1}.sh ${SHARED_VOLUME} ${debug}"
     else
         common_logger -e "File ${1}.sh could not be found."
         return
     fi
 
-    eval "docker run -t --rm --volume ${SHARED_VOLUME}:/tests/unattended/ --env TERM=xterm-256color ${IMAGE_NAME} ${1} | tee -a ${logfile}"
+    eval "docker run -t --rm --volume ${SHARED_VOLUME}:/tests/ --env TERM=xterm-256color ${IMAGE_NAME} ${1} | tee -a ${logfile}"
     if [ "$?" != 0 ]; then
         common_logger -e "Docker encountered some error running the unit tests for ${1}.sh"
     else 

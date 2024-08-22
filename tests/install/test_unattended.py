@@ -29,7 +29,7 @@ def get_password(username):
     pass_dict={'username': 'tmp_user', 'password': 'tmp_pass'}
     tmp_yaml=""
 
-    with tarfile.open("../../../unattended_installer/wazuh-install-files.tar") as configurations:
+    with tarfile.open("../../wazuh-install-files.tar") as configurations:
         configurations.extract("wazuh-install-files/wazuh-passwords.txt")
 
     with open("wazuh-install-files/wazuh-passwords.txt", 'r') as pass_file:

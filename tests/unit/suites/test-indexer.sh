@@ -114,7 +114,7 @@ test-07-indexer_configure-dist-one-elastic-node-assert() {
     sed -i "s/-Xms1g/-Xms1g/" /etc/wazuh-indexer/jvm.options
     sed -i "s/-Xmx1g/-Xmx1g/" /etc/wazuh-indexer/jvm.options
 
-    installCommon_getConfig indexer/indexer_unattended_distributed.yml /etc/wazuh-indexer/opensearch.yml
+    installCommon_getConfig indexer/indexer_assistant_distributed.yml /etc/wazuh-indexer/opensearch.yml
 
     indexer_copyCertificates
 }
@@ -135,7 +135,7 @@ test-08-indexer_configure-dist-two-elastic-nodes-assert() {
     sed -i "s/-Xms1g/-Xms1g/" /etc/wazuh-indexer/jvm.options
     sed -i "s/-Xmx1g/-Xmx1g/" /etc/wazuh-indexer/jvm.options
 
-    installCommon_getConfig indexer/indexer_unattended_distributed.yml /etc/wazuh-indexer/opensearch.yml
+    installCommon_getConfig indexer/indexer_assistant_distributed.yml /etc/wazuh-indexer/opensearch.yml
 
     indexer_copyCertificates
 }
@@ -156,7 +156,7 @@ test-09-indexer_configure-AIO-assert() {
     sed -i 's/-Xms1g/-Xms1g/' /etc/wazuh-indexer/jvm.options
     sed -i 's/-Xmx1g/-Xmx1g/' /etc/wazuh-indexer/jvm.options
 
-    installCommon_getConfig indexer/indexer_unattended_distributed.yml /etc/wazuh-indexer/opensearch.yml
+    installCommon_getConfig indexer/indexer_assistant_distributed.yml /etc/wazuh-indexer/opensearch.yml
 
     indexer_copyCertificates
 }

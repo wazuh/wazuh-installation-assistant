@@ -11,7 +11,7 @@ This document provides instructions on how to run unit tests for the Wazuh insta
 ## Usage
 
 ```
-unit-tests.sh - Unit test for the Wazuh installer.
+unit-tests.sh - Unit test for the Wazuh installation assistant.
 ```
 
 ### Synopsis

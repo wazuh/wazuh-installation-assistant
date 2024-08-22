@@ -112,7 +112,7 @@ test-07-dashboard_configure-dist-one-kibana-node-one-elastic-node() {
 
 test-07-dashboard_configure-dist-one-kibana-node-one-elastic-node-assert() {
     dashboard_copyCertificates
-    installCommon_getConfig dashboard/dashboard_unattended_distributed.yml /etc/wazuh-dashboard/opensearch_dashboards.yml
+    installCommon_getConfig dashboard/dashboard_assistant_distributed.yml /etc/wazuh-dashboard/opensearch_dashboards.yml
 }
 
 test-08-dashboard_configure-dist-two-kibana-nodes-two-elastic-nodes() {
@@ -127,7 +127,7 @@ test-08-dashboard_configure-dist-two-kibana-nodes-two-elastic-nodes() {
 
 test-08-dashboard_configure-dist-two-kibana-nodes-two-elastic-nodes-assert() {
     dashboard_copyCertificates
-    installCommon_getConfig dashboard/dashboard_unattended_distributed.yml /etc/wazuh-dashboard/opensearch_dashboards.yml
+    installCommon_getConfig dashboard/dashboard_assistant_distributed.yml /etc/wazuh-dashboard/opensearch_dashboards.yml
 }
 
 test-09-dashboard_configure-AIO() {
@@ -142,7 +142,7 @@ test-09-dashboard_configure-AIO() {
 
 test-09-dashboard_configure-AIO-assert() {
     dashboard_copyCertificates
-    installCommon_getConfig dashboard/dashboard_unattended.yml /etc/wazuh-dashboard/opensearch_dashboards.yml
+    installCommon_getConfig dashboard/dashboard_assistant.yml /etc/wazuh-dashboard/opensearch_dashboards.yml
 }
 
 function load-dashboard_initialize() {

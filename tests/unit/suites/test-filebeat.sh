@@ -190,7 +190,7 @@ test-11-filebeat_configure-AIO-no-previous-variables() {
 test-11-filebeat_configure-AIO-no-previous-variables-assert() {
     curl -so /etc/filebeat/wazuh-template.json --max-time 300
     chmod go+r /etc/filebeat/wazuh-template.json
-    installCommon_getConfig filebeat/filebeat_unattended.yml /etc/filebeat/filebeat.yml
+    installCommon_getConfig filebeat/filebeat_assistant.yml /etc/filebeat/filebeat.yml
     mkdir /etc/filebeat/certs
     filebeat_copyCertificates
     filebeat keystore create
@@ -210,7 +210,7 @@ test-12-filebeat_configure-AIO() {
 test-12-filebeat_configure-AIO-assert() {
     curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/4.3/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300
     chmod go+r /etc/filebeat/wazuh-template.json
-    installCommon_getConfig filebeat/filebeat_unattended.yml /etc/filebeat/filebeat.yml
+    installCommon_getConfig filebeat/filebeat_assistant.yml /etc/filebeat/filebeat.yml
     mkdir /etc/filebeat/certs
     filebeat_copyCertificates
     filebeat keystore create
