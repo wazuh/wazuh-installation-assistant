@@ -1,0 +1,58 @@
+run-name: Test installation assistant - System ${{ inputs.SYSTEM }} - Launched by @${{ github.actor }}
+name: Test installation assistant 
+
+on:
+  pull_request:
+    paths:
+      - 'cert_tool/**'
+      - 'common_functions/**'
+      - 'config/**'
+      - 'install_functions/**'
+      - 'passwords_tool/**'
+      - 'tests/**'
+  workflow_dispatch:
+    inputs:
+      REPOSITORY:
+        description: 'Repository environment'
+        required: true
+        default: 'pre-release'
+        type: choice
+        options:
+          - staging
+          - pre-release
+      SYSTEM:
+        description: 'Operating System'
+        required: true
+        default: 'CentOS 8'
+        type: choice
+        options:
+          - CentOS 7
+          - CentOS 8
+          - Amazon Linux 2
+          - Ubuntu 16
+          - Ubuntu 18
+          - Ubuntu 20
+          - Ubuntu 22
+          - RHEL7
+          - RHEL8
+      DEBUG:
+        description: 'Debug mode'
+        required: true
+        default: false
+        type: boolean
+      DESTROY:
+        description: 'Destroy instances after run'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  LABEL: ubuntu-latest
+
+jobs:
+  initialize-environment:
+    runs-on: $LABEL
+
+    steps:
+    - name: Set up Git
+      uses: actions/checkout@v3
