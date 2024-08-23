@@ -22,7 +22,7 @@ function getHelp() {
 
     echo -e ""
     echo -e "NAME"
-    echo -e "        $(basename "$0") - Build unattended installation files."
+    echo -e "        $(basename "$0") - Builds the Wazuh installation assistant and tools."
     echo -e ""
     echo -e "SYNOPSIS"
     echo -e "        $(basename "$0") [-v] -i | -c | -p"

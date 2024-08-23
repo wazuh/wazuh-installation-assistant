@@ -21,10 +21,10 @@ function dashboard_configure() {
 
     common_logger -d "Configuring Wazuh dashboard."
     if [ -n "${AIO}" ]; then
-        eval "installCommon_getConfig dashboard/dashboard_unattended.yml /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
+        eval "installCommon_getConfig dashboard/dashboard_assistant.yml /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
         dashboard_copyCertificates "${debug}"
     else
-        eval "installCommon_getConfig dashboard/dashboard_unattended_distributed.yml /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
+        eval "installCommon_getConfig dashboard/dashboard_assistant_distributed.yml /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
         dashboard_copyCertificates "${debug}"
         if [ "${#dashboard_node_names[@]}" -eq 1 ]; then
             pos=0

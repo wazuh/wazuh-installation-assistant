@@ -46,7 +46,7 @@ function filebeat_configure(){
 
     eval "chmod go+r /etc/filebeat/wazuh-template.json ${debug}"
     if [ -n "${AIO}" ]; then
-        eval "installCommon_getConfig filebeat/filebeat_unattended.yml /etc/filebeat/filebeat.yml ${debug}"
+        eval "installCommon_getConfig filebeat/filebeat_assistant.yml /etc/filebeat/filebeat.yml ${debug}"
     else
         eval "installCommon_getConfig filebeat/filebeat_distributed.yml /etc/filebeat/filebeat.yml ${debug}"
         if [ ${#indexer_node_names[@]} -eq 1 ]; then
