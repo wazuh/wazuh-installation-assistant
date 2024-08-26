@@ -1,0 +1,47 @@
+run-name: (Distributed) Test installation assistant - Launched by @${{ github.actor }}
+name: (Distributed) Test installation assistant
+
+on:
+  pull_request:
+    paths:
+      - 'cert_tool/**'
+      - 'common_functions/**'
+      - 'config/**'
+      - 'install_functions/**'
+      - 'passwords_tool/**'
+      - 'tests/**'
+  workflow_dispatch:
+    inputs:
+      REPOSITORY:
+        description: 'Repository environment'
+        required: true
+        default: 'pre-release'
+        type: choice
+        options:
+          - staging
+          - pre-release
+      AUTOMATION_REFERENCE:
+        description: 'wazuh-automation reference'
+        required: true
+        default: 'v4.10.0'
+      DEBUG:
+        description: 'Debug mode'
+        required: true
+        default: false
+        type: boolean
+      DESTROY:
+        description: 'Destroy instances after run'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  LABEL: ubuntu-latest
+
+jobs:
+  initialize-environment:
+    runs-on: $LABEL
+
+    steps:
+    - name: Set up Git
+      uses: actions/checkout@v3
