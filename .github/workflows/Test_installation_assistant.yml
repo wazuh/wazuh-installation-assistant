@@ -1,5 +1,5 @@
 run-name: Test installation assistant - System ${{ inputs.SYSTEM }} - Launched by @${{ github.actor }}
-name: Test installation assistant 
+name: Test installation assistant
 
 on:
   pull_request:
@@ -23,7 +23,7 @@ on:
       AUTOMATION_REFERENCE:
         description: 'wazuh-automation reference'
         required: true
-        default: 'v4.10.0'
+        default: 'v5.0.0'
       SYSTEM:
         description: 'Operating System'
         required: true
