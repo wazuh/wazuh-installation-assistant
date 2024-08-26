@@ -20,6 +20,10 @@ on:
         options:
           - staging
           - pre-release
+      AUTOMATION_REFERENCE:
+        description: 'wazuh-automation reference'
+        required: true
+        default: 'v4.10.0'
       DEBUG:
         description: 'Debug mode'
         required: true
