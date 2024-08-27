@@ -54,7 +54,7 @@ jobs:
         with:
           name: script
 
-      - name: Move unattended script
+      - name: Move installation assistant script
         run: cp $GITHUB_WORKSPACE/wazuh-install.sh $GITHUB_WORKSPACE/.github/actions/offline-installation/wazuh-install.sh
 
       - name: Launch docker and run script
