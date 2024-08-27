@@ -103,4 +103,6 @@ jobs:
         esac
         COMPOSITE_NAME="${COMPOSITE_NAME/SUBNAME/$SUBNAME}"
         echo "COMPOSITE_NAME=$COMPOSITE_NAME" >> $GITHUB_ENV
-        
+
+    - name: Install Ansible
+      run: sudo apt-get update && sudo apt-add-repository ppa:ansible/ansible && sudo apt install -y ansible
