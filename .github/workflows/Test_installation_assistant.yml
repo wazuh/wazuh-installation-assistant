@@ -51,11 +51,13 @@ on:
         type: boolean
 
 env:
-  LABEL: ubuntu-latest
+  COMPOSITE_NAME: "linux-SUBNAME-amd64"
+  SESSION_NAME: "Installation-Assistant-Test"
+  REGION: "us-east-1"
 
 jobs:
   initialize-environment:
-    runs-on: $LABEL
+    runs-on: ubuntu-latest
 
     steps:
     - name: Set up Git
