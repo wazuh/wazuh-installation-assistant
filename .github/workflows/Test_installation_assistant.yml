@@ -148,3 +148,7 @@ jobs:
         echo "::add-mask::$ansible_ssh_common_args"
         cat "/tmp/allocator_instance/inventory_mod.yml" >> $GITHUB_ENV;
         cat /tmp/allocator_instance/inventory_ansible.ini
+      
+    - name: Delete allocated VM
+      if: always() && steps.allocator_instance.outcome == 'success'
+      run: python3 deployability/modules/allocation/main.py --action delete --track-output /tmp/allocator_instance/track.yml
