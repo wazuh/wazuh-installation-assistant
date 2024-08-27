@@ -124,3 +124,27 @@ jobs:
         repository: wazuh/wazuh-automation
         ref: ${{ inputs.AUTOMATION_REFERENCE }}
         token: ${{ secrets.GH_CLONE_TOKEN }}
+      
+    - name: Install and set allocator requirements
+      run: pip3 install -r deployability/deps/requirements.txt
+
+    - name: Allocate instance test and set SSH variables
+      id: allocator_instance
+      run: |
+        python3 deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name ${{ env.COMPOSITE_NAME }} --working-dir /tmp/allocator_instance \
+          --track-output /tmp/allocator_instance/track.yml --inventory-output /tmp/allocator_instance/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
+          --label-team devops --label-termination-date 1d
+
+        sed 's/: */=/g' /tmp/allocator_instance/inventory.yml > /tmp/allocator_instance/inventory_mod.yml
+        source /tmp/allocator_instance/inventory_mod.yml
+        
+        echo "[gha_instance]" > /tmp/allocator_instance/inventory_ansible.ini
+        echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> /tmp/allocator_instance/inventory_ansible.ini
+        
+        echo "::add-mask::$ansible_host"
+        echo "::add-mask::$ansible_port"
+        echo "::add-mask::$ansible_user"
+        echo "::add-mask::$ansible_ssh_private_key_file"
+        echo "::add-mask::$ansible_ssh_common_args"
+        cat "/tmp/allocator_instance/inventory_mod.yml" >> $GITHUB_ENV;
+        cat /tmp/allocator_instance/inventory_ansible.ini
