@@ -55,6 +55,10 @@ env:
   SESSION_NAME: "Installation-Assistant-Test"
   REGION: "us-east-1"
 
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+
 jobs:
   initialize-environment:
     runs-on: ubuntu-latest
@@ -106,3 +110,17 @@ jobs:
 
     - name: Install Ansible
       run: sudo apt-get update && sudo apt-add-repository ppa:ansible/ansible && sudo apt install -y ansible
+    
+    - name: Set up AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+        role-session-name: ${{ env.SESSION_NAME }}
+        aws-region: ${{ env.REGION }}
+
+    - name: Checkout wazuh/wazuh-automation repository
+      uses: actions/checkout@v4
+      with:
+        repository: wazuh/wazuh-automation
+        ref: ${{ inputs.AUTOMATION_REFERENCE }}
+        token: ${{ secrets.GH_CLONE_TOKEN }}
