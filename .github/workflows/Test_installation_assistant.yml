@@ -21,9 +21,9 @@ on:
           - staging
           - pre-release
       AUTOMATION_REFERENCE:
-        description: 'wazuh-automation reference'
+        description: 'Branch or tag of the wazuh-automation repository'
         required: true
-        default: 'v4.10.0'
+        default: '4.10.0'
       SYSTEM:
         description: 'Operating System'
         required: true
