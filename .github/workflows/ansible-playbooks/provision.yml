@@ -40,12 +40,6 @@
     - name: Install main deps block
       block:
 
-        - name: Install required dependencies DNF
-          dnf:
-            name: "{{ rpm_deps }}"
-            state: present
-          when: ansible_os_family == 'RedHat'
-
         # ---------------------------------------------------------------------
 
         - name: Install required dependencies YUM
