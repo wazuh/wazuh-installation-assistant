@@ -43,7 +43,7 @@
         # ---------------------------------------------------------------------
 
         - name: Install required dependencies YUM
-          ansible.builtin.yum:
+          ansible.builtin.dnf:
             name: "{{ rpm_deps }}"
             state: present
           when: ansible_os_family == 'RedHat'
