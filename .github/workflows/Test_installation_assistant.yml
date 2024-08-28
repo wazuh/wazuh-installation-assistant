@@ -162,14 +162,14 @@ jobs:
         ansible-playbook .github/workflows/ansible-playbooks/provision.yml \
         -i /tmp/allocator_instance/inventory \
         -l all \
-        -e repository=$REPOSITORY_URL \
-        -e packages_reference=$PACKAGES_REFERENCE \
-        -e tmp_path=$TMP_PATH \
-        -e pkg_repository=$PKG_REPOSITORY \
-        -e install_deps=$INSTALL_DEPS \
-        -e install_python=$INSTALL_PYTHON \
-        -e install_pip_deps=$INSTALL_PIP_DEPS \
-        ${ANSIBLE_PYTHON_INTERPRETER:+-e ansible_python_interpreter=$ANSIBLE_PYTHON_INTERPRETER} \
+        -e "repository=$REPOSITORY_URL" \
+        -e "packages_reference=$PACKAGES_REFERENCE" \
+        -e "tmp_path=$TMP_PATH" \
+        -e "pkg_repository=$PKG_REPOSITORY" \
+        -e "install_deps=$INSTALL_DEPS" \
+        -e "install_python=$INSTALL_PYTHON" \
+        -e "install_pip_deps=$INSTALL_PIP_DEPS" \
+        ${ANSIBLE_PYTHON_INTERPRETER:+-e "ansible_python_interpreter=$ANSIBLE_PYTHON_INTERPRETER"} \
         -v
     
     - name: Delete allocated VM

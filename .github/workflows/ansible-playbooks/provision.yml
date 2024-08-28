@@ -64,7 +64,7 @@
           when: ansible_pkg_mgr == "apt"
       when:
         - install_deps is defined
-        - install_deps == true
+        - install_deps | bool
 
     - name: Install Python and pip
       block: 
@@ -132,7 +132,7 @@
 
       when:
         - install_python is defined
-        - install_python == true
+        - install_python | bool
 
     # No version specified in pyyaml due to Xenial error.
     - name: Install pytest
@@ -140,7 +140,7 @@
       with_items: "{{ pip_deps }}"
       when:
         - install_pip_deps is defined
-        - install_pip_deps == true
+        - install_pip_deps | bool
 
     - name: Clone installation assistant git repository
       git:
