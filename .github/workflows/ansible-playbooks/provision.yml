@@ -43,7 +43,7 @@
         # ---------------------------------------------------------------------
 
         - name: Install required dependencies YUM
-          ansible.builtin.dnf:
+          ansible.builtin.package:
             name: "{{ rpm_deps }}"
             state: present
           when: ansible_os_family == 'RedHat'
@@ -51,7 +51,7 @@
         # ---------------------------------------------------------------------
 
         - name: Install required dependencies APT
-          ansible.builtin.apt:
+          ansible.builtin.package:
             name: "{{ apt_deps }}"
             state: present
             update_cache: yes
@@ -74,7 +74,7 @@
             - ansible_distribution == "Ubuntu"
 
         - name: Install Python3.9 on Ubuntu Jammy
-          ansible.builtin.apt:
+          ansible.builtin.package:
             name:
               - python3.9
               - python3.9-distutils
