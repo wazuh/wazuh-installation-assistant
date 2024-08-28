@@ -124,31 +124,54 @@ jobs:
         repository: wazuh/wazuh-automation
         ref: ${{ inputs.AUTOMATION_REFERENCE }}
         token: ${{ secrets.GH_CLONE_TOKEN }}
-      
+        path: wazuh-automation
+
     - name: Install and set allocator requirements
-      run: pip3 install -r deployability/deps/requirements.txt
+      run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
 
     - name: Allocate instance test and set SSH variables
       id: allocator_instance
       run: |
-        python3 deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name ${{ env.COMPOSITE_NAME }} --working-dir /tmp/allocator_instance \
+        python3 wazuh-automation/deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name ${{ env.COMPOSITE_NAME }} --working-dir /tmp/allocator_instance \
           --track-output /tmp/allocator_instance/track.yml --inventory-output /tmp/allocator_instance/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
           --label-team devops --label-termination-date 1d
 
         sed 's/: */=/g' /tmp/allocator_instance/inventory.yml > /tmp/allocator_instance/inventory_mod.yml
+        sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' /tmp/allocator_instance/inventory_mod.yml
         source /tmp/allocator_instance/inventory_mod.yml
         
-        echo "[gha_instance]" > /tmp/allocator_instance/inventory_ansible.ini
-        echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> /tmp/allocator_instance/inventory_ansible.ini
-        
-        echo "::add-mask::$ansible_host"
-        echo "::add-mask::$ansible_port"
-        echo "::add-mask::$ansible_user"
-        echo "::add-mask::$ansible_ssh_private_key_file"
-        echo "::add-mask::$ansible_ssh_common_args"
-        cat "/tmp/allocator_instance/inventory_mod.yml" >> $GITHUB_ENV;
-        cat /tmp/allocator_instance/inventory_ansible.ini
-      
+        echo "[gha_instance]" > /tmp/allocator_instance/inventory
+        echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> /tmp/allocator_instance/inventory
+
+    - name: Execute provision.yml playbook
+      run: |
+        INSTALL_DEPS=true
+        INSTALL_PYTHON=true
+        INSTALL_PIP_DEPS=true
+
+        REPOSITORY_URL="https://github.com/wazuh/wazuh-installation-assistant.git"
+        PACKAGES_REFERENCE="${{ github.ref_name }}"
+        TMP_PATH="/tmp/test"
+        PKG_REPOSITORY="${{ inputs.REPOSITORY }}"
+
+        ANSIBLE_PYTHON_INTERPRETER=""
+        if [ "${{ inputs.SYSTEM }}" == "CentOS 8" ]; then
+          ANSIBLE_PYTHON_INTERPRETER="/usr/bin/python3"
+        fi
+
+        ansible-playbook .github/workflows/ansible-playbooks/provision.yml \
+        -i /tmp/allocator_instance/inventory \
+        -l all \
+        -e repository=$REPOSITORY_URL \
+        -e packages_reference=$PACKAGES_REFERENCE \
+        -e tmp_path=$TMP_PATH \
+        -e pkg_repository=$PKG_REPOSITORY \
+        -e install_deps=$INSTALL_DEPS \
+        -e install_python=$INSTALL_PYTHON \
+        -e install_pip_deps=$INSTALL_PIP_DEPS \
+        ${ANSIBLE_PYTHON_INTERPRETER:+-e ansible_python_interpreter=$ANSIBLE_PYTHON_INTERPRETER} \
+        -v
+    
     - name: Delete allocated VM
       if: always() && steps.allocator_instance.outcome == 'success'
-      run: python3 deployability/modules/allocation/main.py --action delete --track-output /tmp/allocator_instance/track.yml
+      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output /tmp/allocator_instance/track.yml
