@@ -44,7 +44,7 @@
           dnf:
             name: "{{ rpm_deps }}"
             state: present
-          when: ansible_pkg_mgr == "dnf"
+          when: ansible_os_family == 'RedHat'
 
         # ---------------------------------------------------------------------
 
@@ -52,7 +52,7 @@
           yum:
             name: "{{ rpm_deps }}"
             state: present
-          when: ansible_pkg_mgr == "yum"
+          when: ansible_os_family == 'RedHat'
 
         # ---------------------------------------------------------------------
 
@@ -61,7 +61,7 @@
             name: "{{ apt_deps }}"
             state: present
             update_cache: yes
-          when: ansible_pkg_mgr == "apt"
+          when: ansible_os_family == 'Debian'
       when:
         - install_deps is defined
         - install_deps | bool
@@ -76,7 +76,7 @@
           apt_repository:
             repo: 'ppa:deadsnakes/ppa'
           when:
-            - ansible_pkg_mgr == "apt"
+            - ansible_os_family == 'Debian'
             - ansible_distribution == "Ubuntu"
 
         - name: Install Python3.9 on Ubuntu Jammy
@@ -87,21 +87,21 @@
             state: present
             update_cache: yes
           when:
-            - ansible_pkg_mgr == "apt"
+            - ansible_os_family == 'Debian'
             - ansible_distribution == "Ubuntu"
             - ansible_distribution_release == "jammy"
 
         - name: Change Python link Ubuntu Jammy
           command: ln -sf /usr/bin/python3.9 /usr/bin/python3
           when:
-            - ansible_pkg_mgr == "apt"
+            - ansible_os_family == 'Debian'
             - ansible_distribution == "Ubuntu"
             - ansible_distribution_release == "jammy"
 
         - name: Change Python link Ubuntu Xenial
           command: ln -sf /usr/local/bin/python3.8 /usr/bin/python3
           when:
-            - ansible_pkg_mgr == "apt"
+            - ansible_os_family == 'Debian'
             - ansible_distribution == "Ubuntu"
             - ansible_distribution_release == "xenial"
 
@@ -112,12 +112,12 @@
             path: /usr/bin/pip3
           register: stat_pip3
           when:
-            - ansible_pkg_mgr == "apt"
+            - ansible_os_family == 'Debian'
 
         - name: Install pip Ubuntu\Debian
           shell: curl https://bootstrap.pypa.io/get-pip.py | python3 -
           when:
-            - ansible_pkg_mgr == "apt"
+            - ansible_os_family == 'Debian'
             - stat_pip3.stat.exists == False
             - ansible_distribution_release != "xenial"
             - ansible_distribution_release != "focal"
@@ -126,7 +126,7 @@
         - name: Install pip Ubuntu Xenial
           shell: curl https://bootstrap.pypa.io/get-pip.py | python3 -
           when:
-            - ansible_pkg_mgr == "apt"
+            - ansible_os_family == 'Debian'
             - stat_pip3.stat.exists == False
             - ansible_distribution_release == "xenial"
 
