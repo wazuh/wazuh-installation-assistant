@@ -1,6 +1,7 @@
 ---
 - hosts: all
   become: true
+  gather_facts: no
   vars:
       script_path: "{{ tmp_path }}"
       script_name: "wazuh-install.sh"
@@ -31,7 +32,21 @@
         - beautifulsoup4
         - urllib3==1.26.6
 
+  pre_tasks:
+    - name: Check if the system is CentOS 8 and install Python if necessary
+      raw: |
+        if [ -f /etc/centos-release ]; then
+          if grep -q -i -E "centos.*8" /etc/centos-release; then
+            if ! command -v python3 &> /dev/null; then
+              dnf install -y python3
+            fi
+          fi
+        fi
+
   tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
     - name: Make tmp folder directory
       file:
         path: "{{ tmp_path }}"
