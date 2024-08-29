@@ -1,0 +1,14 @@
+wazuh-install.sh
+wazuh-passwords-tool.sh
+wazuh-certs-tool.sh
+*.pem
+*.ova
+*.ovf
+*.deb
+*.rpm
+*.zip
+*.tar.gz
+*.pkg
+*.msi
+*.log
+*.key
