@@ -155,7 +155,7 @@
       git:
         repo: "{{ repository }}"
         dest: "{{ tmp_path }}"
-        version: "{{ packages_reference }}"
+        version: "{{ reference }}"
         depth: 1
         force: true
 

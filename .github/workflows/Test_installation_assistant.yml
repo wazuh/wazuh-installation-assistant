@@ -54,6 +54,12 @@ env:
   COMPOSITE_NAME: "linux-SUBNAME-amd64"
   SESSION_NAME: "Installation-Assistant-Test"
   REGION: "us-east-1"
+  TMP_PATH: "/tmp/test"
+  LOGS_PATH: "/home/assistant_logs"
+  PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
+  REFERENCE: "${{ github.ref_name }}"
+  TEST_NAME: "test_assistant"
+  REPOSITORY_URL: "${{ github.server_url }}${{ github.repository_owner }}/${{ github.repository }}.git"
 
 permissions:
   id-token: write   # This is required for requesting the JWT
@@ -152,23 +158,18 @@ jobs:
         INSTALL_PYTHON=true
         INSTALL_PIP_DEPS=true
 
-        REPOSITORY_URL="https://github.com/wazuh/wazuh-installation-assistant.git"
-        PACKAGES_REFERENCE="${{ github.ref_name }}"
-        TMP_PATH="/tmp/test"
-        PKG_REPOSITORY="${{ inputs.REPOSITORY }}"
-
         ansible-playbook .github/workflows/ansible-playbooks/provision.yml \
         -i /tmp/allocator_instance/inventory \
         -l all \
         -e "repository=$REPOSITORY_URL" \
-        -e "packages_reference=$PACKAGES_REFERENCE" \
+        -e "reference=$REFERENCE" \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
         -v
-    
+
     - name: Delete allocated VM
       if: always() && steps.allocator_instance.outcome == 'success'
       run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output /tmp/allocator_instance/track.yml
