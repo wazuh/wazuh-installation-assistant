@@ -59,7 +59,7 @@ env:
   PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
   REFERENCE: "${{ github.ref_name }}"
   TEST_NAME: "test_assistant"
-  REPOSITORY_URL: "${{ github.server_url }}${{ github.repository_owner }}/${{ github.repository }}.git"
+  REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
 
 permissions:
   id-token: write   # This is required for requesting the JWT
