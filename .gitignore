@@ -5,6 +5,7 @@ config.yml
 wazuh-install-files.tar
 wazuh-install-files/
 wazuh-offline.tar.gz
+wazuh-offline/
 *.pem
 *.ova
 *.ovf
