@@ -23,7 +23,7 @@ on:
       AUTOMATION_REFERENCE:
         description: 'wazuh-automation reference'
         required: true
-        default: 'v4.10.0'
+        default: 'v4.9.0'
       SYSTEM:
         description: 'Operating System'
         required: true

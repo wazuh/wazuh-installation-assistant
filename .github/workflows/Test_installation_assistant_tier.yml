@@ -15,7 +15,7 @@ on:
       AUTOMATION_REFERENCE:
         description: 'wazuh-automation reference'
         required: true
-        default: 'v4.10.0'
+        default: 'v4.9.0'
       CentOS_7:
         description: 'CentOS 7'
         required: true
