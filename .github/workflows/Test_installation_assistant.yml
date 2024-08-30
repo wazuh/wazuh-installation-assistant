@@ -178,6 +178,17 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
+        -v
+
+    - name: Execute Python test playbook
+      run: |
+        TEST_NAME="test_installation_assistant"
+        ansible-playbook .github/workflows/ansible-playbooks/aio_tests.yml \
+        -i /tmp/allocator_instance/inventory \
+        -l all \
+        -e "tmp_path=$TMP_PATH" \
+        -e "logs_path=$LOGS_PATH" \
+        -e "test_name=$TEST_NAME" \
         -vvv
 
     - name: Delete allocated VM

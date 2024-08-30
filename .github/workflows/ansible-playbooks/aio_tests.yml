@@ -1,0 +1,45 @@
+
+  - hosts: all
+    become: true
+
+    vars:
+      script_path: "{{ tmp_path }}/tests/install"
+      test_name: "{{ test_name }}"
+      script_name: "{{ test_name }}.py"
+      test_dir: "/{{ test_name }}"
+      logs_path: "{{ logs_path }}"
+    tasks:
+
+      - name: Create log directory
+        file:
+          path: "{{ test_dir }}"
+          state: directory
+
+      - name: Create log file
+        file:
+          dest: "{{ test_dir }}/{{ test_name }}.log"
+          state: touch
+
+      - name: Test unattended AIO install
+        block:
+          - name: Launch AIO test
+            command: "python3 -m pytest --tb=long {{ script_name }} -v -m \"wazuh or wazuh_worker or indexer or dashboard\""
+            args:
+              chdir: "{{ script_path }}"
+            register: test_results
+
+        always:
+          - name: Save output
+            blockinfile:
+              marker: ""
+              path: "{{ test_dir }}/{{ test_name }}.log"
+              block: |
+                {{ test_results.stderr }}
+                --------------------------------
+                {{ test_results.stdout }}
+
+          - name: Fetch log
+            fetch:
+              src: "{{ test_dir }}/{{ test_name }}.log"
+              dest: "{{ logs_path }}/"
+              flat: yes
