@@ -39,11 +39,16 @@ on:
           - Ubuntu 22
           - RHEL7
           - RHEL8
-      DEBUG:
-        description: 'Debug mode'
+      VERBOSITY:
+        description: 'Verbosity level on playbooks execution'
         required: true
-        default: false
-        type: boolean
+        default: '-v'
+        type: choice
+        options:
+          - -v
+          - -vv
+          - -vvv
+          - -vvvv
       DESTROY:
         description: 'Destroy instances after run'
         required: true
@@ -168,7 +173,7 @@ jobs:
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
-        -v
+        "${{ inputs.VERBOSITY }}"
 
     - name: Execute AIO installation playbook
       run: |
@@ -178,7 +183,7 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
-        -v
+        "${{ inputs.VERBOSITY }}"
 
     - name: Execute Python test playbook
       run: |
@@ -189,7 +194,7 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
-        -vvv
+        "${{ inputs.VERBOSITY }}"
 
     - name: Delete allocated VM
       if: always() && steps.allocator_instance.outcome == 'success'
