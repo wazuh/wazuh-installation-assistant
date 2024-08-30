@@ -1,0 +1,47 @@
+
+  - hosts: all
+    become: true
+
+    vars:
+      script_path: "{{ tmp_path }}"
+      script_name: "wazuh-install.sh"
+      script_builder: "builder.sh"
+      test_name: "{{ test_name }}"
+      test_dir: "/{{ test_name }}"
+      logs_path: "{{ logs_path }}"
+
+    tasks:
+
+      - name: Create log directory
+        file:
+          path: "{{ test_dir }}"
+          state: directory
+
+      - name: Create log file
+        file:
+          dest: "{{ test_dir }}/{{ test_name }}.log"
+          state: touch
+
+      - name: Test assistant AIO install
+        block:
+          - name: Install assistant installer
+            command: "bash {{ script_name }} -a -v"
+            args:
+              chdir: "{{ script_path }}"
+            register: install_results
+
+        always:
+          - name: Save output
+            blockinfile:
+              marker: ""
+              path: "{{ test_dir }}/{{ test_name }}.log"
+              block: |
+                {{ install_results.stderr }}
+                --------------------------------
+                {{ install_results.stdout }}
+
+          - name: Fetch log
+            fetch:
+              src: "{{ test_dir }}/{{ test_name }}.log"
+              dest: "{{ logs_path }}/"
+              flat: yes

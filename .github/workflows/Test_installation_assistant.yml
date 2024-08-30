@@ -55,7 +55,7 @@ env:
   SESSION_NAME: "Installation-Assistant-Test"
   REGION: "us-east-1"
   TMP_PATH: "/tmp/test"
-  LOGS_PATH: "/home/assistant_logs"
+  LOGS_PATH: "${{ github.workspace }}/assistant_logs"
   PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
   REFERENCE: "${{ github.ref_name }}"
   TEST_NAME: "test_assistant"
@@ -162,13 +162,23 @@ jobs:
         -i /tmp/allocator_instance/inventory \
         -l all \
         -e "repository=$REPOSITORY_URL" \
-        -e "reference=$REFERENCE" \
+        -e "reference=4.9.0-testing" \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
         -v
+
+    - name: Execute AIO installation playbook
+      run: |
+        ansible-playbook .github/workflows/ansible-playbooks/aio.yml \
+        -i /tmp/allocator_instance/inventory \
+        -l all \
+        -e "tmp_path=$TMP_PATH" \
+        -e "logs_path=$LOGS_PATH" \
+        -e "test_name=$TEST_NAME" \
+        -vvv
 
     - name: Delete allocated VM
       if: always() && steps.allocator_instance.outcome == 'success'
