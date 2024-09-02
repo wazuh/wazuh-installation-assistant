@@ -29,6 +29,8 @@
             args:
               chdir: "{{ script_path }}"
             register: install_results
+            async: 500
+            poll: 5
 
         always:
           - name: Save output
