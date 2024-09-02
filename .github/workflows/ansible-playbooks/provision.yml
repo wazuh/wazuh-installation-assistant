@@ -128,16 +128,6 @@
           when:
             - ansible_os_family == 'Debian'
             - stat_pip3.stat.exists == False
-            - ansible_distribution_release != "xenial"
-            - ansible_distribution_release != "focal"
-            - ansible_distribution_release != "bionic"
-
-        - name: Install pip Ubuntu Xenial
-          shell: curl https://bootstrap.pypa.io/get-pip.py | python3 -
-          when:
-            - ansible_os_family == 'Debian'
-            - stat_pip3.stat.exists == False
-            - ansible_distribution_release == "xenial"
 
       when:
         - install_python is defined
