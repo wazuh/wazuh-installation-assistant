@@ -24,7 +24,7 @@
 
       - name: Test assistant AIO install
         block:
-          - name: Install assistant installer
+          - name: Perform AIO installation
             command: "bash {{ script_name }} -a -v"
             args:
               chdir: "{{ script_path }}"
