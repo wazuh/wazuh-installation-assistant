@@ -65,6 +65,7 @@ env:
   REFERENCE: "${{ github.ref_name }}"
   TEST_NAME: "test_assistant"
   REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
+  ALLOCATOR_PATH: "/tmp/allocator_instance"
 
 permissions:
   id-token: write   # This is required for requesting the JWT
@@ -146,16 +147,16 @@ jobs:
     - name: Allocate instance test and set SSH variables
       id: allocator_instance
       run: |
-        python3 wazuh-automation/deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name ${{ env.COMPOSITE_NAME }} --working-dir /tmp/allocator_instance \
-          --track-output /tmp/allocator_instance/track.yml --inventory-output /tmp/allocator_instance/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
+        python3 wazuh-automation/deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name ${{ env.COMPOSITE_NAME }} --working-dir $ALLOCATOR_PATH \
+          --track-output $ALLOCATOR_PATH/track.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
           --label-team devops --label-termination-date 1d
 
-        sed 's/: */=/g' /tmp/allocator_instance/inventory.yml > /tmp/allocator_instance/inventory_mod.yml
-        sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' /tmp/allocator_instance/inventory_mod.yml
-        source /tmp/allocator_instance/inventory_mod.yml
+        sed 's/: */=/g' $ALLOCATOR_PATH/inventory.yml > $ALLOCATOR_PATH/inventory_mod.yml
+        sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod.yml
+        source $ALLOCATOR_PATH/inventory_mod.yml
         
-        echo "[gha_instance]" > /tmp/allocator_instance/inventory
-        echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> /tmp/allocator_instance/inventory
+        echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
+        echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
 
     - name: Execute provision.yml playbook
       run: |
@@ -164,7 +165,7 @@ jobs:
         INSTALL_PIP_DEPS=true
 
         ansible-playbook .github/workflows/ansible-playbooks/provision.yml \
-        -i /tmp/allocator_instance/inventory \
+        -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "repository=$REPOSITORY_URL" \
         -e "reference=4.9.0-testing" \
@@ -178,7 +179,7 @@ jobs:
     - name: Execute AIO installation playbook
       run: |
         ansible-playbook .github/workflows/ansible-playbooks/aio.yml \
-        -i /tmp/allocator_instance/inventory \
+        -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "tmp_path=$TMP_PATH" \
         -e "logs_path=$LOGS_PATH" \
@@ -189,14 +190,27 @@ jobs:
       run: |
         TEST_NAME="test_installation_assistant"
         ansible-playbook .github/workflows/ansible-playbooks/aio_tests.yml \
-        -i /tmp/allocator_instance/inventory \
+        -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "tmp_path=$TMP_PATH" \
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
         "${{ inputs.VERBOSITY }}"
+    
+    - name: Compress Allocator directory
+      id: compress_allocator_files
+      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == false
+      run: |
+        zip -P "${{ secrets.ZIP_ARTIFACTS_PASSWORD }}" -r $ALLOCATOR_PATH.zip $ALLOCATOR_PATH
+      
+    - name: Upload Allocator directory as artifact
+      if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false
+      uses: actions/upload-artifact@v4
+      with:
+        name: allocator-instance
+        path: ${{ env.ALLOCATOR_PATH }}.zip
 
     - name: Delete allocated VM
       if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == true
-      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output /tmp/allocator_instance/track.yml
+      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
       
