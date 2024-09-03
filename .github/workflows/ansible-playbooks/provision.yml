@@ -43,6 +43,16 @@
           fi
         fi
 
+    - name: Check if the system is Ubuntu 16 and install Python
+      raw: |
+        if [ -f /etc/lsb-release ]; then
+          if grep -q -i -E "ubuntu.*16" /etc/lsb-release; then
+            add-apt-repository -y ppa:jblgf0/python
+            apt-get update
+            apt-get install -y python3.6
+          fi
+        fi
+
   tasks:
     - name: Gather facts
       ansible.builtin.setup:
@@ -101,13 +111,6 @@
             - ansible_distribution == "Ubuntu"
             - ansible_distribution_release == "jammy"
 
-        - name: Change Python link Ubuntu Xenial
-          command: ln -sf /usr/local/bin/python3.8 /usr/bin/python3
-          when:
-            - ansible_os_family == 'Debian'
-            - ansible_distribution == "Ubuntu"
-            - ansible_distribution_release == "xenial"
-
         # ---------------------------------------------------------------------
         # Pip installation ----------------------------------------------------
 
@@ -122,7 +125,18 @@
           when:
             - ansible_os_family == 'Debian'
             - stat_pip3.stat.exists == False
-            - ansible_distribution_release != "focal"
+            - ansible_distribution_release != "bionic"
+        
+        - name: Install pip Ubuntu Bionic
+          ansible.builtin.package:
+            name:
+              - python3-pip
+            state: present
+            update_cache: yes
+          when:
+            - ansible_os_family == 'Debian'
+            - ansible_distribution == "Ubuntu"
+            - ansible_distribution_release == "bionic"
 
       when:
         - install_python is defined
