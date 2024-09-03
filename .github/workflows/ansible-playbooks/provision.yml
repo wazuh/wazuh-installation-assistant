@@ -49,7 +49,7 @@
           if grep -q -i -E "ubuntu.*16" /etc/lsb-release; then
             add-apt-repository -y ppa:jblgf0/python
             apt-get update
-            apt-get install -y python3.6
+            apt-get install -y python3.6 python3-apt
             ln -sf /usr/bin/python3.6 /usr/bin/python3
           fi
         fi
