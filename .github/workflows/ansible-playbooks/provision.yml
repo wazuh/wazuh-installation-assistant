@@ -80,28 +80,22 @@
 
         # ---------------------------------------------------------------------
         # Ubuntu --------------------------------------------------------------
+        - name: Set up Python 3.9 on Ubuntu Jammy
+          block:
+          - name: Set up Python 3.9 repository
+            apt_repository:
+              repo: 'ppa:deadsnakes/ppa'
 
-        - name: Set up Python 3.9 repository
-          apt_repository:
-            repo: 'ppa:deadsnakes/ppa'
-          when:
-            - ansible_os_family == 'Debian'
-            - ansible_distribution == "Ubuntu"
+          - name: Install Python3.9 on Ubuntu Jammy
+            ansible.builtin.package:
+              name:
+                - python3.9
+                - python3.9-distutils
+              state: present
+              update_cache: yes
 
-        - name: Install Python3.9 on Ubuntu Jammy
-          ansible.builtin.package:
-            name:
-              - python3.9
-              - python3.9-distutils
-            state: present
-            update_cache: yes
-          when:
-            - ansible_os_family == 'Debian'
-            - ansible_distribution == "Ubuntu"
-            - ansible_distribution_release == "jammy"
-
-        - name: Change Python link Ubuntu Jammy
-          command: ln -sf /usr/bin/python3.9 /usr/bin/python3
+          - name: Change Python link Ubuntu Jammy
+            command: ln -sf /usr/bin/python3.9 /usr/bin/python3
           when:
             - ansible_os_family == 'Debian'
             - ansible_distribution == "Ubuntu"
@@ -128,14 +122,7 @@
           when:
             - ansible_os_family == 'Debian'
             - stat_pip3.stat.exists == False
-            - ansible_distribution_release != "xenial"
-
-        - name: Install pip Ubuntu Xenial
-          shell: curl https://bootstrap.pypa.io/get-pip.py | python3 -
-          when:
-            - ansible_os_family == 'Debian'
-            - stat_pip3.stat.exists == False
-            - ansible_distribution_release == "xenial"
+            - ansible_distribution_release != "focal"
 
       when:
         - install_python is defined
