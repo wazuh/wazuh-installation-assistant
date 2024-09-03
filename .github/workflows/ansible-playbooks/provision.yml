@@ -50,6 +50,7 @@
             add-apt-repository -y ppa:jblgf0/python
             apt-get update
             apt-get install -y python3.6
+            ln -sf /usr/bin/python3.6 /usr/bin/python3
           fi
         fi
 
@@ -125,9 +126,9 @@
           when:
             - ansible_os_family == 'Debian'
             - stat_pip3.stat.exists == False
-            - ansible_distribution_release != "bionic"
+            - ansible_distribution_release not in ['bionic', 'xenial']
         
-        - name: Install pip Ubuntu Bionic
+        - name: Install pip Ubuntu Bionic/Xenial
           ansible.builtin.package:
             name:
               - python3-pip
@@ -136,7 +137,7 @@
           when:
             - ansible_os_family == 'Debian'
             - ansible_distribution == "Ubuntu"
-            - ansible_distribution_release == "bionic"
+            - ansible_distribution_release in ['bionic', 'xenial']
 
       when:
         - install_python is defined
