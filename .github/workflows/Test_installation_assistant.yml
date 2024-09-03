@@ -165,7 +165,7 @@ jobs:
         -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "repository=$REPOSITORY_URL" \
-        -e "reference=4.9.0-testing" \
+        -e "reference=$REFERENCE" \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         -e "install_deps=$INSTALL_DEPS" \
