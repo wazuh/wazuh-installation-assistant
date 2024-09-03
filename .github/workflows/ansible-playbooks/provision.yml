@@ -50,7 +50,10 @@
             add-apt-repository -y ppa:jblgf0/python
             apt-get update
             apt-get install -y python3.6 python3-apt
-            ln -sf /usr/bin/python3.6 /usr/bin/python3
+            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+            cd /usr/lib/python3/dist-packages
+            sudo ln -s apt_inst.cpython-35m-x86_64-linux-gnu.so apt_inst.so
+            sudo ln -s apt_pkg.cpython-35m-x86_64-linux-gnu.so apt_pkg.so
           fi
         fi
 
@@ -111,6 +114,13 @@
             - ansible_os_family == 'Debian'
             - ansible_distribution == "Ubuntu"
             - ansible_distribution_release == "jammy"
+        
+        - name: Change Python link Ubuntu Xenial
+          command: ln -sf /usr/local/bin/python3.8 /usr/bin/python3
+          when:
+            - ansible_pkg_mgr == "apt"
+            - ansible_distribution == "Ubuntu"
+            - ansible_distribution_release == "xenial"
 
         # ---------------------------------------------------------------------
         # Pip installation ----------------------------------------------------
@@ -126,7 +136,7 @@
           when:
             - ansible_os_family == 'Debian'
             - stat_pip3.stat.exists == False
-            - ansible_distribution_release not in ['bionic', 'xenial']
+            - ansible_distribution_release not in ['bionic']
         
         - name: Install pip Ubuntu Bionic/Xenial
           ansible.builtin.package:
@@ -137,7 +147,7 @@
           when:
             - ansible_os_family == 'Debian'
             - ansible_distribution == "Ubuntu"
-            - ansible_distribution_release in ['bionic', 'xenial']
+            - ansible_distribution_release in ['bionic']
 
       when:
         - install_python is defined
