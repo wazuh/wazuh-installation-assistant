@@ -1,4 +1,4 @@
-run-name: Test installation assistant - System ${{ inputs.SYSTEM }} - Launched by @${{ github.actor }}
+run-name: Test installation assistant - System/s ${{ inputs.SYSTEMS }} - Launched by @${{ github.actor }}
 name: Test installation assistant 
 
 on:
@@ -24,21 +24,11 @@ on:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
         default: '4.10.0'
-      SYSTEM:
-        description: 'Operating System'
+      SYSTEMS:
+        description: 'Operating Systems'
         required: true
-        default: 'CentOS 8'
-        type: choice
-        options:
-          - CentOS 7
-          - CentOS 8
-          - Amazon Linux 2
-          - Ubuntu 16
-          - Ubuntu 18
-          - Ubuntu 20
-          - Ubuntu 22
-          - RHEL7
-          - RHEL8
+        default: '["CentOS_7", "CentOS_8", "AmazonLinux_2", "Ubuntu_16", "Ubuntu_18", "Ubuntu_20", "Ubuntu_22", "RHEL7", "RHEL8"]'
+        type: string
       VERBOSITY:
         description: 'Verbosity level on playbooks execution'
         required: true
@@ -72,8 +62,12 @@ permissions:
   contents: read    # This is required for actions/checkout
 
 jobs:
-  initialize-environment:
+  run-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false    # If a job fails, the rest of jobs will not be cancelled
+      matrix:
+        system: ${{ fromJson(inputs.SYSTEMS) }}
 
     steps:
     - name: Checkout code
@@ -84,26 +78,26 @@ jobs:
     
     - name: Set COMPOSITE_NAME variable
       run: |
-        case "${{ inputs.SYSTEM }}" in
-          "CentOS 7")
+        case "${{ matrix.system }}" in
+          "CentOS_7")
             SUBNAME="centos-7"
             ;;
-          "CentOS 8")
+          "CentOS_8")
             SUBNAME="centos-8"
             ;;
-          "Amazon Linux 2")
+          "AmazonLinux_2")
             SUBNAME="amazon-2"
             ;;
-          "Ubuntu 16")
+          "Ubuntu_16")
             SUBNAME="ubuntu-16.04"
             ;;
-          "Ubuntu 18")
+          "Ubuntu_18")
             SUBNAME="ubuntu-18.04"
             ;;
-          "Ubuntu 20")
+          "Ubuntu_20")
             SUBNAME="ubuntu-20.04"
             ;;
-          "Ubuntu 22")
+          "Ubuntu_22")
             SUBNAME="ubuntu-22.04"
             ;;
           "RHEL7")
