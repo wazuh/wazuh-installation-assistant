@@ -1,4 +1,4 @@
-run-name: Test installation assistant - System/s ${{ inputs.SYSTEMS }} - Launched by @${{ github.actor }}
+run-name: Test installation assistant - ${{ github.run_id }} - ${{ inputs.SYSTEMS }} - Launched by @${{ github.actor }}
 name: Test installation assistant 
 
 on:
