@@ -179,6 +179,7 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
+        -e "system_name=${{ matrix.system }}" \
         "${{ inputs.VERBOSITY }}"
   
     - name: Execute indexer installation playbook
@@ -190,7 +191,7 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
-        -e "system_name=${{ matrix.system }}"
+        -e "system_name=${{ matrix.system }}" \
         "${{ inputs.VERBOSITY }}"
 
     - name: Compress Allocator VM directory
