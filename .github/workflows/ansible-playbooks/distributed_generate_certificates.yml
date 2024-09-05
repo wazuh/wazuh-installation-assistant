@@ -1,0 +1,48 @@
+---
+- hosts: all
+  become: true
+
+  vars:
+    tmp_path: "{{ tmp_path }}"
+    test_name: "{{ test_name }}"
+    test_dir: "/{{ test_name }}"
+    logs_path: "{{ logs_path }}"
+
+  tasks:
+    - name: Create log directory
+      file:
+        path: "{{ test_dir }}"
+        state: directory
+
+    - name: Create log file
+      file:
+        dest: "{{ test_dir }}/{{ test_name }}.log"
+        state: touch
+
+    - name: Create certificates
+      block:
+        - name: Copy config file
+          command: "cp {{ tmp_path }}/config/certificate/config_aio.yml {{ tmp_path }}/config.yml"
+
+        - name: Creating Certificates
+          shell: "{{ tmp_path }}/wazuh-install.sh -g -v"
+          register: certificates_install
+
+        - name: Give read permissions to wazuh-install-files.tar
+          shell: "chmod +r {{ tmp_path }}/wazuh-install-files.tar"
+
+      always:
+        - name: Save output certificate build and creation
+          blockinfile:
+            marker: ""
+            path: "{{ test_dir }}/{{ test_name }}.log"
+            block: |
+              {{ certificates_install.stderr }}
+              --------------------------------
+              {{ certificates_install.stdout }}
+
+        - name: Fetch log
+          fetch:
+            src: "{{ test_dir }}/{{ test_name }}.log"
+            dest: "{{ logs_path }}/"
+            flat: yes
