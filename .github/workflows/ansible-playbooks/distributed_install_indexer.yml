@@ -1,0 +1,66 @@
+---
+  - hosts: all
+    gather_facts: false
+    become: true
+
+    vars:
+      tmp_path: "{{ tmp_path }}"
+      test_name: "{{ test_name }}"
+      test_dir: "/{{ test_name }}"
+      logs_path: "{{ logs_path }}"
+      system_name: "{{ system_name }}"
+
+    tasks:
+      - name: Create log directory
+        file:
+          path: "{{ test_dir }}"
+          state: directory
+
+      - name: Create log file
+        file:
+          dest: "{{ test_dir }}/{{ test_name }}_{{ system_name }}.log"
+          state: touch
+      
+      
+
+      - name: Install Wazuh indexer
+        block:
+          - name: Install Wazuh indexer
+            command: "bash {{ tmp_path }}/wazuh-install.sh -wi {{ system_name }}-indexer -v"
+            register: indexer
+
+          - name: Start cluster
+            command: "bash {{ tmp_path }}/wazuh-install.sh -s -v"
+            register: cluster
+
+        always:
+
+          - name: Save output Wazuh indexer
+            blockinfile:
+              marker: ""
+              path: "{{ test_dir }}/{{ test_name }}_{{ system_name }}.log"
+              block: |
+                {{ indexer.stderr }}
+                --------------------------------
+                {{ indexer.stdout }}
+
+          - name: Fetch log
+            fetch:
+              src: "{{ test_dir }}/{{ test_name }}_{{ system_name }}.log"
+              dest: "{{ logs_path }}/"
+              flat: yes
+
+          - name: Save output start cluster
+            blockinfile:
+              marker: ""
+              path: "{{ test_dir }}/{{ test_name }}_{{ system_name }}_cluster.log"
+              block: |
+                {{ cluster.stderr }}
+                --------------------------------
+                {{ cluster.stdout }}
+
+          - name: Fetch log - start cluster
+            fetch:
+              src: "{{ test_dir }}/{{ test_name }}_{{ system_name }}_cluster.log"
+              dest: "{{ logs_path }}/"
+              flat: yes
