@@ -24,6 +24,10 @@ on:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
         default: '4.10.0'
+      ASSISTANT_REFERENCE:
+        description: 'Branch or tag of the wazuh-installation-assistant repository'
+        required: true
+        default: '4.10.0'
       SYSTEMS:
         description: 'Operating Systems'
         required: true
@@ -52,7 +56,6 @@ env:
   TMP_PATH: "/tmp/test"
   LOGS_PATH: "${{ github.workspace }}/assistant_logs"
   PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
-  REFERENCE: "${{ github.ref_name }}"
   TEST_NAME: "test_assistant"
   REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
   ALLOCATOR_PATH: "/tmp/allocator_instance"
@@ -159,7 +162,7 @@ jobs:
         -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "repository=$REPOSITORY_URL" \
-        -e "reference=$REFERENCE" \
+        -e "reference=${{ inputs.ASSISTANT_REFERENCE }}" \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         -e "install_deps=$INSTALL_DEPS" \
