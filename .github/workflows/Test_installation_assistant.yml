@@ -29,7 +29,7 @@ on:
         required: true
         default: '4.10.0'
       SYSTEMS:
-        description: 'Operating Systems'
+        description: 'Operating Systems (list of comma-separated quoted strings enclosed in square brackets)'
         required: true
         default: '["CentOS_7", "CentOS_8", "AmazonLinux_2", "Ubuntu_16", "Ubuntu_18", "Ubuntu_20", "Ubuntu_22", "RHEL7", "RHEL8"]'
         type: string
@@ -68,7 +68,7 @@ jobs:
   run-test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false    # If a job fails, the rest of jobs will not be cancelled
+      fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
         system: ${{ fromJson(inputs.SYSTEMS) }}
 
@@ -201,7 +201,7 @@ jobs:
       if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false
       uses: actions/upload-artifact@v4
       with:
-        name: allocator-instance
+        name: allocator-instance-${{ matrix.system }}
         path: ${{ env.ALLOCATOR_PATH }}.zip
 
     - name: Delete allocated VM
