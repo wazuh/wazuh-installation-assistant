@@ -21,6 +21,11 @@
           dest: "{{ test_dir }}/{{ test_name }}_{{ system_name }}.log"
           state: touch
       
+      - name: Create log file
+        file:
+          dest: "{{ test_dir }}/{{ test_name }}_{{ system_name }}_cluster.log"
+          state: touch
+      
       
 
       - name: Install Wazuh indexer
