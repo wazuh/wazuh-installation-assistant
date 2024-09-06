@@ -205,6 +205,18 @@ jobs:
         -e "test_name=$TEST_NAME" \
         -e "system_name=${{ matrix.system }}" \
         "${{ inputs.VERBOSITY }}"
+    
+    - name: Execute dashboard installation playbook
+      run: |
+        TEST_NAME="${{ env.TEST_NAME }}_dashboard"
+        ansible-playbook .github/workflows/ansible-playbooks/distributed_install_dashboard.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l all \
+        -e "tmp_path=$TMP_PATH" \
+        -e "logs_path=$LOGS_PATH" \
+        -e "test_name=$TEST_NAME" \
+        -e "system_name=${{ matrix.system }}" \
+        "${{ inputs.VERBOSITY }}"
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files
