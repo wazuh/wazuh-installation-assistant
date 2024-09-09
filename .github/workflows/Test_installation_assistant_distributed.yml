@@ -167,26 +167,31 @@ jobs:
               --inventory-output $ALLOCATOR_PATH/inventory_${instance_name}.yml \
               --instance-name gha_${{ github.run_id }}_${{ env.TEST_NAME }}_${instance_name} --label-team devops --label-termination-date 1d
 
-            # Modify inventory for Ansible
+            instance_id=$(grep '^identifier' $ALLOCATOR_PATH/track_${instance_name}.yml | awk '{print $2}')
+            private_ip=$(aws ec2 describe-instances \
+            --instance-ids $instance_id \
+            --query 'Reservations[*].Instances[*].PrivateIpAddress' \
+            --output text)
+
             sed 's/: */=/g' $ALLOCATOR_PATH/inventory_${instance_name}.yml > $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
             sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
             source $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
 
             # Add instance to corresponding group
             if [[ $i -eq 0 ]]; then
-              echo "indexer1 ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_indexers
-              echo "master ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file manager_type=master" >> $inventory_managers
+              echo "indexer1 ansible_host=$ansible_host private_ip=$private_ip ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_indexers
+              echo "master ansible_host=$ansible_host private_ip=$private_ip ansible_ssh_private_key_file=$ansible_ssh_private_key_file manager_type=master" >> $inventory_managers
               
               echo "ansible_user=$ansible_user" >> $inventory_common
               echo "ansible_port=$ansible_port" >> $inventory_common
               echo "ansible_ssh_common_args='$ansible_ssh_common_args'" >> $inventory_common
             elif [[ $i -eq 1 ]]; then
-              echo "indexer2 ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_indexers
-              echo "worker1 ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file manager_type=worker" >> $inventory_managers
+              echo "indexer2 ansible_host=$ansible_host private_ip=$private_ip ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_indexers
+              echo "worker1 ansible_host=$ansible_host private_ip=$private_ip ansible_ssh_private_key_file=$ansible_ssh_private_key_file manager_type=worker" >> $inventory_managers
             else
-              echo "indexer3 ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_indexers
-              echo "worker2 ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file manager_type=worker" >> $inventory_managers
-              echo "dashboard ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_dashboards
+              echo "indexer3 ansible_host=$ansible_host private_ip=$private_ip ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_indexers
+              echo "worker2 ansible_host=$ansible_host private_ip=$private_ip ansible_ssh_private_key_file=$ansible_ssh_private_key_file manager_type=worker" >> $inventory_managers
+              echo "dashboard ansible_host=$ansible_host private_ip=$private_ip ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_dashboards
             fi
           ) &
         done
@@ -199,7 +204,6 @@ jobs:
         cat $inventory_managers >> $inventory_file
         cat $inventory_dashboards >> $inventory_file
         cat $inventory_common >> $inventory_file
-    
 
         cat $inventory_file
 
