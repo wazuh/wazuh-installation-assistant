@@ -1,5 +1,5 @@
-run-name: (Distributed) Test installation assistant - Launched by @${{ github.actor }}
-name: (Distributed) Test installation assistant
+run-name: (Distributed) Test installation assistant - ${{ github.run_id }} - ${{ inputs.SYSTEMS }} - Launched by @${{ github.actor }}
+name: (Distributed) Test installation assistant 
 
 on:
   pull_request:
@@ -21,14 +21,28 @@ on:
           - staging
           - pre-release
       AUTOMATION_REFERENCE:
-        description: 'wazuh-automation reference'
+        description: 'Branch or tag of the wazuh-automation repository'
         required: true
-        default: 'v4.10.0'
-      DEBUG:
-        description: 'Debug mode'
+        default: '4.10.0'
+      ASSISTANT_REFERENCE:
+        description: 'Branch or tag of the wazuh-installation-assistant repository'
         required: true
-        default: false
-        type: boolean
+        default: '4.10.0'
+      SYSTEMS:
+        description: 'Operating Systems (list of comma-separated quoted strings enclosed in square brackets)'
+        required: true
+        default: '["CentOS_8", "AmazonLinux_2","Ubuntu_22", "RHEL8"]'
+        type: string
+      VERBOSITY:
+        description: 'Verbosity level on playbooks execution'
+        required: true
+        default: '-v'
+        type: choice
+        options:
+          - -v
+          - -vv
+          - -vvv
+          - -vvvv
       DESTROY:
         description: 'Destroy instances after run'
         required: true
@@ -36,12 +50,177 @@ on:
         type: boolean
 
 env:
-  LABEL: ubuntu-latest
+  COMPOSITE_NAME: "linux-SUBNAME-amd64"
+  SESSION_NAME: "Installation-Assistant-Test"
+  REGION: "us-east-1"
+  TMP_PATH: "/tmp/test"
+  LOGS_PATH: "${{ github.workspace }}/assistant_logs"
+  PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
+  TEST_NAME: "test_assistant_distributed"
+  REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
+  ALLOCATOR_PATH: "/tmp/allocator_instance"
+  INSTANCE_NAMES: "instance_1 instance_2 instance_3"
+
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
 
 jobs:
-  initialize-environment:
-    runs-on: $LABEL
+  run-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false    # If a job fails, the rest of jobs will not be canceled
+      matrix:
+        system: ${{ fromJson(inputs.SYSTEMS) }}
 
     steps:
-    - name: Set up Git
-      uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: View parameters
+      run: echo "${{ toJson(inputs) }}"
+    
+    - name: Set COMPOSITE_NAME variable
+      run: |
+        case "${{ matrix.system }}" in
+          "CentOS_7")
+            SUBNAME="centos-7"
+            ;;
+          "CentOS_8")
+            SUBNAME="centos-8"
+            ;;
+          "AmazonLinux_2")
+            SUBNAME="amazon-2"
+            ;;
+          "Ubuntu_16")
+            SUBNAME="ubuntu-16.04"
+            ;;
+          "Ubuntu_18")
+            SUBNAME="ubuntu-18.04"
+            ;;
+          "Ubuntu_20")
+            SUBNAME="ubuntu-20.04"
+            ;;
+          "Ubuntu_22")
+            SUBNAME="ubuntu-22.04"
+            ;;
+          "RHEL7")
+            SUBNAME="redhat-7"
+            ;;
+          "RHEL8")
+            SUBNAME="redhat-8"
+            ;;
+          *)
+            echo "Invalid SYSTEM selection" >&2
+            exit 1
+            ;;
+        esac
+        COMPOSITE_NAME="${COMPOSITE_NAME/SUBNAME/$SUBNAME}"
+        echo "COMPOSITE_NAME=$COMPOSITE_NAME" >> $GITHUB_ENV
+
+    - name: Install Ansible
+      run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16
+      
+    - name: Set up AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+        role-session-name: ${{ env.SESSION_NAME }}
+        aws-region: ${{ env.REGION }}
+
+    - name: Checkout wazuh/wazuh-automation repository
+      uses: actions/checkout@v4
+      with:
+        repository: wazuh/wazuh-automation
+        ref: ${{ inputs.AUTOMATION_REFERENCE }}
+        token: ${{ secrets.GH_CLONE_TOKEN }}
+        path: wazuh-automation
+
+    - name: Install and set allocator requirements
+      run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
+
+    - name: Allocate instances and create inventory
+      id: allocator_instance
+      run: |
+        instance_names=($INSTANCE_NAMES)
+        inventory_file="$ALLOCATOR_PATH/inventory"
+        inventory_indexers="$ALLOCATOR_PATH/inventory_indexers"
+        inventory_managers="$ALLOCATOR_PATH/inventory_managers"
+        inventory_dashboards="$ALLOCATOR_PATH/inventory_dashboards"
+        inventory_common="$ALLOCATOR_PATH/inventory_common"
+        inventory_file="$ALLOCATOR_PATH/inventory"
+
+        mkdir -p $ALLOCATOR_PATH
+        echo "[indexers]" > $inventory_indexers
+        echo "[managers]" > $inventory_managers
+        echo "[dashboards]" > $inventory_dashboards
+        echo "[all:vars]" > $inventory_common
+    
+        for i in ${!instance_names[@]}; do
+          instance_name=${instance_names[$i]}
+          # Provision instance in parallel
+          (
+            python3 wazuh-automation/deployability/modules/allocation/main.py \
+              --action create --provider aws --size large \
+              --composite-name ${{ env.COMPOSITE_NAME }} \
+              --working-dir $ALLOCATOR_PATH --track-output $ALLOCATOR_PATH/track_${instance_name}.yml \
+              --inventory-output $ALLOCATOR_PATH/inventory_${instance_name}.yml \
+              --instance-name gha_${{ github.run_id }}_${{ env.TEST_NAME }}_${instance_name} --label-team devops --label-termination-date 1d
+
+            # Modify inventory for Ansible
+            sed 's/: */=/g' $ALLOCATOR_PATH/inventory_${instance_name}.yml > $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
+            sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
+            source $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
+
+            # Add instance to corresponding group
+            if [[ $i -eq 0 ]]; then
+              echo "indexer1 ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_indexers
+              echo "master ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file manager_type=master" >> $inventory_managers
+              
+              echo "ansible_user=$ansible_user" >> $inventory_common
+              echo "ansible_port=$ansible_port" >> $inventory_common
+              echo "ansible_ssh_common_args='$ansible_ssh_common_args'" >> $inventory_common
+            elif [[ $i -eq 1 ]]; then
+              echo "indexer2 ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_indexers
+              echo "worker1 ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file manager_type=worker" >> $inventory_managers
+            else
+              echo "indexer3 ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_indexers
+              echo "worker2 ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file manager_type=worker" >> $inventory_managers
+              echo "dashboard ansible_host=$ansible_host ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_dashboards
+            fi
+          ) &
+        done
+
+        # Wait for all provisioning tasks to complete
+        wait
+
+        # Combine the temporary inventories into one
+        cat $inventory_indexers > $inventory_file
+        cat $inventory_managers >> $inventory_file
+        cat $inventory_dashboards >> $inventory_file
+        cat $inventory_common >> $inventory_file
+    
+
+        cat $inventory_file
+
+    - name: Delete allocated VMs
+      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == true
+      run: |
+        instance_names=($INSTANCE_NAMES)
+    
+        for i in ${!instance_names[@]}; do
+          instance_name=${instance_names[$i]}
+          track_file="$ALLOCATOR_PATH/track_${instance_name}.yml"
+    
+          echo "Deleting instance: $instance_name using track file $track_file"
+    
+          (
+            # Delete instance
+            python3 wazuh-automation/deployability/modules/allocation/main.py \
+              --action delete --provider aws --track-output $track_file
+          ) &
+        done
+
+        # Wait for all deletion tasks to complete
+        wait
+
