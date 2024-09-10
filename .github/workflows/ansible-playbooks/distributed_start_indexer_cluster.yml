@@ -1,0 +1,49 @@
+---
+- hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    test_name: "{{ test_name }}"
+    test_dir: "/{{ test_name }}"
+    tmp_path: "{{ tmp_path }}"
+    logs_path: "{{ logs_path }}"
+
+  tasks:
+    - name: Start Wazuh indexer cluster in just one node
+      block: 
+      - name: Create log directory
+        file:
+          path: "{{ test_dir }}"
+          state: directory
+
+      - name: Create log file
+        file:
+          dest: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+          state: touch
+
+      - name: Start cluster
+        block:
+
+          - name: Start Wazuh indexer cluster
+            command: "bash {{ tmp_path }}/wazuh-install.sh -s -v"
+            register: cluster
+
+        always:
+
+          - name: Save output start cluster 
+            blockinfile:
+              marker: ""
+              path: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+              block: |
+                {{ cluster.stderr }}
+                --------------------------------
+                {{ cluster.stdout }}
+
+          - name: Fetch log
+            fetch:
+              src: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+              dest: "{{ logs_path }}/"
+              flat: yes
+      when: inventory_hostname == ansible_play_hosts[0]
+
