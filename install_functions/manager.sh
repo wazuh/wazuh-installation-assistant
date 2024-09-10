@@ -45,8 +45,9 @@ function manager_startCluster() {
 function manager_checkService() {
     common_logger "Checking Wazuh API connection"
     token_command="curl -k -s -X POST -u \"wazuh-wui:wazuh-wui\" https://127.0.0.1:55000/security/user/authenticate/run_as?raw=true -d '{\"user_name\":\"wzread\"}' -H \"content-type:application/json\""
+    set -x
     TOKEN=$(eval "${token_command}")
-    
+    set +x
     max_attempts=5
     attempt=0
     seconds=3
