@@ -24,7 +24,6 @@
 
       - name: Start cluster
         block:
-
           - name: Start Wazuh indexer cluster
             command: "bash {{ tmp_path }}/wazuh-install.sh -s -v"
             register: cluster
