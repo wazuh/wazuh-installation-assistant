@@ -54,6 +54,7 @@ env:
   SESSION_NAME: "Installation-Assistant-Test"
   REGION: "us-east-1"
   TMP_PATH: "/tmp/test"
+  RESOURCES_PATH: "${{ github.workspace }}"
   LOGS_PATH: "${{ github.workspace }}/assistant_logs"
   PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
   TEST_NAME: "test_assistant_distributed"
@@ -226,13 +227,22 @@ jobs:
     - name: Execute certificates generation playbook
       run: |
         TEST_NAME="${{ env.TEST_NAME }}_certificates"
-        RESOURCES_PATH="${{ github.workspace }}"
         ansible-playbook .github/workflows/ansible-playbooks/distributed_generate_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -e "resources_path=$RESOURCES_PATH" \
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
         -e "pkg_repository=$PKG_REPOSITORY" \
+        "${{ inputs.VERBOSITY }}"
+    
+    - name: Copy certificates to nodes
+      run: |
+        TEST_NAME="${{ env.TEST_NAME }}_copy_certificates"
+        ansible-playbook .github/workflows/ansible-playbooks/distributed_copy_certificates.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l indexers \
+        -e "tmp_path=$TMP_PATH" \
+        -e "resources_path=$RESOURCES_PATH" \
         "${{ inputs.VERBOSITY }}"
 
     - name: Delete allocated VMs
