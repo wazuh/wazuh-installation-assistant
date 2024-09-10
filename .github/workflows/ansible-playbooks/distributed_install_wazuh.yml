@@ -1,0 +1,44 @@
+---
+- hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    test_name: "{{ test_name }}"
+    tmp_path: "{{ tmp_path }}"
+    test_dir: "/{{ test_name }}"
+    logs_path: "{{ logs_path }}"
+
+  tasks:
+    - name: Create log directory
+      file:
+        path: "{{ test_dir }}"
+        state: directory
+
+    - name: Create log file
+      file:
+        dest: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+        state: touch
+
+    - name: Install Wazuh
+      block:
+
+        - name: Install Wazuh server
+          command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v"
+          register: wazuh
+
+      always:
+
+        - name: Save output Wazuh
+          blockinfile:
+            marker: ""
+            path: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+            block: |
+              {{ wazuh.stderr }}
+              --------------------------------
+              {{ wazuh.stdout }}
+        - name: Fetch log
+          fetch:
+            src: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+            dest: "{{ logs_path }}/"
+            flat: yes
