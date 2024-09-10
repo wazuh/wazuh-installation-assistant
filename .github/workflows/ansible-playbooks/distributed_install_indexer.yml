@@ -1,0 +1,44 @@
+---
+  - hosts: all
+    gather_facts: false
+    become: true
+
+    vars:
+      test_name: "{{ test_name }}"
+      test_dir: "/{{ test_name }}"
+      logs_path: "{{ logs_path }}"
+
+    tasks:
+
+      - name: Create log directory
+        file:
+          path: "{{ test_dir }}"
+          state: directory
+
+      - name: Create log file
+        file:
+          dest: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+          state: touch
+
+      - name: Install Wazuh indexer
+        block:
+          - name: Install Wazuh indexer
+            command: "bash {{ tmp_path }}/wazuh-install.sh -wi {{ inventory_hostname }} -v"
+            register: indexer
+
+        always:
+
+          - name: Save output Wazuh indexer
+            blockinfile:
+              marker: ""
+              path: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+              block: |
+                {{ indexer.stderr }}
+                --------------------------------
+                {{ indexer.stdout }}
+
+          - name: Fetch log
+            fetch:
+              src: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+              dest: "{{ logs_path }}/"
+              flat: yes
