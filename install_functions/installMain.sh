@@ -263,22 +263,27 @@ function main() {
     fi
 
     if [ -n "${AIO}" ]; then
+        installCommon_checkDiskSpace "AIO"
         rm -f "${tar_file}"
         checks_ports "${wazuh_aio_ports[@]}"
         installCommon_installPrerequisites "AIO"
     fi
 
     if [ -n "${indexer}" ]; then
+        installCommon_checkDiskSpace "wazuh-indexer"
         checks_ports "${wazuh_indexer_ports[@]}"
         installCommon_installPrerequisites "indexer"
     fi
 
     if [ -n "${wazuh}" ]; then
+        installCommon_checkDiskSpace "wazuh-manager"
+        installCommon_checkDiskSpace "fliebeat"
         checks_ports "${wazuh_manager_ports[@]}"
         installCommon_installPrerequisites "wazuh"
     fi
 
     if [ -n "${dashboard}" ]; then
+        installCommon_checkDiskSpace "wazuh-dashboard"
         checks_ports "${wazuh_dashboard_port}"
         installCommon_installPrerequisites "dashboard"
     fi

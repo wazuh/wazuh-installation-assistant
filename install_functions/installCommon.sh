@@ -936,3 +936,62 @@ function installCommon_checkAptLock() {
     done
 
 }
+
+function installCommon_checkDiskSpace() {
+    component=$1
+
+    if [[ "${component}" == "AIO" ]]; then
+        wazuh_directories=( /etc /var /usr/share )
+        wazuh_directories_approximate_value=( 20 7165 2350 )
+    elif [[ "${component}" == "wazuh-manager" ]]; then
+        wazuh_directories=( /etc /var )
+        wazuh_directories_approximate_value=( 5 7100 )
+    elif [[ "${component}" == "wazuh-indexer" ]]; then
+        wazuh_directories=( /etc /var/lib /usr/share )
+        wazuh_directories_approximate_value=( 10 15 1050 )
+    elif [[ "${component}" == "wazuh-dashboard" ]]; then
+        wazuh_directories=( /etc /var/lib /usr/share )
+        wazuh_directories_approximate_value=( 10 30 1130 )
+    elif [[ "${component}" == "filebeat" ]]; then
+        wazuh_directories=( /etc /var/lib /usr/share )
+        wazuh_directories_approximate_value=( 8 10 150 )
+    else
+        common_logger -e "Invalid component to check disk space."
+        exit 1
+    fi
+
+    # Create an associative array to store the required space per partition
+    declare -A partition_space_required
+
+    # Iterate over the directories and determine their partitions
+    directory_space_position=0
+    for directory in "${wazuh_directories[@]}"; do
+        partition=$(df -P "${directory}" | awk 'NR==2 {print $1}')
+        
+        # Add the required space if the partition already exists, otherwise assign the value
+        if [[ -n "${partition_space_required[$partition]}" ]]; then
+            partition_space_required[$partition]=$(( partition_space_required[$partition] + wazuh_directories_approximate_value[$directory_space_position] ))
+        else
+            partition_space_required[$partition]=${wazuh_directories_approximate_value[$directory_space_position]}
+        fi
+
+        directory_space_position=$((directory_space_position + 1))
+    done
+
+    # Now check the available space on each unique partition
+    for partition in "${!partition_space_required[@]}"; do
+        disk_space=$(df -P "${partition}" | awk 'NR==2 {print $4/1024}')
+        disk_space=$(printf "%.0f" "${disk_space}")  # Convert disk_space to an integer
+
+        required_space=${partition_space_required[$partition]}
+        required_space=$(printf "%.0f" "${required_space}")  # Convert required_space to an integer
+
+        common_logger -d "Partition: ${partition}, Required space: ${required_space} MB, Available space: ${disk_space} MB"
+
+        if [[ "${disk_space}" -lt "${required_space}" ]]; then
+            common_logger -e "There is not enough disk space in partition ${partition} to install ${component}. Required: ${required_space}MB, Available: ${disk_space}MB."
+            installCommon_rollBack
+            exit 1
+        fi
+    done
+}
