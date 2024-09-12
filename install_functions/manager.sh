@@ -44,6 +44,7 @@ function manager_startCluster() {
 
 function manager_checkService() {
     common_logger "Checking Wazuh API connection"
+    set -x
     api_password="wazuh-wui"
     token_command="curl -k -s -X POST -u \"wazuh-wui:${api_password}\" https://127.0.0.1:55000/security/user/authenticate/run_as?raw=true -d '{\"user_name\":\"wzread\"}' -H \"content-type:application/json\""
     TOKEN=$(eval "${token_command}")
@@ -65,6 +66,7 @@ function manager_checkService() {
         sleep "${seconds}"
         TOKEN=$(eval "${token_command}")
     done
+    set +x
 
     if [[ -z "${TOKEN}" ]]; then
         common_logger -e "Failed to obtain Wazuh API token after $max_attempts attempts."
