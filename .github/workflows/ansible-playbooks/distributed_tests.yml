@@ -1,0 +1,110 @@
+---
+- hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    script_path: "{{ tmp_path }}/tests/install"
+    test_name: "{{ test_name }}"
+    script_name: "{{ test_name }}.py"
+    test_dir: "/{{ test_name }}"
+    logs_path: "{{ logs_path }}"
+
+  tasks:
+
+    - name: Create log directory
+      file:
+        path: "{{ test_dir }}"
+        state: directory
+
+    - name: Create log file
+      file:
+        dest: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+        state: touch
+
+    - name: Test distributed master
+      block:
+
+        - name: Execute tests Master
+          command: "python3 -m pytest --tb=long {{ script_name }} -v -m \"wazuh_cluster\""
+          args:
+            chdir: "{{ script_path }}"
+          register: test_results_master
+          when: 
+            - hostvars[inventory_hostname].manager_type == 'master'
+
+        - name: Execute tests Workers
+          command: "python3 -m pytest --tb=long {{ script_name }} -v -m \"wazuh_worker\""
+          args:
+            chdir: "{{ script_path }}"
+          register: test_results_worker
+          when:
+            - hostvars[inventory_hostname].manager_type == 'worker'
+
+        - name: Execute tests indexer_manager
+          command: "python3 -m pytest --tb=long {{ script_name }} -v -m \"wazuh or indexer or indexer_cluster\""
+          args:
+            chdir: "{{ script_path }}"
+          register: test_results_indexer_manager
+          when: 
+            - hostvars[inventory_hostname].instance_type == 'indexer_manager'
+
+        - name: Execute tests indexer_manager_dashboard
+          command: "python3 -m pytest --tb=long {{ script_name }} -v -m \"wazuh or indexer or indexer_cluster or dashboard\""
+          args:
+            chdir: "{{ script_path }}"
+          register: test_results_indexer_manager_dashboard
+          when: 
+            - hostvars[inventory_hostname].instance_type == 'indexer_manager_dashboard'
+
+      always:
+
+        - name: Save output Master
+          blockinfile:
+            path: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+            marker: ""
+            block: |
+              {{ test_results_master.stderr }}
+              --------------------------------
+              {{ test_results_master.stdout }}
+          when:
+            - hostvars[inventory_hostname].manager_type == 'master'
+
+        - name: Save output Worker
+          blockinfile:
+            path: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+            marker: ""
+            block: |
+              {{ test_results_worker.stderr }}
+              --------------------------------
+              {{ test_results_worker.stdout }}
+          when:
+            - hostvars[inventory_hostname].manager_type == 'worker'
+
+        - name: Save output indexer_manager
+          blockinfile:
+            path: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+            marker: ""
+            block: |
+              {{ test_results_indexer_manager.stderr }}
+              --------------------------------
+              {{ test_results_indexer_manager.stdout }}
+          when:
+            - hostvars[inventory_hostname].instance_type == 'indexer_manager'
+
+        - name: Save output indexer_manager_dashboard
+          blockinfile:
+            path: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+            marker: ""
+            block: |
+              {{ test_results_indexer_manager_dashboard.stderr }}
+              --------------------------------
+              {{ test_results_indexer_manager_dashboard.stdout }}
+          when:
+            - hostvars[inventory_hostname].instance_type == 'indexer_manager_dashboard'
+
+        - name: Fetch logs
+          fetch:
+            src: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+            dest: "{{ logs_path }}/"
+            flat: yes
