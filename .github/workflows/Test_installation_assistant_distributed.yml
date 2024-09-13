@@ -54,6 +54,7 @@ env:
   SESSION_NAME: "Installation-Assistant-Test"
   REGION: "us-east-1"
   TMP_PATH: "/tmp/test"
+  ANSIBLE_CALLBACK: "yaml"
   RESOURCES_PATH: "${{ github.workspace }}"
   LOGS_PATH: "${{ github.workspace }}/assistant_logs"
   PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
@@ -120,8 +121,8 @@ jobs:
         echo "COMPOSITE_NAME=$COMPOSITE_NAME" >> $GITHUB_ENV
 
     - name: Install Ansible
-      run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16
-      
+      run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16 && pip install pyyaml && ansible-galaxy collection install community.general
+    
     - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -212,7 +213,7 @@ jobs:
         INSTALL_PYTHON=true
         INSTALL_PIP_DEPS=true
 
-        ansible-playbook .github/workflows/ansible-playbooks/provision.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/provision.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "repository=$REPOSITORY_URL" \
@@ -227,7 +228,7 @@ jobs:
     - name: Execute certificates generation playbook
       run: |
         TEST_NAME="${{ env.TEST_NAME }}_certificates"
-        ansible-playbook .github/workflows/ansible-playbooks/distributed_generate_certificates.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_generate_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -e "resources_path=$RESOURCES_PATH" \
         -e "logs_path=$LOGS_PATH" \
@@ -238,7 +239,7 @@ jobs:
     - name: Copy certificates to nodes
       run: |
         TEST_NAME="${{ env.TEST_NAME }}_copy_certificates"
-        ansible-playbook .github/workflows/ansible-playbooks/distributed_copy_certificates.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_copy_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
@@ -248,7 +249,7 @@ jobs:
     - name: Execute indexer installation playbook
       run: |
         TEST_NAME="${{ env.TEST_NAME }}_indexer"
-        ansible-playbook .github/workflows/ansible-playbooks/distributed_install_indexer.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_indexer.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
@@ -260,7 +261,7 @@ jobs:
       run: |
         TEST_NAME="${{ env.TEST_NAME }}_start_cluster"
         INDEXER_ADMIN_PASSWORD="admin"
-        ansible-playbook .github/workflows/ansible-playbooks/distributed_start_indexer_cluster.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_start_indexer_cluster.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
@@ -272,7 +273,7 @@ jobs:
     - name: Execute server installation playbook
       run: |
         TEST_NAME="${{ env.TEST_NAME }}_server"
-        ansible-playbook .github/workflows/ansible-playbooks/distributed_install_wazuh.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_wazuh.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l managers \
         -e "tmp_path=$TMP_PATH" \
@@ -283,7 +284,7 @@ jobs:
     - name: Execute dashboard installation playbook
       run: |
         TEST_NAME="${{ env.TEST_NAME }}_dashboard"
-        ansible-playbook .github/workflows/ansible-playbooks/distributed_install_dashboard.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_dashboard.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l dashboards \
         -e "tmp_path=$TMP_PATH" \
@@ -294,7 +295,7 @@ jobs:
     - name: Execute Python test playbook
       run: |
         TEST_NAME="test_installation_assistant"
-        ansible-playbook .github/workflows/ansible-playbooks/distributed_tests.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_tests.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l managers \
         -e "tmp_path=$TMP_PATH" \
