@@ -44,10 +44,21 @@ function manager_startCluster() {
 
 function manager_checkService() {
     common_logger "Checking Wazuh API connection"
-    set -x
+    max_attempts=15
+    attempt=0
+    seconds=5
     api_password="wazuh-wui"
     token_command="curl -k -s -X POST -u \"wazuh-wui:${api_password}\" https://127.0.0.1:55000/security/user/authenticate/run_as?raw=true -d '{\"user_name\":\"wzread\"}' -H \"content-type:application/json\""
     TOKEN=$(eval "${token_command}")
+
+    # Wait for the API to be ready 
+    while [[ -z "${TOKEN}" && "${attempt}" -lt "${max_attempts}" ]]; do
+        attempt=$((attempt+1))
+        common_logger "Attempt $attempt: Checking the Wazuh API to be ready"
+        sleep "${seconds}"
+        TOKEN=$(eval "${token_command}")
+    done
+    common_logger "Wazuh API is ready to receive petitions."
 
     # Change curl credentials in case the master node has changed the passwords 
     if [[ "${TOKEN}" =~ "Invalid credentials" && "${server_node_types[pos]}" == "worker" ]]; then
@@ -55,18 +66,6 @@ function manager_checkService() {
         token_command="curl -k -s -X POST -u \"wazuh-wui:${api_password}\" https://127.0.0.1:55000/security/user/authenticate/run_as?raw=true -d '{\"user_name\":\"wzread\"}' -H \"content-type:application/json\""
         TOKEN=$(eval "${token_command}")
     fi
-
-    max_attempts=15
-    attempt=0
-    seconds=5
-
-    while [[ -z "${TOKEN}" && "${attempt}" -lt "${max_attempts}" ]]; do
-        attempt=$((attempt+1))
-        common_logger "Attempt $attempt: Trying to get Wazuh API token"
-        sleep "${seconds}"
-        TOKEN=$(eval "${token_command}")
-    done
-    set +x
 
     if [[ -z "${TOKEN}" ]]; then
         common_logger -e "Failed to obtain Wazuh API token after $max_attempts attempts."
