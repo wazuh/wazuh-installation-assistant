@@ -8,6 +8,10 @@
     tmp_path: "{{ tmp_path }}"
     test_dir: "/{{ test_name }}"
     logs_path: "{{ logs_path }}"
+    master_ip: "{{ hostvars[groups['managers'] | select('match', 'master') | first]['private_ip'] }}"
+    check_port: 55000
+    retries: 10
+    delay: 30
 
   tasks:
     - name: Create log directory
@@ -20,16 +24,13 @@
         dest: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
         state: touch
 
-    - name: Install Wazuh
+    - name: Install Wazuh server on master
       block:
-
-        - name: Install Wazuh server
+        - name: Install Wazuh server (Master)
           command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v"
           register: wazuh
-
-      always:
-
-        - name: Save output Wazuh
+        
+        - name: Save Wazuh installation log (Master)
           blockinfile:
             marker: ""
             path: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
@@ -37,8 +38,32 @@
               {{ wazuh.stderr }}
               --------------------------------
               {{ wazuh.stdout }}
-        - name: Fetch log
-          fetch:
-            src: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
-            dest: "{{ logs_path }}/"
-            flat: yes
+      when: hostvars[inventory_hostname].manager_type == 'master'
+
+    - name: Install Wazuh server on worker nodes
+      block:
+        - name: Wait for Wazuh master to be ready on port {{ check_port }}
+          wait_for:
+            host: "{{ master_ip }}"
+            port: "{{ check_port }}"
+            delay: "{{ delay }}"
+            timeout: 300
+          when: hostvars[inventory_hostname].manager_type == 'worker'
+          async: 500
+          poll: 5
+
+        - name: Install Wazuh server (Workers)
+          command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v"
+          register: wazuh
+          
+        - name: Save Wazuh installation log (Workers)
+          blockinfile:
+            marker: ""
+            path: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
+            block: |
+              {{ wazuh.stderr }}
+              --------------------------------
+              {{ wazuh.stdout }}
+      when: hostvars[inventory_hostname].manager_type == 'worker'
+    
+    
