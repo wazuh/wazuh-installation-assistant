@@ -27,7 +27,7 @@ on:
       SYSTEMS:
         description: 'Operating Systems (list of comma-separated quoted strings enclosed in square brackets)'
         required: true
-        default: '["CentOS_7", "CentOS_8", "AmazonLinux_2", "Ubuntu_16", "Ubuntu_18", "Ubuntu_20", "Ubuntu_22", "RHEL7", "RHEL8"]'
+        default: '["CentOS_8", "AmazonLinux_2", "Ubuntu_22", "RHEL8"]'
         type: string
       VERBOSITY:
         description: 'Verbosity level on playbooks execution'
