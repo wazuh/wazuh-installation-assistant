@@ -3,23 +3,10 @@
   become: true
 
   vars:
-    test_name: "{{ test_name }}"
-    test_dir: "/{{ test_name }}"
-    logs_path: "{{ log_folder }}"
     resources_path: "{{ resources_path }}"
     pkg_repository: "{{ pkg_repository }}"
 
   tasks:
-    - name: Create log directory
-      file:
-        path: "{{ test_dir }}"
-        state: directory
-
-    - name: Create log file
-      file:
-        dest: "{{ test_dir }}/{{ test_name }}.log"
-        state: touch
-
     - name: Create certificates
       block:
         - name: Rendering wazuh-config file
@@ -39,18 +26,3 @@
         - name: Give read permissions to wazuh-install-files.tar
           shell: "chmod +r {{ resources_path }}/wazuh-install-files.tar"
 
-      always:
-        - name: Save output certificate build and creation
-          blockinfile:
-            marker: ""
-            path: "{{ test_dir }}/{{ test_name }}.log"
-            block: |
-              {{ certificates_install.stderr }}
-              --------------------------------
-              {{ certificates_install.stdout }}
-
-        - name: Fetch log
-          fetch:
-            src: "{{ test_dir }}/{{ test_name }}.log"
-            dest: "{{ logs_path }}/"
-            flat: yes

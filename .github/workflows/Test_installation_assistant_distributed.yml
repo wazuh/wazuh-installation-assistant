@@ -56,9 +56,8 @@ env:
   TMP_PATH: "/tmp/test"
   ANSIBLE_CALLBACK: "yaml"
   RESOURCES_PATH: "${{ github.workspace }}"
-  LOGS_PATH: "${{ github.workspace }}/assistant_logs"
   PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
-  TEST_NAME: "test_assistant_distributed"
+  TEST_NAME: "test_installation_assistant"
   REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
   ALLOCATOR_PATH: "/tmp/allocator_instance"
   INSTANCE_NAMES: "instance_1 instance_2 instance_3"
@@ -227,18 +226,14 @@ jobs:
     
     - name: Execute certificates generation playbook
       run: |
-        TEST_NAME="${{ env.TEST_NAME }}_certificates"
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_generate_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -e "resources_path=$RESOURCES_PATH" \
-        -e "logs_path=$LOGS_PATH" \
-        -e "test_name=$TEST_NAME" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
     
     - name: Copy certificates to nodes
       run: |
-        TEST_NAME="${{ env.TEST_NAME }}_copy_certificates"
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_copy_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
@@ -248,58 +243,43 @@ jobs:
 
     - name: Execute indexer installation playbook
       run: |
-        TEST_NAME="${{ env.TEST_NAME }}_indexer"
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_indexer.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
-        -e "logs_path=$LOGS_PATH" \
-        -e "test_name=$TEST_NAME" \
         "${{ inputs.VERBOSITY }}"
     
     - name: Execute indexer cluster start playbook
       run: |
-        TEST_NAME="${{ env.TEST_NAME }}_start_cluster"
         INDEXER_ADMIN_PASSWORD="admin"
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_start_indexer_cluster.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
-        -e "logs_path=$LOGS_PATH" \
-        -e "test_name=$TEST_NAME" \
-        -e "indexer_admin_password=$INDEXER_ADMIN_PASSWORD" \
         "${{ inputs.VERBOSITY }}"
     
     - name: Execute server installation playbook
       run: |
-        TEST_NAME="${{ env.TEST_NAME }}_server"
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_wazuh.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l managers \
         -e "tmp_path=$TMP_PATH" \
-        -e "logs_path=$LOGS_PATH" \
-        -e "test_name=$TEST_NAME" \
         "${{ inputs.VERBOSITY }}"
       
     - name: Execute dashboard installation playbook
       run: |
-        TEST_NAME="${{ env.TEST_NAME }}_dashboard"
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_dashboard.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l dashboards \
         -e "tmp_path=$TMP_PATH" \
-        -e "logs_path=$LOGS_PATH" \
-        -e "test_name=$TEST_NAME" \
         "${{ inputs.VERBOSITY }}"
     
     - name: Execute Python test playbook
       run: |
-        TEST_NAME="test_installation_assistant"
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_tests.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l managers \
         -e "tmp_path=$TMP_PATH" \
-        -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
         "${{ inputs.VERBOSITY }}"
     

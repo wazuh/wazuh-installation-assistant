@@ -4,43 +4,11 @@
   become: true
 
   vars:
-    test_name: "{{ test_name }}"
-    test_dir: "/{{ test_name }}"
     tmp_path: "{{ tmp_path }}"
-    logs_path: "{{ logs_path }}"
 
   tasks:
-    - name: Create log directory
-      file:
-        path: "{{ test_dir }}"
-        state: directory
-
-    - name: Create log file
-      file:
-        dest: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
-        state: touch
-
     - name: Install Wazuh dashboard
-      block:
-
-        - name: Install Wazuh dashboard
-          command: "bash wazuh-install.sh -wd {{ inventory_hostname }} -v"
-          args:
-            chdir: "{{ tmp_path }}"
-          register: dashboard
-
-      always:
-
-        - name: Save output Wazuh dashboard
-          blockinfile:
-            marker: ""
-            path: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
-            block: |
-              {{ dashboard.stderr }}
-              --------------------------------
-              {{ dashboard.stdout }}
-        - name: Fetch log
-          fetch:
-            src: "{{ test_dir }}/{{ test_name }}_{{ inventory_hostname }}.log"
-            dest: "{{ logs_path }}/"
-            flat: yes
+      command: "bash wazuh-install.sh -wd {{ inventory_hostname }} -v"
+      args:
+        chdir: "{{ tmp_path }}"
+      register: dashboard
