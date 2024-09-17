@@ -27,7 +27,7 @@ on:
       SYSTEMS:
         description: 'Operating Systems (list of comma-separated quoted strings enclosed in square brackets)'
         required: true
-        default: '["Ubuntu_22"]'
+        default: '["CentOS_8", "AmazonLinux_2","Ubuntu_22", "RHEL8"]'
         type: string
       VERBOSITY:
         description: 'Verbosity level on playbooks execution'
@@ -68,7 +68,7 @@ jobs:
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
-        system: ${{ fromJson(inputs.SYSTEMS) }}
+        system: ${{ github.event_name == 'pull_request' && '["Ubuntu_22"]' || fromJson(inputs.SYSTEMS) }} # If the worklflow is executed by a PR, set the OSs
 
     steps:
     - name: Checkout code
