@@ -7,10 +7,13 @@ All notable changes to this project will be documented in this file.
 
 - Added post-install validations for the Wazuh manager and Filebeat. ([#3059](https://github.com/wazuh/wazuh-packages/pull/3059))
 - Installation assistant test and tier workflow migration ([#46](https://github.com/wazuh/wazuh-installation-assistant/pull/46/))
+- Update SECURITY.md file. ([#59](https://github.com/wazuh/wazuh-installation-assistant/pull/59))
 
 ### Fixed
 
 - Fixed Wazuh API validation ([#29](https://github.com/wazuh/wazuh-installation-assistant/pull/29))
+- Fixed token variable empty in Wazuh manager check ([#45](https://github.com/wazuh/wazuh-installation-assistant/pull/45))
+- Fixed manager check in distributed deployment ([#52](https://github.com/wazuh/wazuh-installation-assistant/pull/52))
 
 ## [4.9.1]
 
