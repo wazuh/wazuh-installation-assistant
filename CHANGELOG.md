@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Added post-install validations for the Wazuh manager and Filebeat. ([#3059](https://github.com/wazuh/wazuh-packages/pull/3059))
+- Installation assistant distributed test rework and migration. ([#60](https://github.com/wazuh/wazuh-installation-assistant/pull/60))
 
 ### Fixed
 
