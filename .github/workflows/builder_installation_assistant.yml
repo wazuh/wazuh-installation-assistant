@@ -1,0 +1,71 @@
+run-name: Build Installation Assistant - Wazuh installation assistant branch ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }} - Launched by @${{ github.actor }}
+name: Build Installation Assistant
+
+on:
+  workflow_dispatch:
+    inputs:
+      WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
+        description: 'Branch or tag of the wazuh-installation-assistant repository where the workflow will be triggered'
+        required: true
+        default: '4.10.0'
+      DEVELOPMENT:
+        description: 'Build installation assistant in development mode'
+        type: boolean
+        required: false
+
+env:
+  S3_BUCKET: "packages-dev.internal.wazuh.com"
+  BUILDER_PATH: "builder.sh"
+  WAZUH_INSTALL_NAME: "wazuh-install"
+  WAZUH_CERT_TOOL_NAME: "wazuh-certs-tool"
+  WAZUH_PASSWORD_TOOL_NAME: "wazuh-passwords-tool"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  Build_Installation_Assistant:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: View parameters
+        run: echo "${{ toJson(inputs) }}"
+
+      - name: Checkout wazuh-installation-assistant repository
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+      
+      - name: Configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          aws-region: us-east-1
+      - name: Change files name in builder.sh in development mode
+        if: ${{ inputs.DEVELOPMENT }}
+        run: |
+          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ github.sha }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ github.sha }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ github.sha }}.sh|g' "${{ env.BUILDER_PATH }}"
+
+      - name: Build Installation Assistant files
+        run: |
+          command="bash builder.sh -i -c -p"
+          if [ "${{ inputs.DEVELOPMENT }}" == true ]; then
+            command="$command -d"
+          fi
+          $command
+      
+      - name: Prepare files
+        run: |
+          mkdir -p ${{ github.workspace }}/wazuh-installation-assistant-files
+          mv ${{ env.WAZUH_INSTALL_NAME }}*.sh ${{ github.workspace }}/wazuh-installation-assistant-files
+          mv ${{ env.WAZUH_CERT_TOOL_NAME }}*.sh ${{ github.workspace }}/wazuh-installation-assistant-files
+          mv ${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh ${{ github.workspace }}/wazuh-installation-assistant-files
+     
+      - name: Create artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-installation-assistant-files
+          path: ${{ github.workspace }}/wazuh-installation-assistant-files
