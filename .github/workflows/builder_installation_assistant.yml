@@ -1,0 +1,10 @@
+run-name: Build Installation Assistant - Wazuh installation assistant branch ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }} - Launched by @${{ github.actor }}
+name: Build Installation Assistant
+
+on:
+  workflow_dispatch:
+    inputs:
+      WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
+        description: 'Branch or tag of the wazuh-installation-assistant repository where the workflow will be triggered'
+        required: true
+        default: '5.0.0'
