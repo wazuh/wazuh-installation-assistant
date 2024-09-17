@@ -7,7 +7,7 @@
       script_name: "{{ test_name }}.py"
     
     tasks:
-      - name: Test unattended AIO install
+      - name: Test AIO install with Installation assistant
         command: "python3 -m pytest --tb=long {{ script_name }} -v -m \"wazuh or wazuh_worker or indexer or dashboard\""
         args:
           chdir: "{{ script_path }}"

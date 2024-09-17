@@ -169,7 +169,7 @@
         depth: 1
         force: true
 
-    - name: Generate unattended
+    - name: Generate Installation assistant
       command: "bash {{ tmp_path }}/builder.sh -i -d"
 
     - name: Change pre-release repository to selected one
