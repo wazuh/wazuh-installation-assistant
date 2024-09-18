@@ -10,7 +10,7 @@
 readonly wazuh_major="4.10"
 readonly wazuh_version="4.10.0"
 readonly filebeat_version="7.10.2"
-readonly wazuh_install_vesion="0.1"
+readonly wazuh_install_revision="1"
 readonly source_branch="v${wazuh_version}"
 
 ## Links and paths to resources
