@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Updated assistant to support revision number ([64](https://github.com/wazuh/wazuh-installation-assistant/pull/64))
 - Added post-install validations for the Wazuh manager and Filebeat. ([#3059](https://github.com/wazuh/wazuh-packages/pull/3059))
 - Update SECURITY.md file. ([#59](https://github.com/wazuh/wazuh-installation-assistant/pull/59))
 
