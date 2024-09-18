@@ -1,0 +1,12 @@
+---
+  - hosts: all
+    gather_facts: false
+    tasks:
+    - name: Copying the wazuh-install-files.tar to the instances
+      copy:
+        src: "{{ resources_path }}/wazuh-install-files.tar"
+        dest: "{{ tmp_path }}/"
+        force: yes
+        remote_src: no
+      become: yes
+      become_user: root
