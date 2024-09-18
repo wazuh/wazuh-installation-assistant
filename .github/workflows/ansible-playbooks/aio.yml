@@ -1,0 +1,16 @@
+
+  - hosts: all
+    become: true
+
+    vars:
+      script_path: "{{ tmp_path }}"
+      script_name: "wazuh-install.sh"
+
+    tasks:
+      - name: Test assistant AIO install
+        command: "bash {{ script_name }} -a -v"
+        args:
+          chdir: "{{ script_path }}"
+        register: install_results
+        async: 500
+        poll: 5
