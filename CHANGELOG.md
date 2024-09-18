@@ -5,8 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Added post-install validations for the Wazuh manager and Filebeat. ([#3059](https://github.com/wazuh/wazuh-packages/pull/3059))
 - Installation assistant test and tier workflow migration ([#46](https://github.com/wazuh/wazuh-installation-assistant/pull/46/))
+- Added post-install validations for the Wazuh manager and Filebeat. ([#3059](https://github.com/wazuh/wazuh-packages/pull/3059))
 - Update SECURITY.md file. ([#59](https://github.com/wazuh/wazuh-installation-assistant/pull/59))
 
 ### Fixed
