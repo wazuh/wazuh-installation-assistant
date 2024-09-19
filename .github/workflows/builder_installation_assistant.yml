@@ -1,11 +1,11 @@
-run-name: Build Installation Assistant - Wazuh installation assistant branch ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }} - Launched by @${{ github.actor }}
+run-name: Build Installation Assistant - Wazuh installation assistant branch ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }} - Launched by @${{ github.actor }}
 name: Build Installation Assistant
 
 on:
   workflow_dispatch:
     inputs:
-      WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
-        description: 'Branch or tag of the wazuh-installation-assistant repository where the workflow will be triggered'
+      WAZUH_INSTALLATION_ASSISTANT_VERSION:
+        description: 'Branch of the wazuh-installation-assistant repository where the workflow will be triggered'
         required: true
         default: '4.10.0'
       DEVELOPMENT:
@@ -15,6 +15,7 @@ on:
 
 env:
   S3_BUCKET: "packages-dev.internal.wazuh.com"
+  S3_REPOSITORY_PATH: "development/wazuh/4.x/secondary/installation-assistant/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}"
   BUILDER_PATH: "builder.sh"
   WAZUH_INSTALL_NAME: "wazuh-install"
   WAZUH_CERT_TOOL_NAME: "wazuh-certs-tool"
@@ -35,7 +36,7 @@ jobs:
       - name: Checkout wazuh-installation-assistant repository
         uses: actions/checkout@v2
         with:
-          ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+          ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
       
       - name: Configure aws credentials
         uses: aws-actions/configure-aws-credentials@v3
@@ -49,23 +50,28 @@ jobs:
           sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ github.sha }}.sh|g' "${{ env.BUILDER_PATH }}"
           sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ github.sha }}.sh|g' "${{ env.BUILDER_PATH }}"
 
-      - name: Build Installation Assistant files
-        run: |
-          command="bash builder.sh -i -c -p"
-          if [ "${{ inputs.DEVELOPMENT }}" == true ]; then
-            command="$command -d"
-          fi
-          $command
-      
+      - name: Build development Installation Assistant packages
+        if: ${{ ! inputs.DEVELOPMENT }}
+        run: bash builder.sh -i -c -p
+
+      - name: Build stage Installation Assistant packages
+        if: ${{ inputs.DEVELOPMENT }}
+        run: bash builder.sh -i -c -p -d
+
       - name: Prepare files
         run: |
-          mkdir -p ${{ github.workspace }}/wazuh-installation-assistant-files
-          mv ${{ env.WAZUH_INSTALL_NAME }}*.sh ${{ github.workspace }}/wazuh-installation-assistant-files
-          mv ${{ env.WAZUH_CERT_TOOL_NAME }}*.sh ${{ github.workspace }}/wazuh-installation-assistant-files
-          mv ${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh ${{ github.workspace }}/wazuh-installation-assistant-files
+          mkdir -p ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
+          mv ${{ env.WAZUH_INSTALL_NAME }}*.sh ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
+          mv ${{ env.WAZUH_CERT_TOOL_NAME }}*.sh ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
+          mv ${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
      
+      - name: Upload files to S3
+        run: |
+          aws s3 cp ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }} --acl public-read --recursive
+
       - name: Create artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wazuh-installation-assistant-files
-          path: ${{ github.workspace }}/wazuh-installation-assistant-files
+          name: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
+          path: ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
