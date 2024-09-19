@@ -1,21 +1,31 @@
-run-name: Build Installation Assistant - Wazuh installation assistant branch ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }} - Launched by @${{ github.actor }}
+run-name: Build Installation Assistant ${{ inputs.id }} - Wazuh installation assistant branch ${{ github.ref_name }} - Launched by @${{ github.actor }}
 name: Build Installation Assistant
 
 on:
   workflow_dispatch:
     inputs:
-      WAZUH_INSTALLATION_ASSISTANT_VERSION:
-        description: 'Branch of the wazuh-installation-assistant repository where the workflow will be triggered'
-        required: true
-        default: '4.10.0'
-      DEVELOPMENT:
-        description: 'Build installation assistant in development mode'
+      is_stage:
+        description: "Is stage?"
         type: boolean
+        default: false
+      id:
+        description: "ID used to identify the workflow uniquely."
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      is_stage:
+        description: "Is stage?"
+        type: boolean
+        default: false
+      id:
+        type: string
         required: false
 
 env:
+  WAZUH_INSTALLATION_ASSISTANT_VERSION: ${{ github.ref_name }}
   S3_BUCKET: "packages-dev.internal.wazuh.com"
-  S3_REPOSITORY_PATH: "development/wazuh/4.x/secondary/installation-assistant/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}"
+  S3_REPOSITORY_PATH: "development/wazuh/4.x/secondary/installation-assistant"
   BUILDER_PATH: "builder.sh"
   WAZUH_INSTALL_NAME: "wazuh-install"
   WAZUH_CERT_TOOL_NAME: "wazuh-certs-tool"
@@ -36,42 +46,45 @@ jobs:
       - name: Checkout wazuh-installation-assistant repository
         uses: actions/checkout@v2
         with:
-          ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
+          ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
       
       - name: Configure aws credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
           aws-region: us-east-1
-      - name: Change files name in builder.sh in development mode
-        if: ${{ inputs.DEVELOPMENT }}
+      
+      - name: Get short sha and wazuh version
         run: |
-          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ github.sha }}.sh|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ github.sha }}.sh|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ github.sha }}.sh|g' "${{ env.BUILDER_PATH }}"
+          COMMIT_SHORT_SHA=$(git rev-parse --short ${{ github.sha }})
+          WAZUH_VERSION=$(grep -oP '(?<=readonly wazuh_version=").*(?=")' ${{github.workspace}}/install_functions/installVariables.sh)
+          echo "WAZUH_VERSION=$WAZUH_VERSION" >> $GITHUB_ENV
+          echo "COMMIT_SHORT_SHA=$COMMIT_SHORT_SHA" >> $GITHUB_ENV
 
-      - name: Build development Installation Assistant packages
-        if: ${{ ! inputs.DEVELOPMENT }}
+      - name: Change files name for stage build
+        if: ${{ inputs.is_stage == false }}
+        run: |
+          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+
+      - name: Build Installation Assistant packages
         run: bash builder.sh -i -c -p
-
-      - name: Build stage Installation Assistant packages
-        if: ${{ inputs.DEVELOPMENT }}
-        run: bash builder.sh -i -c -p -d
 
       - name: Prepare files
         run: |
-          mkdir -p ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
-          mv ${{ env.WAZUH_INSTALL_NAME }}*.sh ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
-          mv ${{ env.WAZUH_CERT_TOOL_NAME }}*.sh ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
-          mv ${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
+          mkdir -p ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+          mv ${{ env.WAZUH_INSTALL_NAME }}*.sh ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+          mv ${{ env.WAZUH_CERT_TOOL_NAME }}*.sh ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+          mv ${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
      
       - name: Upload files to S3
         run: |
-          aws s3 cp ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }} --recursive
+          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }} --recursive
 
       - name: Create artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
-          path: ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
+          name: ${{ env.WAZUH_VERSION }}
+          path: ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
