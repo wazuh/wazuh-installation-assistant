@@ -22,6 +22,9 @@ function getHelp() {
     echo -e "        -c,  --config-file <path-to-config-yml>"
     echo -e "                Path to the configuration file used to generate wazuh-install-files.tar file containing the files that will be needed for installation. By default, the Wazuh installation assistant will search for a file named config.yml in the same path as the script."
     echo -e ""
+    echo -e "        -d [pre-release|staging],  --development"
+    echo -e "                Use development repositories. By default it uses the pre-release package repository. If staging is specified, it will use that repository."
+    echo -e ""
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
     echo -e ""
@@ -98,6 +101,26 @@ function main() {
                 config_file="${2}"
                 shift 2
                 ;;
+            "-d"|"--development")
+                development=1
+                devrepo="pre-release"
+                if [ -n "${2}" ] && [ "${2}" = "staging" ]; then
+                    devrepo="staging"
+                    shift 2
+                fi
+                repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
+                repobaseurl="https://packages-dev.wazuh.com/'${devrepo}'"
+                reporelease="unstable"
+                filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"
+                bucket="packages-dev.wazuh.com"
+                repository="'"${devrepo}"'"
+                
+                if [[ ! "${source_branch}" =~ "-" ]]; then
+                    source_branch="${source_branch#v}"
+                fi
+        
+                ;;
+                
             "-fd"|"--force-install-dashboard")
                 force=1
                 shift 1

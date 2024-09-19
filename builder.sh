@@ -65,28 +65,6 @@ function buildInstaller() {
 # Foundation." >> "${output_script_path}"
     echo >> "${output_script_path}"
 
-    ## Installation variables
-    if [ -n "${development}" ]; then
-        echo 'readonly development=1' >> "${output_script_path}"
-        echo 'readonly repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"' >> "${output_script_path}"
-        echo 'readonly repobaseurl="https://packages-dev.wazuh.com/'${devrepo}'"' >> "${output_script_path}"
-        echo 'readonly reporelease="unstable"' >> "${output_script_path}"
-        echo 'readonly filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"' >> "${output_script_path}"
-        echo 'readonly bucket="packages-dev.wazuh.com"' >> "${output_script_path}"
-        echo 'readonly repository="'"${devrepo}"'"' >> "${output_script_path}"
-        if [[ ! $(grep -E "source_branch=" "${resources_installer}/installVariables.sh" | sed -E 's/.*source_branch="([^"]+)"/\1/') =~ "-" ]]; then
-            sed -i 's|v${wazuh_version}|${wazuh_version}|g' "${resources_installer}/installVariables.sh"
-            pre_release_tag=1
-        fi
-    else
-        echo 'readonly repogpg="https://packages.wazuh.com/key/GPG-KEY-WAZUH"' >> "${output_script_path}"
-        echo 'readonly repobaseurl="https://packages.wazuh.com/4.x"' >> "${output_script_path}"
-        echo 'readonly reporelease="stable"' >> "${output_script_path}"
-        echo 'readonly filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"' >> "${output_script_path}"
-        echo 'readonly bucket="packages.wazuh.com"' >> "${output_script_path}"
-        echo 'readonly repository="4.x"' >> "${output_script_path}"
-    fi
-    echo >> "${output_script_path}"
     checkFilebeatURL
     grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
     grep -Ev '^#|^\s*$' ${resources_installer}/installVariables.sh >> "${output_script_path}"
@@ -235,19 +213,6 @@ function builder_main() {
                 certTool=1
                 shift 1
                 ;;
-            "-d"|"--development")
-                development=1
-                if [ -n "${2}" ] && [ "${2}" = "staging" ]; then
-                    devrepo="staging"
-                    shift 2
-                elif [ -n "${2}" ] && [ "${2}" = "pre-release" ]; then
-                    devrepo="pre-release"
-                    shift 2
-                else
-                    devrepo="pre-release"
-                    shift 1
-                fi
-                ;;
             "-p"|"--password-tool")
                 passwordsTool=1
                 shift 1
@@ -266,9 +231,6 @@ function builder_main() {
         chmod 500 ${output_script_path}
         if [ -n "${change_filebeat_url}" ]; then
             sed -i -E "s|(https.+)master(.+wazuh-template.json)|\1\\$\\{source_branch\\}\2|"  "${resources_installer}/installVariables.sh"
-        fi
-        if [[ -n "${development}" && -n "${pre_release_tag}" ]]; then
-            sed -i 's|${wazuh_version}|v${wazuh_version}|g' "${resources_installer}/installVariables.sh"
         fi
     fi
 
