@@ -1,0 +1,178 @@
+---
+- hosts: all
+  become: true
+  gather_facts: no
+  vars:
+      script_path: "{{ tmp_path }}"
+      script_name: "wazuh-install.sh"
+      rpm_deps:
+        - git
+        - python3
+        - python3-pip
+        - openssl
+        - tar
+      apt_deps:
+        - git
+        - software-properties-common
+        - gnupg2
+      pip_deps:
+        - attrs==21.1.0
+        - importlib-metadata==4.8.2
+        - iniconfig==1.1.1
+        - packaging==21.3
+        - pluggy==1.0.0
+        - py==1.11.0
+        - pyparsing==3.0.6
+        - toml==0.10.2
+        - typing-extensions==4.0.0
+        - pytest==6.2.5
+        - pyyaml
+        - requests
+        - setuptools
+        - beautifulsoup4
+        - urllib3==1.26.6
+
+  pre_tasks:
+    - name: Check if the system is CentOS 8 and install Python if necessary
+      raw: |
+        if [ -f /etc/centos-release ]; then
+          if grep -q -i -E "centos.*8" /etc/centos-release; then
+            if ! command -v python3 &> /dev/null; then
+              dnf install -y python3
+            fi
+          fi
+        fi
+
+    - name: Check if the system is Ubuntu 16 and install Python
+      raw: |
+        if [ -f /etc/lsb-release ]; then
+          if grep -q -i -E "ubuntu.*16" /etc/lsb-release; then
+            add-apt-repository -y ppa:jblgf0/python
+            apt-get update
+            apt-get install -y python3.6 python3-apt
+            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+            cd /usr/lib/python3/dist-packages
+            sudo ln -s apt_inst.cpython-35m-x86_64-linux-gnu.so apt_inst.so
+            sudo ln -s apt_pkg.cpython-35m-x86_64-linux-gnu.so apt_pkg.so
+          fi
+        fi
+
+  tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Make tmp folder directory
+      file:
+        path: "{{ tmp_path }}"
+        state: directory
+
+    - name: Install main deps block
+      block:
+
+        # ---------------------------------------------------------------------
+
+        - name: Install required dependencies YUM
+          ansible.builtin.package:
+            name: "{{ rpm_deps }}"
+            state: present
+          when: ansible_os_family == 'RedHat'
+
+        # ---------------------------------------------------------------------
+
+        - name: Install required dependencies APT
+          ansible.builtin.package:
+            name: "{{ apt_deps }}"
+            state: present
+            update_cache: yes
+          when: ansible_os_family == 'Debian'
+      when:
+        - install_deps is defined
+        - install_deps | bool
+
+    - name: Install Python and pip
+      block: 
+
+        # ---------------------------------------------------------------------
+        # Ubuntu --------------------------------------------------------------
+        - name: Set up Python 3.9 on Ubuntu Jammy
+          block:
+          - name: Set up Python 3.9 repository
+            apt_repository:
+              repo: 'ppa:deadsnakes/ppa'
+
+          - name: Install Python3.9 on Ubuntu Jammy
+            ansible.builtin.package:
+              name:
+                - python3.9
+                - python3.9-distutils
+              state: present
+              update_cache: yes
+
+          - name: Change Python link Ubuntu Jammy
+            command: ln -sf /usr/bin/python3.9 /usr/bin/python3
+          when:
+            - ansible_os_family == 'Debian'
+            - ansible_distribution == "Ubuntu"
+            - ansible_distribution_release == "jammy"
+        
+        - name: Change Python link Ubuntu Xenial
+          command: ln -sf /usr/local/bin/python3.8 /usr/bin/python3
+          when:
+            - ansible_pkg_mgr == "apt"
+            - ansible_distribution == "Ubuntu"
+            - ansible_distribution_release == "xenial"
+
+        # ---------------------------------------------------------------------
+        # Pip installation ----------------------------------------------------
+
+        - stat:
+            path: /usr/bin/pip3
+          register: stat_pip3
+          when:
+            - ansible_os_family == 'Debian'
+
+        - name: Install pip Ubuntu\Debian
+          shell: curl https://bootstrap.pypa.io/get-pip.py | python3 -
+          when:
+            - ansible_os_family == 'Debian'
+            - stat_pip3.stat.exists == False
+            - ansible_distribution_release not in ['bionic']
+        
+        - name: Install pip Ubuntu Bionic/Xenial
+          ansible.builtin.package:
+            name:
+              - python3-pip
+            state: present
+            update_cache: yes
+          when:
+            - ansible_os_family == 'Debian'
+            - ansible_distribution == "Ubuntu"
+            - ansible_distribution_release in ['bionic']
+
+      when:
+        - install_python is defined
+        - install_python | bool
+
+    # No version specified in pyyaml due to Xenial error.
+    - name: Install pytest
+      command: pip3 install {{ item }}
+      with_items: "{{ pip_deps }}"
+      when:
+        - install_pip_deps is defined
+        - install_pip_deps | bool
+
+    - name: Clone installation assistant git repository
+      git:
+        repo: "{{ repository }}"
+        dest: "{{ tmp_path }}"
+        version: "{{ reference }}"
+        depth: 1
+        force: true
+
+    - name: Generate Installation assistant
+      command: "bash {{ tmp_path }}/builder.sh -i -d"
+
+    - name: Change pre-release repository to selected one
+      command: "sed -i 's|pre-release|{{ pkg_repository }}|g' {{ script_name }}"
+      args:
+        chdir: "{{ script_path }}"

@@ -1,0 +1,41 @@
+---
+- hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    script_path: "{{ tmp_path }}/tests/install"
+    script_name: "{{ test_name }}.py"
+
+  tasks:
+    - name: Execute tests Master
+      command: "python3 -m pytest --tb=long {{ script_name }} -v -m \"wazuh_cluster\""
+      args:
+        chdir: "{{ script_path }}"
+      register: test_results_master
+      when: 
+        - hostvars[inventory_hostname].manager_type == 'master'
+
+    - name: Execute tests Workers
+      command: "python3 -m pytest --tb=long {{ script_name }} -v -m \"wazuh_worker\""
+      args:
+        chdir: "{{ script_path }}"
+      register: test_results_worker
+      when:
+        - hostvars[inventory_hostname].manager_type == 'worker'
+
+    - name: Execute tests indexer_manager
+      command: "python3 -m pytest --tb=long {{ script_name }} -v -m \"wazuh or indexer or indexer_cluster\""
+      args:
+        chdir: "{{ script_path }}"
+      register: test_results_indexer_manager
+      when: 
+        - hostvars[inventory_hostname].instance_type == 'indexer_manager'
+
+    - name: Execute tests indexer_manager_dashboard
+      command: "python3 -m pytest --tb=long {{ script_name }} -v -m \"wazuh or indexer or indexer_cluster or dashboard\""
+      args:
+        chdir: "{{ script_path }}"
+      register: test_results_indexer_manager_dashboard
+      when: 
+        - hostvars[inventory_hostname].instance_type == 'indexer_manager_dashboard'
