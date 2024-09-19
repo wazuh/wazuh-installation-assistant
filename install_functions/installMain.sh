@@ -122,7 +122,6 @@ function main() {
                 filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"
                 bucket="packages-dev.wazuh.com"
                 repository="${devrepo}"
-                shift 1
                 ;;
                 
             "-fd"|"--force-install-dashboard")
