@@ -67,7 +67,7 @@ jobs:
      
       - name: Upload files to S3
         run: |
-          aws s3 cp ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }} --acl public-read --recursive
+          aws s3 cp ${{ github.workspace }}/${{ inputs.WAZUH_INSTALLATION_ASSISTANT_VERSION }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }} --recursive
 
       - name: Create artifact
         if: always()
