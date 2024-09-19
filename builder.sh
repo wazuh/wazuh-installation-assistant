@@ -34,9 +34,6 @@ function getHelp() {
     echo -e "        -c,  --cert-tool"
     echo -e "                Builds the certificate creation tool wazuh-cert-tool.sh"
     echo -e ""
-    echo -e "        -d [pre-release|staging],  --development"
-    echo -e "                Use development repositories. By default it uses the pre-release package repository. If staging is specified, it will use that repository."
-    echo -e ""
     echo -e "        -p,  --password-tool"
     echo -e "                Builds the password creation and modification tool wazuh-password-tool.sh"
     echo -e ""
@@ -65,7 +62,6 @@ function buildInstaller() {
 # Foundation." >> "${output_script_path}"
     echo >> "${output_script_path}"
 
-    checkFilebeatURL
     grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
     grep -Ev '^#|^\s*$' ${resources_installer}/installVariables.sh >> "${output_script_path}"
     echo >> "${output_script_path}"
@@ -229,9 +225,6 @@ function builder_main() {
     if [ -n "${installer}" ]; then
         buildInstaller
         chmod 500 ${output_script_path}
-        if [ -n "${change_filebeat_url}" ]; then
-            sed -i -E "s|(https.+)master(.+wazuh-template.json)|\1\\$\\{source_branch\\}\2|"  "${resources_installer}/installVariables.sh"
-        fi
     fi
 
     if [ -n "${passwordsTool}" ]; then
@@ -265,32 +258,6 @@ function checkDistDetectURL() {
         exit 1
     fi
 
-}
-
-function checkFilebeatURL() {
-
-    # Import variables
-    eval "$(grep -E "wazuh_version=" "${resources_installer}/installVariables.sh")"
-    eval "$(grep -E "source_branch=" "${resources_installer}/installVariables.sh" | sed 's/source_branch=/install_variables_source_branch=/')"
-    eval "$(grep -E "filebeat_wazuh_template=" "${resources_installer}/installVariables.sh" | sed "s/\${source_branch}/$install_variables_source_branch/")"
-
-    new_filebeat_url="https://raw.githubusercontent.com/wazuh/wazuh/master/extensions/elasticsearch/7.x/wazuh-template.json"
-
-    # Get the response of the URL and check it
-    response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
-    if [ "${response}" != "200" ]; then
-       	response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)
-
-        # Display error if both URLs do not get the resource
-        if [ "${response}" != "200" ]; then
-            echo -e "Error: Could not get the Filebeat Wazuh template. "
-        # If matches, replace the variable of installVariables to the new one
-        else
-            echo -e "Changing Filebeat URL..."
-            sed -i -E "s|filebeat_wazuh_template=.*|filebeat_wazuh_template=\"${new_filebeat_url}\"|g" "${resources_installer}/installVariables.sh"
-            change_filebeat_url=1
-        fi
-    fi
 }
 
 builder_main "$@"

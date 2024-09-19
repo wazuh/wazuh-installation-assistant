@@ -19,6 +19,15 @@ function checks_arch() {
 
 function checks_arguments() {
 
+    # -------------- Repository selection ---------------------
+
+    if [ -n "${development}" ]; then
+        if [ -z "${AIO}" ] && [ -z "${dashboard}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ] && [ -z "${download}" ]; then
+            common_logger -e "The -d|--development option must be used with -a, -ws, -s, -wi, -wd or -dw."
+            exit 1
+        fi
+    fi
+
     # -------------- Port option validation ---------------------
 
     if [ -n "${port_specified}" ]; then
@@ -441,6 +450,30 @@ function checks_available_port() {
                 exit 1
             fi
         done
+    fi
+}
+
+function checks_filebeatURL() {
+    # URL uses branch when the source_branch is not a stage branch
+    if [[ ! "${source_branch}" =~ "-" ]]; then
+        source_branch="${source_branch#v}"
+        filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
+    fi
+
+    # URL using master branch
+    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/master}"
+    
+    response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
+    if [ "${response}" != "200" ]; then
+        response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)
+
+        # Display error if both URLs do not get the resource
+        if [ "${response}" != "200" ]; then
+            common_logger -e "Error: Could not get the Filebeat Wazuh template."
+        else
+            common_logger "Using Filebeat template from master branch."
+            filebeat_wazuh_template="${new_filebeat_url}"
+        fi
     fi
 }
 

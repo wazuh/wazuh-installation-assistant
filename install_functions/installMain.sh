@@ -103,22 +103,26 @@ function main() {
                 ;;
             "-d"|"--development")
                 development=1
-                devrepo="pre-release"
-                if [ -n "${2}" ] && [ "${2}" = "staging" ]; then
-                    devrepo="staging"
+                if [ -n "${2}" ] && [[ ! "${2}" =~ ^- ]]; then
+                    if [ "${2}" = "pre-release" ] || [ "${2}" = "staging" ]; then
+                        devrepo="${2}"
+                    else
+                        common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'staging'."
+                        getHelp
+                        exit 1
+                    fi
                     shift 2
+                else
+                    devrepo="pre-release"
+                    shift 1
                 fi
                 repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
-                repobaseurl="https://packages-dev.wazuh.com/'${devrepo}'"
+                repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
                 reporelease="unstable"
                 filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"
                 bucket="packages-dev.wazuh.com"
-                repository="'"${devrepo}"'"
-                
-                if [[ ! "${source_branch}" =~ "-" ]]; then
-                    source_branch="${source_branch#v}"
-                fi
-        
+                repository="${devrepo}"
+                shift 1
                 ;;
                 
             "-fd"|"--force-install-dashboard")
@@ -259,6 +263,9 @@ function main() {
 
     common_checkInstalled
     checks_arguments
+    if [ -n "${development}" ]; then
+        checks_filebeatURL
+    fi
     if [ -n "${uninstall}" ]; then
         installCommon_rollBack
         exit 0
