@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build wazuh-install script and use staging packages
-        run: bash builder.sh -i -d staging
+        run: bash builder.sh -i
 
       - uses: actions/upload-artifact@v3
         with:

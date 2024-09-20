@@ -160,7 +160,6 @@ jobs:
         -e "repository=$REPOSITORY_URL" \
         -e "reference=${{ github.ref_name }}" \
         -e "tmp_path=$TMP_PATH" \
-        -e "pkg_repository=$PKG_REPOSITORY" \
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
@@ -174,6 +173,7 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
+        -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
 
     - name: Execute Python test playbook
