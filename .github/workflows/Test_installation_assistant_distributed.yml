@@ -214,7 +214,6 @@ jobs:
         -e "repository=$REPOSITORY_URL" \
         -e "reference=${{ github.ref_name }}" \
         -e "tmp_path=$TMP_PATH" \
-        -e "pkg_repository=$PKG_REPOSITORY" \
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
@@ -225,7 +224,6 @@ jobs:
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_generate_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -e "resources_path=$RESOURCES_PATH" \
-        -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
     
     - name: Copy certificates to nodes
@@ -243,6 +241,7 @@ jobs:
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
+        -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
     
     - name: Execute indexer cluster start playbook
@@ -252,6 +251,7 @@ jobs:
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
+        -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
     
     - name: Execute server installation playbook
@@ -260,6 +260,7 @@ jobs:
         -i $ALLOCATOR_PATH/inventory \
         -l managers \
         -e "tmp_path=$TMP_PATH" \
+        -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
       
     - name: Execute dashboard installation playbook
@@ -268,6 +269,7 @@ jobs:
         -i $ALLOCATOR_PATH/inventory \
         -l dashboards \
         -e "tmp_path=$TMP_PATH" \
+        -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
     
     - name: Execute Python test playbook

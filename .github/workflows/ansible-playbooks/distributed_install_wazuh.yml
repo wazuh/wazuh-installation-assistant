@@ -6,11 +6,12 @@
   vars:
     tmp_path: "{{ tmp_path }}"
     master_ip: "{{ hostvars[groups['managers'] | select('match', 'master') | first]['private_ip'] }}"
+    pkg_repository: "{{ pkg_repository }}"
     check_port: 55000
 
   tasks:
     - name: Install Wazuh server on master
-      command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v"
+      command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v -d {{ pkg_repository }}"
       register: wazuh
       when: hostvars[inventory_hostname].manager_type == 'master'
 
@@ -27,7 +28,7 @@
           poll: 5
 
         - name: Install Wazuh server (Workers)
-          command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v"
+          command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v -d {{ pkg_repository }}"
           register: wazuh
       when: hostvars[inventory_hostname].manager_type == 'worker'
     

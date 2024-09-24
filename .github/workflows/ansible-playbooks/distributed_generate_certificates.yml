@@ -4,7 +4,6 @@
 
   vars:
     resources_path: "{{ resources_path }}"
-    pkg_repository: "{{ pkg_repository }}"
 
   tasks:
     - name: Create certificates
@@ -17,7 +16,7 @@
             force: yes
 
         - name: Creating wazuh-install.sh script
-          shell: "bash {{ resources_path }}/builder.sh -i -d {{ pkg_repository }}"
+          shell: "bash {{ resources_path }}/builder.sh -i"
 
         - name: Creating Certificates
           shell: "bash {{ resources_path }}/wazuh-install.sh -g -v"

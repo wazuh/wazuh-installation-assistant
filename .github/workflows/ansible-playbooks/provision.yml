@@ -170,9 +170,5 @@
         force: true
 
     - name: Generate Installation assistant
-      command: "bash {{ tmp_path }}/builder.sh -i -d"
+      command: "bash {{ tmp_path }}/builder.sh -i"
 
-    - name: Change pre-release repository to selected one
-      command: "sed -i 's|pre-release|{{ pkg_repository }}|g' {{ script_name }}"
-      args:
-        chdir: "{{ script_path }}"
