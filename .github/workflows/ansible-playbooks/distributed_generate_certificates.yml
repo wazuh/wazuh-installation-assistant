@@ -1,0 +1,27 @@
+---
+- hosts: localhost
+  become: true
+
+  vars:
+    resources_path: "{{ resources_path }}"
+
+  tasks:
+    - name: Create certificates
+      block:
+        - name: Rendering wazuh-config file
+          template:
+            src: "{{ resources_path }}/.github/workflows/templates/config.j2"
+            dest: "{{ resources_path }}/config.yml"
+            mode: "664"
+            force: yes
+
+        - name: Creating wazuh-install.sh script
+          shell: "bash {{ resources_path }}/builder.sh -i"
+
+        - name: Creating Certificates
+          shell: "bash {{ resources_path }}/wazuh-install.sh -g -v"
+          register: certificates_install
+
+        - name: Give read permissions to wazuh-install-files.tar
+          shell: "chmod +r {{ resources_path }}/wazuh-install-files.tar"
+

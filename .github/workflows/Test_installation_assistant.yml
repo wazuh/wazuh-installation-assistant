@@ -1,4 +1,4 @@
-run-name: Test installation assistant - System ${{ inputs.SYSTEM }} - Launched by @${{ github.actor }}
+run-name: Test installation assistant - ${{ github.run_id }} - ${{ inputs.SYSTEMS }} - Launched by @${{ github.actor }}
 name: Test installation assistant 
 
 on:
@@ -21,29 +21,24 @@ on:
           - staging
           - pre-release
       AUTOMATION_REFERENCE:
-        description: 'wazuh-automation reference'
+        description: 'Branch or tag of the wazuh-automation repository'
         required: true
-        default: 'v4.9.0'
-      SYSTEM:
-        description: 'Operating System'
+        default: '4.10.0'
+      SYSTEMS:
+        description: 'Operating Systems (list of comma-separated quoted strings enclosed in square brackets)'
         required: true
-        default: 'CentOS 8'
+        default: '["CentOS_8", "AmazonLinux_2", "Ubuntu_22", "RHEL8"]'
+        type: string
+      VERBOSITY:
+        description: 'Verbosity level on playbooks execution'
+        required: true
+        default: '-v'
         type: choice
         options:
-          - CentOS 7
-          - CentOS 8
-          - Amazon Linux 2
-          - Ubuntu 16
-          - Ubuntu 18
-          - Ubuntu 20
-          - Ubuntu 22
-          - RHEL7
-          - RHEL8
-      DEBUG:
-        description: 'Debug mode'
-        required: true
-        default: false
-        type: boolean
+          - -v
+          - -vv
+          - -vvv
+          - -vvvv
       DESTROY:
         description: 'Destroy instances after run'
         required: true
@@ -51,12 +46,161 @@ on:
         type: boolean
 
 env:
-  LABEL: ubuntu-latest
+  COMPOSITE_NAME: "linux-SUBNAME-amd64"
+  SESSION_NAME: "Installation-Assistant-Test"
+  REGION: "us-east-1"
+  TMP_PATH: "/tmp/test"
+  LOGS_PATH: "${{ github.workspace }}/assistant_logs"
+  PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
+  TEST_NAME: "test_assistant"
+  REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
+  ALLOCATOR_PATH: "/tmp/allocator_instance"
+
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
 
 jobs:
-  initialize-environment:
-    runs-on: $LABEL
+  run-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false    # If a job fails, the rest of jobs will not be canceled
+      matrix:
+        system: ${{ fromJson(inputs.SYSTEMS) }}
 
     steps:
-    - name: Set up Git
-      uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: View parameters
+      run: echo "${{ toJson(inputs) }}"
+    
+    - name: Set COMPOSITE_NAME variable
+      run: |
+        case "${{ matrix.system }}" in
+          "CentOS_7")
+            SUBNAME="centos-7"
+            ;;
+          "CentOS_8")
+            SUBNAME="centos-8"
+            ;;
+          "AmazonLinux_2")
+            SUBNAME="amazon-2"
+            ;;
+          "Ubuntu_16")
+            SUBNAME="ubuntu-16.04"
+            ;;
+          "Ubuntu_18")
+            SUBNAME="ubuntu-18.04"
+            ;;
+          "Ubuntu_20")
+            SUBNAME="ubuntu-20.04"
+            ;;
+          "Ubuntu_22")
+            SUBNAME="ubuntu-22.04"
+            ;;
+          "RHEL7")
+            SUBNAME="redhat-7"
+            ;;
+          "RHEL8")
+            SUBNAME="redhat-8"
+            ;;
+          *)
+            echo "Invalid SYSTEM selection" >&2
+            exit 1
+            ;;
+        esac
+        COMPOSITE_NAME="${COMPOSITE_NAME/SUBNAME/$SUBNAME}"
+        echo "COMPOSITE_NAME=$COMPOSITE_NAME" >> $GITHUB_ENV
+
+    - name: Install Ansible
+      run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16
+      
+    - name: Set up AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+        role-session-name: ${{ env.SESSION_NAME }}
+        aws-region: ${{ env.REGION }}
+
+    - name: Checkout wazuh/wazuh-automation repository
+      uses: actions/checkout@v4
+      with:
+        repository: wazuh/wazuh-automation
+        ref: ${{ inputs.AUTOMATION_REFERENCE }}
+        token: ${{ secrets.GH_CLONE_TOKEN }}
+        path: wazuh-automation
+
+    - name: Install and set allocator requirements
+      run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
+
+    - name: Allocate instance test and set SSH variables
+      id: allocator_instance
+      run: |
+        python3 wazuh-automation/deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name ${{ env.COMPOSITE_NAME }} --working-dir $ALLOCATOR_PATH \
+          --track-output $ALLOCATOR_PATH/track.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
+          --label-team devops --label-termination-date 1d
+
+        sed 's/: */=/g' $ALLOCATOR_PATH/inventory.yml > $ALLOCATOR_PATH/inventory_mod.yml
+        sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod.yml
+        source $ALLOCATOR_PATH/inventory_mod.yml
+        
+        echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
+        echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
+
+    - name: Execute provision playbook
+      run: |
+        INSTALL_DEPS=true
+        INSTALL_PYTHON=true
+        INSTALL_PIP_DEPS=true
+
+        ansible-playbook .github/workflows/ansible-playbooks/provision.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l all \
+        -e "repository=$REPOSITORY_URL" \
+        -e "reference=${{ github.ref_name }}" \
+        -e "tmp_path=$TMP_PATH" \
+        -e "install_deps=$INSTALL_DEPS" \
+        -e "install_python=$INSTALL_PYTHON" \
+        -e "install_pip_deps=$INSTALL_PIP_DEPS" \
+        "${{ inputs.VERBOSITY }}"
+
+    - name: Execute AIO installation playbook
+      run: |
+        ansible-playbook .github/workflows/ansible-playbooks/aio.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l all \
+        -e "tmp_path=$TMP_PATH" \
+        -e "logs_path=$LOGS_PATH" \
+        -e "test_name=$TEST_NAME" \
+        -e "pkg_repository=$PKG_REPOSITORY" \
+        "${{ inputs.VERBOSITY }}"
+
+    - name: Execute Python test playbook
+      run: |
+        TEST_NAME="test_installation_assistant"
+        ansible-playbook .github/workflows/ansible-playbooks/aio_tests.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l all \
+        -e "tmp_path=$TMP_PATH" \
+        -e "logs_path=$LOGS_PATH" \
+        -e "test_name=$TEST_NAME" \
+        "${{ inputs.VERBOSITY }}"
+    
+    - name: Compress Allocator VM directory
+      id: compress_allocator_files
+      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == false
+      run: |
+        zip -P "${{ secrets.ZIP_ARTIFACTS_PASSWORD }}" -r $ALLOCATOR_PATH.zip $ALLOCATOR_PATH
+      
+    - name: Upload Allocator VM directory as artifact
+      if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false
+      uses: actions/upload-artifact@v4
+      with:
+        name: allocator-instance-${{ matrix.system }}
+        path: ${{ env.ALLOCATOR_PATH }}.zip
+
+    - name: Delete allocated VM
+      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == true
+      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
+      

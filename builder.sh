@@ -34,9 +34,6 @@ function getHelp() {
     echo -e "        -c,  --cert-tool"
     echo -e "                Builds the certificate creation tool wazuh-cert-tool.sh"
     echo -e ""
-    echo -e "        -d [pre-release|staging],  --development"
-    echo -e "                Use development repositories. By default it uses the pre-release package repository. If staging is specified, it will use that repository."
-    echo -e ""
     echo -e "        -p,  --password-tool"
     echo -e "                Builds the password creation and modification tool wazuh-password-tool.sh"
     echo -e ""
@@ -47,8 +44,6 @@ function getHelp() {
 }
 
 function buildInstaller() {
-
-    checkDistDetectURL
 
     output_script_path="${base_path_builder}/wazuh-install.sh"
 
@@ -67,25 +62,6 @@ function buildInstaller() {
 # Foundation." >> "${output_script_path}"
     echo >> "${output_script_path}"
 
-    ## Installation variables
-    if [ -n "${development}" ]; then
-        echo 'readonly development=1' >> "${output_script_path}"
-        echo 'readonly repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"' >> "${output_script_path}"
-        echo 'readonly repobaseurl="https://packages-dev.wazuh.com/'${devrepo}'"' >> "${output_script_path}"
-        echo 'readonly reporelease="unstable"' >> "${output_script_path}"
-        echo 'readonly filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"' >> "${output_script_path}"
-        echo 'readonly bucket="packages-dev.wazuh.com"' >> "${output_script_path}"
-        echo 'readonly repository="'"${devrepo}"'"' >> "${output_script_path}"
-        sed -i 's|v${wazuh_version}|${wazuh_version}|g' "${resources_installer}/installVariables.sh"
-    else
-        echo 'readonly repogpg="https://packages.wazuh.com/key/GPG-KEY-WAZUH"' >> "${output_script_path}"
-        echo 'readonly repobaseurl="https://packages.wazuh.com/4.x"' >> "${output_script_path}"
-        echo 'readonly reporelease="stable"' >> "${output_script_path}"
-        echo 'readonly filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"' >> "${output_script_path}"
-        echo 'readonly bucket="packages.wazuh.com"' >> "${output_script_path}"
-        echo 'readonly repository="4.x"' >> "${output_script_path}"
-    fi
-    echo >> "${output_script_path}"
     grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
     grep -Ev '^#|^\s*$' ${resources_installer}/installVariables.sh >> "${output_script_path}"
     echo >> "${output_script_path}"
@@ -116,6 +92,7 @@ function buildInstaller() {
     done
 
     ## dist-detect.sh
+    checkDistDetectURL
     echo "function dist_detect() {" >> "${output_script_path}"
     curl -s "https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/src/init/dist-detect.sh" | sed '/^#/d' >> "${output_script_path}"
     echo "}" >> "${output_script_path}"
@@ -132,9 +109,6 @@ function buildInstaller() {
     ## Main function and call to it
     echo >> "${output_script_path}"
     echo "main \"\$@\"" >> "${output_script_path}"
-
-    checkFilebeatURL
-
 }
 
 function buildPasswordsTool() {
@@ -235,19 +209,6 @@ function builder_main() {
                 certTool=1
                 shift 1
                 ;;
-            "-d"|"--development")
-                development=1
-                if [ -n "${2}" ] && [ "${2}" = "staging" ]; then
-                    devrepo="staging"
-                    shift 2
-                elif [ -n "${2}" ] && [ "${2}" = "pre-release" ]; then
-                    devrepo="pre-release"
-                    shift 2
-                else
-                    devrepo="pre-release"
-                    shift 1
-                fi
-                ;;
             "-p"|"--password-tool")
                 passwordsTool=1
                 shift 1
@@ -264,12 +225,6 @@ function builder_main() {
     if [ -n "${installer}" ]; then
         buildInstaller
         chmod 500 ${output_script_path}
-        if [ -n "${change_filebeat_url}" ]; then
-            sed -i -E "s|(https.+)master(.+wazuh-template.json)|\1\\$\\{source_branch\\}\2|"  "${resources_installer}/installVariables.sh"
-        fi
-        if [ -n "${development}" ]; then
-            sed -i 's|${wazuh_version}|v${wazuh_version}|g' "${resources_installer}/installVariables.sh"
-        fi
     fi
 
     if [ -n "${passwordsTool}" ]; then
@@ -286,7 +241,6 @@ function builder_main() {
 function checkDistDetectURL() {
 
     urls=("https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/src/init/dist-detect.sh"
-          "https://raw.githubusercontent.com/wazuh/wazuh/v${source_branch}/src/init/dist-detect.sh"
           "https://raw.githubusercontent.com/wazuh/wazuh/master/src/init/dist-detect.sh")
 
     for url in "${urls[@]}"; do
@@ -304,29 +258,6 @@ function checkDistDetectURL() {
         exit 1
     fi
 
-}
-
-function checkFilebeatURL() {
-
-    # Import variables
-    eval "$(grep -E "filebeat_wazuh_template=" "${resources_installer}/installVariables.sh")"
-    new_filebeat_url="https://raw.githubusercontent.com/wazuh/wazuh/master/extensions/elasticsearch/7.x/wazuh-template.json"
-
-    # Get the response of the URL and check it
-    response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
-    if [ "${response}" != "200" ]; then
-       	response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)
-
-        # Display error if both URLs do not get the resource
-        if [ "${response}" != "200" ]; then
-            echo -e "Error: Could not get the Filebeat Wazuh template. "
-        # If matches, replace the variable of installVariables to the new one
-        else
-            echo -e "Changing Filebeat URL..."
-            sed -i -E "s|filebeat_wazuh_template=.*|filebeat_wazuh_template=\"${new_filebeat_url}\"|g" "${resources_installer}/installVariables.sh"
-            change_filebeat_url=1
-        fi
-    fi
 }
 
 builder_main "$@"

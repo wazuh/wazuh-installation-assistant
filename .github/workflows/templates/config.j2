@@ -1,0 +1,18 @@
+nodes:
+  # Wazuh indexer nodes
+  indexer:
+{% for indexer in groups['indexers'] %}
+    - name: {{ hostvars[indexer]['inventory_hostname'] }}
+      ip: "{{ hostvars[indexer]['private_ip'] }}"
+{% endfor %}
+  server:
+{% for manager in groups['managers'] %}
+    - name: {{ hostvars[manager]['inventory_hostname'] }}
+      ip: "{{ hostvars[manager]['private_ip'] }}"
+      node_type: "{{ hostvars[manager]['manager_type'] }}"
+{% endfor %}
+  dashboard:
+{% for dashboard in groups['dashboards'] %}
+    - name: {{ hostvars[dashboard]['inventory_hostname'] }}
+      ip: "{{ hostvars[dashboard]['private_ip'] }}"
+{% endfor %}

@@ -44,6 +44,7 @@ function manager_startCluster() {
 
 function manager_checkService() {
     common_logger "Checking Wazuh API connection"
+    
     max_attempts=15
     attempt=0
     seconds=5
@@ -58,7 +59,7 @@ function manager_checkService() {
         sleep "${seconds}"
         TOKEN=$(eval "${token_command}")
     done
-    common_logger "Wazuh API is ready to receive petitions."
+    common_logger "Wazuh API is ready to receive requests."
 
     # Change curl credentials in case the master node has changed the passwords 
     if [[ "${TOKEN}" =~ "Invalid credentials" && "${server_node_types[pos]}" == "worker" ]]; then
