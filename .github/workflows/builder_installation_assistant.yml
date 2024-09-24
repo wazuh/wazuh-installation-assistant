@@ -23,7 +23,7 @@ on:
         required: false
 
 env:
-  WAZUH_INSTALLATION_ASSISTANT_VERSION: ${{ github.ref_name }}
+  WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.ref_name }}
   S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
   S3_REPOSITORY_PATH: "development/wazuh/4.x/secondary/installation-assistant"
   BUILDER_PATH: "builder.sh"
@@ -46,7 +46,7 @@ jobs:
       - name: Checkout wazuh-installation-assistant repository
         uses: actions/checkout@v2
         with:
-          ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_VERSION }}
+          ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
       
       - name: Configure aws credentials
         uses: aws-actions/configure-aws-credentials@v3
