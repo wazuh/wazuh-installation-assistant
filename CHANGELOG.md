@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Migrate the build Installation Assistant files jenkins workflow to GHA ([#77](https://github.com/wazuh/wazuh-installation-assistant/pull/77))
+- Create GHA workflow to build Wazuh Installation Assistant files. ([#77](https://github.com/wazuh/wazuh-installation-assistant/pull/77))
 - Installation assistant distributed test rework and migration. ([#60](https://github.com/wazuh/wazuh-installation-assistant/pull/60))
 - Installation assistant test and tier workflow migration ([#46](https://github.com/wazuh/wazuh-installation-assistant/pull/46/))
 - Added post-install validations for the Wazuh manager and Filebeat. ([#3059](https://github.com/wazuh/wazuh-packages/pull/3059))
