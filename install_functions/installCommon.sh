@@ -229,11 +229,11 @@ function installCommon_createInstallFiles() {
         elif [ "${sys_type}" == "apt-get" ]; then
             installCommon_aptInstallList "${dep}"
         fi
-        
+
         if [ "${#not_installed[@]}" -gt 0 ]; then
             wia_dependencies_installed+=("${dep}")
         fi
-        
+
         if [ -n "${configurations}" ]; then
             cert_checkOpenSSL
         fi
@@ -414,7 +414,7 @@ function installCommon_installPrerequisites() {
             fi
         fi
     elif [ "${sys_type}" == "apt-get" ]; then
-        if [ -z "${offline_install}" ]; then 
+        if [ -z "${offline_install}" ]; then
             eval "apt-get update -q ${debug}"
         fi
         if [ "${1}" == "AIO" ]; then
@@ -764,8 +764,10 @@ function installCommon_startService() {
     if [[ -d /run/systemd/system ]]; then
         eval "systemctl daemon-reload ${debug}"
         eval "systemctl enable ${1}.service ${debug}"
-        eval "systemctl start ${1}.service ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        service_output=$(eval "systemctl start ${1}.service 2>&1")
+        e_code="${PIPESTATUS[0]}"
+        [ -n "${service_output}" ] && eval "echo \${service_output} ${debug}"
+        if [  "${e_code}" != 0  ]; then
             common_logger -e "${1} could not be started."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
