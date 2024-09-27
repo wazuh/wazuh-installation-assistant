@@ -242,6 +242,7 @@ function main() {
     fi
 
     checks_arch
+    checks_availablePackages
     if [ -n "${ignore}" ]; then
         common_logger -w "Hardware checks ignored."
     else
