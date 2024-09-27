@@ -178,6 +178,12 @@ function installCommon_changePasswordApi() {
         fi
     fi
 
+    for i in "${!api_users[@]}"; do
+        if [ "${api_users[i]}" == "wazuh" ] || [ "${api_users[i]}" == "wazuh-wui" ]; then
+            common_logger "The password for the ${api_users[i]} user is ${api_passwords[i]}"
+        fi
+    done
+
 }
 
 function installCommon_createCertificates() {
@@ -229,11 +235,11 @@ function installCommon_createInstallFiles() {
         elif [ "${sys_type}" == "apt-get" ]; then
             installCommon_aptInstallList "${dep}"
         fi
-        
+
         if [ "${#not_installed[@]}" -gt 0 ]; then
             wia_dependencies_installed+=("${dep}")
         fi
-        
+
         if [ -n "${configurations}" ]; then
             cert_checkOpenSSL
         fi
@@ -414,7 +420,7 @@ function installCommon_installPrerequisites() {
             fi
         fi
     elif [ "${sys_type}" == "apt-get" ]; then
-        if [ -z "${offline_install}" ]; then 
+        if [ -z "${offline_install}" ]; then
             eval "apt-get update -q ${debug}"
         fi
         if [ "${1}" == "AIO" ]; then
