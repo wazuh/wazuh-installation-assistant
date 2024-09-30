@@ -464,7 +464,7 @@ For Wazuh API users, the file must have this format:
             fi
         done
 
-        if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
+        if { [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; } || { [ -z "${wazuh_installed}" ] && [ -n "${dashboard_installed}" ]; } then
             for j in "${!fileapiusers[@]}"; do
                 supported=false
                 for i in "${!api_users[@]}"; do

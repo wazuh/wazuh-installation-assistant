@@ -193,8 +193,7 @@ function main() {
                 common_logger "Wazuh dashboard certificates created."
             fi
             cert_cleanFiles
-            cert_setpermisions
-            eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+            cert_setDirectory
         fi
 
         if [[ -n "${ca}" ]]; then

@@ -858,6 +858,7 @@ function installCommon_removeAssistantDependencies(){
     fi
 
 }
+
 function installCommon_yumInstall() {
 
     package="${1}"
