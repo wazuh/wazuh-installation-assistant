@@ -18,9 +18,9 @@ function offline_checkDependencies() {
         if [ "${sys_type}" == "yum" ]; then
             eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
         elif [ "${sys_type}" == "apt-get" ]; then
-            eval "apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/"
+            eval "dpkg -l "${dep}" 2>/dev/null | grep -q -E '^ii\s'"
         fi
-        
+
         if [ "${PIPESTATUS[0]}" != 0 ]; then
             common_logger -e "${dep} is necessary for the offline installation."
             exit 1
@@ -39,9 +39,9 @@ function offline_checkPrerequisites(){
         if [ "${sys_type}" == "yum" ]; then
             eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
         elif [ "${sys_type}" == "apt-get" ]; then
-            eval "apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/"
+            eval "dpkg -l "${dep}" 2>/dev/null | grep -q -E '^ii\s'"
         fi
-        
+
         if [ "${PIPESTATUS[0]}" != 0 ]; then
             common_logger -e "${dep} is necessary for the offline installation."
             exit 1
@@ -85,7 +85,7 @@ function offline_extractFiles() {
         "${offline_files_path}/wazuh-filebeat-*.tar.gz"
         "${offline_files_path}/wazuh-template.json"
     )
-    
+
     if [ "${sys_type}" == "apt-get" ]; then
         required_files+=("${offline_packages_path}/filebeat-oss-*.deb" "${offline_packages_path}/wazuh-dashboard_*.deb" "${offline_packages_path}/wazuh-indexer_*.deb" "${offline_packages_path}/wazuh-manager_*.deb")
     elif [ "${sys_type}" == "rpm" ]; then
