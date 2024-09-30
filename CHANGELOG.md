@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Added check when generating certificates for multiple DNS. ([#88](https://github.com/wazuh/wazuh-installation-assistant/pull/88))
 - Change cert-tool to use only one wazuh-certificates folder. ([#87](https://github.com/wazuh/wazuh-installation-assistant/pull/87))
 - Solve bugs when changing passwords in the manager, indexer and dashboard services. ([#86](https://github.com/wazuh/wazuh-installation-assistant/pull/86))
 - Fixed typo in Wazuh Installation Assistant. ([#85](https://github.com/wazuh/wazuh-installation-assistant/pull/85))
