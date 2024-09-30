@@ -121,7 +121,7 @@ function installCommon_aptInstallList(){
     not_installed=()
 
     for dep in "${dependencies[@]}"; do
-        if ! apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/; then
+        if ! dpkg -l "${dep}" 2>/dev/null | grep -q -E '^ii\s'; then
             not_installed+=("${dep}")
             for wia_dep in "${wia_apt_dependencies[@]}"; do
                 if [ "${wia_dep}" == "${dep}" ]; then
@@ -631,7 +631,7 @@ function installCommon_rollBack() {
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
             eval "apt-get remove --purge wazuh-manager -y ${debug}"
-            manager_installed=$(apt list --installed 2>/dev/null | grep wazuh-manager)
+            manager_installed=$(dpkg -l wazuh-manager 2>/dev/null | grep -E '^ii\s')
         fi
 
         if [ -n "${manager_installed}" ]; then
@@ -657,7 +657,7 @@ function installCommon_rollBack() {
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
             eval "apt-get remove --purge wazuh-indexer -y ${debug}"
-            indexer_installed=$(apt list --installed 2>/dev/null | grep wazuh-indexer)
+            indexer_installed=$(dpkg -l wazuh-indexer 2>/dev/null | grep -E '^ii\s')
         fi
 
         if [ -n "${indexer_installed}" ]; then
@@ -684,7 +684,7 @@ function installCommon_rollBack() {
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
             eval "apt-get remove --purge filebeat -y ${debug}"
-            filebeat_installed=$(apt list --installed 2>/dev/null | grep filebeat)
+            filebeat_installed=$(dpkg -l filebeat 2>/dev/null | grep -E '^ii\s')
         fi
 
         if [ -n "${filebeat_installed}" ]; then
@@ -711,7 +711,7 @@ function installCommon_rollBack() {
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
             eval "apt-get remove --purge wazuh-dashboard -y ${debug}"
-            dashboard_installed=$(apt list --installed 2>/dev/null | grep wazuh-dashboard)
+            dashboard_installed=$(dpkg -l wazuh-dashboard 2>/dev/null | grep -E '^ii\s')
         fi
 
         if [ -n "${dashboard_installed}" ]; then
