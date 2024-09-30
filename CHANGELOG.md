@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Print on console the wazuh user's password when installing Wazuh server. ([#84](https://github.com/wazuh/wazuh-installation-assistant/pull/84))
 - Improved service status and output management in Installation assistant. ([#82](https://github.com/wazuh/wazuh-installation-assistant/pull/82))
 - Fixed API password change to match the user in wazuh.yml. ([#81](https://github.com/wazuh/wazuh-installation-assistant/pull/81))
 
