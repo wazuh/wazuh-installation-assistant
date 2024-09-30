@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Solve bugs when changing passwords in the manager, indexer and dashboard services. ([#86](https://github.com/wazuh/wazuh-installation-assistant/pull/86))
 - Fixed typo in Wazuh Installation Assistant. ([#85](https://github.com/wazuh/wazuh-installation-assistant/pull/85))
 - Print on console the wazuh user's password when installing Wazuh server. ([#84](https://github.com/wazuh/wazuh-installation-assistant/pull/84))
 - Improved service status and output management in Installation assistant. ([#82](https://github.com/wazuh/wazuh-installation-assistant/pull/82))
