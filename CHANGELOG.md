@@ -9,7 +9,15 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Dependencies installation is reworked in Installation assistant. ([#90](https://github.com/wazuh/wazuh-installation-assistant/pull/90))
+- Change apt to dpkg for better performance. ([#89](https://github.com/wazuh/wazuh-installation-assistant/pull/89))
+- Added check when generating certificates for multiple DNS. ([#88](https://github.com/wazuh/wazuh-installation-assistant/pull/88))
+- Change cert-tool to use only one wazuh-certificates folder. ([#87](https://github.com/wazuh/wazuh-installation-assistant/pull/87))
+- Solve bugs when changing passwords in the manager, indexer and dashboard services. ([#86](https://github.com/wazuh/wazuh-installation-assistant/pull/86))
+- Fixed typo in Wazuh Installation Assistant. ([#85](https://github.com/wazuh/wazuh-installation-assistant/pull/85))
+- Print on console the wazuh user's password when installing Wazuh server. ([#84](https://github.com/wazuh/wazuh-installation-assistant/pull/84))
+- Improved service status and output management in Installation assistant. ([#82](https://github.com/wazuh/wazuh-installation-assistant/pull/82))
+- Fixed API password change to match the user in wazuh.yml. ([#81](https://github.com/wazuh/wazuh-installation-assistant/pull/81))
 
 ## [4.10.0]
 

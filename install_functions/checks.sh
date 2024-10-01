@@ -249,8 +249,11 @@ function check_dist() {
     if [ "${DIST_NAME}" == "centos" ] && { [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ]; }; then
         notsupported=1
     fi
-    if [ "${DIST_NAME}" == "rhel" ] && { [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ] && [ "${DIST_VER}" -ne "9" ]; }; then
-        notsupported=1
+    if [ "${DIST_NAME}" == "rhel" ]; then
+        if [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ] && [ "${DIST_VER}" -ne "9" ]; then
+            notsupported=1
+        fi
+        need_centos_repos=1
     fi
 
     if [ "${DIST_NAME}" == "amzn" ]; then
@@ -403,11 +406,11 @@ function checks_previousCertificate() {
 function checks_specialDepsAL2023() {
 
     # Change curl for curl-minimal
-    wia_yum_dependencies=( "${wia_yum_dependencies[@]/curl/curl-minimal}" )
+    assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/curl/curl-minimal}" )
 
     # In containers, coreutils is replaced for coreutils-single
     if [ -f "/.dockerenv" ]; then
-        wia_yum_dependencies=( "${wia_yum_dependencies[@]/coreutils/coreutils-single}" )
+        assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/coreutils/coreutils-single}" )
     fi
 }
 
@@ -419,19 +422,6 @@ function checks_specifications() {
 }
 
 function checks_ports() {
-
-    if [ -z "${offline_install}" ]; then
-        dep="lsof"
-        if [ "${sys_type}" == "yum" ]; then
-            installCommon_yumInstallList "${dep}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            installCommon_aptInstallList "${dep}"
-        fi
-
-        if [ "${#not_installed[@]}" -gt 0 ]; then
-                wia_dependencies_installed+=("${dep}")
-        fi
-    fi
 
     common_logger -d "Checking ports availability."
     used_port=0
@@ -514,10 +504,10 @@ function checks_firewall(){
         eval "rpm -q firewalld --quiet && firewalld_installed=1"
         eval "rpm -q ufw --quiet && ufw_installed=1"
     elif [ "${sys_type}" == "apt-get" ]; then
-        if apt list --installed 2>/dev/null | grep -q -E ^"firewalld"\/; then
+        if dpkg -l "firewalld" 2>/dev/null | grep -q -E '^ii\s'; then
             firewalld_installed=1
         fi
-        if apt list --installed 2>/dev/null | grep -q -E ^"ufw"\/; then
+        if dpkg -l "ufw" 2>/dev/null | grep -q -E '^ii\s'; then
             ufw_installed=1
         fi
     fi
