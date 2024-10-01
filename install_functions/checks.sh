@@ -185,6 +185,48 @@ function checks_arguments() {
 
 }
 
+# Checks if the packages are available to install
+function checks_availablePackages() {
+
+    local packages_to_check=()
+
+    if [ -n "${AIO}" ]; then
+        packages_to_check=("wazuh-indexer" "wazuh-manager" "filebeat" "wazuh-dashboard")
+    elif [ -n "${wazuh}" ]; then
+        packages_to_check=("wazuh-manager" "filebeat")
+    elif [ -n "${indexer}" ]; then
+        packages_to_check=("wazuh-indexer")
+    elif [ -n "${dashboard}" ]; then
+        packages_to_check=("wazuh-dashboard")
+    fi
+    installCommon_addWazuhRepo
+
+    for package in "${packages_to_check[@]}"; do
+        local target_version=""
+
+        if [[ "${package}" == "filebeat" ]]; then
+            target_version="${filebeat_version}"
+        else
+            target_version="${wazuh_version}"
+        fi
+
+        if [ "${sys_type}" == "yum" ]; then
+            eval "yum list available ${package}-${target_version} &> /dev/null"
+        elif [ "${sys_type}" == "apt-get" ]; then
+            eval "apt-cache policy ${package} | grep -q ${target_version} &> /dev/null"
+        fi
+
+        if [ "${PIPESTATUS[0]}" -eq 0 ]; then
+            common_logger -d "Package ${package} (version ${target_version}) is available for installation."
+            common_remove_gpg_key
+        else
+            common_logger -e "Package ${package} (version ${target_version}) is NOT available for installation."
+            installCommon_rollBack
+            exit 1
+        fi
+    done
+}
+
 # Checks if the --retry-connrefused is available in curl
 function check_curlVersion() {
 

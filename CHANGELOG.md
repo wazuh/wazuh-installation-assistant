@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [5.0.0]
 
+### Added
+
+- Added available packages check before installation ([#80](https://github.com/wazuh/wazuh-installation-assistant/pull/80))
+
 ### Changed
 
 - Dependencies installation is reworked in Installation assistant. ([#90](https://github.com/wazuh/wazuh-installation-assistant/pull/90))

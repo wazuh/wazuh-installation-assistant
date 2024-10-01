@@ -243,6 +243,7 @@ function main() {
     fi
 
     checks_arch
+    checks_availablePackages
 
     if [ -n "${port_specified}" ]; then
         checks_available_port "${port_number}" "${wazuh_aio_ports[@]}"
