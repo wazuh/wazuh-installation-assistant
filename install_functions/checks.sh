@@ -12,7 +12,7 @@ function checks_arch() {
     arch=$(uname -m)
 
     if [ "${arch}" != "x86_64" ]; then
-        common_logger -e "Uncompatible system. This script must be run on a 64-bit system."
+        common_logger -e "Uncompatible system. This script must be run on a 64-bit (x86_64/AMD64) system."
         exit 1
     fi
 }

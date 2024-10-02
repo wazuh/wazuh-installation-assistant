@@ -243,7 +243,7 @@ function main() {
         exit 0
     fi
 
-    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version}"
+    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version} (x86_64/AMD64)"
     common_logger "Verbose logging redirected to ${logfile}"
 
 # -------------- Uninstall case  ------------------------------------
