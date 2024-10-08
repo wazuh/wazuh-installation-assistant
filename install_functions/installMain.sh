@@ -123,7 +123,7 @@ function main() {
                 bucket="packages-dev.wazuh.com"
                 repository="${devrepo}"
                 ;;
-                
+
             "-fd"|"--force-install-dashboard")
                 force=1
                 shift 1
@@ -257,7 +257,7 @@ function main() {
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
         installCommon_installCheckDependencies
     elif [ -n "${offline_install}" ]; then
-        offline_checkDependencies
+        offline_checkPrerequisites "${wia_offline_dependencies[@]}" "wia_offline_dependencies"
     fi
 
     common_checkInstalled
