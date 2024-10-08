@@ -11,12 +11,14 @@
 # Checks the necessary packages needed for a Wazuh component
 function offline_checkPrerequisites(){
 
-    dependencies=("${!1}")
-    dependency_type="${2}"
+    dependencies=( "${@}" )
+    if [ $1 == "wia_offline_dependencies" ]; then   
+        dependencies=( "${@:2}" ) 
+    fi
 
-    if [ "${2}" == "wia_offline_dependencies"];
-    then
+    if [ $1 == "wia_offline_dependencies" ]; then
         common_logger "Checking dependencies for Wazuh installation assistant."
+
     else
         common_logger "Checking prerequisites for Offline installation."
     fi
@@ -32,8 +34,7 @@ function offline_checkPrerequisites(){
             exit 1
         fi
     done
-    if [ "${2}" == "wia_offline_dependencies"];
-    then
+    if [ $1 == "wia_offline_dependencies" ]; then
         common_logger -d "Dependencies for Wazuh installation assistant are installed."
     else
         common_logger -d "Prerequisites for Offline installation are installed."

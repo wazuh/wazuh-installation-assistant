@@ -257,7 +257,7 @@ function main() {
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
         installCommon_installCheckDependencies
     elif [ -n "${offline_install}" ]; then
-        offline_checkPrerequisites "${wia_offline_dependencies[@]}" "wia_offline_dependencies"
+        offline_checkPrerequisites "wia_offline_dependencies" "${wia_offline_dependencies[@]}"
     fi
 
     common_checkInstalled
