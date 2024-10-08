@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Add input for wazuh installation assistant reference in workflows. ([#98](https://github.com/wazuh/wazuh-installation-assistant/pull/98))
 - Create GHA workflow to build Wazuh Installation Assistant files. ([#77](https://github.com/wazuh/wazuh-installation-assistant/pull/77))
 - Installation assistant distributed test rework and migration. ([#60](https://github.com/wazuh/wazuh-installation-assistant/pull/60))
 - Installation assistant test and tier workflow migration ([#46](https://github.com/wazuh/wazuh-installation-assistant/pull/46/))
