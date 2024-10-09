@@ -10,7 +10,7 @@
 readonly wazuh_major="5.0"
 readonly wazuh_version="5.0.0"
 readonly filebeat_version="7.10.2"
-readonly wazuh_install_vesion="0.1"
+readonly wazuh_install_version="0.1"
 readonly source_branch="v${wazuh_version}"
 
 ## Links and paths to resources
@@ -56,13 +56,12 @@ wazuh_aio_ports=( 9200 9300 1514 1515 1516 55000 "${http_port}")
 readonly wazuh_indexer_ports=( 9200 9300 )
 readonly wazuh_manager_ports=( 1514 1515 1516 55000 )
 wazuh_dashboard_port="${http_port}"
-# `lsof` and `openssl` are installed separately
-wia_yum_dependencies=( systemd grep tar coreutils sed procps-ng gawk curl )
-readonly wia_apt_dependencies=( systemd grep tar coreutils sed procps gawk curl )
+assistant_yum_dependencies=( systemd grep tar coreutils sed procps-ng gawk curl lsof openssl )
+readonly assistant_apt_dependencies=( systemd grep tar coreutils sed procps gawk curl lsof openssl )
 readonly wazuh_yum_dependencies=( libcap )
 readonly wazuh_apt_dependencies=( apt-transport-https libcap2-bin software-properties-common gnupg )
 readonly indexer_yum_dependencies=( coreutils )
 readonly indexer_apt_dependencies=( debconf adduser procps gnupg apt-transport-https )
 readonly dashboard_yum_dependencies=( libcap )
 readonly dashboard_apt_dependencies=( debhelper tar curl libcap2-bin gnupg apt-transport-https )
-wia_dependencies_installed=()
+assistant_deps_to_install=()
