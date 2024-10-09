@@ -14,14 +14,11 @@ function offline_checkPrerequisites(){
     dependencies=( "${@}" )
     if [ $1 == "wia_offline_dependencies" ]; then   
         dependencies=( "${@:2}" ) 
-    fi
-
-    if [ $1 == "wia_offline_dependencies" ]; then
         common_logger "Checking dependencies for Wazuh installation assistant."
-
     else
         common_logger "Checking prerequisites for Offline installation."
     fi
+    
     for dep in "${dependencies[@]}"; do
         if [ "${sys_type}" == "yum" ]; then
             eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
