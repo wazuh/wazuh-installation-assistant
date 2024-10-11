@@ -89,9 +89,9 @@ jobs:
       
       - name: Save files name
         run: |
-          WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh)
-          WAZUH_CERT_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_CERT_TOOL_NAME }}*.sh)
-          WAZUH_PASSWORD_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh)
+          WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh | xargs basename)
+          WAZUH_CERT_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_CERT_TOOL_NAME }}*.sh | xargs basename)
+          WAZUH_PASSWORD_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh | xargs basename)
           echo "WAZUH_INSTALL_NAME=$WAZUH_INSTALL_NAME" >> $GITHUB_ENV
           echo "WAZUH_CERT_TOOL_NAME=$WAZUH_CERT_TOOL_NAME" >> $GITHUB_ENV
           echo "WAZUH_PASSWORD_TOOL_NAME=$WAZUH_PASSWORD_TOOL_NAME" >> $GITHUB_ENV
