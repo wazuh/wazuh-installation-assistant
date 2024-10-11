@@ -12,14 +12,27 @@ on:
         description: "Is stage?"
         type: boolean
         default: false
+      checksum:
+        description: "Add checksum"
+        type: boolean
+        default: false
       id:
         description: "ID used to identify the workflow uniquely."
         type: string
         required: false
   workflow_call:
     inputs:
+      WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
+        description: "Branch or tag of the wazuh-installation-assistant repository."
+        type: string
+        required: true
+        default: 4.10.0
       is_stage:
         description: "Is stage?"
+        type: boolean
+        default: false
+      checksum:
+        description: "Add checksum"
         type: boolean
         default: false
       id:
@@ -73,14 +86,37 @@ jobs:
 
       - name: Build Installation Assistant packages
         run: bash builder.sh -i -c -p
+      
+      - name: Save files name
+        run: |
+          WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh)
+          WAZUH_CERT_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_CERT_TOOL_NAME }}*.sh)
+          WAZUH_PASSWORD_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh)
+          echo "WAZUH_INSTALL_NAME=$WAZUH_INSTALL_NAME" >> $GITHUB_ENV
+          echo "WAZUH_CERT_TOOL_NAME=$WAZUH_CERT_TOOL_NAME" >> $GITHUB_ENV
+          echo "WAZUH_PASSWORD_TOOL_NAME=$WAZUH_PASSWORD_TOOL_NAME" >> $GITHUB_ENV
 
       - name: Prepare files
         run: |
           mkdir -p ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
-          mv ${{ env.WAZUH_INSTALL_NAME }}*.sh ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
-          mv ${{ env.WAZUH_CERT_TOOL_NAME }}*.sh ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
-          mv ${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
-     
-      - name: Upload files to S3
+          mv ${{ env.WAZUH_INSTALL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+          mv ${{ env.WAZUH_CERT_TOOL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+          mv ${{ env.WAZUH_PASSWORD_TOOL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+      
+      - name: Build packages checksum
+        if: ${{ inputs.checksum == true }}
         run: |
-          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }} --recursive
+          sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }}.sha512
+          sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }}.sha512
+          sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sha512
+      
+      - name: Build test artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-installation-assistant-${{ env.WAZUH_VERSION }}
+          path: ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+
+      # - name: Upload files to S3
+      #   run: |
+      #     aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }} --recursive
