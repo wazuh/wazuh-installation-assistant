@@ -122,7 +122,7 @@ jobs:
         echo "COMPOSITE_NAME=$COMPOSITE_NAME" >> $GITHUB_ENV
 
     - name: Install Ansible
-      run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16 && pip install pyyaml && ansible-galaxy collection install community.general
+      run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16 --break-system-packages && pip install pyyaml --break-system-packages && ansible-galaxy collection install community.general
     
     - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -140,7 +140,7 @@ jobs:
         path: wazuh-automation
 
     - name: Install and set allocator requirements
-      run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
+      run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt --break-system-packages
 
     - name: Allocate instances and create inventory
       id: allocator_instance
