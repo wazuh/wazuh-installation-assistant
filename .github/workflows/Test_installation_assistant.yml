@@ -66,7 +66,7 @@ permissions:
 
 jobs:
   run-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
@@ -120,7 +120,7 @@ jobs:
         echo "COMPOSITE_NAME=$COMPOSITE_NAME" >> $GITHUB_ENV
 
     - name: Install Ansible
-      run: sudo apt-get update && sudo apt install -y python3.10 python3.10-venv python3.10-dev && python3 -m pip install --user ansible-core==2.16 --break-system-packages
+      run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16 --break-system-packages
 
     - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
