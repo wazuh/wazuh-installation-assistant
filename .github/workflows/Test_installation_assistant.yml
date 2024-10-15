@@ -66,7 +66,7 @@ permissions:
 
 jobs:
   run-test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
@@ -119,8 +119,16 @@ jobs:
         COMPOSITE_NAME="${COMPOSITE_NAME/SUBNAME/$SUBNAME}"
         echo "COMPOSITE_NAME=$COMPOSITE_NAME" >> $GITHUB_ENV
 
+    - name: Install Python and create virtual environment
+      run: |
+        sudo apt-get update
+        sudo apt install -y python3 && sudo apt-get install python3-venv
+        python3 -m venv test_wia_env
+
     - name: Install Ansible
-      run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16
+      run: |
+        source test_wia_env/bin/activate
+        python3 -m pip install --user ansible-core==2.16
 
     - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -138,11 +146,14 @@ jobs:
         path: wazuh-automation
 
     - name: Install and set allocator requirements
-      run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
+      run: |
+        source test_wia_env/bin/activate
+        python3 -m pip install -r wazuh-automation/deployability/deps/requirements.txt
 
     - name: Allocate instance test and set SSH variables
       id: allocator_instance
       run: |
+        source test_wia_env/bin/activate
         python3 wazuh-automation/deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name ${{ env.COMPOSITE_NAME }} --working-dir $ALLOCATOR_PATH \
           --track-output $ALLOCATOR_PATH/track.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
           --label-team devops --label-termination-date 1d
@@ -156,6 +167,7 @@ jobs:
 
     - name: Execute provision playbook
       run: |
+        source test_wia_env/bin/activate
         INSTALL_DEPS=true
         INSTALL_PYTHON=true
         INSTALL_PIP_DEPS=true
@@ -173,6 +185,7 @@ jobs:
 
     - name: Execute AIO installation playbook
       run: |
+        source test_wia_env/bin/activate
         ansible-playbook .github/workflows/ansible-playbooks/aio.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l all \
@@ -184,6 +197,7 @@ jobs:
 
     - name: Execute Python test playbook
       run: |
+        source test_wia_env/bin/activate
         TEST_NAME="test_installation_assistant"
         ansible-playbook .github/workflows/ansible-playbooks/aio_tests.yml \
         -i $ALLOCATOR_PATH/inventory \
@@ -208,5 +222,7 @@ jobs:
 
     - name: Delete allocated VM
       if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == true
-      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
+      run: |
+        source test_wia_env/bin/activate
+        python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
 
