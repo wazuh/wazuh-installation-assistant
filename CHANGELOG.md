@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fix installation assistant tests workflows Python error ([#107](https://github.com/wazuh/wazuh-installation-assistant/pull/107))
 - Fixed Wazuh API validation ([#29](https://github.com/wazuh/wazuh-installation-assistant/pull/29))
 - Fixed token variable empty in Wazuh manager check ([#45](https://github.com/wazuh/wazuh-installation-assistant/pull/45))
 - Fixed manager check in distributed deployment ([#52](https://github.com/wazuh/wazuh-installation-assistant/pull/52))
