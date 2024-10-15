@@ -128,7 +128,7 @@ jobs:
     - name: Install Ansible
       run: |
         source test_wia_env/bin/activate
-        python3 -m pip install --user ansible-core==2.16
+        python3 -m pip install ansible-core==2.16
 
     - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
