@@ -1,5 +1,5 @@
 run-name: (Distributed) Test installation assistant - ${{ github.run_id }} - ${{ inputs.SYSTEMS }} - Launched by @${{ github.actor }}
-name: (Distributed) Test installation assistant 
+name: (Distributed) Test installation assistant
 
 on:
   pull_request:
@@ -68,7 +68,7 @@ permissions:
 
 jobs:
   run-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
@@ -82,7 +82,7 @@ jobs:
 
     - name: View parameters
       run: echo "${{ toJson(inputs) }}"
-    
+
     - name: Set COMPOSITE_NAME variable
       run: |
         case "${{ matrix.system }}" in
@@ -123,7 +123,7 @@ jobs:
 
     - name: Install Ansible
       run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16 && pip install pyyaml && ansible-galaxy collection install community.general
-    
+
     - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -158,7 +158,7 @@ jobs:
         echo "[managers]" > $inventory_managers
         echo "[dashboards]" > $inventory_dashboards
         echo "[all:vars]" > $inventory_common
-    
+
         for i in ${!instance_names[@]}; do
           instance_name=${instance_names[$i]}
           # Provision instance in parallel
@@ -184,7 +184,7 @@ jobs:
             if [[ $i -eq 0 ]]; then
               echo "indexer1 ansible_host=$ansible_host private_ip=$private_ip ansible_ssh_private_key_file=$ansible_ssh_private_key_file" >> $inventory_indexers
               echo "master ansible_host=$ansible_host private_ip=$private_ip ansible_ssh_private_key_file=$ansible_ssh_private_key_file manager_type=master instance_type=indexer_manager" >> $inventory_managers
-              
+
               echo "ansible_user=$ansible_user" >> $inventory_common
               echo "ansible_port=$ansible_port" >> $inventory_common
               echo "ansible_ssh_common_args='$ansible_ssh_common_args'" >> $inventory_common
@@ -207,7 +207,7 @@ jobs:
         cat $inventory_managers >> $inventory_file
         cat $inventory_dashboards >> $inventory_file
         cat $inventory_common >> $inventory_file
-    
+
     - name: Execute provision playbook
       run: |
         INSTALL_DEPS=true
@@ -224,14 +224,14 @@ jobs:
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
         "${{ inputs.VERBOSITY }}"
-    
+
     - name: Execute certificates generation playbook
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_generate_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -e "resources_path=$RESOURCES_PATH" \
         "${{ inputs.VERBOSITY }}"
-    
+
     - name: Copy certificates to nodes
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_copy_certificates.yml \
@@ -249,7 +249,7 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
-    
+
     - name: Execute indexer cluster start playbook
       run: |
         INDEXER_ADMIN_PASSWORD="admin"
@@ -259,7 +259,7 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
-    
+
     - name: Execute server installation playbook
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_wazuh.yml \
@@ -268,7 +268,7 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
-      
+
     - name: Execute dashboard installation playbook
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_dashboard.yml \
@@ -277,7 +277,7 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
-    
+
     - name: Execute Python test playbook
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_tests.yml \
@@ -286,13 +286,13 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "test_name=$TEST_NAME" \
         "${{ inputs.VERBOSITY }}"
-    
+
     - name: Compress Allocator VM directory
       id: compress_allocator_files
       if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == false
       run: |
         zip -P "${{ secrets.ZIP_ARTIFACTS_PASSWORD }}" -r $ALLOCATOR_PATH.zip $ALLOCATOR_PATH
-      
+
     - name: Upload Allocator VM directory as artifact
       if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false
       uses: actions/upload-artifact@v4
@@ -304,13 +304,13 @@ jobs:
       if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == true
       run: |
         instance_names=($INSTANCE_NAMES)
-    
+
         for i in ${!instance_names[@]}; do
           instance_name=${instance_names[$i]}
           track_file="$ALLOCATOR_PATH/track_${instance_name}.yml"
-    
+
           echo "Deleting instance: $instance_name using track file $track_file"
-    
+
           (
             # Delete instance
             python3 wazuh-automation/deployability/modules/allocation/main.py \
