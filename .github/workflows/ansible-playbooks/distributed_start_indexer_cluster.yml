@@ -1,0 +1,17 @@
+---
+- hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    tmp_path: "{{ tmp_path }}"
+    pkg_repository: "{{ pkg_repository }}"
+
+  tasks:
+    - name: Start Wazuh indexer cluster in just one node
+      block:
+        - name: Start Wazuh indexer cluster
+          command: "bash {{ tmp_path }}/wazuh-install.sh -s -v -d {{ pkg_repository }}"
+          register: cluster
+      when: inventory_hostname == ansible_play_hosts[0]
+

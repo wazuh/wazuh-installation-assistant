@@ -1,0 +1,14 @@
+---
+  - hosts: all
+    gather_facts: false
+    become: true
+
+    vars:
+      tmp_path: "{{ tmp_path }}"
+      pkg_repository: "{{ pkg_repository }}"
+
+    tasks:
+      - name: Install Wazuh indexer
+        command: "bash {{ tmp_path }}/wazuh-install.sh -wi {{ inventory_hostname }} -v -d {{ pkg_repository }}"
+        register: indexer
+

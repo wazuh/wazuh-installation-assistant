@@ -5,6 +5,11 @@ on:
       - 'install_functions/wazuh-offline-download.sh'
       - 'install_functions/wazuh-offline-installation.sh'
   workflow_dispatch:
+    inputs:
+      WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
+        description: "Branch or tag of the wazuh-installation-assistant repository."
+        required: true
+        default: main
 
 jobs:
   Build-wazuh-install-script:
@@ -18,9 +23,11 @@ jobs:
           skip_after_successful_duplicate: 'false'
 
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
       - name: Build wazuh-install script and use staging packages
-        run: bash builder.sh -i -d staging
+        run: bash builder.sh -i
 
       - uses: actions/upload-artifact@v3
         with:
@@ -33,6 +40,8 @@ jobs:
     needs: Build-wazuh-install-script
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
       - uses: actions/download-artifact@v3
         with:
@@ -49,6 +58,8 @@ jobs:
     needs: Build-wazuh-install-script
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
       - uses: actions/download-artifact@v3
         with:

@@ -10,8 +10,15 @@
 readonly wazuh_major="5.0"
 readonly wazuh_version="5.0.0"
 readonly filebeat_version="7.10.2"
-readonly wazuh_install_version="0.1"
-readonly source_branch="v${wazuh_version}"
+readonly wazuh_install_vesion="0.1"
+source_branch="v${wazuh_version}"
+
+repogpg="https://packages.wazuh.com/key/GPG-KEY-WAZUH"
+repobaseurl="https://packages.wazuh.com/4.x"
+reporelease="stable"
+filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"
+bucket="packages.wazuh.com"
+repository="4.x"
 
 ## Links and paths to resources
 readonly resources="https://${bucket}/${wazuh_major}"
@@ -64,4 +71,9 @@ readonly indexer_yum_dependencies=( coreutils )
 readonly indexer_apt_dependencies=( debconf adduser procps gnupg apt-transport-https )
 readonly dashboard_yum_dependencies=( libcap )
 readonly dashboard_apt_dependencies=( debhelper tar curl libcap2-bin gnupg apt-transport-https )
+<<<<<<< HEAD
+readonly wia_offline_dependencies=( curl tar gnupg openssl lsof )
+wia_dependencies_installed=()
+=======
 assistant_deps_to_install=()
+>>>>>>> b2f4e7a0928581ea3ce69f46a7a101bcba2fc708

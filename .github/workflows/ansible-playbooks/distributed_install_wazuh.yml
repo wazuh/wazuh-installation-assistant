@@ -1,0 +1,35 @@
+---
+- hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    tmp_path: "{{ tmp_path }}"
+    master_ip: "{{ hostvars[groups['managers'] | select('match', 'master') | first]['private_ip'] }}"
+    pkg_repository: "{{ pkg_repository }}"
+    check_port: 55000
+
+  tasks:
+    - name: Install Wazuh server on master
+      command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v -d {{ pkg_repository }}"
+      register: wazuh
+      when: hostvars[inventory_hostname].manager_type == 'master'
+
+    - name: Install Wazuh server on worker nodes
+      block:
+        - name: Wait for Wazuh master to be ready on port {{ check_port }}
+          wait_for:
+            host: "{{ master_ip }}"
+            port: "{{ check_port }}"
+            delay: 30
+            timeout: 300
+          when: hostvars[inventory_hostname].manager_type == 'worker'
+          async: 500
+          poll: 5
+
+        - name: Install Wazuh server (Workers)
+          command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v -d {{ pkg_repository }}"
+          register: wazuh
+      when: hostvars[inventory_hostname].manager_type == 'worker'
+    
+    

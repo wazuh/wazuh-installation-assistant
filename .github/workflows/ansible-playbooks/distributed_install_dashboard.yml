@@ -1,0 +1,15 @@
+---
+- hosts: all
+  gather_facts: false
+  become: true
+
+  vars:
+    tmp_path: "{{ tmp_path }}"
+    pkg_repository: "{{ pkg_repository }}"
+
+  tasks:
+    - name: Install Wazuh dashboard
+      command: "bash wazuh-install.sh -wd {{ inventory_hostname }} -v -d {{ pkg_repository }}"
+      args:
+        chdir: "{{ tmp_path }}"
+      register: dashboard
