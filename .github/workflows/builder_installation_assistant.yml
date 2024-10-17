@@ -1,0 +1,136 @@
+run-name: Build Installation Assistant ${{ inputs.id }} - Branch ${{ github.ref_name }} - Launched by @${{ github.actor }}
+name: Build Installation Assistant
+
+on:
+  workflow_dispatch:
+    inputs:
+      wazuh_installation_assistant_reference:
+        description: "Branch or tag of the wazuh-installation-assistant repository."
+        required: true
+        default: 4.10.1
+      is_stage:
+        description: "Is stage?"
+        type: boolean
+        default: false
+      checksum:
+        description: "Add checksum"
+        type: boolean
+        default: false
+      id:
+        description: "ID used to identify the workflow uniquely."
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      wazuh_installation_assistant_reference:
+        description: "Branch or tag of the wazuh-installation-assistant repository."
+        type: string
+        required: true
+        default: 4.10.1
+      is_stage:
+        description: "Is stage?"
+        type: boolean
+        default: false
+      checksum:
+        description: "Add checksum"
+        type: boolean
+        default: false
+      id:
+        type: string
+        required: false
+
+env:
+  S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
+  S3_REPOSITORY_PATH: "development/wazuh/4.x/secondary/installation-assistant"
+  BUILDER_PATH: "builder.sh"
+  WAZUH_INSTALL_NAME: "wazuh-install"
+  WAZUH_CERT_TOOL_NAME: "wazuh-certs-tool"
+  WAZUH_PASSWORD_TOOL_NAME: "wazuh-passwords-tool"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  Build_Installation_Assistant:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: View parameters
+        run: echo "${{ toJson(inputs) }}"
+
+      - name: Checkout wazuh-installation-assistant repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.wazuh_installation_assistant_reference }}
+
+      - name: Configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          aws-region: us-east-1
+
+      - name: Get short sha and wazuh version
+        run: |
+          COMMIT_SHORT_SHA=$(git rev-parse --short ${{ github.sha }})
+          WAZUH_VERSION=$(grep -oP '(?<=readonly wazuh_version=").*(?=")' ${{github.workspace}}/install_functions/installVariables.sh)
+          echo "WAZUH_VERSION=$WAZUH_VERSION" >> $GITHUB_ENV
+          echo "COMMIT_SHORT_SHA=$COMMIT_SHORT_SHA" >> $GITHUB_ENV
+
+      - name: Change files name for stage build
+        if: ${{ inputs.is_stage == false }}
+        run: |
+          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+
+      - name: Build Installation Assistant packages
+        run: bash builder.sh -i -c -p
+
+      - name: Save files name
+        run: |
+          WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh | xargs basename)
+          WAZUH_CERT_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_CERT_TOOL_NAME }}*.sh | xargs basename)
+          WAZUH_PASSWORD_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh | xargs basename)
+          echo "WAZUH_INSTALL_NAME=$WAZUH_INSTALL_NAME" >> $GITHUB_ENV
+          echo "WAZUH_CERT_TOOL_NAME=$WAZUH_CERT_TOOL_NAME" >> $GITHUB_ENV
+          echo "WAZUH_PASSWORD_TOOL_NAME=$WAZUH_PASSWORD_TOOL_NAME" >> $GITHUB_ENV
+
+      - name: Prepare files
+        run: |
+          mkdir -p ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+          mv ${{ env.WAZUH_INSTALL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+          mv ${{ env.WAZUH_CERT_TOOL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+          mv ${{ env.WAZUH_PASSWORD_TOOL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
+
+      - name: Build packages checksum
+        if: ${{ inputs.checksum == true }}
+        run: |
+          sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }}.sha512
+          sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }}.sha512
+          sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sha512
+
+      - name: Upload files to S3
+        run: |
+          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/
+          s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }}"
+          echo "S3 wazuh-install URI: ${s3uri}"
+          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/
+          s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }}"
+          echo "S3 wazuh-certs-tool URI: ${s3uri}"
+          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/
+          s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}"
+          echo "S3 wazuh-passwords-tool URI: ${s3uri}"
+
+      - name: Upload checksum files to S3
+        if: ${{ inputs.checksum == true }}
+        run: |
+          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }}.sha512 s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/
+          s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }}.sha512"
+          echo "S3 sha512 wazuh-install checksum URI: ${s3uri}"
+          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }}.sha512 s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/
+          s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }}.sha512"
+          echo "S3 sha512 wazuh-certs-tool checksum URI: ${s3uri}"
+          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sha512 s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/
+          s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sha512"
+          echo "S3 sha512 wazuh-passwords-tool checksum URI: ${s3uri}"

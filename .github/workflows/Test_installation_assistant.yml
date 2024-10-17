@@ -1,5 +1,5 @@
 run-name: Test installation assistant - ${{ github.run_id }} - ${{ inputs.SYSTEMS }} - Launched by @${{ github.actor }}
-name: Test installation assistant 
+name: Test installation assistant
 
 on:
   pull_request:
@@ -20,6 +20,10 @@ on:
         options:
           - staging
           - pre-release
+      WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
+        description: 'Branch or tag of the wazuh-installation-assistant repository'
+        required: true
+        default: '4.10.1'
       AUTOMATION_REFERENCE:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
@@ -62,7 +66,7 @@ permissions:
 
 jobs:
   run-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
@@ -71,10 +75,12 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
     - name: View parameters
       run: echo "${{ toJson(inputs) }}"
-    
+
     - name: Set COMPOSITE_NAME variable
       run: |
         case "${{ matrix.system }}" in
@@ -115,7 +121,7 @@ jobs:
 
     - name: Install Ansible
       run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16
-      
+
     - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -144,7 +150,7 @@ jobs:
         sed 's/: */=/g' $ALLOCATOR_PATH/inventory.yml > $ALLOCATOR_PATH/inventory_mod.yml
         sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod.yml
         source $ALLOCATOR_PATH/inventory_mod.yml
-        
+
         echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
         echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
 
@@ -186,13 +192,13 @@ jobs:
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
         "${{ inputs.VERBOSITY }}"
-    
+
     - name: Compress Allocator VM directory
       id: compress_allocator_files
       if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == false
       run: |
         zip -P "${{ secrets.ZIP_ARTIFACTS_PASSWORD }}" -r $ALLOCATOR_PATH.zip $ALLOCATOR_PATH
-      
+
     - name: Upload Allocator VM directory as artifact
       if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false
       uses: actions/upload-artifact@v4
@@ -203,4 +209,4 @@ jobs:
     - name: Delete allocated VM
       if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == true
       run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
-      
+

@@ -8,46 +8,34 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-# Checks the necessary dependencies for the installation
-function offline_checkDependencies() {
-
-    dependencies=( curl tar gnupg openssl lsof )
-
-    common_logger "Checking installed dependencies for Offline installation."
-    for dep in "${dependencies[@]}"; do
-        if [ "${sys_type}" == "yum" ]; then
-            eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
-        elif [ "${sys_type}" == "apt-get" ]; then
-            eval "apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/"
-        fi
-        
-        if [ "${PIPESTATUS[0]}" != 0 ]; then
-            common_logger -e "${dep} is necessary for the offline installation."
-            exit 1
-        fi
-    done
-    common_logger -d "Offline dependencies are installed."
-
-}
-
 # Checks the necessary packages needed for a Wazuh component
 function offline_checkPrerequisites(){
 
-    dependencies=("$@")
-    common_logger "Checking prerequisites for Offline installation."
+    dependencies=( "${@}" )
+    if [ $1 == "wia_offline_dependencies" ]; then   
+        dependencies=( "${@:2}" ) 
+        common_logger "Checking dependencies for Wazuh installation assistant."
+    else
+        common_logger "Checking prerequisites for Offline installation."
+    fi
+    
     for dep in "${dependencies[@]}"; do
         if [ "${sys_type}" == "yum" ]; then
             eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
         elif [ "${sys_type}" == "apt-get" ]; then
             eval "apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/"
         fi
-        
+
         if [ "${PIPESTATUS[0]}" != 0 ]; then
             common_logger -e "${dep} is necessary for the offline installation."
             exit 1
         fi
     done
-    common_logger -d "Offline prerequisites are installed."
+    if [ $1 == "wia_offline_dependencies" ]; then
+        common_logger -d "Dependencies for Wazuh installation assistant are installed."
+    else
+        common_logger -d "Prerequisites for Offline installation are installed."
+    fi
 }
 
 # Checks the necessary files for the installation
@@ -85,7 +73,7 @@ function offline_extractFiles() {
         "${offline_files_path}/wazuh-filebeat-*.tar.gz"
         "${offline_files_path}/wazuh-template.json"
     )
-    
+
     if [ "${sys_type}" == "apt-get" ]; then
         required_files+=("${offline_packages_path}/filebeat-oss-*.deb" "${offline_packages_path}/wazuh-dashboard_*.deb" "${offline_packages_path}/wazuh-indexer_*.deb" "${offline_packages_path}/wazuh-manager_*.deb")
     elif [ "${sys_type}" == "rpm" ]; then
@@ -120,5 +108,5 @@ function offline_importGPGKey() {
         fi
         eval "chmod 644 ${offline_files_path}/GPG-KEY-WAZUH ${debug}"
     fi
-    
+
 }
