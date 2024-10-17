@@ -23,11 +23,11 @@ on:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: 'Branch or tag of the wazuh-installation-assistant repository'
         required: true
-        default: '4.10.2'
+        default: 'main'
       AUTOMATION_REFERENCE:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
-        default: '4.10.2'
+        default: 'master'
       SYSTEMS:
         description: 'Operating Systems (list of comma-separated quoted strings enclosed in square brackets)'
         required: true
