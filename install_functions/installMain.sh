@@ -322,6 +322,7 @@ function main() {
 # -------------- Wazuh indexer case -------------------------------
 
     if [ -n "${indexer}" ]; then
+        installCommon_checkDiskSpace "wazuh-indexer"
         common_logger "--- Wazuh indexer ---"
         indexer_install
         indexer_configure
@@ -341,6 +342,7 @@ function main() {
 # -------------- Wazuh dashboard case  ------------------------------
 
     if [ -n "${dashboard}" ]; then
+        installCommon_checkDiskSpace "wazuh-dashboard"
         common_logger "--- Wazuh dashboard ----"
         dashboard_install
         dashboard_configure
@@ -354,6 +356,8 @@ function main() {
 # -------------- Wazuh server case  ---------------------------------------
 
     if [ -n "${wazuh}" ]; then
+        installCommon_checkDiskSpace "wazuh-manager"
+        installCommon_checkDiskSpace "filebeat"
         common_logger "--- Wazuh server ---"
         manager_install
         manager_configure
@@ -373,7 +377,7 @@ function main() {
 # -------------- AIO case  ------------------------------------------
 
     if [ -n "${AIO}" ]; then
-
+        installCommon_checkDiskSpace "AIO"
         common_logger "--- Wazuh indexer ---"
         indexer_install
         indexer_configure

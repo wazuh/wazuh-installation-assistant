@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Check available space before the installation with the installation assistant ([#56](https://github.com/wazuh/wazuh-installation-assistant/pull/56))
 - Dependencies installation is reworked in Installation assistant. ([#90](https://github.com/wazuh/wazuh-installation-assistant/pull/90))
 - Change apt to dpkg for better performance. ([#89](https://github.com/wazuh/wazuh-installation-assistant/pull/89))
 - Added check when generating certificates for multiple DNS. ([#88](https://github.com/wazuh/wazuh-installation-assistant/pull/88))
