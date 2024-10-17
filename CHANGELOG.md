@@ -41,6 +41,10 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Add checksum input and update the upload files to S3 steps ([#106](https://github.com/wazuh/wazuh-installation-assistant/pull/106))
+- Deleted the offline_checkDependencies function and unified logic in offline_checkPrerequisites function. ([#99](https://github.com/wazuh/wazuh-installation-assistant/pull/99))
+- Add input for wazuh installation assistant reference in workflows. ([#98](https://github.com/wazuh/wazuh-installation-assistant/pull/98))
+- Create GHA workflow to build Wazuh Installation Assistant files. ([#77](https://github.com/wazuh/wazuh-installation-assistant/pull/77))
 - Installation assistant distributed test rework and migration. ([#60](https://github.com/wazuh/wazuh-installation-assistant/pull/60))
 - Installation assistant test and tier workflow migration ([#46](https://github.com/wazuh/wazuh-installation-assistant/pull/46/))
 - Added post-install validations for the Wazuh manager and Filebeat. ([#3059](https://github.com/wazuh/wazuh-packages/pull/3059))
@@ -48,6 +52,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Changed GitHub Runner version to fix Python error ([#110](https://github.com/wazuh/wazuh-installation-assistant/pull/110))
 - Fixed Wazuh API validation ([#29](https://github.com/wazuh/wazuh-installation-assistant/pull/29))
 - Fixed token variable empty in Wazuh manager check ([#45](https://github.com/wazuh/wazuh-installation-assistant/pull/45))
 - Fixed manager check in distributed deployment ([#52](https://github.com/wazuh/wazuh-installation-assistant/pull/52))
