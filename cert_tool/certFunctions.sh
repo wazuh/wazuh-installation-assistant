@@ -8,7 +8,7 @@
 
 
 function cert_cleanFiles() {
-    
+
     common_logger -d "Cleaning certificate files."
     eval "rm -f ${cert_tmp_path}/*.csr ${debug}"
     eval "rm -f ${cert_tmp_path}/*.srl ${debug}"
@@ -227,7 +227,7 @@ function cert_parseYaml() {
 
     local s='[[:space:]]*' sm='[ \t]*' w='[a-zA-Z0-9_]*' fs=${fs:-$(echo @|tr @ '\034')} i=${i:-  }
     cat $1 2>/dev/null | \
-    awk -F$fs "{multi=0; 
+    awk -F$fs "{multi=0;
         if(match(\$0,/$sm\|$sm$/)){multi=1; sub(/$sm\|$sm$/,\"\");}
         if(match(\$0,/$sm>$sm$/)){multi=2; sub(/$sm>$sm$/,\"\");}
         while(multi>0){
@@ -327,7 +327,7 @@ function cert_parseYaml() {
 }
 
 function cert_checkPrivateIp() {
-    
+
     local ip=$1
     common_logger -d "Checking if ${ip} is private."
 
@@ -368,11 +368,15 @@ function cert_readConfig() {
 
         for ip in "${all_ips[@]}"; do
             isIP=$(echo "${ip}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
+            isDNS=$(echo "${ip}" | grep -P "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.([A-Za-z]{2,})$" )
             if [[ -n "${isIP}" ]]; then
                 if ! cert_checkPrivateIp "$ip"; then
                     common_logger -e "The IP ${ip} is public."
                     exit 1
                 fi
+            elif [[ -n "${isDNS}" ]]; then
+                common_logger -e "The DNS ${ip} is not valid."
+                exit 1
             fi
         done
 
@@ -382,25 +386,25 @@ function cert_readConfig() {
         done
 
         unique_names=($(echo "${indexer_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_names[@]}" -ne "${#indexer_node_names[@]}" ]; then 
+        if [ "${#unique_names[@]}" -ne "${#indexer_node_names[@]}" ]; then
             common_logger -e "Duplicated indexer node names."
             exit 1
         fi
 
         unique_ips=($(echo "${indexer_node_ips[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_ips[@]}" -ne "${#indexer_node_ips[@]}" ]; then 
+        if [ "${#unique_ips[@]}" -ne "${#indexer_node_ips[@]}" ]; then
             common_logger -e "Duplicated indexer node ips."
             exit 1
         fi
 
         unique_names=($(echo "${server_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_names[@]}" -ne "${#server_node_names[@]}" ]; then 
+        if [ "${#unique_names[@]}" -ne "${#server_node_names[@]}" ]; then
             common_logger -e "Duplicated Wazuh server node names."
             exit 1
         fi
 
         unique_ips=($(echo "${server_node_ips[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_ips[@]}" -ne "${#server_node_ips[@]}" ]; then 
+        if [ "${#unique_ips[@]}" -ne "${#server_node_ips[@]}" ]; then
             common_logger -e "Duplicated Wazuh server node ips."
             exit 1
         fi
@@ -456,7 +460,21 @@ function cert_readConfig() {
 }
 
 function cert_setpermisions() {
-    eval "chmod -R 744 ${cert_tmp_path} ${debug}"
+    eval "chmod -R 744 ${1} ${debug}"
+}
+
+function cert_setDirectory() {
+
+    if [ -d "${base_path}/wazuh-certificates" ]; then
+        eval "cp -f ${cert_tmp_path}/* ${base_path}/wazuh-certificates ${debug}"
+        eval "rm -R ${cert_tmp_path}"
+        cert_setpermisions "${base_path}/wazuh-certificates"
+        common_logger -d "Wazuh-certificates directory exists. Copied files from '${cert_tmp_path}' to '${base_path}/wazuh-certificates' and removed '${cert_tmp_path}'."
+    else
+        cert_setpermisions "${cert_tmp_path}"
+        eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+        common_logger -d "Moved '${cert_tmp_path}' to '${base_path}/wazuh-certificates'."
+    fi
 }
 
 function cert_convertCRLFtoLF() {
