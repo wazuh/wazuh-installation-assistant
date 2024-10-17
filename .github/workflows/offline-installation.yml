@@ -9,7 +9,7 @@ on:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
-        default: 4.10.1
+        default: 4.10.2
 
 jobs:
   Build-wazuh-install-script:
