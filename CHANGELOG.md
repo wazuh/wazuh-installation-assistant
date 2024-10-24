@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fixed offline pre-release package download process ([#121](https://github.com/wazuh/wazuh-installation-assistant/pull/121))
 - Changed GitHub Runner version to fix Python error ([#110](https://github.com/wazuh/wazuh-installation-assistant/pull/110))
 - Fixed Wazuh API validation ([#29](https://github.com/wazuh/wazuh-installation-assistant/pull/29))
 - Fixed token variable empty in Wazuh manager check ([#45](https://github.com/wazuh/wazuh-installation-assistant/pull/45))
