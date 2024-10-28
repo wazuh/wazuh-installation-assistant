@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fixed bug when trying to download nonexistent filebeat_wazuh_template ([#124](https://github.com/wazuh/wazuh-installation-assistant/pull/124))
 - Fixed offline pre-release package download process ([#121](https://github.com/wazuh/wazuh-installation-assistant/pull/121))
 - Changed GitHub Runner version to fix Python error ([#110](https://github.com/wazuh/wazuh-installation-assistant/pull/110))
 - Fixed Wazuh API validation ([#29](https://github.com/wazuh/wazuh-installation-assistant/pull/29))
