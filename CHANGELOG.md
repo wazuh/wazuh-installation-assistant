@@ -24,6 +24,10 @@ All notable changes to this project will be documented in this file.
 - Fixed manager check in distributed deployment ([#52](https://github.com/wazuh/wazuh-installation-assistant/pull/52))
 - Changed command order execution to get the TOKEN ([#57](https://github.com/wazuh/wazuh-installation-assistant/pull/57))
 
+## [4.9.2]
+
+- https://github.com/wazuh/wazuh-packages/releases/tag/v4.9.2
+
 ## [4.9.1]
 
 - https://github.com/wazuh/wazuh-packages/releases/tag/v4.9.1
