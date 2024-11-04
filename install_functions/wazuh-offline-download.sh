@@ -27,6 +27,19 @@ function offline_download() {
   indexer_revision="1"
   dashboard_revision="1"
 
+  if [ -n "${development}" ]; then
+    filebeat_config_file="https://${bucket}/${wazuh_major}/tpl/wazuh/filebeat/filebeat.yml"
+    if [ "${package_type}" == "rpm" ]; then
+      manager_rpm_base_url="${repobaseurl}/yum"
+      indexer_rpm_base_url="${repobaseurl}/yum"
+      dashboard_rpm_base_url="${repobaseurl}/yum"
+    elif [ "${package_type}" == "deb" ]; then
+      manager_deb_base_url="${repobaseurl}/apt/pool/main/w/wazuh-manager"
+      indexer_deb_base_url="${repobaseurl}/apt/pool/main/w/wazuh-indexer"
+      dashboard_deb_base_url="${repobaseurl}/apt/pool/main/w/wazuh-dashboard"
+    fi
+  fi
+
   if [ "${package_type}" == "rpm" ]; then
     manager_rpm_package="wazuh-manager-${wazuh_version}-${manager_revision}.x86_64.${package_type}"
     indexer_rpm_package="wazuh-indexer-${wazuh_version}-${indexer_revision}.x86_64.${package_type}"
