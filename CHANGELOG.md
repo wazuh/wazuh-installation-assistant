@@ -34,11 +34,17 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fixed bug when trying to download nonexistent filebeat_wazuh_template ([#124](https://github.com/wazuh/wazuh-installation-assistant/pull/124))
+- Fixed offline pre-release package download process ([#121](https://github.com/wazuh/wazuh-installation-assistant/pull/121))
 - Changed GitHub Runner version to fix Python error ([#110](https://github.com/wazuh/wazuh-installation-assistant/pull/110))
 - Fixed Wazuh API validation ([#29](https://github.com/wazuh/wazuh-installation-assistant/pull/29))
 - Fixed token variable empty in Wazuh manager check ([#45](https://github.com/wazuh/wazuh-installation-assistant/pull/45))
 - Fixed manager check in distributed deployment ([#52](https://github.com/wazuh/wazuh-installation-assistant/pull/52))
 - Changed command order execution to get the TOKEN ([#57](https://github.com/wazuh/wazuh-installation-assistant/pull/57))
+
+## [4.9.2]
+
+- https://github.com/wazuh/wazuh-packages/releases/tag/v4.9.2
 
 ## [4.9.1]
 
