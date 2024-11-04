@@ -194,6 +194,48 @@ function checks_arguments() {
 
 }
 
+# Checks if the packages are available to install
+function checks_availablePackages() {
+
+    local packages_to_check=()
+
+    if [ -n "${AIO}" ]; then
+        packages_to_check=("wazuh-indexer" "wazuh-manager" "filebeat" "wazuh-dashboard")
+    elif [ -n "${wazuh}" ]; then
+        packages_to_check=("wazuh-manager" "filebeat")
+    elif [ -n "${indexer}" ]; then
+        packages_to_check=("wazuh-indexer")
+    elif [ -n "${dashboard}" ]; then
+        packages_to_check=("wazuh-dashboard")
+    fi
+    installCommon_addWazuhRepo
+
+    for package in "${packages_to_check[@]}"; do
+        local target_version=""
+
+        if [[ "${package}" == "filebeat" ]]; then
+            target_version="${filebeat_version}"
+        else
+            target_version="${wazuh_version}"
+        fi
+
+        if [ "${sys_type}" == "yum" ]; then
+            eval "yum list available ${package}-${target_version} &> /dev/null"
+        elif [ "${sys_type}" == "apt-get" ]; then
+            eval "apt-cache policy ${package} | grep -q ${target_version} &> /dev/null"
+        fi
+
+        if [ "${PIPESTATUS[0]}" -eq 0 ]; then
+            common_logger -d "Package ${package} (version ${target_version}) is available for installation."
+            common_remove_gpg_key
+        else
+            common_logger -e "Package ${package} (version ${target_version}) is NOT available for installation."
+            installCommon_rollBack
+            exit 1
+        fi
+    done
+}
+
 # Checks if the --retry-connrefused is available in curl
 function check_curlVersion() {
 
@@ -216,8 +258,11 @@ function check_dist() {
     if [ "${DIST_NAME}" == "centos" ] && { [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ]; }; then
         notsupported=1
     fi
-    if [ "${DIST_NAME}" == "rhel" ] && { [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ] && [ "${DIST_VER}" -ne "9" ]; }; then
-        notsupported=1
+    if [ "${DIST_NAME}" == "rhel" ]; then
+        if [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ] && [ "${DIST_VER}" -ne "9" ]; then
+            notsupported=1
+        fi
+        need_centos_repos=1
     fi
 
     if [ "${DIST_NAME}" == "amzn" ]; then
@@ -370,11 +415,11 @@ function checks_previousCertificate() {
 function checks_specialDepsAL2023() {
 
     # Change curl for curl-minimal
-    wia_yum_dependencies=( "${wia_yum_dependencies[@]/curl/curl-minimal}" )
+    assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/curl/curl-minimal}" )
 
     # In containers, coreutils is replaced for coreutils-single
     if [ -f "/.dockerenv" ]; then
-        wia_yum_dependencies=( "${wia_yum_dependencies[@]/coreutils/coreutils-single}" )
+        assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/coreutils/coreutils-single}" )
     fi
 }
 
@@ -386,19 +431,6 @@ function checks_specifications() {
 }
 
 function checks_ports() {
-
-    if [ -z "${offline_install}" ]; then
-        dep="lsof"
-        if [ "${sys_type}" == "yum" ]; then
-            installCommon_yumInstallList "${dep}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            installCommon_aptInstallList "${dep}"
-        fi
-
-        if [ "${#not_installed[@]}" -gt 0 ]; then
-                wia_dependencies_installed+=("${dep}")
-        fi
-    fi
 
     common_logger -d "Checking ports availability."
     used_port=0
@@ -505,10 +537,10 @@ function checks_firewall(){
         eval "rpm -q firewalld --quiet && firewalld_installed=1"
         eval "rpm -q ufw --quiet && ufw_installed=1"
     elif [ "${sys_type}" == "apt-get" ]; then
-        if apt list --installed 2>/dev/null | grep -q -E ^"firewalld"\/; then
+        if dpkg -l "firewalld" 2>/dev/null | grep -q -E '^ii\s'; then
             firewalld_installed=1
         fi
-        if apt list --installed 2>/dev/null | grep -q -E ^"ufw"\/; then
+        if dpkg -l "ufw" 2>/dev/null | grep -q -E '^ii\s'; then
             ufw_installed=1
         fi
     fi

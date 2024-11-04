@@ -1,0 +1,84 @@
+run-name: (Tier) Test installation assistant - Launched by @${{ github.actor }}
+name: (Tier) Test installation assistant
+
+on:
+  workflow_dispatch:
+    inputs:
+      REPOSITORY:
+        description: 'Repository environment'
+        required: true
+        default: 'pre-release'
+        type: choice
+        options:
+          - staging
+          - pre-release
+      AUTOMATION_REFERENCE:
+        description: 'wazuh-automation reference'
+        required: true
+        default: 'v5.0.0'
+      CentOS_7:
+        description: 'CentOS 7'
+        required: true
+        default: false
+        type: boolean
+      CentOS_8:
+        description: 'CentOS 8'
+        required: true
+        default: true
+        type: boolean
+      Amazon_Linux_2:
+        description: 'Amazon Linux 2'
+        required: true
+        default: false
+        type: boolean
+      Ubuntu_16:
+        description: 'Ubuntu 16'
+        required: true
+        default: false
+        type: boolean
+      Ubuntu_18:
+        description: 'Ubuntu 18'
+        required: true
+        default: false
+        type: boolean
+      Ubuntu_20:
+        description: 'Ubuntu 20'
+        required: true
+        default: false
+        type: boolean
+      Ubuntu_22:
+        description: 'Ubuntu 22'
+        required: true
+        default: false
+        type: boolean
+      RHEL_7:
+        description: 'RHEL 7'
+        required: true
+        default: false
+        type: boolean
+      RHEL_8:
+        description: 'RHEL 8'
+        required: true
+        default: false
+        type: boolean
+      DEBUG:
+        description: 'Debug mode'
+        required: true
+        default: false
+        type: boolean
+      DESTROY:
+        description: 'Destroy instances after run'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  LABEL: ubuntu-latest
+
+jobs:
+  launch-tests:
+    runs-on: $LABEL
+
+    steps:
+    - name: Set up Git
+      uses: actions/checkout@v3

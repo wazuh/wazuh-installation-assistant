@@ -40,6 +40,9 @@ function getHelp() {
     echo -e "        -i,  --ignore-check"
     echo -e "                Ignore the check for minimum hardware requirements."
     echo -e ""
+    echo -e "        -id,  --install-dependencies"
+    echo -e "                Installs automatically the necessary dependencies for the installation."
+    echo -e ""
     echo -e "        -o,  --overwrite"
     echo -e "                Overwrites previously installed components. This will erase all the existing configuration and data."
     echo -e ""
@@ -137,6 +140,10 @@ function main() {
                 ;;
             "-i"|"--ignore-check")
                 ignore=1
+                shift 1
+                ;;
+            "-id"|"--install-dependencies")
+                install_dependencies=1
                 shift 1
                 ;;
             "-o"|"--overwrite")
@@ -239,7 +246,7 @@ function main() {
     if [ -n "${showVersion}" ]; then
         common_logger "Wazuh version: ${wazuh_version}"
         common_logger "Filebeat version: ${filebeat_version}"
-        common_logger "Wazuh installation assistant version: ${wazuh_install_vesion}"
+        common_logger "Wazuh installation assistant version: ${wazuh_install_version}"
         exit 0
     fi
 
@@ -271,6 +278,23 @@ function main() {
     fi
 
     checks_arch
+    checks_availablePackages
+
+    if [ -n "${port_specified}" ]; then
+        checks_available_port "${port_number}" "${wazuh_aio_ports[@]}"
+        dashboard_changePort "${port_number}"
+    elif [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
+        dashboard_changePort "${http_port}"
+    fi
+
+    if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
+        installCommon_scanDependencies
+        installCommon_installDependencies "assistant"
+        installCommon_determinePorts
+    elif [ -n "${offline_install}" ]; then
+        offline_checkDependencies
+    fi
+
     if [ -n "${ignore}" ]; then
         common_logger -w "Hardware checks ignored."
     else
@@ -284,34 +308,13 @@ function main() {
         checks_previousCertificate
     fi
 
-    if [ -n "${port_specified}" ]; then
-        checks_available_port "${port_number}" "${wazuh_aio_ports[@]}"
-        dashboard_changePort "${port_number}"
-    elif [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
-        dashboard_changePort "${http_port}"
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${wazuh}" ] || [ -n "${dashboard}" ]; then
+        if [ -n "${AIO}" ]; then
+            rm -f "${tar_file}"
+        fi
+        checks_ports "${used_ports[@]}"
+        installCommon_installDependencies
     fi
-
-    if [ -n "${AIO}" ]; then
-        rm -f "${tar_file}"
-        checks_ports "${wazuh_aio_ports[@]}"
-        installCommon_installPrerequisites "AIO"
-    fi
-
-    if [ -n "${indexer}" ]; then
-        checks_ports "${wazuh_indexer_ports[@]}"
-        installCommon_installPrerequisites "indexer"
-    fi
-
-    if [ -n "${wazuh}" ]; then
-        checks_ports "${wazuh_manager_ports[@]}"
-        installCommon_installPrerequisites "wazuh"
-    fi
-
-    if [ -n "${dashboard}" ]; then
-        checks_ports "${wazuh_dashboard_port}"
-        installCommon_installPrerequisites "dashboard"
-    fi
-
 
 # --------------  Wazuh repo  ----------------------
 
@@ -349,18 +352,19 @@ function main() {
     fi
 
     if [ -n "${configurations}" ]; then
-        installCommon_removeWIADependencies
+        installCommon_removeAssistantDependencies
     fi
 
 # -------------- Wazuh indexer case -------------------------------
 
     if [ -n "${indexer}" ]; then
+        installCommon_checkDiskSpace "wazuh-indexer"
         common_logger "--- Wazuh indexer ---"
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_initialize
-        installCommon_removeWIADependencies
+        installCommon_removeAssistantDependencies
     fi
 
 # -------------- Start Wazuh indexer cluster case  ------------------
@@ -368,25 +372,28 @@ function main() {
     if [ -n "${start_indexer_cluster}" ]; then
         indexer_startCluster
         installCommon_changePasswords
-        installCommon_removeWIADependencies
+        installCommon_removeAssistantDependencies
     fi
 
 # -------------- Wazuh dashboard case  ------------------------------
 
     if [ -n "${dashboard}" ]; then
+        installCommon_checkDiskSpace "wazuh-dashboard"
         common_logger "--- Wazuh dashboard ----"
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
         installCommon_changePasswords
         dashboard_initialize
-        installCommon_removeWIADependencies
+        installCommon_removeAssistantDependencies
 
     fi
 
 # -------------- Wazuh server case  ---------------------------------------
 
     if [ -n "${wazuh}" ]; then
+        installCommon_checkDiskSpace "wazuh-manager"
+        installCommon_checkDiskSpace "filebeat"
         common_logger "--- Wazuh server ---"
         manager_install
         manager_configure
@@ -400,13 +407,13 @@ function main() {
         installCommon_changePasswords
         installCommon_startService "filebeat"
         filebeat_checkService
-        installCommon_removeWIADependencies
+        installCommon_removeAssistantDependencies
     fi
 
 # -------------- AIO case  ------------------------------------------
 
     if [ -n "${AIO}" ]; then
-
+        installCommon_checkDiskSpace "AIO"
         common_logger "--- Wazuh indexer ---"
         indexer_install
         indexer_configure
@@ -427,7 +434,7 @@ function main() {
         installCommon_startService "wazuh-dashboard"
         installCommon_changePasswords
         dashboard_initializeAIO
-        installCommon_removeWIADependencies
+        installCommon_removeAssistantDependencies
 
     fi
 
