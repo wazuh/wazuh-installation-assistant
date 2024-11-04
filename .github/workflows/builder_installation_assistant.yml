@@ -7,7 +7,7 @@ on:
       wazuh_installation_assistant_reference:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
-        default: 4.10.0
+        default: 4.10.1
       is_stage:
         description: "Is stage?"
         type: boolean
@@ -26,7 +26,7 @@ on:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         type: string
         required: true
-        default: 4.10.0
+        default: 4.10.1
       is_stage:
         description: "Is stage?"
         type: boolean
@@ -63,13 +63,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.wazuh_installation_assistant_reference }}
-      
+
       - name: Configure aws credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
           aws-region: us-east-1
-      
+
       - name: Get short sha and wazuh version
         run: |
           COMMIT_SHORT_SHA=$(git rev-parse --short ${{ github.sha }})
@@ -86,7 +86,7 @@ jobs:
 
       - name: Build Installation Assistant packages
         run: bash builder.sh -i -c -p
-      
+
       - name: Save files name
         run: |
           WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh | xargs basename)
@@ -102,14 +102,14 @@ jobs:
           mv ${{ env.WAZUH_INSTALL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
           mv ${{ env.WAZUH_CERT_TOOL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
           mv ${{ env.WAZUH_PASSWORD_TOOL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
-      
+
       - name: Build packages checksum
         if: ${{ inputs.checksum == true }}
         run: |
           sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }}.sha512
           sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }}.sha512
           sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sha512
-      
+
       - name: Upload files to S3
         run: |
           aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_VERSION }}/
