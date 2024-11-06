@@ -4,6 +4,7 @@ name: (Distributed) Test installation assistant
 on:
   pull_request:
     paths:
+      - '.github/workflows/**'
       - 'cert_tool/**'
       - 'common_functions/**'
       - 'config/**'
