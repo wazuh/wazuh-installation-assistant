@@ -51,7 +51,7 @@ on:
         type: boolean
 
 env:
-  WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.ref_name || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+  WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
   COMPOSITE_NAME: "linux-SUBNAME-amd64"
   SESSION_NAME: "Installation-Assistant-Test"
   REGION: "us-east-1"
