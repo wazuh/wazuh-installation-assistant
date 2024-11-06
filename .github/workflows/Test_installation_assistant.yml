@@ -50,6 +50,7 @@ on:
         type: boolean
 
 env:
+  WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.ref_name || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
   COMPOSITE_NAME: "linux-SUBNAME-amd64"
   SESSION_NAME: "Installation-Assistant-Test"
   REGION: "us-east-1"
@@ -70,13 +71,13 @@ jobs:
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
-        system: ${{ fromJson(inputs.SYSTEMS) }}
+        system: ${{ github.event_name == 'pull_request' && 'Ubuntu_22' || fromJson(inputs.SYSTEMS) }} # If the worklflow is executed by a PR, set the OSs
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+        ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
     - name: View parameters
       run: echo "${{ toJson(inputs) }}"
@@ -164,7 +165,7 @@ jobs:
         -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "repository=$REPOSITORY_URL" \
-        -e "reference=${{ github.ref_name }}" \
+        -e "reference=${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}" \
         -e "tmp_path=$TMP_PATH" \
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
