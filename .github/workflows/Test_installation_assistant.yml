@@ -198,12 +198,12 @@ jobs:
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files
-      if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == false && github.event_name != 'pull_request')
+      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == false && github.event_name != 'pull_request'
       run: |
         zip -P "${{ secrets.ZIP_ARTIFACTS_PASSWORD }}" -r $ALLOCATOR_PATH.zip $ALLOCATOR_PATH
 
     - name: Upload Allocator VM directory as artifact
-      if: always() && steps.compress_allocator_files.outcome == 'success' && (inputs.DESTROY == false && github.event_name != 'pull_request')
+      if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false && github.event_name != 'pull_request'
       uses: actions/upload-artifact@v4
       with:
         name: allocator-instance-${{ matrix.system }}
