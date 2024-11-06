@@ -72,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
-        system: ${{ github.event_name == 'pull_request' && 'Ubuntu_22' || fromJson(inputs.SYSTEMS) }} # If the worklflow is executed by a PR, set the OSs
+        system: ${{ github.event_name == 'pull_request' && fromJson('["Ubuntu_22"]') || fromJson(inputs.SYSTEMS) }} # If the worklflow is executed by a PR, set the OSs
 
     steps:
     - name: Checkout code
