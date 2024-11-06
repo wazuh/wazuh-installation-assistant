@@ -219,7 +219,7 @@ jobs:
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "repository=$REPOSITORY_URL" \
-        -e "reference=${{ github.ref_name }}" \
+        -e "reference=${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}" \
         -e "tmp_path=$TMP_PATH" \
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
