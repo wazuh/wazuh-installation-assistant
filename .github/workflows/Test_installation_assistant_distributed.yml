@@ -50,13 +50,16 @@ on:
         type: boolean
 
 env:
+  WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+  AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && '4.10.2' || inputs.AUTOMATION_REFERENCE }}
+  VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
   COMPOSITE_NAME: "linux-SUBNAME-amd64"
   SESSION_NAME: "Installation-Assistant-Test"
   REGION: "us-east-1"
   TMP_PATH: "/tmp/test"
   ANSIBLE_CALLBACK: "yaml"
   RESOURCES_PATH: "${{ github.workspace }}"
-  PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
+  PKG_REPOSITORY: ${{ github.event_name == 'pull_request' && 'pre-release' || inputs.REPOSITORY }}
   TEST_NAME: "test_installation_assistant"
   REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
   ALLOCATOR_PATH: "/tmp/allocator_instance"
@@ -72,13 +75,13 @@ jobs:
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
-        system: ${{ github.event_name == 'pull_request' && '["Ubuntu_22"]' || fromJson(inputs.SYSTEMS) }} # If the worklflow is executed by a PR, set the OSs
+        system: ${{ github.event_name == 'pull_request' && fromJson('["Ubuntu_22"]') || fromJson(inputs.SYSTEMS) }} # If the worklflow is executed by a PR, set the OSs
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+        ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
     - name: View parameters
       run: echo "${{ toJson(inputs) }}"
@@ -135,7 +138,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: wazuh/wazuh-automation
-        ref: ${{ inputs.AUTOMATION_REFERENCE }}
+        ref: ${{ env.AUTOMATION_REFERENCE }}
         token: ${{ secrets.GH_CLONE_TOKEN }}
         path: wazuh-automation
 
@@ -218,19 +221,19 @@ jobs:
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "repository=$REPOSITORY_URL" \
-        -e "reference=${{ github.ref_name }}" \
+        -e "reference=$WAZUH_INSTALLATION_ASSISTANT_REFERENCE" \
         -e "tmp_path=$TMP_PATH" \
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute certificates generation playbook
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_generate_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -e "resources_path=$RESOURCES_PATH" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Copy certificates to nodes
       run: |
@@ -239,7 +242,7 @@ jobs:
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
         -e "resources_path=$RESOURCES_PATH" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute indexer installation playbook
       run: |
@@ -248,7 +251,7 @@ jobs:
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute indexer cluster start playbook
       run: |
@@ -258,7 +261,7 @@ jobs:
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute server installation playbook
       run: |
@@ -267,7 +270,7 @@ jobs:
         -l managers \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute dashboard installation playbook
       run: |
@@ -276,7 +279,7 @@ jobs:
         -l dashboards \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute Python test playbook
       run: |
@@ -285,23 +288,23 @@ jobs:
         -l managers \
         -e "tmp_path=$TMP_PATH" \
         -e "test_name=$TEST_NAME" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files
-      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == false
+      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == false && github.event_name != 'pull_request'
       run: |
         zip -P "${{ secrets.ZIP_ARTIFACTS_PASSWORD }}" -r $ALLOCATOR_PATH.zip $ALLOCATOR_PATH
 
     - name: Upload Allocator VM directory as artifact
-      if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false
+      if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false && github.event_name != 'pull_request'
       uses: actions/upload-artifact@v4
       with:
         name: allocator-instance-${{ matrix.system }}
         path: ${{ env.ALLOCATOR_PATH }}.zip
 
     - name: Delete allocated VMs
-      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == true
+      if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == true || github.event_name == 'pull_request')
       run: |
         instance_names=($INSTANCE_NAMES)
 
@@ -320,4 +323,3 @@ jobs:
 
         # Wait for all deletion tasks to complete
         wait
-
