@@ -23,7 +23,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Print getHelp output when no parameter is passed to the builder script. ([#142](https://github.com/wazuh/wazuh-installation-assistant/pull/142))
 
 ### Deleted
 
