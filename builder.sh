@@ -198,6 +198,10 @@ function builder_main() {
 
     umask 066
 
+    if [ $# -eq 0 ]; then
+        getHelp
+    fi
+
     while [ -n "${1}" ]
     do
         case "${1}" in
