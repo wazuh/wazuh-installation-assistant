@@ -126,14 +126,15 @@ function cert_generateCertificateconfiguration() {
     if [ "${#@}" -gt 1 ]; then
         sed -i '/IP.1/d' "${cert_tmp_path}/${1}.conf"
         for (( i=2; i<=${#@}; i++ )); do
-            isIP=$(echo "${!i}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
-            isDNS=$(echo "${!i}" | grep -P "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.([A-Za-z]{2,})$" )            j=$((i-1))
+            clean_ip=$(echo "${!i}" | sed -E "s/^[\"'<]+//;s/[\"'>]+$//")
+            isIP=$(echo "${clean_ip}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
+            isDNS=$(echo "${clean_ip}}" | grep -P "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.([A-Za-z]{2,})$" )            j=$((i-1))
             if [ "${isIP}" ]; then
-                printf '%s\n' "        IP.${j} = ${!i}" >> "${cert_tmp_path}/${1}.conf"
+                printf '%s\n' "        IP.${j} = ${clean_ip}" >> "${cert_tmp_path}/${1}.conf"
             elif [ "${isDNS}" ]; then
-                printf '%s\n' "        DNS.${j} = ${!i}" >> "${cert_tmp_path}/${1}.conf"
+                printf '%s\n' "        DNS.${j} = ${clean_ip}" >> "${cert_tmp_path}/${1}.conf"
             else
-                common_logger -e "Invalid IP or DNS ${!i}"
+                common_logger -e "Invalid IP or DNS ${clean_ip}"
                 exit 1
             fi
         done
@@ -367,15 +368,16 @@ function cert_readConfig() {
         all_ips=("${indexer_node_ips[@]}" "${server_node_ips[@]}" "${dashboard_node_ips[@]}")
 
         for ip in "${all_ips[@]}"; do
-            isIP=$(echo "${ip}" | grep -P "^[\"'<]*[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}[\"'>]*$")
-            isDNS=$(echo "${ip}" | grep -P "^[\"'<]*(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.([A-Za-z]{2,})[\"'>]*$" )
+            clean_ip=$(echo "${ip}" | sed -E "s/^[\"'<]+//;s/[\"'>]+$//")
+            isIP=$(echo "${clean_ip}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
+            isDNS=$(echo "${clean_ip}" | grep -P "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.([A-Za-z]{2,})$" )
             if [[ -n "${isIP}" ]]; then
-                if ! cert_checkPrivateIp "$ip"; then
-                    common_logger -e "The IP ${ip} is public."
+                if ! cert_checkPrivateIp "$clean_ip"; then
+                    common_logger -e "The IP ${clean_ip} is public."
                     exit 1
                 fi
             elif [[ -n "${isDNS}" ]]; then
-                common_logger -e "The DNS ${ip} is not valid."
+                common_logger -e "The DNS ${clean_ip} is not valid."
                 exit 1
             fi
         done
