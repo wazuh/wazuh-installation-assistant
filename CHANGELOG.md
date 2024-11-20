@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [4.10.0]
 
+### Added
+
+- Migrated documentation templates to wazuh-installation-assistant repository. ([#144](https://github.com/wazuh/wazuh-installation-assistant/pull/144))
+
 ### Changed
 
 - Removed check functions for Wazuh manager and Filebeat. ([#138](https://github.com/wazuh/wazuh-installation-assistant/pull/138))
