@@ -743,7 +743,6 @@ function installCommon_scanDependencies() {
     # Delete duplicates and sort
     all_deps+=( "${assistant_deps[@]}" )
     all_deps=( $(echo "${all_deps[@]}" | tr ' ' '\n' | sort -u) )
-    assistant_deps_to_install=()
     deps_to_install=()
 
     # Get not installed dependencies of Assistant and Wazuh
