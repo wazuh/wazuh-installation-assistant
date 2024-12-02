@@ -71,9 +71,5 @@ readonly indexer_yum_dependencies=( coreutils )
 readonly indexer_apt_dependencies=( debconf adduser procps gnupg apt-transport-https )
 readonly dashboard_yum_dependencies=( libcap )
 readonly dashboard_apt_dependencies=( debhelper tar curl libcap2-bin gnupg apt-transport-https )
-<<<<<<< HEAD
 readonly wia_offline_dependencies=( curl tar gnupg openssl lsof )
-wia_dependencies_installed=()
-=======
 assistant_deps_to_install=()
->>>>>>> b2f4e7a0928581ea3ce69f46a7a101bcba2fc708
