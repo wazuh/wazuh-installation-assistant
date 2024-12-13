@@ -27,7 +27,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Add venv to installation assistant workflows ([#134](https://github.com/wazuh/wazuh-installation-assistant/pull/134))
 
 ### Fixed
 
@@ -40,8 +40,13 @@ All notable changes to this project will be documented in this file.
 
 ## [4.10.0]
 
+### Added
+
+- Migrated documentation templates to wazuh-installation-assistant repository. ([#144](https://github.com/wazuh/wazuh-installation-assistant/pull/144))
+
 ### Changed
 
+- Removed check functions for Wazuh manager and Filebeat. ([#138](https://github.com/wazuh/wazuh-installation-assistant/pull/138))
 - Add checksum input and update the upload files to S3 steps ([#106](https://github.com/wazuh/wazuh-installation-assistant/pull/106))
 - Deleted the offline_checkDependencies function and unified logic in offline_checkPrerequisites function. ([#99](https://github.com/wazuh/wazuh-installation-assistant/pull/99))
 - Add input for wazuh installation assistant reference in workflows. ([#98](https://github.com/wazuh/wazuh-installation-assistant/pull/98))

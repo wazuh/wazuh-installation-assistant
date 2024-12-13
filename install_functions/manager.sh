@@ -42,50 +42,6 @@ function manager_startCluster() {
 
 }
 
-function manager_checkService() {
-    common_logger "Checking Wazuh API connection"
-    
-    max_attempts=15
-    attempt=0
-    seconds=5
-    api_password="wazuh-wui"
-    token_command="curl -k -s -X POST -u \"wazuh-wui:${api_password}\" https://127.0.0.1:55000/security/user/authenticate/run_as?raw=true -d '{\"user_name\":\"wzread\"}' -H \"content-type:application/json\""
-    TOKEN=$(eval "${token_command}")
-
-    # Wait for the API to be ready 
-    while [[ -z "${TOKEN}" && "${attempt}" -lt "${max_attempts}" ]]; do
-        attempt=$((attempt+1))
-        common_logger "Attempt $attempt: Checking the Wazuh API to be ready"
-        sleep "${seconds}"
-        TOKEN=$(eval "${token_command}")
-    done
-    common_logger "Wazuh API is ready to receive requests."
-
-    # Change curl credentials in case the master node has changed the passwords 
-    if [[ "${TOKEN}" =~ "Invalid credentials" && "${server_node_types[pos]}" == "worker" ]]; then
-        api_password=$(tar -axf "${tar_file}" wazuh-install-files/wazuh-passwords.txt -O | grep -P "'wazuh-wui'" -A 1 | awk 'NR==2 { print $2 }' | sed "s/'//g")
-        token_command="curl -k -s -X POST -u \"wazuh-wui:${api_password}\" https://127.0.0.1:55000/security/user/authenticate/run_as?raw=true -d '{\"user_name\":\"wzread\"}' -H \"content-type:application/json\""
-        TOKEN=$(eval "${token_command}")
-    fi
-
-    if [[ -z "${TOKEN}" ]]; then
-        common_logger -e "Failed to obtain Wazuh API token after $max_attempts attempts."
-        installCommon_rollBack
-        exit 1
-    fi
-
-    wm_error=$(curl -k -s -X GET "https://127.0.0.1:55000/agents/outdated?pretty=true" -H "Authorization: Bearer ${TOKEN}")
-
-    if  [[ ${wm_error,,} =~ '"error": 0' ]]; then
-        common_logger "Wazuh API connection successful"
-    else
-        common_logger -e "Wazuh API connection Error. $wm_error"
-        eval "/var/ossec/bin/wazuh-control status ${debug}"
-        installCommon_rollBack
-        exit 1
-    fi
-}
-
 function manager_configure(){
 
     common_logger -d "Configuring Wazuh manager."
@@ -107,7 +63,7 @@ function manager_configure(){
     eval "sed -i s/filebeat-key.pem/${server_node_names[0]}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
     eval "/var/ossec/bin/wazuh-keystore -f indexer -k username -v admin"
-    eval "/var/ossec/bin/wazuh-keystore -f indexer -k password -v admin"  
+    eval "/var/ossec/bin/wazuh-keystore -f indexer -k password -v admin"
     common_logger "Wazuh manager vulnerability detection configuration finished."
 }
 
