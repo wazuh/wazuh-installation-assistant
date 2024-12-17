@@ -6,7 +6,7 @@ ABSOLUTE_PATH="$( cd $(dirname ${0}) ; pwd -P )"
 
 check_system
 install_dependencies
-download_resources
+download_resources $1
 
 indexer_installation
 echo "INFO: Wazuh indexer installation completed."

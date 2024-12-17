@@ -10,6 +10,17 @@ on:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
         default: 4.10.2
+      REPOSITORY:
+        description: "Repository to use for the installation."
+        type: choice
+        options:
+          - "pre-release"
+          - "stable"
+        required: true
+        default: "pre-release"
+
+env:
+  REPOSITORY: ${{ github.event_name == 'pull_request' && 'pre-release' || inputs.REPOSITORY }}
 
 jobs:
   Build-wazuh-install-script:
@@ -51,7 +62,7 @@ jobs:
         run: cp $GITHUB_WORKSPACE/wazuh-install.sh $GITHUB_WORKSPACE/.github/actions/offline-installation/wazuh-install.sh
 
       - name: Run script
-        run: sudo bash $GITHUB_WORKSPACE/.github/actions/offline-installation/offline-installation.sh
+        run: sudo bash $GITHUB_WORKSPACE/.github/actions/offline-installation/offline-installation.sh ${{ env.REPOSITORY}}
 
   Test-offline-installation-rpm:
     runs-on: ubuntu-latest

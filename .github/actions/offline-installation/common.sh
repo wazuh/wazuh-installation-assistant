@@ -98,7 +98,7 @@ function dashboard_installation() {
 function download_resources() {
 
     check_file "${ABSOLUTE_PATH}"/wazuh-install.sh
-    bash "${ABSOLUTE_PATH}"/wazuh-install.sh -dw "${sys_type}"
+    bash "${ABSOLUTE_PATH}"/wazuh-install.sh -dw "${sys_type}" -d "${1}"
     echo "INFO: Downloading the resources..."
 
     curl -sO https://packages.wazuh.com/4.10/config.yml
