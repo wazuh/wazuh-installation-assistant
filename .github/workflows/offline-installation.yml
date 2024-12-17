@@ -15,7 +15,7 @@ on:
         type: choice
         options:
           - "pre-release"
-          - "stable"
+          - "staging"
         required: true
         default: "pre-release"
 

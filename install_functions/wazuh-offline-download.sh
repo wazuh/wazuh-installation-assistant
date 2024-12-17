@@ -7,7 +7,7 @@
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
- 
+
 function offline_download() {
 
   common_logger "Starting Wazuh packages download."
