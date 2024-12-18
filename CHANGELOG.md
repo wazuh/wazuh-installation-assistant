@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Add repository choise in offline-installation workflow ([#166](https://github.com/wazuh/wazuh-installation-assistant/pull/166))
 
 ### Deleted
 
