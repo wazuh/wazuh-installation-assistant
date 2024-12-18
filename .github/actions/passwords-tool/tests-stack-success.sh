@@ -1,6 +1,6 @@
 #!/bin/bash
 
-users=( admin kibanaserver kibanaro logstash readall snapshotrestore )
+users=( admin anomalyadmin kibanaserver kibanaro logstash readall snapshotrestore )
 api_users=( wazuh wazuh-wui )
 
 echo '::group:: Change indexer password, password providing it.'
@@ -35,8 +35,9 @@ echo '::group:: Change all passwords.'
 
 wazuh_pass="$(cat wazuh-install-files/wazuh-passwords.txt | awk "/username: 'wazuh'/{getline;print;}" | awk '{ print $2 }' | tr -d \' )"
 
-mapfile -t passall < <(bash wazuh-passwords-tool.sh -a -au wazuh -ap "${wazuh_pass}" | grep 'The password for' | awk '{ print $NF }' ) 
-passindexer=("${passall[@]:0:6}")
+mapfile -t passall < <(bash wazuh-passwords-tool.sh -a -A -au wazuh -ap "${wazuh_pass}" | grep 'The password for' | awk '{ print $NF }' )
+
+passindexer=("${passall[@]:0:7}")
 passapi=("${passall[@]:(-2)}")
 
 for i in "${!users[@]}"; do
@@ -55,7 +56,7 @@ echo '::endgroup::'
 
 echo '::group:: Change single Wazuh API user.'
 
-bash wazuh-passwords-tool.sh -au wazuh -ap "${passapi[0]}" -u wazuh -p BkJt92r*ndzN.CkCYWn?d7i5Z7EaUt63 -A 
+bash wazuh-passwords-tool.sh -A -au wazuh -ap "${passapi[0]}" -u wazuh -p BkJt92r*ndzN.CkCYWn?d7i5Z7EaUt63
     if curl -s -w "%{http_code}" -u wazuh:BkJt92r*ndzN.CkCYWn?d7i5Z7EaUt63 -k -X POST "https://127.0.0.1:55000/security/user/authenticate" | grep "401"; then
         exit 1
     fi
@@ -72,8 +73,8 @@ done
 echo '::endgroup::'
 
 echo '::group:: Change all passwords from a file.'
-mapfile -t passallf < <(bash wazuh-passwords-tool.sh -f wazuh-install-files/wazuh-passwords.txt -au wazuh -ap BkJt92r*ndzN.CkCYWn?d7i5Z7EaUt63 | grep 'The password for' | awk '{ print $NF }' )
-passindexerf=("${passallf[@]:0:6}")
+mapfile -t passallf < <(bash wazuh-passwords-tool.sh -f wazuh-install-files/wazuh-passwords.txt -A -au wazuh -ap BkJt92r*ndzN.CkCYWn?d7i5Z7EaUt63 | grep 'The password for' | awk '{ print $NF }' )
+passindexerf=("${passallf[@]:0:7}")
 passapif=("${passallf[@]:(-2)}")
 
 for i in "${!users[@]}"; do
