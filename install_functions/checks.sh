@@ -11,8 +11,10 @@ function checks_arch() {
     common_logger -d "Checking system architecture."
     arch=$(uname -m)
 
-    if [ "${arch}" != "x86_64" ]; then
-        common_logger -e "Uncompatible system. This script must be run on a 64-bit (x86_64/AMD64) system."
+    if [ "${arch}" == "x86_64" ] || [ "${arch}" == "aarch64" ]; then
+        common_logger -d "System architecture: ${arch}"
+    else
+        common_logger -e "Uncompatible system. This script must be run on a 64-bit (x86_64/AMD64/aarch64/ARM64) system."
         exit 1
     fi
 }
@@ -462,7 +464,7 @@ function checks_filebeatURL() {
 
     # URL using master branch
     new_filebeat_url="${filebeat_wazuh_template/${source_branch}/master}"
-    
+
     response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
     if [ "${response}" != "200" ]; then
         response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)

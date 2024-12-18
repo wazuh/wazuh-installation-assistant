@@ -25,6 +25,9 @@ function getHelp() {
     echo -e "        -d [pre-release|staging],  --development"
     echo -e "                Use development repositories. By default it uses the pre-release package repository. If staging is specified, it will use that repository."
     echo -e ""
+    echo -e "        -da,  --download-arch <amd64|arm64|x86_64|aarch64>"
+    echo -e "                Define the architecture of the packages to download for offline installation. By default, it uses the architecture amd64 or x86_64."
+    echo -e ""
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
     echo -e ""
@@ -214,6 +217,15 @@ function main() {
                 winame="${2}"
                 shift 2
                 ;;
+            "-da"|"--download-arch")
+                if [ "${2}" != "amd64" ] && [ "${2}" != "x86_64" ] && [ "${2}" != "arm64" ] && [ "${2}" != "aarch64" ]; then
+                    common_logger -e "Error on arguments. Probably missing <amd64|x86_64|arm64|aarch64> after -da|--download-arch"
+                    getHelp
+                    exit 1
+                fi
+                arch="${2}"
+                shift 2
+                ;;
             "-dw"|"--download-wazuh")
                 if [ "${2}" != "deb" ] && [ "${2}" != "rpm" ]; then
                     common_logger -e "Error on arguments. Probably missing <deb|rpm> after -dw|--download-wazuh"
@@ -243,7 +255,7 @@ function main() {
         exit 0
     fi
 
-    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version} (x86_64/AMD64)"
+    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version}"
     common_logger "Verbose logging redirected to ${logfile}"
 
 # -------------- Uninstall case  ------------------------------------
@@ -252,6 +264,7 @@ function main() {
 
     if [ -z "${download}" ]; then
         check_dist
+        checks_arch
     fi
 
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
@@ -270,7 +283,6 @@ function main() {
         exit 0
     fi
 
-    checks_arch
     if [ -n "${ignore}" ]; then
         common_logger -w "Hardware checks ignored."
     else
