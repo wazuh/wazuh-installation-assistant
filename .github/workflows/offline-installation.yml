@@ -29,7 +29,7 @@ jobs:
       - name: Build wazuh-install script and use staging packages
         run: bash builder.sh -i
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: script
           path: ./wazuh-install.sh
@@ -43,7 +43,7 @@ jobs:
         with:
           ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: script
 
@@ -61,7 +61,7 @@ jobs:
         with:
           ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: script
 
