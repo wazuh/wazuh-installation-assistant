@@ -71,7 +71,7 @@ permissions:
 
 jobs:
   run-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
