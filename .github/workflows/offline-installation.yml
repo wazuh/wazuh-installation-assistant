@@ -20,6 +20,7 @@ on:
         default: "pre-release"
 
 env:
+  WAZUH_VERSION: 4.10
   REPOSITORY: ${{ github.event_name == 'pull_request' && 'pre-release' || inputs.REPOSITORY }}
 
 jobs:
@@ -62,7 +63,7 @@ jobs:
         run: cp $GITHUB_WORKSPACE/wazuh-install.sh $GITHUB_WORKSPACE/.github/actions/offline-installation/wazuh-install.sh
 
       - name: Run script
-        run: sudo bash $GITHUB_WORKSPACE/.github/actions/offline-installation/offline-installation.sh ${{ env.REPOSITORY}}
+        run: sudo bash $GITHUB_WORKSPACE/.github/actions/offline-installation/offline-installation.sh ${{ env.REPOSITORY}} ${{ env.WAZUH_VERSION }}
 
   Test-offline-installation-rpm:
     runs-on: ubuntu-latest
