@@ -1,6 +1,24 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [4.10.3]
+
+### Added
+
+- None
+
+### Changed
+
+- Changed runners in workflows to ubuntu 22.04 ([#173](https://github.com/wazuh/wazuh-installation-assistant/pull/173))
+
+### Fixed
+
+- None
+
+### Deleted
+
+- None
+
 ## [4.10.2]
 
 ### Added
