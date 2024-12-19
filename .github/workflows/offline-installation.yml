@@ -20,7 +20,7 @@ on:
         default: "pre-release"
 
 env:
-  WAZUH_VERSION: 4.10
+  WAZUH_VERSION: "4.10"
   REPOSITORY: ${{ github.event_name == 'pull_request' && 'pre-release' || inputs.REPOSITORY }}
 
 jobs:
