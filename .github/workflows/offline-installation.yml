@@ -1,4 +1,5 @@
 name: Offline installation test
+
 on:
   pull_request:
     paths:
@@ -9,7 +10,7 @@ on:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
-        default: 4.10.2
+        default: '4.10.2'
       AUTOMATION_REFERENCE:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
@@ -37,6 +38,11 @@ on:
           - -vv
           - -vvv
           - -vvvv
+      DESTROY:
+        description: 'Destroy instances after run'
+        required: true
+        default: true
+        type: boolean
 
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
