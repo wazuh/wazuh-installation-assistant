@@ -6,6 +6,38 @@ on:
       - 'install_functions/wazuh-offline-download.sh'
       - 'install_functions/wazuh-offline-installation.sh'
   workflow_dispatch:
+    inputs:
+      WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
+        description: "Branch or tag of the wazuh-installation-assistant repository."
+        required: true
+        default: 4.10.2
+      AUTOMATION_REFERENCE:
+        description: 'Branch or tag of the wazuh-automation repository'
+        required: true
+        default: '4.10.2'
+      PKG_REPOSITORY:
+        description: 'Repository environment'
+        required: true
+        default: 'pre-release'
+        type: choice
+        options:
+          - staging
+          - pre-release
+      SYSTEMS:
+        description: "Operating Systems (list of comma-separated quoted strings enclosed in square brackets)."
+        required: true
+        default: '["Ubuntu_22", "CentOS_8"]'
+        type: string
+      VERBOSITY:
+        description: 'Verbosity level on playbooks execution'
+        required: true
+        default: '-v'
+        type: choice
+        options:
+          - -v
+          - -vv
+          - -vvv
+          - -vvvv
 
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
@@ -88,29 +120,32 @@ jobs:
 
     - name: Install Ansible
       run: pip install ansible-core==2.16
-
-    - name: Set up AWS credentials
+    
+    - &setup_aws_credentials
+      name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
         aws-region: ${{ env.REGION }}
-
-    - name: Checkout wazuh/wazuh-automation repository
+    
+    - &checkout_wazuh_automation
+      name: Checkout wazuh/wazuh-automation repository
       uses: actions/checkout@v4
       with:
         repository: wazuh/wazuh-automation
         ref: ${{ env.AUTOMATION_REFERENCE }}
         token: ${{ secrets.GH_CLONE_TOKEN }}
         path: wazuh-automation
-
-    - name: Install and set allocator requirements
+    
+    - &install_and_set_allocator_requirements
+      name: Install and set allocator requirements
       run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
 
     - name: Allocate test instance and set SSH variables
       id: allocator_instance
       run: |
         python3 wazuh-automation/deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name ${{ env.COMPOSITE_NAME }} --working-dir $ALLOCATOR_PATH \
-          --track-output $ALLOCATOR_PATH/track.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
+          --track-output $ALLOCATOR_PATH/track-${{ matrix.system }}.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
           --label-team devops --label-termination-date 1d --aws-account ${{ env.AWS_ACCOUNT }}
 
         sed 's/: */=/g' $ALLOCATOR_PATH/inventory.yml > $ALLOCATOR_PATH/inventory_mod.yml
@@ -125,6 +160,13 @@ jobs:
       with:
         name: inventory-${{ matrix.system }}
         path: $ALLOCATOR_PATH/inventory-${{ matrix.system }}
+        if-no-files-found: error
+
+    - name: Upload instance track
+      uses: actions/upload-artifact@v4
+      with:
+        name: track-${{ matrix.system }}
+        path: $ALLOCATOR_PATH/track-${{ matrix.system }}.yml
         if-no-files-found: error
 
   Test-offline-installation:
@@ -153,7 +195,7 @@ jobs:
         INSTALL_PIP_DEPS=true
 
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/provision.yml \
-        -i $ALLOCATOR_PATH/inventory \
+        -i inventory-${{ matrix.system }} \
         -l all \
         -e "repository=$REPOSITORY_URL" \
         -e "reference=$WAZUH_INSTALLATION_ASSISTANT_REFERENCE" \
@@ -166,9 +208,35 @@ jobs:
     - name: Execute offline installation playbook
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/offline_installation.yml \
-        -i $ALLOCATOR_PATH/inventory-${{ matrix.system }} \
+        -i inventory-${{ matrix.system }} \
         -l all \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         -e "wazuh_version=$WAZUH_VERSION" \
         "$VERBOSITY"
+  
+  Release-instances:
+    runs-on: ubuntu-latest
+    needs: 
+      - Create-allocator-instances
+      - Test-offline-installation 
+    if: ${{ needs.Create-allocator-instances.result == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        system: ${{ github.event_name == 'pull_request' && fromJson('["Ubuntu_22", "CentOS_8"]') || fromJson(inputs.SYSTEMS) }}
+
+    steps:
+    - name: Get instance track
+      uses: actions/download-artifact@v4
+      with:
+        name: track-${{ matrix.system }}.yml
+    
+    - *install_python_and_venv
+
+    - *checkout_wazuh_automation
+
+    - *install_and_set_allocator_requirements
+
+    - name: Release test instance
+      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output track-${{ matrix.system }}.yml --aws-profile ${{ env.AWS_ACCOUNT }}
