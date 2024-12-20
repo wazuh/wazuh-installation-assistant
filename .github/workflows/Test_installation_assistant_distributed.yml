@@ -23,11 +23,11 @@ on:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: 'Branch or tag of the wazuh-installation-assistant repository'
         required: true
-        default: '4.10.3'
+        default: '4.12.0'
       AUTOMATION_REFERENCE:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
-        default: '4.10.3'
+        default: '4.12.0'
       SYSTEMS:
         description: 'Operating Systems (list of comma-separated quoted strings enclosed in square brackets)'
         required: true
@@ -51,7 +51,7 @@ on:
 
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
-  AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && '4.10.3' || inputs.AUTOMATION_REFERENCE }}
+  AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && '4.12.0' || inputs.AUTOMATION_REFERENCE }}
   VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
   COMPOSITE_NAME: "linux-SUBNAME-amd64"
   SESSION_NAME: "Installation-Assistant-Test"

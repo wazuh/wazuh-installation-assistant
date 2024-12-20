@@ -8,15 +8,20 @@
 [![YouTube](https://img.shields.io/youtube/views/peTSzcAueEc?style=social)](https://www.youtube.com/watch?v=peTSzcAueEc)
 
 ## Table of Contents
-1. [Overview](#overview)
-2. [Tools](#tools)
-3. [User Guide](#user-guide)
-4. [Use Cases](#use-cases)
-5. [Options Table](#options-table)
-6. [Contribute](#contribute)
-7. [Development Guide](#development-guide)
-7. [More Information](#more-information)
-9. [Authors](#authors)
+- [Wazuh installation assistant](#wazuh-installation-assistant)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Tools](#tools)
+  - [User Guide](#user-guide)
+    - [Downloads](#downloads)
+    - [Build the scripts](#build-the-scripts)
+  - [Use Cases](#use-cases)
+    - [Common commands](#common-commands)
+  - [Options Table](#options-table)
+  - [Contribute](#contribute)
+  - [Development Guide](#development-guide)
+  - [More Information](#more-information)
+  - [Authors](#authors)
 
 ## Overview
 
@@ -40,9 +45,9 @@ The Wazuh installation assistant uses the following tools to enhance security du
 ## User Guide
 
 ### Downloads
-- [Download the Wazuh installation assistant.](https://packages.wazuh.com/4.10/wazuh-install.sh)
-- [Download the Wazuh password tool.](https://packages.wazuh.com/4.10/wazuh-passwords-tool.sh)
-- [Download the Wazuh cert tool.](https://packages.wazuh.com/4.10/wazuh-certs-tool.sh)
+- [Download the Wazuh installation assistant.](https://packages.wazuh.com/4.12/wazuh-install.sh)
+- [Download the Wazuh password tool.](https://packages.wazuh.com/4.12/wazuh-passwords-tool.sh)
+- [Download the Wazuh cert tool.](https://packages.wazuh.com/4.12/wazuh-certs-tool.sh)
 
 ### Build the scripts
 As an alternative to downloading, use the `builder.sh` script to build the Wazuh installation assistant and tools:
@@ -65,14 +70,14 @@ As an alternative to downloading, use the `builder.sh` script to build the Wazuh
 
 ## Use Cases
 
-Start by downloading the [configuration file](https://packages.wazuh.com/4.10/config.yml) and replace the node names and IP values with the corresponding ones.
+Start by downloading the [configuration file](https://packages.wazuh.com/4.12/config.yml) and replace the node names and IP values with the corresponding ones.
 
 > [!NOTE]
 > It is not necessary to download the Wazuh password tool and the Wazuh cert tool to use the Wazuh installation assistant. The Wazuh installation assistant has embedded the previous tools.
 
 ### Common commands
 
-1. Generate the passwords and certificates. Needs the [configuration file](https://packages.wazuh.com/4.10/config.yml).
+1. Generate the passwords and certificates. Needs the [configuration file](https://packages.wazuh.com/4.12/config.yml).
    ```bash
    bash wazuh-install.sh -g
    ```
