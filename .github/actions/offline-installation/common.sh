@@ -101,14 +101,14 @@ function download_resources() {
     bash "${ABSOLUTE_PATH}"/wazuh-install.sh -dw "${sys_type}"
     echo "INFO: Downloading the resources..."
 
-    curl -sO https://packages.wazuh.com/4.10/config.yml
+    curl -sO https://packages.wazuh.com/4.11/config.yml
     check_file "config.yml"
 
     sed -i -e '0,/<indexer-node-ip>/ s/<indexer-node-ip>/127.0.0.1/' config.yml
     sed -i -e '0,/<wazuh-manager-ip>/ s/<wazuh-manager-ip>/127.0.0.1/' config.yml
     sed -i -e '0,/<dashboard-node-ip>/ s/<dashboard-node-ip>/127.0.0.1/' config.yml
 
-    curl -sO https://packages.wazuh.com/4.10/wazuh-certs-tool.sh
+    curl -sO https://packages.wazuh.com/4.11/wazuh-certs-tool.sh
     check_file "wazuh-certs-tool.sh"
     chmod 744 wazuh-certs-tool.sh
     ./wazuh-certs-tool.sh --all
