@@ -38,6 +38,11 @@ on:
           - -vv
           - -vvv
           - -vvvv
+      DESTROY:
+        description: 'Destroy instances after run'
+        required: true
+        default: true
+        type: boolean
 
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
@@ -108,8 +113,7 @@ jobs:
         COMPOSITE_NAME="${COMPOSITE_NAME/SUBNAME/$SUBNAME}"
         echo "COMPOSITE_NAME=$COMPOSITE_NAME" >> $GITHUB_ENV
       
-    - &install_python_and_venv
-      name: Install python and create virtual environment
+    - name: Install python and create virtual environment
       run: |
         sudo apt-get update
         sudo apt-get install -y python3 python3-venv
@@ -121,15 +125,13 @@ jobs:
     - name: Install Ansible
       run: pip install ansible-core==2.16
     
-    - &setup_aws_credentials
-      name: Set up AWS credentials
+    - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
         aws-region: ${{ env.REGION }}
     
-    - &checkout_wazuh_automation
-      name: Checkout wazuh/wazuh-automation repository
+    - name: Checkout wazuh/wazuh-automation repository
       uses: actions/checkout@v4
       with:
         repository: wazuh/wazuh-automation
@@ -137,56 +139,22 @@ jobs:
         token: ${{ secrets.GH_CLONE_TOKEN }}
         path: wazuh-automation
     
-    - &install_and_set_allocator_requirements
-      name: Install and set allocator requirements
+    - name: Install and set allocator requirements
       run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
 
     - name: Allocate test instance and set SSH variables
       id: allocator_instance
       run: |
         python3 wazuh-automation/deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name ${{ env.COMPOSITE_NAME }} --working-dir $ALLOCATOR_PATH \
-          --track-output $ALLOCATOR_PATH/track-${{ matrix.system }}.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
+          --track-output $ALLOCATOR_PATH/track.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
           --label-team devops --label-termination-date 1d --aws-account ${{ env.AWS_ACCOUNT }}
 
         sed 's/: */=/g' $ALLOCATOR_PATH/inventory.yml > $ALLOCATOR_PATH/inventory_mod.yml
         sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod.yml
         source $ALLOCATOR_PATH/inventory_mod.yml
 
-        echo "[gha_instance]" > $ALLOCATOR_PATH/inventory-${{ matrix.system }}
-        echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory-${{ matrix.system }}
-    
-    - name: Upload ansible inventory
-      uses: actions/upload-artifact@v4
-      with:
-        name: inventory-${{ matrix.system }}
-        path: $ALLOCATOR_PATH/inventory-${{ matrix.system }}
-        if-no-files-found: error
-
-    - name: Upload instance track
-      uses: actions/upload-artifact@v4
-      with:
-        name: track-${{ matrix.system }}
-        path: $ALLOCATOR_PATH/track-${{ matrix.system }}.yml
-        if-no-files-found: error
-
-  Test-offline-installation:
-    runs-on: ubuntu-latest
-    needs: Create-allocator-instances
-    strategy:
-      fail-fast: false
-      matrix:
-        system: ${{ github.event_name == 'pull_request' && fromJson('["Ubuntu_22", "CentOS_8"]') || fromJson(inputs.SYSTEMS) }}
-
-    steps:
-    - name: Get system inventory
-      uses: actions/download-artifact@v4
-      with:
-        name: inventory-${{ matrix.system }}
-    
-    - *install_python_and_venv
-  
-    - name: Install Ansible
-      run: pip install ansible-core==2.16
+        echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
+        echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
 
     - name: Execute provision playbook
       run: |
@@ -195,7 +163,7 @@ jobs:
         INSTALL_PIP_DEPS=true
 
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/provision.yml \
-        -i inventory-${{ matrix.system }} \
+        -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "repository=$REPOSITORY_URL" \
         -e "reference=$WAZUH_INSTALLATION_ASSISTANT_REFERENCE" \
@@ -208,35 +176,26 @@ jobs:
     - name: Execute offline installation playbook
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/offline_installation.yml \
-        -i inventory-${{ matrix.system }} \
+        -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         -e "wazuh_version=$WAZUH_VERSION" \
         "$VERBOSITY"
   
-  Release-instances:
-    runs-on: ubuntu-latest
-    needs: 
-      - Create-allocator-instances
-      - Test-offline-installation 
-    if: ${{ needs.Create-allocator-instances.result == 'success' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        system: ${{ github.event_name == 'pull_request' && fromJson('["Ubuntu_22", "CentOS_8"]') || fromJson(inputs.SYSTEMS) }}
+    - name: Compress Allocator VM directory
+      id: compress_allocator_files
+      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == false && github.event_name != 'pull_request'
+      run: |
+        zip -P "${{ secrets.ZIP_ARTIFACTS_PASSWORD }}" -r $ALLOCATOR_PATH.zip $ALLOCATOR_PATH
 
-    steps:
-    - name: Get instance track
-      uses: actions/download-artifact@v4
+    - name: Upload Allocator VM directory as artifact
+      if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false && github.event_name != 'pull_request'
+      uses: actions/upload-artifact@v4
       with:
-        name: track-${{ matrix.system }}.yml
-    
-    - *install_python_and_venv
+        name: allocator-instance-${{ matrix.system }}
+        path: ${{ env.ALLOCATOR_PATH }}.zip
 
-    - *checkout_wazuh_automation
-
-    - *install_and_set_allocator_requirements
-
-    - name: Release test instance
-      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output track-${{ matrix.system }}.yml --aws-profile ${{ env.AWS_ACCOUNT }}
+    - name: Delete allocated VM
+      if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == true || github.event_name == 'pull_request')
+      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
