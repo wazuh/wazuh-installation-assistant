@@ -37,11 +37,6 @@ on:
           - -vv
           - -vvv
           - -vvvv
-      DESTROY:
-        description: 'Destroy instances after run'
-        required: true
-        default: true
-        type: boolean
 
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
