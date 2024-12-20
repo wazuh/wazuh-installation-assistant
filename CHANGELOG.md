@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [4.10.1]
+## [4.11.0]
 
 ### Added
 
@@ -15,6 +15,24 @@ All notable changes to this project will be documented in this file.
 
 - Update `-d` option in the password tool workflow and fix test scripts ([#170](https://github.com/wazuh/wazuh-installation-assistant/pull/170))
 - Added architecture information to assistant. ([#92](https://github.com/wazuh/wazuh-installation-assistant/pull/92))
+
+### Deleted
+
+- None
+
+## [4.10.1]
+
+### Added
+
+- None
+
+### Changed
+
+- None
+
+### Fixed
+
+- None
 
 ### Deleted
 
