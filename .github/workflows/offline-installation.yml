@@ -15,13 +15,13 @@ on:
         required: true
         default: '4.10.2'
       PKG_REPOSITORY:
-        description: "Repository to use for the installation."
+        description: 'Repository environment'
+        required: true
+        default: 'pre-release'
         type: choice
         options:
-          - "pre-release"
-          - "staging"
-        required: true
-        default: "pre-release"
+          - staging
+          - pre-release
       SYSTEMS:
         description: "Operating Systems (list of comma-separated quoted strings enclosed in square brackets)."
         required: true
