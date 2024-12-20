@@ -23,26 +23,6 @@ on:
         options:
           - staging
           - pre-release
-      SYSTEMS:
-        description: "Operating Systems (list of comma-separated quoted strings enclosed in square brackets)."
-        required: true
-        default: '["Ubuntu_22", "CentOS_8"]'
-        type: string
-      VERBOSITY:
-        description: 'Verbosity level on playbooks execution'
-        required: true
-        default: '-v'
-        type: choice
-        options:
-          - -v
-          - -vv
-          - -vvv
-          - -vvvv
-      DESTROY:
-        description: 'Destroy instances after run'
-        required: true
-        default: true
-        type: boolean
 
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
