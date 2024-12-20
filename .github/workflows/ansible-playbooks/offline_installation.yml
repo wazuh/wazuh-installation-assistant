@@ -1,0 +1,26 @@
+---
+
+- hosts: all
+  become: true
+
+  vars:
+    script_path: "{{ tmp_path }}"
+    pkg_repository: "{{ pkg_repository }}"
+    wazuh_version: "{{ wazuh_version }}"
+    script_name: "wazuh-install.sh"
+    offline_installation_path: ".github/actions/offline-installation"
+    offline_installation_script: "offline-installation.sh"
+
+  tasks:
+    - name: Copy installation script to the offline installation directory
+      command: "cp {{ script_name }} {{ offline_installation_path }}"
+      args:
+        chdir: "{{ script_path }}"
+
+    - name: Test offline installation
+      command: "bash {{ offline_installation_script }} {{ pkg_repository }} {{ wazuh_version }}"
+      args:
+        chdir: "{{ script_path }}/{{ offline_installation_path }}"
+      register: install_results
+      async: 500
+      poll: 5
