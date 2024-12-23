@@ -14,7 +14,7 @@ on:
       AUTOMATION_REFERENCE:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
-        default: '4.10.2'
+        default: 'v4.10.2'
       PKG_REPOSITORY:
         description: 'Repository environment'
         required: true
@@ -135,15 +135,12 @@ jobs:
         role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
         aws-region: ${{ env.REGION }}
 
-    - name: Display Deployment Report
-      if: always()
-      run: echo ${{ env.AUTOMATION_REFERENCE }}
-
     - name: Checkout wazuh/wazuh-automation repository
       uses: actions/checkout@v4
       with:
         repository: wazuh/wazuh-automation
         ref: ${{ env.AUTOMATION_REFERENCE }}
+        token: ${{ secrets.GH_CLONE_TOKEN }}
         path: wazuh-automation
 
     - name: Install and set allocator requirements
