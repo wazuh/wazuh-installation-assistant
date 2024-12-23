@@ -58,6 +58,10 @@ env:
   ALLOCATOR_PATH: "/tmp/allocator_instance"
   ANSIBLE_CALLBACK: "yaml"
 
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+
 jobs:
   Create-allocator-instances:
     runs-on: ubuntu-latest
