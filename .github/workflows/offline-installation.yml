@@ -180,9 +180,13 @@ jobs:
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
         "$VERBOSITY"
 
-    - name: Get instance-id and modify security group
+    - name: Get instance-id
       run: |
-        aws ec2 modify-instance-attribute --instance-id $(aws ec2 describe-instances --query 'Reservations[*].Instances[*].InstanceId' --filters "Name=tag:Name,Values=gha_${{ github.run_id }}_assistant_test" --output text) --groups sg-03c53339089a65829
+        echo "INSTANCE_ID=$(aws ec2 describe-instances --query 'Reservations[*].Instances[*].InstanceId' --filters "Name=tag:Name,Values=gha_${{ github.run_id }}_assistant_test" --output text)" >> $GITHUB_ENV
+
+    - name: Change security group
+      run: |
+        aws ec2 modify-instance-attribute --instance-id ${{ env.INSTANCE_ID }} --groups sg-03c53339089a65829
 
     - name: Execute offline installation playbook
       run: |
