@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Changed runners in workflows to ubuntu 22.04 ([#173](https://github.com/wazuh/wazuh-installation-assistant/pull/173))
+- None
 
 ### Fixed
 
@@ -27,7 +27,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Changed runners in workflows to Ubuntu 22.04 ([#185](https://github.com/wazuh/wazuh-installation-assistant/pull/185))
 
 ### Fixed
 
