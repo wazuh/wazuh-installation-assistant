@@ -126,9 +126,6 @@ jobs:
         python3 -m pip install --upgrade pip
         echo PATH=$PATH >> $GITHUB_ENV
 
-    - name: Install Ansible
-      run: pip install ansible-core==2.16
-
     - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v3
       with:
@@ -159,6 +156,13 @@ jobs:
 
         echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
         echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
+
+    - name: Install Ansible
+      run: pip install ansible-core==2.16
+
+    - name: configure ansible
+      run: |
+        ansible-galaxy collection install community.general
 
     - name: Execute provision playbook
       run: |
