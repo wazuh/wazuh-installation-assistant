@@ -157,7 +157,7 @@ function filebeat_installation() {
         /usr/share/filebeat/bin/filebeat --environment systemd -c /etc/filebeat/filebeat.yml --path.home /usr/share/filebeat --path.config /etc/filebeat --path.data /var/lib/filebeat --path.logs /var/log/filebeat &
     fi
 
-    sleep 10
+    sleep 30
     eval "filebeat test output"
     if [ "${PIPESTATUS[0]}" != 0 ]; then
         echo "ERROR: The Filebeat installation has failed."
