@@ -79,6 +79,14 @@ jobs:
       with:
         ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
+    - name: Checkout wazuh/wazuh-automation repository
+      uses: actions/checkout@v4
+      with:
+        repository: wazuh/wazuh-automation
+        ref: ${{ env.AUTOMATION_REFERENCE }}
+        token: ${{ secrets.GH_CLONE_TOKEN }}
+        path: wazuh-automation
+
     - name: Set COMPOSITE_NAME variable
       run: |
         case "${{ matrix.system }}" in
@@ -126,22 +134,14 @@ jobs:
         python3 -m pip install --upgrade pip
         echo PATH=$PATH >> $GITHUB_ENV
 
+    - name: Install and set allocator requirements
+      run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
+
     - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v3
       with:
         role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
         aws-region: ${{ env.REGION }}
-
-    - name: Checkout wazuh/wazuh-automation repository
-      uses: actions/checkout@v4
-      with:
-        repository: wazuh/wazuh-automation
-        ref: ${{ env.AUTOMATION_REFERENCE }}
-        token: ${{ secrets.GH_CLONE_TOKEN }}
-        path: wazuh-automation
-
-    - name: Install and set allocator requirements
-      run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
 
     - name: Allocate test instance and set SSH variables
       id: allocator_instance
