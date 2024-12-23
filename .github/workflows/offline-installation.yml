@@ -199,6 +199,6 @@ jobs:
         -e "wazuh_version=$WAZUH_VERSION" \
         "$VERBOSITY"
 
-    - name: Delete allocated VM
-      if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == true || github.event_name == 'pull_request')
-      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
+    #- name: Delete allocated VM
+    #  if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == true || github.event_name == 'pull_request')
+    #  run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
