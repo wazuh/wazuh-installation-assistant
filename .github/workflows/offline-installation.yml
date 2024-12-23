@@ -182,7 +182,7 @@ jobs:
 
     - name: Get instance-id
       run: |
-        INSTANCE_ID=$(aws ec2 describe-instances --query 'Reservations[*].Instances[*].InstanceId' --filters "Name=tag:Name,Values=gha_${{ github.run_id }}_assistant_test" --output text)
+        INSTANCE_ID=$(aws ec2 describe-instances --query 'Reservations[0].Instances[0].InstanceId' --filters "Name=tag:Name,Values=gha_${{ github.run_id }}_assistant_test" --output text)
         echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
 
     - name: Change security group
