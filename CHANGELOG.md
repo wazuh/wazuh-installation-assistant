@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Change gha runners to Ubuntu 22.04 ([#186](https://github.com/wazuh/wazuh-installation-assistant/pull/186))
 
 ### Fixed
 
