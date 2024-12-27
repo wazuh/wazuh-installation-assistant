@@ -431,9 +431,9 @@ jobs:
         fi
 
         if [ "$EXECUTE_TEST" != "0" ]; then
-          echo "::warning ::Installation had issues but tests passed"
+          echo "::warning ::Test completed successfully but some errors detected"
           exit 0
         fi
 
-        echo "All steps completed successfully"
+        echo "All test completed successfully"
         exit 0
