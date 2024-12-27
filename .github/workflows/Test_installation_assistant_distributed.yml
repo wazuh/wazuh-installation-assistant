@@ -229,6 +229,9 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "provision_instance=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 1
+        fi
 
     - name: Execute certificates generation playbook
       id: generate_certificates
@@ -241,6 +244,9 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "generate_certificates=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 1
+        fi
 
     - name: Copy certificates to nodes
       id: copy_certificates
@@ -255,6 +261,9 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "copy_certificates=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 1
+        fi
 
     - name: Execute indexer installation playbook
       id: install_indexer
@@ -269,6 +278,9 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "install_indexer=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 1
+        fi
 
     - name: Execute indexer cluster start playbook
       id: start_indexer
@@ -284,6 +296,9 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "start_indexer=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 1
+        fi
 
     - name: Execute server installation playbook
       id: install_server
@@ -298,6 +313,9 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "install_server=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 1
+        fi
 
     - name: Execute dashboard installation playbook
       id: install_dashboard
@@ -312,6 +330,9 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "install_dashboard=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 1
+        fi
 
     - name: Execute Python test playbook
       id: execute_test
