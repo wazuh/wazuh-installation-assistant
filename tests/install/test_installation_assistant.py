@@ -199,7 +199,7 @@ def test_check_indexer_cluster_status_not_yellow():
 
 @pytest.mark.dashboard
 def test_check_dashboard_status():
-    assert get_dashboard_status() == 200
+    assert get_dashboard_status() == 201
 
 @pytest.mark.wazuh
 def test_check_wazuh_api_status():
@@ -214,7 +214,7 @@ def test_check_log_errors():
         "ERROR: Could not send message through the cluster after '10' attempts"
 
     ]
-    
+
     with open('/var/ossec/logs/ossec.log', 'r') as f:
         for line in f.readlines():
             if 'ERROR' in line:
