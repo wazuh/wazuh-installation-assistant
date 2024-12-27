@@ -387,12 +387,12 @@ jobs:
       shell: bash
       run: |
         PROVISION_INSTANCE="${{ steps.provision_instance.outputs.provision_instance }}"
-        GENERATE_CERTIFICATES="${{ steps.generate_certificatesinstall.outputs.generate_certificates }}"
+        GENERATE_CERTIFICATES="${{ steps.generate_certificates.outputs.generate_certificates }}"
         COPY_CERTIFICATES="${{ steps.copy_certificates.outputs.copy_certificates }}"
         INSTALL_INDEXER="${{ steps.install_indexer.outputs.install_indexer }}"
         START_INDEXER="${{ steps.start_indexer.outputs.start_indexer }}"
         INSTALL_SERVER="${{ steps.install_server.outputs.install_server }}"
-        INSTALL_DASHBOARD="${{ steps.install_dashboard-install.outputs.install_dashboard }}"
+        INSTALL_DASHBOARD="${{ steps.install_dashboard.outputs.install_dashboard }}"
         EXECUTE_TEST="${{ steps.execute_test.outputs.execute_test }}"
 
         if [ "$PROVISION_INSTANCE" != "0" ] ; then
