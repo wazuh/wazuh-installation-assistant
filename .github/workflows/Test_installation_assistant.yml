@@ -200,7 +200,7 @@ jobs:
 
     - name: Execute Python test playbook
       id: execute_test
-      if: success() && steps.install_dashboard.outcome == 'success'
+      if: success() && steps.install_aio.outcome == 'success'
       run: |
         TEST_NAME="test_installation_assistant"
         ansible-playbook .github/workflows/ansible-playbooks/aio_tests.yml \
