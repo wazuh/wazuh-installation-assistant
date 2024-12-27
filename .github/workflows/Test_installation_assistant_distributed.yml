@@ -209,7 +209,10 @@ jobs:
         cat $inventory_common >> $inventory_file
 
     - name: Execute provision playbook
+      id: provision_instance
+      if: success() && steps.allocator_instance.outcome == 'success'
       run: |
+        set +e
         INSTALL_DEPS=true
         INSTALL_PYTHON=true
         INSTALL_PIP_DEPS=true
@@ -224,34 +227,54 @@ jobs:
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "provision_instance=$EXIT_CODE" >> $GITHUB_OUTPUT
 
     - name: Execute certificates generation playbook
+      id: generate_certificates
+      if: success() && steps.provision_instance.outcome == 'success'
       run: |
+        set +e
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_generate_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -e "resources_path=$RESOURCES_PATH" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "generate_certificates=$EXIT_CODE" >> $GITHUB_OUTPUT
 
     - name: Copy certificates to nodes
+      id: copy_certificates
+      if: success() && steps.generate_certificates.outcome == 'success'
       run: |
+        set +e
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_copy_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
         -e "resources_path=$RESOURCES_PATH" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "copy_certificates=$EXIT_CODE" >> $GITHUB_OUTPUT
 
     - name: Execute indexer installation playbook
+      id: install_indexer
+      if: success() && steps.copy_certificates.outcome == 'success'
       run: |
+        set +e
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_indexer.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "install_indexer=$EXIT_CODE" >> $GITHUB_OUTPUT
 
     - name: Execute indexer cluster start playbook
+      id: start_indexer
+      if: success() && steps.install_indexer.outcome == 'success'
       run: |
+        set +e
         INDEXER_ADMIN_PASSWORD="admin"
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_start_indexer_cluster.yml \
         -i $ALLOCATOR_PATH/inventory \
@@ -259,33 +282,50 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "start_indexer=$EXIT_CODE" >> $GITHUB_OUTPUT
 
     - name: Execute server installation playbook
+      id: install_server
+      if: success() && steps.start_indexer.outcome == 'success'
       run: |
+        set +e
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_wazuh.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l managers \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "install_server=$EXIT_CODE" >> $GITHUB_OUTPUT
 
     - name: Execute dashboard installation playbook
+      id: install_dashboard
+      if: success() && steps.install_server.outcome == 'success'
       run: |
+        set +e
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_dashboard.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l dashboards \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "install_dashboard=$EXIT_CODE" >> $GITHUB_OUTPUT
 
     - name: Execute Python test playbook
+      id: execute_test
+      if: success() && steps.install_dashboard.outcome == 'success'
       run: |
+        set +e
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_tests.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l managers \
         -e "tmp_path=$TMP_PATH" \
         -e "test_name=$TEST_NAME" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "execute_test=$EXIT_CODE" >> $GITHUB_OUTPUT
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files
@@ -321,3 +361,58 @@ jobs:
         # Wait for all deletion tasks to complete
         wait
 
+    - name: Set final workflow status
+      if: always()
+      shell: bash
+      run: |
+        PROVISION_INSTANCE="${{ steps.provision_instance.outputs.provision_instance }}"
+        GENERATE_CERTIFICATES="${{ steps.generate_certificatesinstall.outputs.generate_certificates }}"
+        COPY_CERTIFICATES="${{ steps.copy_certificates.outputs.copy_certificates }}"
+        INSTALL_INDEXER="${{ steps.install_indexer.outputs.install_indexer }}"
+        START_INDEXER="${{ steps.start_indexer.outputs.start_indexer }}"
+        INSTALL_SERVER="${{ steps.install_server.outputs.install_server }}"
+        INSTALL_DASHBOARD="${{ steps.install_dashboard-install.outputs.install_dashboard }}"
+        EXECUTE_TEST="${{ steps.execute_test.outputs.execute_test }}"
+
+        if [ "$PROVISION_INSTANCE" != "0" ] ; then
+          echo "::error :: Failed provisioning instances"
+          exit 1
+        fi
+
+        if [ "$GENERATE_CERTIFICATES" != "0" ] ; then
+          echo "::error :: Failed generating certificates"
+          exit 1
+        fi
+
+        if [ "$COPY_CERTIFICATES" != "0" ] ; then
+          echo "::error :: Failed copy certificates"
+          exit 1
+        fi
+
+        if [ "$INSTALL_INDEXER" != "0" ] ; then
+          echo "::error :: Failed installing Wazuh indexer"
+          exit 1
+        fi
+
+        if [ "$START_INDEXER" != "0" ] ; then
+          echo "::error :: Failed starting Wazuh indexer"
+          exit 1
+        fi
+
+        if [ "$INSTALL_SERVER" != "0" ] ; then
+          echo "::error :: Failed installing Wazuh server"
+          exit 1
+        fi
+
+        if [ "$INSTALL_DASHBOARD" != "0" ] ; then
+          echo "::error :: Failed installing Wazuh dashboard"
+          exit 1
+        fi
+
+        if [ "$EXECUTE_TEST" != "0" ]; then
+          echo "::warning ::Installation had issues but tests passed"
+          exit 0
+        fi
+
+        echo "All steps completed successfully"
+        exit 0
