@@ -194,6 +194,9 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "install_aio=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 1
+        fi
 
     - name: Execute Python test playbook
       id: execute_test
@@ -209,9 +212,6 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "execute_test=$EXIT_CODE" >> $GITHUB_OUTPUT
-        if [ $EXIT_CODE != 0 ]; then
-          exit 1
-        fi
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files
