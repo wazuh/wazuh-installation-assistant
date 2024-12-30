@@ -202,6 +202,7 @@ jobs:
       id: execute_test
       if: success() && steps.install_aio.outcome == 'success'
       run: |
+        set +e
         TEST_NAME="test_installation_assistant"
         ansible-playbook .github/workflows/ansible-playbooks/aio_tests.yml \
         -i $ALLOCATOR_PATH/inventory \
@@ -212,9 +213,7 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "execute_test=$EXIT_CODE" >> $GITHUB_OUTPUT
-        if [ $EXIT_CODE != 0 ]; then
-          exit 0
-        fi
+
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files
