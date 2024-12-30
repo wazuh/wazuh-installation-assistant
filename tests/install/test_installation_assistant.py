@@ -199,7 +199,7 @@ def test_check_indexer_cluster_status_not_yellow():
 
 @pytest.mark.dashboard
 def test_check_dashboard_status():
-    assert get_dashboard_status() == 201
+    assert get_dashboard_status() == 200
 
 @pytest.mark.wazuh
 def test_check_wazuh_api_status():
