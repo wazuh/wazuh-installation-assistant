@@ -212,6 +212,9 @@ jobs:
         "${{ inputs.VERBOSITY }}"
         EXIT_CODE=$?
         echo "execute_test=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 0
+        fi
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files
