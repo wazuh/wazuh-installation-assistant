@@ -262,7 +262,7 @@ function main() {
     fi
 
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
-        installCommon_installCheckDependencies
+        installCommon_installDependencies
     elif [ -n "${offline_install}" ]; then
         offline_checkPrerequisites "wia_offline_dependencies" "${wia_offline_dependencies[@]}"
     fi

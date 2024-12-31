@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Improve asistant test completion status ([#188](https://github.com/wazuh/wazuh-installation-assistant/pull/188))
 - Added available packages check before installation ([#80](https://github.com/wazuh/wazuh-installation-assistant/pull/80))
 
 ### Changed

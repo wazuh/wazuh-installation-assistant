@@ -214,7 +214,7 @@ def test_check_log_errors():
         "ERROR: Could not send message through the cluster after '10' attempts"
 
     ]
-    
+
     with open('/var/ossec/logs/ossec.log', 'r') as f:
         for line in f.readlines():
             if 'ERROR' in line:

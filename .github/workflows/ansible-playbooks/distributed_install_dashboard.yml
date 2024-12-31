@@ -9,7 +9,7 @@
 
   tasks:
     - name: Install Wazuh dashboard
-      command: "bash wazuh-install.sh -wd {{ inventory_hostname }} -v -d {{ pkg_repository }}"
+      command: "bash wazuh-install.sh -wd {{ inventory_hostname }} -v -d {{ pkg_repository }} -id"
       args:
         chdir: "{{ tmp_path }}"
       register: dashboard

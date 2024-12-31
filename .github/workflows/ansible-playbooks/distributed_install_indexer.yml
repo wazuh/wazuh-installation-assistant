@@ -9,6 +9,6 @@
 
     tasks:
       - name: Install Wazuh indexer
-        command: "bash {{ tmp_path }}/wazuh-install.sh -wi {{ inventory_hostname }} -v -d {{ pkg_repository }}"
+        command: "bash {{ tmp_path }}/wazuh-install.sh -wi {{ inventory_hostname }} -v -d {{ pkg_repository }} -id"
         register: indexer
 

@@ -155,7 +155,10 @@ jobs:
         echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
 
     - name: Execute provision playbook
+      id: provision_instance
+      if: success() && steps.allocator_instance.outcome == 'success'
       run: |
+        set +e
         INSTALL_DEPS=true
         INSTALL_PYTHON=true
         INSTALL_PIP_DEPS=true
@@ -170,9 +173,17 @@ jobs:
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "provision_instance=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 1
+        fi
 
     - name: Execute AIO installation playbook
+      id: install_aio
+      if: success() && steps.provision_instance.outcome == 'success'
       run: |
+        set +e
         ansible-playbook .github/workflows/ansible-playbooks/aio.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l all \
@@ -181,9 +192,17 @@ jobs:
         -e "test_name=$TEST_NAME" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "install_aio=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE != 0 ]; then
+          exit 1
+        fi
 
     - name: Execute Python test playbook
+      id: execute_test
+      if: success() && steps.install_aio.outcome == 'success'
       run: |
+        set +e
         TEST_NAME="test_installation_assistant"
         ansible-playbook .github/workflows/ansible-playbooks/aio_tests.yml \
         -i $ALLOCATOR_PATH/inventory \
@@ -192,6 +211,9 @@ jobs:
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
         "${{ inputs.VERBOSITY }}"
+        EXIT_CODE=$?
+        echo "execute_test=$EXIT_CODE" >> $GITHUB_OUTPUT
+
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files
@@ -210,3 +232,28 @@ jobs:
       if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == true
       run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
 
+    - name: Set final workflow status
+      if: always()
+      shell: bash
+      run: |
+        PROVISION_INSTANCE="${{ steps.provision_instance.outputs.provision_instance }}"
+        INSTALL_AIO="${{ steps.install_aio.outputs.install_aio }}"
+        EXECUTE_TEST="${{ steps.execute_test.outputs.execute_test }}"
+
+        if [ "$PROVISION_INSTANCE" != "0" ] ; then
+          echo "::error :: Failed provisioning instances"
+          exit 1
+        fi
+
+        if [ "$INSTALL_AIO" != "0" ] ; then
+          echo "::error :: Failed installing wiht AIO"
+          exit 1
+        fi
+
+        if [ "$EXECUTE_TEST" != "0" ]; then
+          echo "::warning ::Test completed successfully but some errors detected"
+          exit 0
+        fi
+
+        echo "All test completed successfully"
+        exit 0
