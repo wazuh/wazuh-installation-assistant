@@ -6,7 +6,7 @@
 
   tasks:
     - name: Detect system type
-      raw: |
+      shell: |
         if command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1 || command -v zypper >/dev/null 2>&1; then
           echo "rpm"
         elif command -v apt-get >/dev/null 2>&1; then
@@ -14,9 +14,9 @@
         else
           echo "unknown"
         fi
-      register: detected_sys_type
+      register: system_detect
       changed_when: false
 
-    - name: Display system type
-      debug:
-        msg: "{{ detected_sys_type.stdout_lines[0] | trim }}"
+    - name: Print system type
+      ansible.builtin.debug:
+        msg: "{{ system_detect.stdout }}"

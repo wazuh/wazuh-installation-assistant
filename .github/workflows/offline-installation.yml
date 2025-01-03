@@ -171,7 +171,6 @@ jobs:
         -l all \
         "$VERBOSITY")
 
-        # Validar el resultado
         if [ "$SYSTEM_TYPE" != "rpm" ] && [ "$SYSTEM_TYPE" != "deb" ]; then
           echo "ERROR: Unsupported system type. Could not determine if system is RPM or DEB based."
           exit 1
