@@ -10,7 +10,7 @@ on:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
-        default: 4.10.1
+        default: enhancement/187-refactor-offline-test
       AUTOMATION_REFERENCE:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
@@ -77,29 +77,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
-
-    - name: Get system type
-      id: get-system-type
-      run: |
-        set +e
-        SYSTEM_TYPE=$(ansible-playbook .github/workflows/ansible-playbooks/offline-installation/get_system_type.yml \
-        -i $ALLOCATOR_PATH/inventory \
-        -l all \
-        "$VERBOSITY")
-        echo ${SYSTEM_TYPE}
-
-        if [ "$SYSTEM_TYPE" != "rpm" ] && [ "$SYSTEM_TYPE" != "deb" ]; then
-          echo "ERROR: Unsupported system type. Could not determine if system is RPM or DEB based."
-          exit 1
-        fi
-        echo "SYSTEM_TYPE=${SYSTEM_TYPE}" >> $GITHUB_ENV
-      env:
-        PY_COLORS: '1'
-        ANSIBLE_FORCE_COLOR: '1'
-
-    - name: Display system type
-      run: |
-        echo "Detected system type from env: ${{ env.SYSTEM_TYPE }}"
 
     - name: Checkout wazuh/wazuh-automation repository
       uses: actions/checkout@v4
@@ -187,20 +164,23 @@ jobs:
         ansible-galaxy collection install community.general
 
     - name: Get system type
-      id: get-sys-type
+      id: get-system-type
       run: |
         set +e
         SYSTEM_TYPE=$(ansible-playbook .github/workflows/ansible-playbooks/offline-installation/get_system_type.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l all \
         "$VERBOSITY")
-        echo $SYSTEM_TYPE
+        echo ${SYSTEM_TYPE}
 
         if [ "$SYSTEM_TYPE" != "rpm" ] && [ "$SYSTEM_TYPE" != "deb" ]; then
           echo "ERROR: Unsupported system type. Could not determine if system is RPM or DEB based."
           exit 1
         fi
         echo "SYSTEM_TYPE=${SYSTEM_TYPE}" >> $GITHUB_ENV
+      env:
+        PY_COLORS: '1'
+        ANSIBLE_FORCE_COLOR: '1'
 
     - name: Display system type
       run: |
