@@ -5,6 +5,7 @@
   vars:
     script_path: "{{ tmp_path }}"
     script_name: "wazuh-install.sh"
+    sys_type: "{{ system_type }}"
     rpm_deps:
       - git
       - python3
