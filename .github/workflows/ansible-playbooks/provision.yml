@@ -3,34 +3,40 @@
   become: true
   gather_facts: no
   vars:
-      script_path: "{{ tmp_path }}"
-      script_name: "wazuh-install.sh"
-      rpm_deps:
-        - git
-        - python3
-        - python3-pip
-        - openssl
-        - tar
-      apt_deps:
-        - git
-        - software-properties-common
-        - gnupg2
-      pip_deps:
-        - attrs==21.1.0
-        - importlib-metadata==4.8.2
-        - iniconfig==1.1.1
-        - packaging==21.3
-        - pluggy==1.0.0
-        - py==1.11.0
-        - pyparsing==3.0.6
-        - toml==0.10.2
-        - typing-extensions==4.0.0
-        - pytest==6.2.5
-        - pyyaml
-        - requests
-        - setuptools
-        - beautifulsoup4
-        - urllib3==1.26.6
+    script_path: "{{ tmp_path }}"
+    script_name: "wazuh-install.sh"
+    rpm_deps:
+      - git
+      - python3
+      - python3-pip
+      - openssl
+      - tar
+    apt_deps:
+      - git
+      - software-properties-common
+      - gnupg2
+    pip_deps:
+      - attrs==21.1.0
+      - importlib-metadata==4.8.2
+      - iniconfig==1.1.1
+      - packaging==21.3
+      - pluggy==1.0.0
+      - py==1.11.0
+      - pyparsing==3.0.6
+      - toml==0.10.2
+      - typing-extensions==4.0.0
+      - pytest==6.2.5
+      - pyyaml
+      - requests
+      - setuptools
+      - beautifulsoup4
+      - urllib3==1.26.6
+    rpm_dependencies:
+      - util-linux
+      - initscripts
+      - openssl
+    deb_dependencies:
+      - openssl
 
   pre_tasks:
     - name: Check if the system is CentOS 8 and install Python if necessary
@@ -90,7 +96,7 @@
         - install_deps | bool
 
     - name: Install Python and pip
-      block: 
+      block:
 
         # ---------------------------------------------------------------------
         # Ubuntu --------------------------------------------------------------
@@ -114,7 +120,7 @@
             - ansible_os_family == 'Debian'
             - ansible_distribution == "Ubuntu"
             - ansible_distribution_release == "jammy"
-        
+
         - name: Change Python link Ubuntu Xenial
           command: ln -sf /usr/local/bin/python3.8 /usr/bin/python3
           when:
@@ -137,7 +143,7 @@
             - ansible_os_family == 'Debian'
             - stat_pip3.stat.exists == False
             - ansible_distribution_release not in ['bionic']
-        
+
         - name: Install pip Ubuntu Bionic/Xenial
           ansible.builtin.package:
             name:
@@ -160,6 +166,57 @@
       when:
         - install_pip_deps is defined
         - install_pip_deps | bool
+
+    # For RPM systems
+    - name: Update package cache (RPM)
+      yum:
+        update_cache: yes
+      when: sys_type == "rpm"
+
+    - name: Check installed packages (RPM)
+      yum:
+        list: installed
+      register: rpm_installed_packages
+      when: sys_type == "rpm"
+
+    - name: Install RPM dependencies
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ rpm_dependencies }}"
+      when:
+        - sys_type == "rpm"
+        - item not in rpm_installed_packages.results|map(attribute='name')|list
+      register: rpm_install_result
+      failed_when: rpm_install_result is failed
+
+    # For DEB systems
+    - name: Update package cache (DEB)
+      apt:
+        update_cache: yes
+      when: sys_type == "deb"
+
+    - name: Check installed packages (DEB)
+      package_facts:
+        manager: apt
+      when: sys_type == "deb"
+
+    - name: Install DEB dependencies
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ deb_dependencies }}"
+      when:
+        - sys_type == "deb"
+        - item not in ansible_facts.packages|default({})|list
+      register: deb_install_result
+      failed_when: deb_install_result is failed
+
+    - name: Verify all dependencies were installed
+      debug:
+        msg: "All required dependencies have been installed successfully"
+      when: (sys_type == "rpm" and rpm_install_result is success) or
+            (sys_type == "deb" and deb_install_result is success)
 
     - name: Clone installation assistant git repository
       git:

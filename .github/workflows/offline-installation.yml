@@ -163,6 +163,24 @@ jobs:
       run: |
         ansible-galaxy collection install community.general
 
+    - name: Detect package manager and set system type
+      id: detect-system
+      run: |
+        if command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1 || command -v zypper >/dev/null 2>&1; then
+          echo "sys_type=rpm" >> $GITHUB_OUTPUT
+          echo "SYSTEM_TYPE=rpm" >> $GITHUB_ENV
+        elif command -v apt >/dev/null 2>&1 || command -v apt-get >/dev/null 2>&1; then
+          echo "sys_type=deb" >> $GITHUB_OUTPUT
+          echo "SYSTEM_TYPE=deb" >> $GITHUB_ENV
+        else
+          echo "ERROR: Unsupported system type. Could not determine if system is RPM or DEB based."
+          exit 1
+        fi
+
+    - name: Display system type
+      run: |
+        echo "Detected system type from env: ${{ env.SYSTEM_TYPE }}"
+
     - name: Execute provision playbook
       run: |
         INSTALL_DEPS=true
@@ -178,6 +196,18 @@ jobs:
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
+        -e "sys_type=${{ env.SYSTEM_TYPE }}" \
+        "$VERBOSITY"
+
+    - name: Download and copy configuration files and assets
+      run: |
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/offline-installation/download.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l all \
+        -e "tmp_path=$TMP_PATH" \
+        -e "pkg_repository=$PKG_REPOSITORY" \
+        -e "wazuh_version=$WAZUH_VERSION" \
+        -e "sys_type=${{ env.SYSTEM_TYPE }}" \
         "$VERBOSITY"
 
     - name: Get instance-id
@@ -191,14 +221,15 @@ jobs:
 
     - name: Execute offline installation playbook
       run: |
-        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/offline_installation.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/offline-installation/test.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
         -e "wazuh_version=$WAZUH_VERSION" \
+        -e "sys_type=${{ env.SYSTEM_TYPE }}" \
         "$VERBOSITY"
 
-    #- name: Delete allocated VM
-    #  if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == true || github.event_name == 'pull_request')
-    #  run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
+    - name: Delete allocated VM
+      if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == true || github.event_name == 'pull_request')
+      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml

@@ -1,0 +1,25 @@
+---
+
+- hosts: all
+  become: true
+
+  vars:
+    working_path: "{{ tmp_path }}"
+    offline_installation_path: ".github/actions/offline-installation"
+    offline_installation_script: "offline-installation.sh"
+    sys_type: "{{ system_type }}"
+
+  tasks:
+    - name: Copy test scripts
+      copy:
+        src: "{{ offline_installation_path }}/{{ offline_installation_script }}"
+        dest: "{{ working_path }}/{{ offline_installation_script }}"
+        mode: '0744'
+
+    - name: Test offline installation
+      command: "bash {{ offline_installation_script }} {{ sys_type }}"
+      args:
+        chdir: "{{ working_path }}"
+      register: install_results
+      async: 500
+      poll: 5
