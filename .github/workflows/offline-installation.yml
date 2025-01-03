@@ -187,14 +187,14 @@ jobs:
         ansible-galaxy collection install community.general
 
     - name: Get system type
-      id: get-system-type
+      id: get-sys-type
       run: |
         set +e
         SYSTEM_TYPE=$(ansible-playbook .github/workflows/ansible-playbooks/offline-installation/get_system_type.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l all \
         "$VERBOSITY")
-        echo $?
+        echo $SYSTEM_TYPE
 
         if [ "$SYSTEM_TYPE" != "rpm" ] && [ "$SYSTEM_TYPE" != "deb" ]; then
           echo "ERROR: Unsupported system type. Could not determine if system is RPM or DEB based."
