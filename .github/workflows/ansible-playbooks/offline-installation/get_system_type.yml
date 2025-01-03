@@ -16,6 +16,6 @@
         fi
       register: system_type
 
-    - name: Save system type
-      set_fact:
-        detected_system: "{{ system_type.stdout | trim }}"
+    - name: Show detected system type
+      debug:
+        msg: "DETECTED_SYSTEM={{ system_type.stdout | trim }}"
