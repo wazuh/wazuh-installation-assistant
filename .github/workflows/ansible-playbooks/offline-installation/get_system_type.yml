@@ -14,9 +14,8 @@
         else
           echo "unknown"
         fi
-      register: system_detect
-      changed_when: false
+      register: system_type
 
-    - name: Print system type
-      ansible.builtin.debug:
-        msg: "{{ system_detect.stdout }}"
+    - name: Save system type
+      set_fact:
+        detected_system: "{{ system_type.stdout | trim }}"
