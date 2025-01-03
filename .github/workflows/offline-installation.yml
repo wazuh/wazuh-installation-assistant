@@ -78,6 +78,29 @@ jobs:
       with:
         ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
+    - name: Get system type
+      id: get-system-type
+      run: |
+        set +e
+        SYSTEM_TYPE=$(ansible-playbook .github/workflows/ansible-playbooks/offline-installation/get_system_type.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l all \
+        "$VERBOSITY")
+        echo ${SYSTEM_TYPE}
+
+        if [ "$SYSTEM_TYPE" != "rpm" ] && [ "$SYSTEM_TYPE" != "deb" ]; then
+          echo "ERROR: Unsupported system type. Could not determine if system is RPM or DEB based."
+          exit 1
+        fi
+        echo "SYSTEM_TYPE=${SYSTEM_TYPE}" >> $GITHUB_ENV
+      env:
+        PY_COLORS: '1'
+        ANSIBLE_FORCE_COLOR: '1'
+
+    - name: Display system type
+      run: |
+        echo "Detected system type from env: ${{ env.SYSTEM_TYPE }}"
+
     - name: Checkout wazuh/wazuh-automation repository
       uses: actions/checkout@v4
       with:
@@ -170,8 +193,8 @@ jobs:
         SYSTEM_TYPE=$(ansible-playbook .github/workflows/ansible-playbooks/offline-installation/get_system_type.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l all \
-        "$VERBOSITY" 2>/dev/null || true)
-        echo $SYSTEM_TYPE
+        "$VERBOSITY")
+        echo $?
 
         if [ "$SYSTEM_TYPE" != "rpm" ] && [ "$SYSTEM_TYPE" != "deb" ]; then
           echo "ERROR: Unsupported system type. Could not determine if system is RPM or DEB based."
@@ -200,10 +223,9 @@ jobs:
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
         -e "sys_type=${{ env.SYSTEM_TYPE }}" \
         "$VERBOSITY"
-
-    - name: Execute provision playbook
-      run: |
-        ls -ltR .github/workflows/ansible-playbooks
+      env:
+        PY_COLORS: '1'
+        ANSIBLE_FORCE_COLOR: '1'
 
     - name: Download and copy configuration files and assets
       run: |
@@ -215,6 +237,9 @@ jobs:
         -e "wazuh_version=$WAZUH_VERSION" \
         -e "sys_type=${{ env.SYSTEM_TYPE }}" \
         "$VERBOSITY"
+      env:
+        PY_COLORS: '1'
+        ANSIBLE_FORCE_COLOR: '1'
 
     - name: Get instance-id
       run: |
@@ -235,6 +260,9 @@ jobs:
         -e "wazuh_version=$WAZUH_VERSION" \
         -e "sys_type=${{ env.SYSTEM_TYPE }}" \
         "$VERBOSITY"
+      env:
+        PY_COLORS: '1'
+        ANSIBLE_FORCE_COLOR: '1'
 
     - name: Delete allocated VM
       if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == true || github.event_name == 'pull_request')

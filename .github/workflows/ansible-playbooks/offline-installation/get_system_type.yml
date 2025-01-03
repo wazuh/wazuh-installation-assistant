@@ -18,4 +18,5 @@
 
     - name: Show detected system type
       debug:
-        msg: "{{ system_type.stdout | trim }}"
+        var: system_type.stdout
+
