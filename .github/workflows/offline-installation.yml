@@ -159,7 +159,7 @@ jobs:
     - name: Install Ansible
       run: pip install ansible-core==2.16
 
-    - name: configure ansible
+    - name: Configure ansible
       run: |
         ansible-galaxy collection install community.general
 
@@ -198,6 +198,10 @@ jobs:
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
         -e "sys_type=${{ env.SYSTEM_TYPE }}" \
         "$VERBOSITY"
+
+    - name: Execute provision playbook
+      run: |
+        ls -ltR .github/workflows/ansible-playbooks
 
     - name: Download and copy configuration files and assets
       run: |
