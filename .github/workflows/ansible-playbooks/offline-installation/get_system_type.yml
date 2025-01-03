@@ -1,0 +1,22 @@
+---
+
+- hosts: all
+  gather_facts: no
+  become: true
+
+  tasks:
+    - name: Detect system type
+      raw: |
+        if command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1 || command -v zypper >/dev/null 2>&1; then
+          echo "rpm"
+        elif command -v apt-get >/dev/null 2>&1; then
+          echo "deb"
+        else
+          echo "unknown"
+        fi
+      register: detected_sys_type
+      changed_when: false
+
+    - name: Set system type fact
+      set_fact:
+        system_type: "{{ detected_sys_type.stdout_lines[0] | trim }}"

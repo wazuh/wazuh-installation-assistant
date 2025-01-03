@@ -163,16 +163,17 @@ jobs:
       run: |
         ansible-galaxy collection install community.general
 
-    - name: Detect package manager and set system type
-      id: detect-system
+    - name: Get system type
+      id: get-system-type
       run: |
-        if command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1 || command -v zypper >/dev/null 2>&1; then
-          echo "sys_type=rpm" >> $GITHUB_OUTPUT
-          echo "SYSTEM_TYPE=rpm" >> $GITHUB_ENV
-        elif command -v apt >/dev/null 2>&1 || command -v apt-get >/dev/null 2>&1; then
-          echo "sys_type=deb" >> $GITHUB_OUTPUT
-          echo "SYSTEM_TYPE=deb" >> $GITHUB_ENV
-        else
+        SYSTEM_TYPE=$(ANSIBLE_STDOUT_CALLBACK=json ansible-playbook .github/workflows/ansible-playbooks/offline-installation/get_system_type.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l all | grep -o '"system_type": "[^"]*"' | cut -d'"' -f4)
+
+        echo "SYSTEM_TYPE=${SYSTEM_TYPE}" >> $GITHUB_ENV
+
+        # Validar el resultado
+        if [ "$SYSTEM_TYPE" != "rpm" ] && [ "$SYSTEM_TYPE" != "deb" ]; then
           echo "ERROR: Unsupported system type. Could not determine if system is RPM or DEB based."
           exit 1
         fi
