@@ -205,7 +205,7 @@ jobs:
 
     - name: Download and copy configuration files and assets
       run: |
-        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/download.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/offline-installation/download.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "tmp_path=$TMP_PATH" \
@@ -225,7 +225,7 @@ jobs:
 
     - name: Execute offline installation playbook
       run: |
-        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/test.yml \
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/offline-installation/test.yml \
         -i $ALLOCATOR_PATH/inventory \
         -l all \
         -e "tmp_path=$TMP_PATH" \
