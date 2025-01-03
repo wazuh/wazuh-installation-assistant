@@ -18,4 +18,4 @@
 
     - name: Show detected system type
       debug:
-        msg: "DETECTED_SYSTEM={{ system_type.stdout | trim }}"
+        msg: "{{ system_type.stdout | trim }}"
