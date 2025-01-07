@@ -16,12 +16,6 @@
       apt: deb
 
   tasks:
-    #- name: Copy installation script
-    #  copy:
-    #    src: "{{ script_name }}"
-    #    dest: "{{ working_path }}/{{ script_name }}"
-    #    mode: '0744'
-
     - name: Download assets
       shell:
         cmd: "./wazuh-install.sh -dw {{ pkg_mgr_map[ansible_pkg_mgr] }} -d {{ pkg_repository }}"
