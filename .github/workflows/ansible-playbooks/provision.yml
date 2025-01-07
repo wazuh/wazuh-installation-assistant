@@ -37,7 +37,7 @@
       - urllib3==1.26.6
 
   pre_tasks:
-    - name: Check if the system is CentOS 8 and install Python if necessary
+    - name: Check if the system is Ubuntu 16 and install Python
       raw: |
         if [ -f /etc/centos-release ]; then
           if grep -q -i -E "centos.*8" /etc/centos-release; then
