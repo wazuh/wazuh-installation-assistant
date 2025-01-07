@@ -1,0 +1,27 @@
+---
+
+- hosts: all
+  become: true
+
+  vars:
+    working_path: "{{ tmp_path }}"
+    offline_installation_path: ".github/actions/offline-installation"
+    offline_installation_script: "offline-installation.sh"
+    pkg_mgr_map:
+      yum: rpm
+      dnf: rpm
+      apt: deb
+
+  tasks:
+    - name: Copy test scripts
+      command: cp "{{ offline_installation_path }}/{{ offline_installation_script }}" "{{ offline_installation_script }}"
+      args:
+        chdir: "{{ working_path }}"
+
+    - name: Test offline installation
+      command: "bash {{ offline_installation_script }} {{ pkg_mgr_map[ansible_pkg_mgr] }}"
+      args:
+        chdir: "{{ working_path }}"
+      register: install_results
+      async: 500
+      poll: 5
