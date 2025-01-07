@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- None
+- Refactor offline instalation test ([#191](https://github.com/wazuh/wazuh-installation-assistant/pull/191))
 
 ### Changed
 
