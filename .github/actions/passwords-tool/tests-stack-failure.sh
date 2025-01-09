@@ -13,8 +13,8 @@ elif ! curl -s -u wazuh:wazuh -k -X POST "https://127.0.0.1:55000/security/user/
    exit 1
 elif ! curl -s -u wazuuh:"${apiPass}" -k -X POST "https://127.0.0.1:55000/security/user/authenticate" | grep "Invalid credentials"; then
    exit 1
-elif ! curl -s -XGET https://127.0.0.1:9200/ -u admin:admin -k | grep "Unauthorized"; then
+elif ! curl -s -XGET https://127.0.0.1:9200/ -u admin:admin -k -w %{http_code} | grep "401"; then
    exit 1
-elif ! curl -s -XGET https://127.0.0.1:9200/ -u adminnnn:"${adminPass}" -k | grep "Unauthorized"; then
+elif ! curl -s -XGET https://127.0.0.1:9200/ -u adminnnn:"${adminPass}" -k -w %{http_code} | grep "401"; then
    exit 1
 fi
