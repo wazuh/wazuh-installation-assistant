@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Update upload and download artifact actions to v4 ([#198](https://github.com/wazuh/wazuh-installation-assistant/pull/198))
 - Add venv to installation assistant workflows ([#134](https://github.com/wazuh/wazuh-installation-assistant/pull/134))
 
 ### Fixed
