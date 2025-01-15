@@ -11,7 +11,7 @@ readonly wazuh_major="4.10"
 readonly wazuh_version="4.10.1"
 readonly filebeat_version="7.10.2"
 readonly wazuh_install_vesion="0.1"
-source_branch="v${wazuh_version}-rc1"
+source_branch="v${wazuh_version}"
 
 repogpg="https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 repobaseurl="https://packages.wazuh.com/4.x"
