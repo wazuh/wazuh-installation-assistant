@@ -486,7 +486,7 @@ function checks_development_source_tag() {
         "https://api.github.com/repos/wazuh/wazuh-installation-assistant/git/refs/tags/$source_branch")
 
     if [ "$status_code" -ne 200 ]; then
-        common_logger -e "Tag '$source_branch' does not exist. Using the source branch related to the Wazuh version ($wazuh_version)."
+        common_logger -e "Tag '$source_branch' does not exist. Using the source branch related to the Wazuh version (${source_branch#v})."
         source_branch="${wazuh_version}"
 
         # Check if the source branch exists
