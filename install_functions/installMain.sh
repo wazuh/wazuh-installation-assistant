@@ -116,6 +116,7 @@ function main() {
                     devrepo="pre-release"
                     shift 1
                 fi
+                checks_development_source_tag
                 repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
                 repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
                 reporelease="unstable"

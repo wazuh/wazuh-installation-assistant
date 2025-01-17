@@ -477,6 +477,34 @@ function checks_filebeatURL() {
     fi
 }
 
+function checks_development_source_tag() {
+    actual_stage=""
+    source_branch="${source_branch}-${actual_stage}"
+
+    # Check if the statge tag exists
+    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
+        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/git/refs/tags/$source_branch")
+
+    if [ "$status_code" -ne 200 ]; then
+        common_logger -e "Tag '$source_branch' does not exist. Using the source branch related to the Wazuh version."
+        source_branch="${wazuh_version}"
+
+        # Check if the source branch exists
+        checks_source_branch  
+    fi
+}
+
+function checks_source_branch() {
+    # Check if the source branch exists
+    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
+        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/branches/$source_branch")
+
+    if [ "$status_code" -ne 200 ]; then
+        common_logger -e "Branch '$source_branch' does not exist. Using the main branch."
+        source_branch="main"
+    fi
+}
+
 function checks_firewall(){
     ports_list=("$@")
     f_ports=""
