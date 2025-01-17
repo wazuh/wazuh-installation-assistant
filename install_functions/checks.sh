@@ -478,7 +478,7 @@ function checks_filebeatURL() {
 }
 
 function checks_development_source_tag() {
-    actual_stage=""
+    last_stage=""
     source_branch="${source_branch}-${actual_stage}"
 
     # Check if the statge tag exists
