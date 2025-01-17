@@ -479,7 +479,7 @@ function checks_filebeatURL() {
 
 function checks_development_source_tag() {
     last_stage=""
-    source_branch="${source_branch}-${actual_stage}"
+    source_branch="${source_branch}-${last_stage}"
 
     # Check if the statge tag exists
     status_code=$(curl -s -o /dev/null -w "%{http_code}" \
