@@ -481,7 +481,7 @@ function checks_development_source_tag() {
     last_stage=""
     source_branch="${source_branch}-${last_stage}"
 
-    # Check if the statge tag exists
+    # Check if the stage tag exists
     status_code=$(curl -s -o /dev/null -w "%{http_code}" \
         "https://api.github.com/repos/wazuh/wazuh-installation-assistant/git/refs/tags/$source_branch")
 
