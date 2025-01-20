@@ -462,7 +462,7 @@ function checks_filebeatURL() {
 
     # URL using master branch
     new_filebeat_url="${filebeat_wazuh_template/${source_branch}/master}"
-    
+
     response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
     if [ "${response}" != "200" ]; then
         response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)
@@ -478,7 +478,6 @@ function checks_filebeatURL() {
 }
 
 function checks_development_source_tag() {
-    last_stage=""
     source_branch="${source_branch}-${last_stage}"
 
     # Check if the stage tag exists
@@ -486,11 +485,11 @@ function checks_development_source_tag() {
         "https://api.github.com/repos/wazuh/wazuh-installation-assistant/git/refs/tags/$source_branch")
 
     if [ "$status_code" -ne 200 ]; then
-        common_logger -e "Tag '$source_branch' does not exist. Using the source branch related to the Wazuh version ($wazuh_version)."
+        common_logger -w "Tag '$source_branch' does not exist. Using the source branch related to the Wazuh version ($wazuh_version)."
         source_branch="${wazuh_version}"
 
         # Check if the source branch exists
-        checks_source_branch  
+        checks_source_branch
     fi
 }
 
@@ -500,7 +499,7 @@ function checks_source_branch() {
         "https://api.github.com/repos/wazuh/wazuh-installation-assistant/branches/$source_branch")
 
     if [ "$status_code" -ne 200 ]; then
-        common_logger -e "Branch '$source_branch' does not exist. Using the main branch."
+        common_logger -w "Branch '$source_branch' does not exist. Using the main branch."
         source_branch="main"
     fi
 }
