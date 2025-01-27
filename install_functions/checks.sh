@@ -455,13 +455,13 @@ function checks_available_port() {
 
 function checks_filebeatURL() {
     # URL uses branch when the source_branch is not a stage branch
-    if [[ ! "${source_branch}" =~ "-" ]]; then
+    if [[ ! $last_stage ]]; then
         source_branch="${source_branch#v}"
         filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
     fi
 
     # URL using master branch
-    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/master}"
+    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/main}"
 
     response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
     if [ "${response}" != "200" ]; then
@@ -469,7 +469,7 @@ function checks_filebeatURL() {
 
         # Display error if both URLs do not get the resource
         if [ "${response}" != "200" ]; then
-            common_logger -e "Error: Could not get the Filebeat Wazuh template."
+            common_logger -e "Could not get the Filebeat Wazuh template."
         else
             common_logger "Using Filebeat template from master branch."
             filebeat_wazuh_template="${new_filebeat_url}"
