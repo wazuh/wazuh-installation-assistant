@@ -9,10 +9,12 @@
 function checks_arch() {
 
     common_logger -d "Checking system architecture."
-    arch=$(uname -m)
+    architecture=$(uname -m)
 
-    if [ "${arch}" != "x86_64" ]; then
-        common_logger -e "Uncompatible system. This script must be run on a 64-bit (x86_64/AMD64) system."
+    if [ "${architecture}" == "x86_64" ] || [ "${architecture}" == "aarch64" ]; then
+        common_logger -d "System architecture: ${architecture}"
+    else
+        common_logger -e "Uncompatible system architecture: ${architecture}. Supported any 64-bit system"
         exit 1
     fi
 }
@@ -43,6 +45,25 @@ function checks_arguments() {
         if [ -z "${AIO}" ] && [ -z "${dashboard}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
             common_logger -e "The -of|--offline-installation option must be used with -a, -ws, -s, -wi, or -wd."
             exit 1
+        fi
+    fi
+
+    if [ -n "${download}" ] && [ -z "${download_arch}" ]; then
+        common_logger -e "To download the packages it is necessary to set the architecture in -da|--download-arch <amd64|x86_64|arm64|aarch64>"
+        exit 1
+    fi
+
+    if [ -n "${download}" ] && [ -n "${download_arch}" ]; then
+        if [ "${package_type}" = "deb" ]; then
+            if [ "${arch}" != "amd64" ] && [ "${arch}" != "arm64" ]; then
+                common_logger -e "Architecture ${arch} not valid for package type ${package_type}"
+                exit 1
+            fi
+        elif [ "${package_type}" = "rpm" ]; then
+            if [ "${arch}" != "x86_64" ] && [ "${arch}" != "aarch64" ]; then
+                common_logger -e "Architecture ${arch} not valid for package type ${package_type}"
+                exit 1
+            fi
         fi
     fi
 
@@ -462,7 +483,7 @@ function checks_filebeatURL() {
 
     # URL using master branch
     new_filebeat_url="${filebeat_wazuh_template/${source_branch}/master}"
-    
+
     response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
     if [ "${response}" != "200" ]; then
         response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)
