@@ -56,12 +56,24 @@ function checks_arguments() {
     if [ -n "${download}" ] && [ -n "${download_arch}" ]; then
         if [ "${package_type}" = "deb" ]; then
             if [ "${arch}" != "amd64" ] && [ "${arch}" != "arm64" ]; then
-                common_logger -e "Architecture ${arch} not valid for package type ${package_type}"
+                if [ "${arch}" = "x86_64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use amd64 instead."
+                elif [ "${arch}" = "aarch64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use arm64 instead."
+                else
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}"
+                fi
                 exit 1
             fi
         elif [ "${package_type}" = "rpm" ]; then
             if [ "${arch}" != "x86_64" ] && [ "${arch}" != "aarch64" ]; then
-                common_logger -e "Architecture ${arch} not valid for package type ${package_type}"
+                if [ "${arch}" = "amd64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use x86_64 instead."
+                elif [ "${arch}" = "arm64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use aarch64 instead."
+                else
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}"
+                fi
                 exit 1
             fi
         fi
