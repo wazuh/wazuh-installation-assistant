@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- None
+- Add workflow step to add last_stage variable to the `wazuh-install.sh` ([#226](https://github.com/wazuh/wazuh-installation-assistant/pull/226))
 
 ### Changed
 
