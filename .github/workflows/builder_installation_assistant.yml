@@ -12,6 +12,10 @@ on:
         description: "Is stage?"
         type: boolean
         default: false
+      add_last_stage:
+        description: "Add last stage? (alpha1, beta2, rc3, etc)"
+        type: boolean
+        default: false
       checksum:
         description: "Add checksum"
         type: boolean
@@ -40,6 +44,7 @@ on:
         required: false
 
 env:
+  LAST_STAGE: $(echo ${{ inputs.wazuh_installation_assistant_reference }} | cut -d '-' -f 2)
   S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
   S3_REPOSITORY_PATH: "development/wazuh/4.x/secondary/installation-assistant"
   BUILDER_PATH: "builder.sh"
@@ -76,6 +81,12 @@ jobs:
           WAZUH_VERSION=$(grep -oP '(?<=readonly wazuh_version=").*(?=")' ${{github.workspace}}/install_functions/installVariables.sh)
           echo "WAZUH_VERSION=$WAZUH_VERSION" >> $GITHUB_ENV
           echo "COMMIT_SHORT_SHA=$COMMIT_SHORT_SHA" >> $GITHUB_ENV
+
+      - name: Fill last_stage variable in wazuh-install.sh
+        if: ${{ inputs.add_last_stage == true }}
+        run: |
+          sed -i "s|last_stage=\"\"|last_stage=\"${{ env.LAST_STAGE }}\"|g" ${{ github.workspace }}/install_functions/installVariables.sh
+
 
       - name: Change files name for stage build
         if: ${{ inputs.is_stage == false }}
