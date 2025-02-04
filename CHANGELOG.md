@@ -1,6 +1,25 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [4.12.0]
+
+### Added
+
+- Add workflow step to add last_stage variable to the `wazuh-install.sh` ([#226](https://github.com/wazuh/wazuh-installation-assistant/pull/226))
+
+### Changed
+
+- Added support ARM architecture for Wazuh central components ([#225](https://github.com/wazuh/wazuh-installation-assistant/pull/225))
+- Change gha runners to Ubuntu 22.04 ([#186](https://github.com/wazuh/wazuh-installation-assistant/pull/186))
+
+### Fixed
+
+- None
+
+### Deleted
+
+- None
+
 ## [4.11.0]
 
 ### Added
@@ -35,7 +54,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Add matrix for pull request and fix provision playbook reference in test workflows ([#136](https://github.com/wazuh/wazuh-installation-assistant/pull/136))
+- Added architecture information to assistant. ([#92](https://github.com/wazuh/wazuh-installation-assistant/pull/92))
 
 ### Deleted
 

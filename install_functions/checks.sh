@@ -9,10 +9,12 @@
 function checks_arch() {
 
     common_logger -d "Checking system architecture."
-    arch=$(uname -m)
+    architecture=$(uname -m)
 
-    if [ "${arch}" != "x86_64" ]; then
-        common_logger -e "Uncompatible system. This script must be run on a 64-bit (x86_64/AMD64) system."
+    if [ "${architecture}" == "x86_64" ] || [ "${architecture}" == "aarch64" ]; then
+        common_logger -d "System architecture: ${architecture}"
+    else
+        common_logger -e "Uncompatible system architecture: ${architecture}. Supported any 64-bit system"
         exit 1
     fi
 }
@@ -43,6 +45,37 @@ function checks_arguments() {
         if [ -z "${AIO}" ] && [ -z "${dashboard}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
             common_logger -e "The -of|--offline-installation option must be used with -a, -ws, -s, -wi, or -wd."
             exit 1
+        fi
+    fi
+
+    if [ -n "${download}" ] && [ -z "${download_arch}" ]; then
+        common_logger -e "To download the packages it is necessary to set the architecture in -da|--download-arch <amd64|x86_64|arm64|aarch64>"
+        exit 1
+    fi
+
+    if [ -n "${download}" ] && [ -n "${download_arch}" ]; then
+        if [ "${package_type}" = "deb" ]; then
+            if [ "${arch}" != "amd64" ] && [ "${arch}" != "arm64" ]; then
+                if [ "${arch}" = "x86_64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use amd64 instead."
+                elif [ "${arch}" = "aarch64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use arm64 instead."
+                else
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}"
+                fi
+                exit 1
+            fi
+        elif [ "${package_type}" = "rpm" ]; then
+            if [ "${arch}" != "x86_64" ] && [ "${arch}" != "aarch64" ]; then
+                if [ "${arch}" = "amd64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use x86_64 instead."
+                elif [ "${arch}" = "arm64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use aarch64 instead."
+                else
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}"
+                fi
+                exit 1
+            fi
         fi
     fi
 

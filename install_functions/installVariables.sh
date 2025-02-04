@@ -7,8 +7,8 @@
 # Foundation.
 
 ## Package vars
-readonly wazuh_major="4.11"
-readonly wazuh_version="4.11.0"
+readonly wazuh_major="4.12"
+readonly wazuh_version="4.12.0"
 readonly filebeat_version="7.10.2"
 readonly wazuh_install_vesion="0.1"
 source_branch="v${wazuh_version}"
@@ -45,12 +45,12 @@ readonly apt_lockfile="/var/lib/dpkg/lock"
 readonly base_dest_folder="wazuh-offline"
 manager_deb_base_url="${base_url}/apt/pool/main/w/wazuh-manager"
 readonly filebeat_deb_base_url="${base_url}/apt/pool/main/f/filebeat"
-readonly filebeat_deb_package="filebeat-oss-${filebeat_version}-amd64.deb"
+
 indexer_deb_base_url="${base_url}/apt/pool/main/w/wazuh-indexer"
 dashboard_deb_base_url="${base_url}/apt/pool/main/w/wazuh-dashboard"
 manager_rpm_base_url="${base_url}/yum"
 readonly filebeat_rpm_base_url="${base_url}/yum"
-readonly filebeat_rpm_package="filebeat-oss-${filebeat_version}-x86_64.rpm"
+
 indexer_rpm_base_url="${base_url}/yum"
 dashboard_rpm_base_url="${base_url}/yum"
 readonly wazuh_gpg_key="https://${bucket}/key/GPG-KEY-WAZUH"

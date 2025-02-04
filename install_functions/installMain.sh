@@ -28,6 +28,9 @@ function getHelp() {
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
     echo -e ""
+    echo -e "        -da,  --download-arch <amd64|arm64|x86_64|aarch64>"
+    echo -e "                Define the architecture of the packages to download for offline installation."
+    echo -e ""
     echo -e "        -fd,  --force-install-dashboard"
     echo -e "                Force Wazuh dashboard installation to continue even when it is not capable of connecting to the Wazuh indexer."
     echo -e ""
@@ -226,6 +229,16 @@ function main() {
                 package_type="${2}"
                 shift 2
                 ;;
+            "-da"|"--download-arch")
+                if [ "${2}" != "amd64" ] && [ "${2}" != "x86_64" ] && [ "${2}" != "arm64" ] && [ "${2}" != "aarch64" ]; then
+                    common_logger -e "Error on arguments. Probably missing <amd64|x86_64|arm64|aarch64> after -da|--download-arch"
+                    getHelp
+                    exit 1
+                fi
+                download_arch=1
+                arch="${2}"
+                shift 2
+                ;;
             *)
                 echo "Unknow option: ${1}"
                 getHelp
@@ -245,7 +258,7 @@ function main() {
         exit 0
     fi
 
-    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version} (x86_64/AMD64)"
+    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version}"
     common_logger "Verbose logging redirected to ${logfile}"
 
 # -------------- Uninstall case  ------------------------------------
