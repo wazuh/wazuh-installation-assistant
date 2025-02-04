@@ -116,9 +116,11 @@ function main() {
                     devrepo="pre-release"
                     shift 1
                 fi
+                checks_development_source_tag
                 repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
                 repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
                 reporelease="unstable"
+                filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
                 filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"
                 bucket="packages-dev.wazuh.com"
                 repository="${devrepo}"
@@ -243,7 +245,7 @@ function main() {
         exit 0
     fi
 
-    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version}"
+    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version} (x86_64/AMD64)"
     common_logger "Verbose logging redirected to ${logfile}"
 
 # -------------- Uninstall case  ------------------------------------

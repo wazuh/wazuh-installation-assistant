@@ -1,6 +1,28 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [4.11.0]
+
+### Added
+
+- Refactor offline instalation test ([#191](https://github.com/wazuh/wazuh-installation-assistant/pull/191))
+
+### Changed
+
+- Add function to change the source_branch with the current stage with --develoment flag activated ([#211](https://github.com/wazuh/wazuh-installation-assistant/pull/211))
+- Update upload and download artifact actions to v4 ([#198](https://github.com/wazuh/wazuh-installation-assistant/pull/198))
+- Add venv to installation assistant workflows ([#134](https://github.com/wazuh/wazuh-installation-assistant/pull/134))
+
+### Fixed
+
+- Fix error related with Filebeat template ([#222](https://github.com/wazuh/wazuh-installation-assistant/pull/222))
+- Update `-d` option in the password tool workflow and fix test scripts ([#170](https://github.com/wazuh/wazuh-installation-assistant/pull/170))
+- Added architecture information to assistant. ([#92](https://github.com/wazuh/wazuh-installation-assistant/pull/92))
+
+### Deleted
+
+- None
+
 ## [4.10.2]
 
 ### Added
@@ -13,8 +35,6 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
-
 ## [4.10.1]
 
 ### Added
@@ -26,6 +46,10 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### Fixed
+
+- None
+
+### Deleted
 
 - None
 

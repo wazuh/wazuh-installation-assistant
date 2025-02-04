@@ -12,7 +12,7 @@ function checks_arch() {
     arch=$(uname -m)
 
     if [ "${arch}" != "x86_64" ]; then
-        common_logger -e "Uncompatible system. This script must be run on a 64-bit system."
+        common_logger -e "Uncompatible system. This script must be run on a 64-bit (x86_64/AMD64) system."
         exit 1
     fi
 }
@@ -455,25 +455,52 @@ function checks_available_port() {
 
 function checks_filebeatURL() {
     # URL uses branch when the source_branch is not a stage branch
-    if [[ ! "${source_branch}" =~ "-" ]]; then
+    if [[ ! $last_stage ]]; then
         source_branch="${source_branch#v}"
         filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
     fi
 
     # URL using master branch
-    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/master}"
-    
+    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/main}"
+
     response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
     if [ "${response}" != "200" ]; then
         response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)
 
         # Display error if both URLs do not get the resource
         if [ "${response}" != "200" ]; then
-            common_logger -e "Error: Could not get the Filebeat Wazuh template."
+            common_logger -e "Could not get the Filebeat Wazuh template."
         else
             common_logger "Using Filebeat template from master branch."
             filebeat_wazuh_template="${new_filebeat_url}"
         fi
+    fi
+}
+
+function checks_development_source_tag() {
+    source_branch="${source_branch}-${last_stage}"
+
+    # Check if the stage tag exists
+    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
+        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/git/refs/tags/$source_branch")
+
+    if [ "$status_code" -ne 200 ]; then
+        common_logger -w "Tag '$source_branch' does not exist. Using the source branch related to the Wazuh version ($wazuh_version)."
+        source_branch="${wazuh_version}"
+
+        # Check if the source branch exists
+        checks_source_branch
+    fi
+}
+
+function checks_source_branch() {
+    # Check if the source branch exists
+    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
+        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/branches/$source_branch")
+
+    if [ "$status_code" -ne 200 ]; then
+        common_logger -w "Branch '$source_branch' does not exist. Using the main branch."
+        source_branch="main"
     fi
 }
 
