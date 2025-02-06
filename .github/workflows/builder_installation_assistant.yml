@@ -7,7 +7,7 @@ on:
       wazuh_installation_assistant_reference:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
-        default: 4.11.0
+        default: 4.11.1
       is_stage:
         description: "Is stage?"
         type: boolean
@@ -26,7 +26,7 @@ on:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         type: string
         required: true
-        default: 4.11.0
+        default: 4.11.1
       is_stage:
         description: "Is stage?"
         type: boolean
