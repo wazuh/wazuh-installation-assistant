@@ -492,8 +492,8 @@ function checks_filebeatURL() {
         filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
     fi
 
-    # URL using master branch
-    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/master}"
+    # URL using main branch
+    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/main}"
     
     response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
     if [ "${response}" != "200" ]; then
@@ -503,7 +503,7 @@ function checks_filebeatURL() {
         if [ "${response}" != "200" ]; then
             common_logger -e "Error: Could not get the Filebeat Wazuh template."
         else
-            common_logger "Using Filebeat template from master branch."
+            common_logger "Using Filebeat template from main branch."
             filebeat_wazuh_template="${new_filebeat_url}"
         fi
     fi

@@ -245,7 +245,7 @@ function builder_main() {
 function checkDistDetectURL() {
 
     urls=("https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/src/init/dist-detect.sh"
-          "https://raw.githubusercontent.com/wazuh/wazuh/master/src/init/dist-detect.sh")
+          "https://raw.githubusercontent.com/wazuh/wazuh/main/src/init/dist-detect.sh")
 
     for url in "${urls[@]}"; do
         eval "curl -s -o /dev/null '${url}' --retry 5 --retry-delay 5 --max-time 300 --fail"
