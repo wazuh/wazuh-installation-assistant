@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Adapt existing workflows to new allocator YAML inventory ([#254](https://github.com/wazuh/wazuh-installation-assistant/pull/254))
 - Changed VERSION file to the new standard format. ([#244](https://github.com/wazuh/wazuh-installation-assistant/pull/244))
 - Added support ARM architecture for Wazuh central components ([#225](https://github.com/wazuh/wazuh-installation-assistant/pull/225))
 - Change gha runners to Ubuntu 22.04 ([#186](https://github.com/wazuh/wazuh-installation-assistant/pull/186))
