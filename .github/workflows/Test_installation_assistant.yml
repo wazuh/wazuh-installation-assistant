@@ -159,12 +159,15 @@ jobs:
           --track-output $ALLOCATOR_PATH/track.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
           --label-team devops --label-termination-date 1d
 
-        sed 's/: */=/g' $ALLOCATOR_PATH/inventory.yml > $ALLOCATOR_PATH/inventory_mod.yml
+        INSTANCE_ID=$(yq e '.all.hosts | keys | .[0]' $ALLOCATOR_PATH/inventory.yml)
+        yq e ".all.hosts.$INSTANCE_ID | to_entries | .[] | .key + \"=\" + .value" $ALLOCATOR_PATH/inventory.yml > $ALLOCATOR_PATH/inventory_mod.yml
+
         sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod.yml
+
         source $ALLOCATOR_PATH/inventory_mod.yml
 
         echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
-        echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
+        echo "$INSTANCE_ID ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
 
     - name: Execute provision playbook
       run: |

@@ -149,10 +149,18 @@ jobs:
           --track-output $ALLOCATOR_PATH/track.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ env.COMPOSITE_NAME }}_${{ github.run_id }}_assistant_test \
           --label-team devops --label-termination-date 1d
 
-        sed 's/: */=/g' $ALLOCATOR_PATH/inventory.yml > $ALLOCATOR_PATH/inventory_mod.yml
+        # Extraer el ID de la instancia (primera clave bajo hosts)
+        INSTANCE_ID=$(grep -A 1 "hosts:" $ALLOCATOR_PATH/inventory.yml | tail -n 1 | cut -d ":" -f 1 | tr -d ' ')
+
+        # Crear archivo temporal con las variables relevantes
+        grep -A 6 "$INSTANCE_ID:" $ALLOCATOR_PATH/inventory.yml | grep "ansible_" > $ALLOCATOR_PATH/inventory_vars.yml
+
+        # Convertir el formato YAML a variables de entorno
+        sed 's/: */=/g' $ALLOCATOR_PATH/inventory_vars.yml | sed 's/^[ \t]*//' > $ALLOCATOR_PATH/inventory_mod.yml
         sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod.yml
         source $ALLOCATOR_PATH/inventory_mod.yml
 
+        # Crear el archivo de inventario en el formato requerido
         echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
         echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
 
