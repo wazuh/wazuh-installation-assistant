@@ -191,12 +191,16 @@ jobs:
             --query 'Reservations[*].Instances[*].PrivateIpAddress' \
             --output text)
 
-            # Extract variables from the new YAML format
-            ansible_host=$(yq e ".all.hosts.\"$instance_id\".ansible_host" $ALLOCATOR_PATH/inventory_${instance_name}.yml)
-            ansible_user=$(yq e ".all.hosts.\"$instance_id\".ansible_user" $ALLOCATOR_PATH/inventory_${instance_name}.yml)
-            ansible_port=$(yq e ".all.hosts.\"$instance_id\".ansible_port" $ALLOCATOR_PATH/inventory_${instance_name}.yml)
-            ansible_ssh_private_key_file=$(yq e ".all.hosts.\"$instance_id\".ansible_ssh_private_key_file" $ALLOCATOR_PATH/inventory_${instance_name}.yml)
-            ansible_ssh_common_args=$(yq e ".all.hosts.\"$instance_id\".ansible_ssh_common_args" $ALLOCATOR_PATH/inventory_${instance_name}.yml)
+            # Extract variables and convert to key=value format, skipping the all/hosts hierarchy
+            sed -n "/^all:/,/^[^ ]/p" $ALLOCATOR_PATH/inventory_${instance_name}.yml | \
+              sed -n "/hosts:/,/^[^ ]/p" | \
+              sed -n "/$instance_id:/,/^[^ ]/p" | \
+              grep -v "^all:\|^  hosts:\|^    $instance_id:" | \
+              sed 's/^      //g' | \
+              sed 's/: */=/g' > $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
+
+            sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
+            source $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
 
             # Add instance to corresponding group
             if [[ $i -eq 0 ]]; then
@@ -225,6 +229,9 @@ jobs:
         cat $inventory_managers >> $inventory_file
         cat $inventory_dashboards >> $inventory_file
         cat $inventory_common >> $inventory_file
+
+    - name: inventory
+      run: cat $ALLOCATOR_PATH/inventory
 
     - name: Execute provision playbook
       run: |
