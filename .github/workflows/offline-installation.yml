@@ -158,6 +158,9 @@ jobs:
         echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
         echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
 
+    - name: inventory
+      run: cat $ALLOCATOR_PATH/inventory
+
     - name: Install Ansible
       run: pip install ansible-core==2.16
 

@@ -159,13 +159,11 @@ jobs:
           --track-output $ALLOCATOR_PATH/track.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ github.run_id }}_assistant_test \
           --label-team devops --label-termination-date 1d
 
-        sed -n '/ansible_/p' $ALLOCATOR_PATH/inventory.yml | sed 's/^[ ]*//g' | sed 's/: */=/g' > $ALLOCATOR_PATH/inventory_mod.yml
-        INSTANCE_ID=$(grep -A1 "hosts:" $ALLOCATOR_PATH/inventory.yml | tail -n1 | sed 's/^ *//g' | sed 's/:.*//g')
-        echo "ansible_host=$INSTANCE_ID" >> $ALLOCATOR_PATH/inventory_mod.yml
+        sed -n '/hosts:/,/^[^ ]/p' $ALLOCATOR_PATH/inventory.yml | grep "ansible_" | sed 's/^[ ]*//g' > $ALLOCATOR_PATH/inventory_mod.yml
 
-        sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod.yml
-
-        source $ALLOCATOR_PATH/inventory_mod.yml
+        sed 's/: */=/g' $ALLOCATOR_PATH/inventory_mod.yml > $ALLOCATOR_PATH/inventory_vars.yml
+        sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_vars.yml
+        source $ALLOCATOR_PATH/inventory_vars.yml
 
         echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
         echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
