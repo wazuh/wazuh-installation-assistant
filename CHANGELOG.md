@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Changed uninstall variables names. ([#259](https://github.com/wazuh/wazuh-installation-assistant/pull/259))
 
 ### Deleted
 
