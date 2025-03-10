@@ -362,7 +362,6 @@ function cert_readConfig() {
         eval "indexer_node_ips=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
         eval "server_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
         eval "dashboard_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" | cut -d = -f 2 ) )"
-        eval "server_node_types=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+[_]+node_type=" | cut -d = -f 2 ) )"
         eval "number_server_ips=( $(cert_parseYaml "${config_file}" | grep -o -E 'nodes[_]+server[_]+[0-9]+[_]+ip' | sort -u | wc -l) )"
         all_ips=("${indexer_node_ips[@]}" "${server_node_ips[@]}" "${dashboard_node_ips[@]}")
 
@@ -418,32 +417,6 @@ function cert_readConfig() {
         unique_ips=($(echo "${dashboard_node_ips[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
         if [ "${#unique_ips[@]}" -ne "${#dashboard_node_ips[@]}" ]; then
             common_logger -e "Duplicated dashboard node ips."
-            exit 1
-        fi
-
-        for i in "${server_node_types[@]}"; do
-            if ! echo "$i" | grep -ioq master && ! echo "$i" | grep -ioq worker; then
-                common_logger -e "Incorrect node_type $i must be master or worker"
-                exit 1
-            fi
-        done
-
-        if [ "${#server_node_names[@]}" -le 1 ]; then
-            if [ "${#server_node_types[@]}" -ne 0 ]; then
-                common_logger -e "The tag node_type can only be used with more than one Wazuh server."
-                exit 1
-            fi
-        elif [ "${#server_node_names[@]}" -gt "${#server_node_types[@]}" ]; then
-            common_logger -e "The tag node_type needs to be specified for all Wazuh server nodes."
-            exit 1
-        elif [ "${#server_node_names[@]}" -lt "${#server_node_types[@]}" ]; then
-            common_logger -e "Found extra node_type tags."
-            exit 1
-        elif [ "$(grep -io master <<< "${server_node_types[*]}" | wc -l)" -ne 1 ]; then
-            common_logger -e "Wazuh cluster needs a single master node."
-            exit 1
-        elif [ "$(grep -io worker <<< "${server_node_types[*]}" | wc -l)" -ne $(( ${#server_node_types[@]} - 1 )) ]; then
-            common_logger -e "Incorrect number of workers."
             exit 1
         fi
 
