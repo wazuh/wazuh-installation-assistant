@@ -520,7 +520,7 @@ function installCommon_restoreWazuhrepo() {
             common_logger -w -d "Wazuh repository does not exists."
         fi
         eval "sed -i 's/-dev//g' ${file} ${debug}"
-        eval "sed -i 's/pre-release/4.x/g' ${file} ${debug}"
+        eval "sed -i 's/pre-release/5.x/g' ${file} ${debug}"
         eval "sed -i 's/unstable/stable/g' ${file} ${debug}"
     fi
 
@@ -933,7 +933,7 @@ function installCommon_checkDiskSpace() {
     directory_space_position=0
     for directory in "${wazuh_directories[@]}"; do
         partition=$(df -P "${directory}" | awk 'NR==2 {print $1}')
-        
+
         # Add the required space if the partition already exists, otherwise assign the value
         if [[ -n "${partition_space_required[$partition]}" ]]; then
             partition_space_required[$partition]=$(( partition_space_required[$partition] + wazuh_directories_approximate_value[$directory_space_position] ))

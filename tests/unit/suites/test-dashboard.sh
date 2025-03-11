@@ -9,7 +9,7 @@ source "${base_dir}"/bach.sh
     wazuh_version="5.0.0"
     elasticsearch_oss_version="7.10.2"
     wazuh_kibana_plugin_revision="1"
-    repobaseurl="https://packages.wazuh.com/4.x"
+    repobaseurl="https://packages.wazuh.com/5.x"
     kibana_wazuh_plugin="${repobaseurl}/ui/kibana/wazuh_kibana-${wazuh_version}_${elasticsearch_oss_version}-${wazuh_kibana_plugin_revision}.zip"
 }
 

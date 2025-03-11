@@ -41,7 +41,7 @@ on:
 
 env:
   S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
-  S3_REPOSITORY_PATH: "development/wazuh/4.x/secondary/installation-assistant"
+  S3_REPOSITORY_PATH: "development/wazuh/5.x/secondary/installation-assistant"
   BUILDER_PATH: "builder.sh"
   WAZUH_INSTALL_NAME: "wazuh-install"
   WAZUH_CERT_TOOL_NAME: "wazuh-certs-tool"
