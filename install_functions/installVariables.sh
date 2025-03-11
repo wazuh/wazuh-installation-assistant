@@ -14,11 +14,11 @@ readonly wazuh_install_vesion="0.1"
 source_branch="v${wazuh_version}"
 
 repogpg="https://packages.wazuh.com/key/GPG-KEY-WAZUH"
-repobaseurl="https://packages.wazuh.com/4.x"
+repobaseurl="https://packages.wazuh.com/5.x"
 reporelease="stable"
 filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"
 bucket="packages.wazuh.com"
-repository="4.x"
+repository="5.x"
 
 ## Links and paths to resources
 readonly resources="https://${bucket}/${wazuh_major}"
