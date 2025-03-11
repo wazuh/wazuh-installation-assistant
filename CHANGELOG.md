@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Fix wazuh_major version string ([#272](https://github.com/wazuh/wazuh-installation-assistant/pull/272))
 
 ### Deleted
 
