@@ -191,7 +191,14 @@ jobs:
             --query 'Reservations[*].Instances[*].PrivateIpAddress' \
             --output text)
 
-            sed 's/: */=/g' $ALLOCATOR_PATH/inventory_${instance_name}.yml > $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
+            # Extract variables and convert to key=value format, skipping the all/hosts hierarchy
+            sed -n "/^all:/,/^[^ ]/p" $ALLOCATOR_PATH/inventory_${instance_name}.yml | \
+              sed -n "/hosts:/,/^[^ ]/p" | \
+              sed -n "/$instance_id:/,/^[^ ]/p" | \
+              grep -v "^all:\|^  hosts:\|^    $instance_id:" | \
+              sed 's/^      //g' | \
+              sed 's/: */=/g' > $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
+
             sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
             source $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
 
@@ -222,6 +229,9 @@ jobs:
         cat $inventory_managers >> $inventory_file
         cat $inventory_dashboards >> $inventory_file
         cat $inventory_common >> $inventory_file
+
+    - name: inventory
+      run: cat $ALLOCATOR_PATH/inventory
 
     - name: Execute provision playbook
       run: |
