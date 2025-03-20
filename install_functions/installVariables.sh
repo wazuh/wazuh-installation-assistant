@@ -12,7 +12,7 @@ readonly wazuh_version="4.11.2"
 readonly filebeat_version="7.10.2"
 readonly wazuh_install_vesion="0.1"
 source_branch="v${wazuh_version}"
-last_stage=""
+last_stage="rc1"
 
 repogpg="https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 repobaseurl="https://packages.wazuh.com/4.x"
