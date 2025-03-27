@@ -83,7 +83,7 @@ jobs:
       with:
         repository: wazuh/wazuh-automation
         ref: ${{ env.AUTOMATION_REFERENCE }}
-        token: ${{ secrets.GH_CLONE_TOKEN }}
+        token: ${{ secrets.DEVOPS_GH_CLONE_TOKEN }}
         path: wazuh-automation
 
     - name: Set COMPOSITE_NAME variable
