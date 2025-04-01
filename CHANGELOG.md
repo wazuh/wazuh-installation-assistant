@@ -36,6 +36,10 @@ All notable changes to this project will be documented in this file.
 
 - Fixed handling of hash.sh script output in Password Tool. ([#290](https://github.com/wazuh/wazuh-installation-assistant/pull/290))
 
+### Deleted
+
+- None
+
 ## [4.11.2]
 
 ### Added

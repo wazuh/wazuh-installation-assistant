@@ -46,7 +46,7 @@ on:
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
   AUTOMATION_REFERENCE: ${{ inputs.AUTOMATION_REFERENCE }}
-  WAZUH_VERSION: "4.13
+  WAZUH_VERSION: "4.13"
   PKG_REPOSITORY: ${{ github.event_name == 'pull_request' && 'pre-release' || inputs.PKG_REPOSITORY }}
   VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
   COMPOSITE_NAME: "linux-SUBNAME-amd64"
