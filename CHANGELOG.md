@@ -27,9 +27,28 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Adapt existing workflows to new allocator YAML inventory ([#254](https://github.com/wazuh/wazuh-installation-assistant/pull/254))
 - Changed VERSION file to the new standard format. ([#244](https://github.com/wazuh/wazuh-installation-assistant/pull/244))
 - Added support ARM architecture for Wazuh central components ([#225](https://github.com/wazuh/wazuh-installation-assistant/pull/225))
 - Change gha runners to Ubuntu 22.04 ([#186](https://github.com/wazuh/wazuh-installation-assistant/pull/186))
+
+### Fixed
+
+- Fixed handling of hash.sh script output in Password Tool. ([#290](https://github.com/wazuh/wazuh-installation-assistant/pull/290))
+
+### Deleted
+
+- None
+
+## [4.11.2]
+
+### Added
+
+- None
+
+### Changed
+
+- None
 
 ### Fixed
 

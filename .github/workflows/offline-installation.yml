@@ -46,7 +46,7 @@ on:
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
   AUTOMATION_REFERENCE: ${{ inputs.AUTOMATION_REFERENCE }}
-  WAZUH_VERSION: "4.13
+  WAZUH_VERSION: "4.13"
   PKG_REPOSITORY: ${{ github.event_name == 'pull_request' && 'pre-release' || inputs.PKG_REPOSITORY }}
   VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
   COMPOSITE_NAME: "linux-SUBNAME-amd64"
@@ -148,12 +148,17 @@ jobs:
           --track-output $ALLOCATOR_PATH/track.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ env.COMPOSITE_NAME }}_${{ github.run_id }}_assistant_test \
           --label-team devops --label-termination-date 1d
 
-        sed 's/: */=/g' $ALLOCATOR_PATH/inventory.yml > $ALLOCATOR_PATH/inventory_mod.yml
-        sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod.yml
-        source $ALLOCATOR_PATH/inventory_mod.yml
+        sed -n '/hosts:/,/^[^ ]/p' $ALLOCATOR_PATH/inventory.yml | grep "ansible_" | sed 's/^[ ]*//g' > $ALLOCATOR_PATH/inventory_mod.yml
+
+        sed 's/: */=/g' $ALLOCATOR_PATH/inventory_mod.yml > $ALLOCATOR_PATH/inventory_vars.yml
+        sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_vars.yml
+        source $ALLOCATOR_PATH/inventory_vars.yml
 
         echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
         echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
+
+    - name: inventory
+      run: cat $ALLOCATOR_PATH/inventory
 
     - name: Install Ansible
       run: pip install ansible-core==2.16
