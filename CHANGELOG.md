@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Added revision to Filebeat package. ([#300](https://github.com/wazuh/wazuh-installation-assistant/pull/300))
 - Fixed handling of hash.sh script output in Password Tool. ([#290](https://github.com/wazuh/wazuh-installation-assistant/pull/290))
 
 ## [4.11.2]
