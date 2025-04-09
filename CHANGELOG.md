@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fixed offline download for Filebeat package. ([#301](https://github.com/wazuh/wazuh-installation-assistant/pull/301))
 - Fixed handling of hash.sh script output in Password Tool. ([#290](https://github.com/wazuh/wazuh-installation-assistant/pull/290))
 
 ## [4.11.2]
