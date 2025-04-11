@@ -12,13 +12,13 @@
 function offline_checkPrerequisites(){
 
     dependencies=( "${@}" )
-    if [ $1 == "wia_offline_dependencies" ]; then   
-        dependencies=( "${@:2}" ) 
+    if [ $1 == "wia_offline_dependencies" ]; then
+        dependencies=( "${@:2}" )
         common_logger "Checking dependencies for Wazuh installation assistant."
     else
         common_logger "Checking prerequisites for Offline installation."
     fi
-    
+
     for dep in "${dependencies[@]}"; do
         if [ "${sys_type}" == "yum" ]; then
             eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
@@ -75,9 +75,9 @@ function offline_extractFiles() {
     )
 
     if [ "${sys_type}" == "apt-get" ]; then
-        required_files+=("${offline_packages_path}/filebeat-oss-*.deb" "${offline_packages_path}/wazuh-dashboard_*.deb" "${offline_packages_path}/wazuh-indexer_*.deb" "${offline_packages_path}/wazuh-manager_*.deb")
+        required_files+=("${offline_packages_path}/filebeat_*.deb" "${offline_packages_path}/wazuh-dashboard_*.deb" "${offline_packages_path}/wazuh-indexer_*.deb" "${offline_packages_path}/wazuh-manager_*.deb")
     elif [ "${sys_type}" == "rpm" ]; then
-        required_files+=("${offline_packages_path}/filebeat-oss-*.rpm" "${offline_packages_path}/wazuh-dashboard_*.rpm" "${offline_packages_path}/wazuh-indexer_*.rpm" "${offline_packages_path}/wazuh-manager_*.rpm")
+        required_files+=("${offline_packages_path}/filebeat-*.rpm" "${offline_packages_path}/wazuh-dashboard_*.rpm" "${offline_packages_path}/wazuh-indexer_*.rpm" "${offline_packages_path}/wazuh-manager_*.rpm")
     fi
 
     for file in "${required_files[@]}"; do

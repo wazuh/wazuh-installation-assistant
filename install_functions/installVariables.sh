@@ -9,7 +9,7 @@
 ## Package vars
 readonly wazuh_major="4.13"
 readonly wazuh_version="4.13.0"
-readonly filebeat_version="7.10.2"
+readonly filebeat_version="7.10.2-*"
 readonly wazuh_install_vesion="0.1"
 source_branch="v${wazuh_version}"
 last_stage=""
@@ -44,12 +44,12 @@ readonly apt_lockfile="/var/lib/dpkg/lock"
 ## Offline Installation vars
 readonly base_dest_folder="wazuh-offline"
 manager_deb_base_url="${base_url}/apt/pool/main/w/wazuh-manager"
-readonly filebeat_deb_base_url="${base_url}/apt/pool/main/f/filebeat"
+filebeat_deb_base_url="${base_url}/apt/pool/main/f/filebeat"
 
 indexer_deb_base_url="${base_url}/apt/pool/main/w/wazuh-indexer"
 dashboard_deb_base_url="${base_url}/apt/pool/main/w/wazuh-dashboard"
 manager_rpm_base_url="${base_url}/yum"
-readonly filebeat_rpm_base_url="${base_url}/yum"
+filebeat_rpm_base_url="${base_url}/yum"
 
 indexer_rpm_base_url="${base_url}/yum"
 dashboard_rpm_base_url="${base_url}/yum"
