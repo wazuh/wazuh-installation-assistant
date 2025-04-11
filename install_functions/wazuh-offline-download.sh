@@ -34,10 +34,12 @@ function offline_download() {
       manager_rpm_base_url="${repobaseurl}/yum"
       indexer_rpm_base_url="${repobaseurl}/yum"
       dashboard_rpm_base_url="${repobaseurl}/yum"
+      filebeat_rpm_base_url="${repobaseurl}/yum"
     elif [ "${package_type}" == "deb" ]; then
       manager_deb_base_url="${repobaseurl}/apt/pool/main/w/wazuh-manager"
       indexer_deb_base_url="${repobaseurl}/apt/pool/main/w/wazuh-indexer"
       dashboard_deb_base_url="${repobaseurl}/apt/pool/main/w/wazuh-dashboard"
+      filebeat_deb_base_url="${repobaseurl}/apt/pool/main/f/filebeat"
     fi
   fi
 
@@ -49,9 +51,11 @@ function offline_download() {
     manager_base_url="${manager_rpm_base_url}"
     indexer_base_url="${indexer_rpm_base_url}"
     dashboard_base_url="${dashboard_rpm_base_url}"
+    filebeat_base_url="${filebeat_rpm_base_url}"
     manager_package="${manager_rpm_package}"
     indexer_package="${indexer_rpm_package}"
     dashboard_package="${dashboard_rpm_package}"
+    filebeat_package="${filebeat_rpm_package}"
   elif [ "${package_type}" == "deb" ]; then
     manager_deb_package="wazuh-manager_${wazuh_version}-${manager_revision}_${arch}.${package_type}"
     indexer_deb_package="wazuh-indexer_${wazuh_version}-${indexer_revision}_${arch}.${package_type}"
@@ -60,9 +64,11 @@ function offline_download() {
     manager_base_url="${manager_deb_base_url}"
     indexer_base_url="${indexer_deb_base_url}"
     dashboard_base_url="${dashboard_deb_base_url}"
+    filebeat_base_url="${filebeat_deb_base_url}"
     manager_package="${manager_deb_package}"
     indexer_package="${indexer_deb_package}"
     dashboard_package="${dashboard_deb_package}"
+    filebeat_package="${filebeat_deb_package}"
   else
     common_logger "Unsupported package type: ${package_type}"
     exit 1
@@ -87,6 +93,26 @@ function offline_download() {
     fi
   fi
   common_logger -d "Wazuh manager package revision fetched."
+
+  while common_curl -s -I -o /dev/null -w "%{http_code}" "${filebeat_base_url}/${filebeat_package}" --max-time 300 --retry 5 --retry-delay 5 --fail | grep -q "200"; do
+    filebeat_revision=$((filebeat_revision+1))
+    if [ "${package_type}" == "rpm" ]; then
+      filebeat_rpm_package="filebeat-${filebeat_version}-${filebeat_revision}.${arch}.rpm"
+      filebeat_package="${filebeat_rpm_package}"
+    else
+      filebeat_deb_package="filebeat_${filebeat_version}-${filebeat_revision}_${arch}.deb"
+      filebeat_package="${filebeat_deb_package}"
+    fi
+  done
+  if [ "$filebeat_revision" -gt 1 ] && [ "$(common_curl -s -I -o /dev/null -w "%{http_code}" "${filebeat_base_url}/${filebeat_package}" --max-time 300 --retry 5 --retry-delay 5 --fail)" -ne "200" ]; then
+    filebeat_revision=$((filebeat_revision-1))
+    if [ "${package_type}" == "rpm" ]; then
+      filebeat_rpm_package="filebeat-${filebeat_version}-${filebeat_revision}.${arch}.rpm"
+    else
+      filebeat_deb_package="filebeat_${filebeat_version}-${filebeat_revision}_${arch}.deb"
+    fi
+  fi
+  common_logger -d "Filebeat package revision fetched."
 
   while common_curl -s -I -o /dev/null -w "%{http_code}" "${indexer_base_url}/${indexer_package}" --max-time 300 --retry 5 --retry-delay 5 --fail | grep -q "200"; do
     indexer_revision=$((indexer_revision+1))
