@@ -55,6 +55,7 @@ indexer_rpm_base_url="${base_url}/yum"
 dashboard_rpm_base_url="${base_url}/yum"
 readonly wazuh_gpg_key="https://${bucket}/key/GPG-KEY-WAZUH"
 filebeat_config_file="${resources}/tpl/wazuh/filebeat/filebeat.yml"
+readonly offline_filebeat_version="7.10.2"
 
 adminUser="wazuh"
 adminPassword="wazuh"
