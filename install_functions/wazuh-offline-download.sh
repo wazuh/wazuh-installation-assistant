@@ -47,7 +47,7 @@ function offline_download() {
     manager_rpm_package="wazuh-manager-${wazuh_version}-${manager_revision}.${arch}.${package_type}"
     indexer_rpm_package="wazuh-indexer-${wazuh_version}-${indexer_revision}.${arch}.${package_type}"
     dashboard_rpm_package="wazuh-dashboard-${wazuh_version}-${dashboard_revision}.${arch}.${package_type}"
-    filebeat_rpm_package="filebeat-${filebeat_version}-${filebeat_revision}.${arch}.${package_type}"
+    filebeat_rpm_package="filebeat-${offline_filebeat_version}-${filebeat_revision}.${arch}.${package_type}"
     manager_base_url="${manager_rpm_base_url}"
     indexer_base_url="${indexer_rpm_base_url}"
     dashboard_base_url="${dashboard_rpm_base_url}"
@@ -60,7 +60,7 @@ function offline_download() {
     manager_deb_package="wazuh-manager_${wazuh_version}-${manager_revision}_${arch}.${package_type}"
     indexer_deb_package="wazuh-indexer_${wazuh_version}-${indexer_revision}_${arch}.${package_type}"
     dashboard_deb_package="wazuh-dashboard_${wazuh_version}-${dashboard_revision}_${arch}.${package_type}"
-    filebeat_deb_package="filebeat_${filebeat_version}-${filebeat_revision}_${arch}.${package_type}"
+    filebeat_deb_package="filebeat_${offline_filebeat_version}-${filebeat_revision}_${arch}.${package_type}"
     manager_base_url="${manager_deb_base_url}"
     indexer_base_url="${indexer_deb_base_url}"
     dashboard_base_url="${dashboard_deb_base_url}"
@@ -97,19 +97,19 @@ function offline_download() {
   while common_curl -s -I -o /dev/null -w "%{http_code}" "${filebeat_base_url}/${filebeat_package}" --max-time 300 --retry 5 --retry-delay 5 --fail | grep -q "200"; do
     filebeat_revision=$((filebeat_revision+1))
     if [ "${package_type}" == "rpm" ]; then
-      filebeat_rpm_package="filebeat-${filebeat_version}-${filebeat_revision}.${arch}.rpm"
+      filebeat_rpm_package="filebeat-${offline_filebeat_version}-${filebeat_revision}.${arch}.rpm"
       filebeat_package="${filebeat_rpm_package}"
     else
-      filebeat_deb_package="filebeat_${filebeat_version}-${filebeat_revision}_${arch}.deb"
+      filebeat_deb_package="filebeat_${offline_filebeat_version}-${filebeat_revision}_${arch}.deb"
       filebeat_package="${filebeat_deb_package}"
     fi
   done
   if [ "$filebeat_revision" -gt 1 ] && [ "$(common_curl -s -I -o /dev/null -w "%{http_code}" "${filebeat_base_url}/${filebeat_package}" --max-time 300 --retry 5 --retry-delay 5 --fail)" -ne "200" ]; then
     filebeat_revision=$((filebeat_revision-1))
     if [ "${package_type}" == "rpm" ]; then
-      filebeat_rpm_package="filebeat-${filebeat_version}-${filebeat_revision}.${arch}.rpm"
+      filebeat_rpm_package="filebeat-${offline_filebeat_version}-${filebeat_revision}.${arch}.rpm"
     else
-      filebeat_deb_package="filebeat_${filebeat_version}-${filebeat_revision}_${arch}.deb"
+      filebeat_deb_package="filebeat_${offline_filebeat_version}-${filebeat_revision}_${arch}.deb"
     fi
   fi
   common_logger -d "Filebeat package revision fetched."
