@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Fix AL2023 supported list ([#327](https://github.com/wazuh/wazuh-installation-assistant/pull/327))
 
 ### Deleted
 
