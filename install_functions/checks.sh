@@ -283,7 +283,7 @@ function check_dist() {
     fi
 
     if [ -n "${notsupported}" ]; then
-        common_logger "The recommended systems are: Red Hat Enterprise Linux 7, 8, 9; CentOS 7, 8; Amazon Linux 2; Ubuntu 16.04, 18.04, 20.04, 22.04."
+        common_logger "The recommended systems are: Red Hat Enterprise Linux 7, 8, 9; CentOS 7, 8; Amazon Linux 2; Amazon Linux 2023; Ubuntu 16.04, 18.04, 20.04, 22.04; Rocky Linux 9.4."
         common_logger -w "The current system does not match with the list of recommended systems. The installation may not work properly."
     fi
     common_logger -d "Detected distribution name: ${DIST_NAME}"

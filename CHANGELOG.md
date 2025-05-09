@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Added AL2023 and Rocky Linux 9.4 to recommended OS list ([#327](https://github.com/wazuh/wazuh-installation-assistant/pull/327))
 
 ### Deleted
 
