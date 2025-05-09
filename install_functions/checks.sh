@@ -257,7 +257,6 @@ function check_dist() {
         if  [ "${DIST_VER}" != "2" ] &&
             [ "${DIST_VER}" != "2023" ] &&
             [ "${DIST_VER}" != "2018.03" ]; then
-            [ "${DIST_VER}" != "2023" ]; then
             notsupported=1
         fi
         if [ "${DIST_VER}" -eq "2023" ]; then
