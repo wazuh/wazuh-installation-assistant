@@ -85,7 +85,7 @@ def api_call_indexer(host,query,address,api_protocol,api_user,api_pass,api_port)
 
     else: # Executing query search
         if (api_pass != "" and api_pass != ""):
-            resp = requests.post(api_protocol + '://' + address + ':' + api_port + "/wazuh-alerts-5.x-*/_search",
+            resp = requests.post(api_protocol + '://' + address + ':' + api_port + "/wazuh-alerts-6.x-*/_search",
                         json=query,
                         auth=(api_user,
                         api_pass),

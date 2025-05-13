@@ -61,7 +61,7 @@ test-04-common_checkInstalled-all-installed-yum() {
 
     @mocktrue yum list installed
 
-    @mock grep wazuh-manager === @echo wazuh-manager.x86_64 5.0.0-1 @wazuh
+    @mock grep wazuh-manager === @echo wazuh-manager.x86_64 6.0.0-1 @wazuh
     @mkdir /var/ossec
 
     @mock grep wazuh-indexer === @echo wazuh-indexer.x86_64 1.13.2-1 @wazuh
@@ -105,10 +105,10 @@ test-04-common_checkInstalled-all-installed-yum() {
 }
 
 test-05-common_checkInstalled-all-installed-yum-assert() {
-    @echo "wazuh-manager.x86_64 5.0.0-1 @wazuh"
+    @echo "wazuh-manager.x86_64 6.0.0-1 @wazuh"
     @echo 1
 
-    @echo "wazuh-indexer.x86_64 5.0.0-1 @wazuh"
+    @echo "wazuh-indexer.x86_64 6.0.0-1 @wazuh"
     @echo 1
 
     @echo "filebeat.x86_64 7.10.2-1 @wazuh"
@@ -125,10 +125,10 @@ test-05-common_checkInstalled-all-installed-apt() {
 
     @mocktrue apt list --installed
 
-    @mock grep wazuh-manager === @echo wazuh-manager/now 5.0.0-1 amd64 [installed,local]
+    @mock grep wazuh-manager === @echo wazuh-manager/now 6.0.0-1 amd64 [installed,local]
     @mkdir /var/ossec
 
-    @mock grep wazuh-indexer === @echo wazuh-indexer/stable,now 5.0.0-1 amd64 [installed]
+    @mock grep wazuh-indexer === @echo wazuh-indexer/stable,now 6.0.0-1 amd64 [installed]
 
     @mkdir /var/lib/wazuh-indexer/
     @mkdir /usr/share/wazuh-indexer
@@ -139,7 +139,7 @@ test-05-common_checkInstalled-all-installed-apt() {
     @mkdir /usr/share/filebeat
     @mkdir /etc/filebeat
 
-    @mock grep wazuh-dashboard === @echo wazuh-dashboard/now 5.0.0-1 amd64 [installed,local]
+    @mock grep wazuh-dashboard === @echo wazuh-dashboard/now 6.0.0-1 amd64 [installed,local]
     @mkdir /var/lib/wazuh-dashboard/
     @mkdir /usr/share/wazuh-dashboard/
     @mkdir /etc/wazuh-dashboard
@@ -170,16 +170,16 @@ test-05-common_checkInstalled-all-installed-apt() {
 }
 
 test-05-common_checkInstalled-all-installed-apt-assert() {
-    @echo "wazuh-manager/now 5.0.0-1 amd64 [installed,local]"
+    @echo "wazuh-manager/now 6.0.0-1 amd64 [installed,local]"
     @echo 1
 
-    @echo "wazuh-indexer/stable,now 5.0.0-1 amd64 [installed]"
+    @echo "wazuh-indexer/stable,now 6.0.0-1 amd64 [installed]"
     @echo 1
 
     @echo "filebeat/now 7.10.2 amd64 [installed,local]"
     @echo 1
 
-    @echo "wazuh-dashboard/now 5.0.0-1 amd64 [installed,local]"
+    @echo "wazuh-dashboard/now 6.0.0-1 amd64 [installed,local]"
     @echo 1
 }
 

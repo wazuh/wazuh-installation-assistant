@@ -1,8 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-
-## [5.0.0]
+## [6.0.0]
 
 ### Added
 
@@ -29,6 +28,24 @@ All notable changes to this project will be documented in this file.
 - Fixed Version file name. ([#247](https://github.com/wazuh/wazuh-installation-assistant/pull/247))
 - Solve confict in installVariables ([#149](https://github.com/wazuh/wazuh-installation-assistant/pull/149))
 - Print getHelp output when no parameter is passed to the builder script. ([#142](https://github.com/wazuh/wazuh-installation-assistant/pull/142))
+
+### Deleted
+
+- None
+
+## [5.0.0]
+
+### Added
+
+- None
+
+### Changed
+
+- None
+
+### Fixed
+
+- None
 
 ### Deleted
 
