@@ -7,7 +7,7 @@ on:
       wazuh_installation_assistant_reference:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
-        default: 4.13.0
+        default: 5.0.0
       is_stage:
         description: "Is stage?"
         type: boolean
@@ -30,7 +30,7 @@ on:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         type: string
         required: true
-        default: 4.13.0
+        default: 5.0.0
       is_stage:
         description: "Is stage?"
         type: boolean
@@ -46,7 +46,7 @@ on:
 env:
   LAST_STAGE: $(echo ${{ inputs.wazuh_installation_assistant_reference }} | cut -d '-' -f 2)
   S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
-  S3_REPOSITORY_PATH: "development/wazuh/4.x/secondary/installation-assistant"
+  S3_REPOSITORY_PATH: "development/wazuh/5.x/secondary/installation-assistant"
   BUILDER_PATH: "builder.sh"
   WAZUH_INSTALL_NAME: "wazuh-install"
   WAZUH_CERT_TOOL_NAME: "wazuh-certs-tool"

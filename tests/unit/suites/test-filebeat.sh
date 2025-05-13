@@ -8,7 +8,7 @@ source "${base_dir}"/bach.sh
     filebeat_cert_path="/etc/filebeat/certs/"
     wazuh_major="4.3"
     filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${wazuh_major}/extensions/elasticsearch/7.x/wazuh-template.json"
-    repobaseurl="https://packages.wazuh.com/4.x"
+    repobaseurl="https://packages.wazuh.com/5.x"
     filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.1.tar.gz"
 }
 
