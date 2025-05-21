@@ -9,7 +9,7 @@ on:
       - 'config/**'
       - 'install_functions/**'
       - 'passwords_tool/**'
-      - 'tests/**'
+      - 'old_tests/**'
   workflow_dispatch:
     inputs:
       REPOSITORY:
