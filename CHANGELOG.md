@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Create the config manager module and initialize project ([#356](https://github.com/wazuh/wazuh-installation-assistant/pull/356))
 - Improve asistant test completion status ([#188](https://github.com/wazuh/wazuh-installation-assistant/pull/188))
 - Added available packages check before installation ([#80](https://github.com/wazuh/wazuh-installation-assistant/pull/80))
 
