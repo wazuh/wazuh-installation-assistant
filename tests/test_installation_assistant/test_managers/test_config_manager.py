@@ -234,26 +234,6 @@ def test_get_node_from_key_with_invalid_node_type(valid_config_manager):
     )
 
 
-CORRECT_CONFIG = {
-    "nodes": {
-        "indexer": [{"name": "node-1", "ip": "127.0.0.1"}, {"name": "node-2", "ip": "127.0.0.2"}],
-        "server": [
-            {
-                "name": "node-server",
-                "ip": "192.168.56.101",
-            },
-        ],
-        "dashboard": [
-            {
-                "name": "node-3",
-                "ip": "127.0.0.1",
-            },
-            {"name": "node-4", "ip": "127.0.0.3"},
-        ],
-    }
-}
-
-
 @pytest.mark.parametrize(
     "name, ip, expected_node",
     [
