@@ -160,7 +160,7 @@ To ensure consistency in development, please follow these guidelines:
 - Use standard `$((..))` instead of old `$[]`.
 
 > [!TIP]
-> *Additional check*: Run unit [tests](/tests/unit/README) before preparing a pull request.
+> *Additional check*: Run unit [tests](/old_tests/unit/README) before preparing a pull request.
 
 Some useful links and acknowledgment:
 - [Bash meets solid](https://codewizardly.com/bash-meets-solid/)

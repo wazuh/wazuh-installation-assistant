@@ -19,7 +19,7 @@ The workflows tests are triggered automatically when a pull request (PR) is crea
 - `config/`
 - `install_functions/`
 - `passwords_tool/`
-- `tests/`
+- `old_tests/`
 
 ### Manual Trigger
 The test workflows can be triggered manually via the GitHub interface under the "Actions" tab, using the workflow_dispatch event. When triggered manually, several input parameters are required:

@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wazuh-installation-assistant"
+dynamic = ["version"]
+dependencies = [
+    "pyyaml",
+    "rich",
+]
+requires-python = ">= 3.12"
+description = "Wazuh - Installation assistant"
+license = {file = "LICENSE"}
+
+[tool.hatch.version]
+path = "VERSION.json"
+pattern = '"version": "(?P<version>[^"]+)"'
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+exclude = ["old_tests/"]
+
+[project.urls]
+Homepage = "https://wazuh.com/"
+Documentation = "https://documentation.wazuh.com/current/index.html"
+Repository = "https://github.com/wazuh/wazuh-installation-assistant"
+
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # Pyflakes
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",    # isort
+]
+ignore = ["E501"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.coverage.run]
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+]
+
+[tool.hatch.envs.dev]
+description = """
+Enviroment to be used for testing the installation-assistant repository.
+"""
+dependencies = [
+    "pytest~=8.0",
+    "pytest-cov~=6.0",
+    "pytest-xdist",
+    "ruff",
+    "requests",
+]
+
+[tool.hatch.envs.dev.scripts]
+test-cov = "FORCE_COLOR=1 pytest -n 4 --cov=. --cov-report term-missing:skip-covered tests/ --cov-report=xml"
+ruff-format = "ruff format ."
+ruff-format-check = "ruff format --diff --check ."
+ruff-lint-check = "ruff check --diff --unsafe-fixes ."
+ruff-lint = "ruff check --fix --unsafe-fixes ."
+run = "python -m main {args:}"
+fix = ["ruff-format", "ruff-lint"] # The aim of this is to fix the code before pushing it to the repository. useful for local executions.
+validate = [ # The aim of this is to validate the code before pushing it to the repository. Useful for when running workflows.
+    "- ruff-format-check",
+    "- ruff-lint-check",
+    "- test-cov",
+]
