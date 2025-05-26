@@ -4,7 +4,7 @@
   become: true
 
   vars:
-    script_path: "{{ tmp_path }}/tests/install"
+    script_path: "{{ tmp_path }}/old_tests/install"
     script_name: "{{ test_name }}.py"
 
   tasks:
