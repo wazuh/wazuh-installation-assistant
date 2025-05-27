@@ -85,7 +85,7 @@ def api_call_indexer(host,query,address,api_protocol,api_user,api_pass,api_port)
 
     else: # Executing query search
         if (api_pass != "" and api_pass != ""):
-            resp = requests.post(api_protocol + '://' + address + ':' + api_port + "/wazuh-alerts-4.x-*/_search",
+            resp = requests.post(api_protocol + '://' + address + ':' + api_port + "/wazuh-alerts-5.x-*/_search",
                         json=query,
                         auth=(api_user,
                         api_pass),
@@ -214,7 +214,7 @@ def test_check_log_errors():
         "ERROR: Could not send message through the cluster after '10' attempts"
 
     ]
-    
+
     with open('/var/ossec/logs/ossec.log', 'r') as f:
         for line in f.readlines():
             if 'ERROR' in line:
