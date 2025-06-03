@@ -177,6 +177,35 @@ function dashboard_initialize() {
 
 }
 
+function dashboard_installServiceCheck() {
+    if [ -e /sbin/init ]; then
+        if service wazuh-dashboard status > /dev/null; then
+            return 0
+        else
+            echo "The Wazuh dashboard service does not exist"
+            return 1
+        fi
+    elif [ -f /lib/systemd/systemd ]; then
+        if systemctl status wazuh-dashboard &> /dev/null; then
+            return 0
+        else
+            echo "The Wazuh dashboard service does not exist"
+            return 1
+        fi
+    else
+        echo "Unsupported init system"
+    fi
+}
+
+function dashboard_installFolderCheck() {
+    if [ -d "/etc/wazuh-dashboard" ]; then
+        return 0
+    else
+        echo "The Wazuh Dashboard configuration directory does not exist."
+        return 1
+    fi
+}
+
 function dashboard_initializeAIO() {
 
     wazuh_api_address=${server_node_ips[0]}
@@ -192,10 +221,11 @@ function dashboard_initializeAIO() {
         retries=$((retries+1))
         sleep 15
     done
-    if [ "${http_code}" -eq "200" ]; then
+    if [ "${http_code}" -eq "200" ] && (dashboard_installServiceCheck && dashboard_installFolderCheck); then
         if [ -f "/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml" ]; then
             eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml ${debug}"
         fi
+
         common_logger "Wazuh dashboard web application initialized."
         common_logger -nl "--- Summary ---"
         common_logger -nl "You can access the web interface https://<wazuh-dashboard-ip>:${http_port}\n    User: admin\n    Password: ${u_pass}"
