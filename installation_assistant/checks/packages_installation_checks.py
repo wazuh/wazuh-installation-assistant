@@ -17,7 +17,7 @@ class SystemNotSupportedError(Exception):
     def __init__(self, message: str):
         documentation_message = "Please checks the permitted operating systems in the documentation: https://documentation.wazuh.com/current/quickstart.html#operating-system"
 
-        super().__init__(f"{message}. {documentation_message}")
+        super().__init__(f"{message} {documentation_message}")
 
 
 def check_architecture() -> ComponentArch:
