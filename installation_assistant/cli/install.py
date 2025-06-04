@@ -90,9 +90,7 @@ def install_component(
     node_name: Annotated[
         str,
         typer.Option(
-            "--node",
-            "-n",
-            help="Name of the node of the component to install defined in the config.yml file."
+            "--node", "-n", help="Name of the node of the component to install defined in the config.yml file."
         ),
     ],
     install_files: Annotated[
