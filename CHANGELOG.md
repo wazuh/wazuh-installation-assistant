@@ -20,24 +20,6 @@ All notable changes to this project will be documented in this file.
 
 - Remove default installation assistant reference version from workflow ([#284](https://github.com/wazuh/wazuh-installation-assistant/pull/284))
 
-## [4.12.1]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- None
-
-### Deleted
-
-- None
-
 ## [4.12.0]
 
 ### Added
