@@ -25,6 +25,10 @@ All notable changes to this project will be documented in this file.
 
 - None
 
+### Added
+
+- Added repository_bumper.sh script. ([#315](https://github.com/wazuh/wazuh-installation-assistant/pull/315))
+
 ### Changed
 
 - None
