@@ -19,10 +19,29 @@ All notable changes to this project will be documented in this file.
 
 - None
 
+## [4.13.1]
+
+### Added
+
+- None
+
+### Changed
+
+- None
+
+### Fixed
+
+- None
+
+### Deleted
+
+- None
+
 ## [4.13.0]
 
 ### Added
 
+- Integrate bumper script via GitHub action. ([#382](https://github.com/wazuh/wazuh-installation-assistant/pull/382))
 - Added repository_bumper.sh script. ([#315](https://github.com/wazuh/wazuh-installation-assistant/pull/315))
 
 ### Changed
