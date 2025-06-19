@@ -8,15 +8,20 @@
 [![YouTube](https://img.shields.io/youtube/views/peTSzcAueEc?style=social)](https://www.youtube.com/watch?v=peTSzcAueEc)
 
 ## Table of Contents
-1. [Overview](#overview)
-2. [Tools](#tools)
-3. [User Guide](#user-guide)
-4. [Use Cases](#use-cases)
-5. [Options Table](#options-table)
-6. [Contribute](#contribute)
-7. [Development Guide](#development-guide)
-7. [More Information](#more-information)
-9. [Authors](#authors)
+- [Wazuh installation assistant](#wazuh-installation-assistant)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Tools](#tools)
+  - [User Guide](#user-guide)
+    - [Downloads](#downloads)
+    - [Build the scripts](#build-the-scripts)
+  - [Use Cases](#use-cases)
+    - [Common commands](#common-commands)
+  - [Options Table](#options-table)
+  - [Contribute](#contribute)
+  - [Development Guide](#development-guide)
+  - [More Information](#more-information)
+  - [Authors](#authors)
 
 ## Overview
 

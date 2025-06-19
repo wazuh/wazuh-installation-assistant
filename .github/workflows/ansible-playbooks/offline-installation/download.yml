@@ -1,0 +1,67 @@
+---
+
+- hosts: all
+  become: true
+
+  vars:
+    working_path: "{{ tmp_path }}"
+    pkg_repository: "{{ pkg_repository }}"
+    wazuh_version: "{{ wazuh_version }}"
+    script_name: "wazuh-install.sh"
+    offline_installation_path: ".github/actions/offline-installation"
+    offline_installation_script: "offline-installation.sh"
+    pkg_mgr_map:
+      yum: rpm
+      dnf: rpm
+      apt: deb
+
+  tasks:
+    - name: Download assets
+      shell:
+        cmd: "./wazuh-install.sh -dw {{ pkg_mgr_map[ansible_pkg_mgr] }} -d {{ pkg_repository }}"
+        chdir: "{{ working_path }}"
+      register: install_result
+
+    - name: Download config.yml
+      get_url:
+        url: "https://packages-dev.wazuh.com/{{ wazuh_version }}/config.yml"
+        dest: "{{ working_path }}/config.yml"
+        mode: '0644'
+
+    - name: Update IP addresses in config.yml
+      replace:
+        path: "{{ working_path }}/config.yml"
+        regexp: "{{ item.pattern }}"
+        replace: "127.0.0.1"
+      with_items:
+        - { pattern: '<indexer-node-ip>' }
+        - { pattern: '<wazuh-manager-ip>' }
+        - { pattern: '<dashboard-node-ip>' }
+
+    - name: Download wazuh-certs-tool.sh
+      get_url:
+        url: "https://packages-dev.wazuh.com/{{ wazuh_version }}/wazuh-certs-tool.sh"
+        dest: "{{ working_path }}/wazuh-certs-tool.sh"
+        mode: '0744'
+
+    - name: Execute wazuh-certs-tool.sh
+      shell:
+        cmd: "./wazuh-certs-tool.sh --all"
+        chdir: "{{ working_path }}"
+      register: certs_result
+
+    - name: Extract wazuh-offline.tar.gz
+      unarchive:
+        src: "{{ working_path }}/wazuh-offline.tar.gz"
+        dest: "{{ working_path }}"
+        remote_src: yes
+
+    - name: Verify wazuh-offline directory exists
+      stat:
+        path: "{{ working_path }}/wazuh-offline"
+      register: dir_check
+
+    - name: Fail if directory does not exist
+      fail:
+        msg: "ERROR: Could not download the resources."
+      when: not dir_check.stat.exists

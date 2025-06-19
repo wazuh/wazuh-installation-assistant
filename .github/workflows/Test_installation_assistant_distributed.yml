@@ -50,13 +50,16 @@ on:
         type: boolean
 
 env:
+  WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+  AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && '6.0.0' || inputs.AUTOMATION_REFERENCE }}
+  VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
   COMPOSITE_NAME: "linux-SUBNAME-amd64"
   SESSION_NAME: "Installation-Assistant-Test"
   REGION: "us-east-1"
   TMP_PATH: "/tmp/test"
   ANSIBLE_CALLBACK: "yaml"
   RESOURCES_PATH: "${{ github.workspace }}"
-  PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
+  PKG_REPOSITORY: ${{ github.event_name == 'pull_request' && 'pre-release' || inputs.REPOSITORY }}
   TEST_NAME: "test_installation_assistant"
   REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
   ALLOCATOR_PATH: "/tmp/allocator_instance"
@@ -72,13 +75,13 @@ jobs:
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
-        system: ${{ github.event_name == 'pull_request' && '["Ubuntu_22"]' || fromJson(inputs.SYSTEMS) }} # If the worklflow is executed by a PR, set the OSs
+        system: ${{ github.event_name == 'pull_request' && fromJson('["Ubuntu_22"]') || fromJson(inputs.SYSTEMS) }} # If the worklflow is executed by a PR, set the OSs
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+        ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
     - name: View parameters
       run: echo "${{ toJson(inputs) }}"
@@ -121,8 +124,20 @@ jobs:
         COMPOSITE_NAME="${COMPOSITE_NAME/SUBNAME/$SUBNAME}"
         echo "COMPOSITE_NAME=$COMPOSITE_NAME" >> $GITHUB_ENV
 
+    - name: Install python and create virtual environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3 python3-venv
+        python3 -m venv testing_venv
+        source testing_venv/bin/activate
+        python3 -m pip install --upgrade pip
+        echo PATH=$PATH >> $GITHUB_ENV
+
     - name: Install Ansible
-      run: sudo apt-get update && sudo apt install -y python3 && python3 -m pip install --user ansible-core==2.16 && pip install pyyaml && ansible-galaxy collection install community.general
+      run: |
+        pip install ansible-core==2.16
+        pip install pyyaml
+        ansible-galaxy collection install community.general
 
     - name: Set up AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -135,7 +150,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: wazuh/wazuh-automation
-        ref: ${{ inputs.AUTOMATION_REFERENCE }}
+        ref: ${{ env.AUTOMATION_REFERENCE }}
         token: ${{ secrets.GH_CLONE_TOKEN }}
         path: wazuh-automation
 
@@ -176,7 +191,14 @@ jobs:
             --query 'Reservations[*].Instances[*].PrivateIpAddress' \
             --output text)
 
-            sed 's/: */=/g' $ALLOCATOR_PATH/inventory_${instance_name}.yml > $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
+            # Extract variables and convert to key=value format, skipping the all/hosts hierarchy
+            sed -n "/^all:/,/^[^ ]/p" $ALLOCATOR_PATH/inventory_${instance_name}.yml | \
+              sed -n "/hosts:/,/^[^ ]/p" | \
+              sed -n "/$instance_id:/,/^[^ ]/p" | \
+              grep -v "^all:\|^  hosts:\|^    $instance_id:" | \
+              sed 's/^      //g' | \
+              sed 's/: */=/g' > $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
+
             sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
             source $ALLOCATOR_PATH/inventory_mod_${instance_name}.yml
 
@@ -208,6 +230,9 @@ jobs:
         cat $inventory_dashboards >> $inventory_file
         cat $inventory_common >> $inventory_file
 
+    - name: inventory
+      run: cat $ALLOCATOR_PATH/inventory
+
     - name: Execute provision playbook
       id: provision_instance
       if: success() && steps.allocator_instance.outcome == 'success'
@@ -221,7 +246,7 @@ jobs:
         -i $ALLOCATOR_PATH/inventory \
         -l indexers \
         -e "repository=$REPOSITORY_URL" \
-        -e "reference=${{ github.ref_name }}" \
+        -e "reference=$WAZUH_INSTALLATION_ASSISTANT_REFERENCE" \
         -e "tmp_path=$TMP_PATH" \
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
@@ -350,19 +375,19 @@ jobs:
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files
-      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == false
+      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == false && github.event_name != 'pull_request'
       run: |
         zip -P "${{ secrets.ZIP_ARTIFACTS_PASSWORD }}" -r $ALLOCATOR_PATH.zip $ALLOCATOR_PATH
 
     - name: Upload Allocator VM directory as artifact
-      if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false
+      if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false && github.event_name != 'pull_request'
       uses: actions/upload-artifact@v4
       with:
         name: allocator-instance-${{ matrix.system }}
         path: ${{ env.ALLOCATOR_PATH }}.zip
 
     - name: Delete allocated VMs
-      if: always() && steps.allocator_instance.outcome == 'success' && inputs.DESTROY == true
+      if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == true || github.event_name == 'pull_request')
       run: |
         instance_names=($INSTANCE_NAMES)
 

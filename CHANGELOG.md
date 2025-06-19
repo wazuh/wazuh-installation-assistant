@@ -53,6 +53,26 @@ All notable changes to this project will be documented in this file.
 
 - None
 
+## [4.13.0]
+
+### Added
+
+- Integrate bumper script via GitHub action. ([#382](https://github.com/wazuh/wazuh-installation-assistant/pull/382))
+- Added repository_bumper.sh script. ([#315](https://github.com/wazuh/wazuh-installation-assistant/pull/315))
+
+### Changed
+
+- None
+
+### Fixed
+
+- Added AL2023 and Rocky Linux 9.4 to recommended OS list ([#327](https://github.com/wazuh/wazuh-installation-assistant/pull/327))
+- Fix wazuh_major version string ([#272](https://github.com/wazuh/wazuh-installation-assistant/pull/272))
+
+### Deleted
+
+- Remove default installation assistant reference version from workflow ([#284](https://github.com/wazuh/wazuh-installation-assistant/pull/284))
+
 ## [4.10.2]
 
 ### Added
@@ -65,7 +85,29 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Changed uninstall variables names. ([#259](https://github.com/wazuh/wazuh-installation-assistant/pull/259))
+
+### Deleted
+
 - None
+
+## [4.11.0]
+
+### Added
+
+- Refactor offline instalation test ([#191](https://github.com/wazuh/wazuh-installation-assistant/pull/191))
+
+### Changed
+
+- Add function to change the source_branch with the current stage with --develoment flag activated ([#211](https://github.com/wazuh/wazuh-installation-assistant/pull/211))
+- Update upload and download artifact actions to v4 ([#198](https://github.com/wazuh/wazuh-installation-assistant/pull/198))
+- Add venv to installation assistant workflows ([#134](https://github.com/wazuh/wazuh-installation-assistant/pull/134))
+
+### Fixed
+
+- Fix error related with Filebeat template ([#222](https://github.com/wazuh/wazuh-installation-assistant/pull/222))
+- Update `-d` option in the password tool workflow and fix test scripts ([#170](https://github.com/wazuh/wazuh-installation-assistant/pull/170))
+- Added architecture information to assistant. ([#92](https://github.com/wazuh/wazuh-installation-assistant/pull/92))
 
 ### Deleted
 
@@ -83,6 +125,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Add matrix for pull request and fix provision playbook reference in test workflows ([#136](https://github.com/wazuh/wazuh-installation-assistant/pull/136))
 - Added architecture information to assistant. ([#92](https://github.com/wazuh/wazuh-installation-assistant/pull/92))
 
 ### Deleted
@@ -91,8 +134,13 @@ All notable changes to this project will be documented in this file.
 
 ## [4.10.0]
 
+### Added
+
+- Migrated documentation templates to wazuh-installation-assistant repository. ([#144](https://github.com/wazuh/wazuh-installation-assistant/pull/144))
+
 ### Changed
 
+- Removed check functions for Wazuh manager and Filebeat. ([#138](https://github.com/wazuh/wazuh-installation-assistant/pull/138))
 - Add checksum input and update the upload files to S3 steps ([#106](https://github.com/wazuh/wazuh-installation-assistant/pull/106))
 - Deleted the offline_checkDependencies function and unified logic in offline_checkPrerequisites function. ([#99](https://github.com/wazuh/wazuh-installation-assistant/pull/99))
 - Add input for wazuh installation assistant reference in workflows. ([#98](https://github.com/wazuh/wazuh-installation-assistant/pull/98))

@@ -28,6 +28,9 @@ function getHelp() {
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
     echo -e ""
+    echo -e "        -da,  --download-arch <amd64|arm64|x86_64|aarch64>"
+    echo -e "                Define the architecture of the packages to download for offline installation."
+    echo -e ""
     echo -e "        -fd,  --force-install-dashboard"
     echo -e "                Force Wazuh dashboard installation to continue even when it is not capable of connecting to the Wazuh indexer."
     echo -e ""
@@ -119,9 +122,11 @@ function main() {
                     devrepo="pre-release"
                     shift 1
                 fi
+                checks_development_source_tag
                 repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
                 repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
                 reporelease="unstable"
+                filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
                 filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"
                 bucket="packages-dev.wazuh.com"
                 repository="${devrepo}"
@@ -231,6 +236,16 @@ function main() {
                 package_type="${2}"
                 shift 2
                 ;;
+            "-da"|"--download-arch")
+                if [ "${2}" != "amd64" ] && [ "${2}" != "x86_64" ] && [ "${2}" != "arm64" ] && [ "${2}" != "aarch64" ]; then
+                    common_logger -e "Error on arguments. Probably missing <amd64|x86_64|arm64|aarch64> after -da|--download-arch"
+                    getHelp
+                    exit 1
+                fi
+                download_arch=1
+                arch="${2}"
+                shift 2
+                ;;
             *)
                 echo "Unknow option: ${1}"
                 getHelp
@@ -250,7 +265,7 @@ function main() {
         exit 0
     fi
 
-    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version} (x86_64/AMD64)"
+    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version}"
     common_logger "Verbose logging redirected to ${logfile}"
 
 # -------------- Uninstall case  ------------------------------------
@@ -401,7 +416,6 @@ function main() {
             manager_startCluster
         fi
         installCommon_startService "wazuh-manager"
-        manager_checkService
         filebeat_install
         filebeat_configure
         installCommon_changePasswords
@@ -423,11 +437,9 @@ function main() {
         manager_install
         manager_configure
         installCommon_startService "wazuh-manager"
-        manager_checkService
         filebeat_install
         filebeat_configure
         installCommon_startService "filebeat"
-        filebeat_checkService
         common_logger "--- Wazuh dashboard ---"
         dashboard_install
         dashboard_configure

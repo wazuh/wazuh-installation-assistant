@@ -2,6 +2,7 @@ wazuh-install.sh
 wazuh-passwords-tool.sh
 wazuh-certs-tool.sh
 config.yml
+!documentation-templates/wazuh/config.yml
 wazuh-install-files.tar
 wazuh-install-files/
 wazuh-offline.tar.gz

@@ -560,7 +560,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-manager -y ${debug}"
-                eval "rpm -q wazuh-manager --quiet && manager_installed=1"
+                eval "rpm -q wazuh-manager --quiet && wazuh_failed_uninstall=1"
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
@@ -568,7 +568,7 @@ function installCommon_rollBack() {
             manager_installed=$(dpkg -l wazuh-manager 2>/dev/null | grep -E '^ii\s')
         fi
 
-        if [ -n "${manager_installed}" ]; then
+        if [ -n "${wazuh_failed_uninstall}" ]; then
             common_logger -w "The Wazuh manager package could not be removed."
         else
             common_logger "Wazuh manager removed."
@@ -586,7 +586,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-indexer -y ${debug}"
-                eval "rpm -q wazuh-indexer --quiet && indexer_installed=1"
+                eval "rpm -q wazuh-indexer --quiet && indexer_failed_uninstall=1"
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
@@ -594,7 +594,7 @@ function installCommon_rollBack() {
             indexer_installed=$(dpkg -l wazuh-indexer 2>/dev/null | grep -E '^ii\s')
         fi
 
-        if [ -n "${indexer_installed}" ]; then
+        if [ -n "${indexer_failed_uninstall}" ]; then
             common_logger -w "The Wazuh indexer package could not be removed."
         else
             common_logger "Wazuh indexer removed."
@@ -613,7 +613,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove filebeat -y ${debug}"
-                eval "rpm -q filebeat --quiet && filebeat_installed=1"
+                eval "rpm -q filebeat --quiet && filebeat_failed_uninstall=1"
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
@@ -621,7 +621,7 @@ function installCommon_rollBack() {
             filebeat_installed=$(dpkg -l filebeat 2>/dev/null | grep -E '^ii\s')
         fi
 
-        if [ -n "${filebeat_installed}" ]; then
+        if [ -n "${filebeat_failed_uninstall}" ]; then
             common_logger -w "The Filebeat package could not be removed."
         else
             common_logger "Filebeat removed."
@@ -640,7 +640,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-dashboard -y ${debug}"
-                eval "rpm -q wazuh-dashboard --quiet && dashboard_installed=1"
+                eval "rpm -q wazuh-dashboard --quiet && dashboard_failed_uninstall=1"
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
@@ -648,7 +648,7 @@ function installCommon_rollBack() {
             dashboard_installed=$(dpkg -l wazuh-dashboard 2>/dev/null | grep -E '^ii\s')
         fi
 
-        if [ -n "${dashboard_installed}" ]; then
+        if [ -n "${dashboard_failed_uninstall}" ]; then
             common_logger -w "The Wazuh dashboard package could not be removed."
         else
             common_logger "Wazuh dashboard removed."

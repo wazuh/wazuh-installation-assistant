@@ -1,4 +1,5 @@
 name: Offline installation test
+
 on:
   pull_request:
     paths:
@@ -12,61 +13,167 @@ on:
         default: main
 
 jobs:
-  Build-wazuh-install-script:
+  Create-allocator-instances:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        system: ${{ github.event_name == 'pull_request' && fromJson('["Ubuntu_22", "CentOS_8"]') || fromJson(inputs.SYSTEMS) }}
+
     steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: 'true'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
+    - name: View parameters
+      run: echo "${{ toJson(inputs) }}"
 
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
-      - name: Build wazuh-install script and use staging packages
-        run: bash builder.sh -i
+    - name: Checkout wazuh/wazuh-automation repository
+      uses: actions/checkout@v4
+      with:
+        repository: wazuh/wazuh-automation
+        ref: ${{ env.AUTOMATION_REFERENCE }}
+        token: ${{ secrets.GH_CLONE_TOKEN }}
+        path: wazuh-automation
 
-      - uses: actions/upload-artifact@v3
-        with:
-          name: script
-          path: ./wazuh-install.sh
-          if-no-files-found: error
+    - name: Set COMPOSITE_NAME variable
+      run: |
+        case "${{ matrix.system }}" in
+          "CentOS_7")
+            SUBNAME="centos-7"
+            ;;
+          "CentOS_8")
+            SUBNAME="centos-8"
+            ;;
+          "AmazonLinux_2")
+            SUBNAME="amazon-2"
+            ;;
+          "Ubuntu_16")
+            SUBNAME="ubuntu-16.04"
+            ;;
+          "Ubuntu_18")
+            SUBNAME="ubuntu-18.04"
+            ;;
+          "Ubuntu_20")
+            SUBNAME="ubuntu-20.04"
+            ;;
+          "Ubuntu_22")
+            SUBNAME="ubuntu-22.04"
+            ;;
+          "RHEL7")
+            SUBNAME="redhat-7"
+            ;;
+          "RHEL8")
+            SUBNAME="redhat-8"
+            ;;
+          *)
+            echo "Invalid SYSTEM selection" >&2
+            exit 1
+            ;;
+        esac
+        COMPOSITE_NAME="${COMPOSITE_NAME/SUBNAME/$SUBNAME}"
+        echo "COMPOSITE_NAME=$COMPOSITE_NAME" >> $GITHUB_ENV
 
-  Test-offline-installation-debian:
-    runs-on: ubuntu-latest
-    needs: Build-wazuh-install-script
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+    - name: Install python and create virtual environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3 python3-venv
+        python3 -m venv testing_venv
+        source testing_venv/bin/activate
+        python3 -m pip install --upgrade pip
+        echo PATH=$PATH >> $GITHUB_ENV
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: script
+    - name: Install and set allocator requirements
+      run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
 
-      - name: Move installation assistant script
-        run: cp $GITHUB_WORKSPACE/wazuh-install.sh $GITHUB_WORKSPACE/.github/actions/offline-installation/wazuh-install.sh
+    - name: Set up AWS credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+        aws-region: ${{ env.REGION }}
 
-      - name: Run script
-        run: sudo bash $GITHUB_WORKSPACE/.github/actions/offline-installation/offline-installation.sh
+    - name: Allocate test instance and set SSH variables
+      id: allocator_instance
+      run: |
+        python3 wazuh-automation/deployability/modules/allocation/main.py --action create --provider aws --size large --composite-name ${{ env.COMPOSITE_NAME }} --working-dir $ALLOCATOR_PATH \
+          --track-output $ALLOCATOR_PATH/track.yml --inventory-output $ALLOCATOR_PATH/inventory.yml --instance-name gha_${{ env.COMPOSITE_NAME }}_${{ github.run_id }}_assistant_test \
+          --label-team devops --label-termination-date 1d
 
-  Test-offline-installation-rpm:
-    runs-on: ubuntu-latest
-    needs: Build-wazuh-install-script
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
+        sed -n '/hosts:/,/^[^ ]/p' $ALLOCATOR_PATH/inventory.yml | grep "ansible_" | sed 's/^[ ]*//g' > $ALLOCATOR_PATH/inventory_mod.yml
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: script
+        sed 's/: */=/g' $ALLOCATOR_PATH/inventory_mod.yml > $ALLOCATOR_PATH/inventory_vars.yml
+        sed -i 's/-o StrictHostKeyChecking=no/\"-o StrictHostKeyChecking=no\"/g' $ALLOCATOR_PATH/inventory_vars.yml
+        source $ALLOCATOR_PATH/inventory_vars.yml
 
-      - name: Move installation assistant script
-        run: cp $GITHUB_WORKSPACE/wazuh-install.sh $GITHUB_WORKSPACE/.github/actions/offline-installation/wazuh-install.sh
+        echo "[gha_instance]" > $ALLOCATOR_PATH/inventory
+        echo "$ansible_host ansible_port=$ansible_port ansible_user=$ansible_user ansible_ssh_private_key_file=$ansible_ssh_private_key_file ansible_ssh_common_args='$ansible_ssh_common_args'" >> $ALLOCATOR_PATH/inventory
 
-      - name: Launch docker and run script
-        run: sudo docker run -v $GITHUB_WORKSPACE/.github/actions/offline-installation/:/tests centos:centos7 bash /tests/offline-installation.sh
+    - name: inventory
+      run: cat $ALLOCATOR_PATH/inventory
+
+    - name: Install Ansible
+      run: pip install ansible-core==2.16
+
+    - name: Configure ansible
+      run: |
+        ansible-galaxy collection install community.general
+
+    - name: Execute provision playbook
+      run: |
+        INSTALL_DEPS=true
+        INSTALL_PYTHON=true
+        INSTALL_PIP_DEPS=true
+
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/provision.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l all \
+        -e "repository=$REPOSITORY_URL" \
+        -e "reference=$WAZUH_INSTALLATION_ASSISTANT_REFERENCE" \
+        -e "tmp_path=$TMP_PATH" \
+        -e "install_deps=$INSTALL_DEPS" \
+        -e "install_python=$INSTALL_PYTHON" \
+        -e "install_pip_deps=$INSTALL_PIP_DEPS" \
+        "$VERBOSITY"
+      env:
+        PY_COLORS: '1'
+        ANSIBLE_FORCE_COLOR: '1'
+
+    - name: Download and copy configuration files and assets
+      run: |
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/offline-installation/download.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l all \
+        -e "tmp_path=$TMP_PATH" \
+        -e "pkg_repository=$PKG_REPOSITORY" \
+        -e "wazuh_version=$WAZUH_VERSION" \
+        "$VERBOSITY"
+      env:
+        PY_COLORS: '1'
+        ANSIBLE_FORCE_COLOR: '1'
+
+    - name: Get instance-id
+      run: |
+        INSTANCE_ID=$(aws ec2 describe-instances --query 'Reservations[0].Instances[0].InstanceId' --filters "Name=tag:Name,Values=gha_${{ env.COMPOSITE_NAME }}_${{ github.run_id }}_assistant_test" --output text)
+        echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+
+    - name: Change security group
+      run: |
+        aws ec2 modify-instance-attribute --instance-id ${{ env.INSTANCE_ID }} --groups sg-03c53339089a65829
+
+    - name: Execute offline installation playbook
+      run: |
+        ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/offline-installation/test.yml \
+        -i $ALLOCATOR_PATH/inventory \
+        -l all \
+        -e "tmp_path=$TMP_PATH" \
+        -e "pkg_repository=$PKG_REPOSITORY" \
+        -e "wazuh_version=$WAZUH_VERSION" \
+        "$VERBOSITY"
+      env:
+        PY_COLORS: '1'
+        ANSIBLE_FORCE_COLOR: '1'
+
+    - name: Delete allocated VM
+      if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == true || github.event_name == 'pull_request')
+      run: python3 wazuh-automation/deployability/modules/allocation/main.py --action delete --track-output $ALLOCATOR_PATH/track.yml
