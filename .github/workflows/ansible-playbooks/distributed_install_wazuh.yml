@@ -11,7 +11,7 @@
 
   tasks:
     - name: Install Wazuh server on master
-      command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v -d {{ pkg_repository }}"
+      command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v -d {{ pkg_repository }} -id"
       register: wazuh
       when: hostvars[inventory_hostname].manager_type == 'master'
 
@@ -28,8 +28,8 @@
           poll: 5
 
         - name: Install Wazuh server (Workers)
-          command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v -d {{ pkg_repository }}"
+          command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v -d {{ pkg_repository }} -id"
           register: wazuh
       when: hostvars[inventory_hostname].manager_type == 'worker'
-    
-    
+
+

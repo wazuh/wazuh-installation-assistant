@@ -10,56 +10,7 @@ on:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
-        default: '6.0.0'
-      AUTOMATION_REFERENCE:
-        description: 'Branch or tag of the wazuh-automation repository'
-        required: true
-        default: '6.0.0'
-      PKG_REPOSITORY:
-        description: 'Repository environment'
-        required: true
-        default: 'pre-release'
-        type: choice
-        options:
-          - staging
-          - pre-release
-      SYSTEMS:
-        description: "Operating Systems (list of comma-separated quoted strings enclosed in square brackets)."
-        required: true
-        default: '["CentOS_8"]'
-        type: string
-      VERBOSITY:
-        description: 'Verbosity level on playbooks execution'
-        required: true
-        default: '-v'
-        type: choice
-        options:
-          - -v
-          - -vv
-          - -vvv
-          - -vvvv
-      DESTROY:
-        description: 'Destroy instances after run'
-        required: true
-        default: true
-        type: boolean
-
-env:
-  WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
-  AUTOMATION_REFERENCE: ${{ inputs.AUTOMATION_REFERENCE }}
-  WAZUH_VERSION: "6.0"
-  PKG_REPOSITORY: ${{ github.event_name == 'pull_request' && 'pre-release' || inputs.PKG_REPOSITORY }}
-  VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
-  COMPOSITE_NAME: "linux-SUBNAME-amd64"
-  REGION: "us-east-1"
-  TMP_PATH: "/tmp/test"
-  REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
-  ALLOCATOR_PATH: "/tmp/allocator_instance"
-  ANSIBLE_CALLBACK: "yaml"
-
-permissions:
-  id-token: write
-  contents: read
+        default: main
 
 jobs:
   Create-allocator-instances:

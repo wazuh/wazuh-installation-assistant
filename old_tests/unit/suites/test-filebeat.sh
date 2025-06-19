@@ -6,9 +6,9 @@ source "${base_dir}"/bach.sh
 @setup-test {
     @ignore common_logger
     filebeat_cert_path="/etc/filebeat/certs/"
-    wazuh_major="4.3"
+    wazuh_major="6.0"
     filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${wazuh_major}/extensions/elasticsearch/7.x/wazuh-template.json"
-    repobaseurl="https://packages.wazuh.com/4.x"
+    repobaseurl="https://packages.wazuh.com/6.x"
     filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.1.tar.gz"
 }
 
@@ -140,7 +140,7 @@ test-09-filebeat_configure-one-elastic-node() {
 }
 
 test-09-filebeat_configure-one-elastic-node-assert() {
-    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/4.3/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300
+    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/main/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300
     chmod go+r /etc/filebeat/wazuh-template.json
     installCommon_getConfig filebeat/filebeat_distributed.yml /etc/filebeat/filebeat.yml
     echo "output.elasticsearch.hosts:" >> /etc/filebeat/filebeat.yml
@@ -163,7 +163,7 @@ test-10-filebeat_configure-more-than-one-elastic-node() {
 }
 
 test-10-filebeat_configure-more-than-one-elastic-node-assert() {
-    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/4.3/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300
+    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/main/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300
     chmod go+r /etc/filebeat/wazuh-template.json
     installCommon_getConfig filebeat/filebeat_distributed.yml /etc/filebeat/filebeat.yml
     echo "output.elasticsearch.hosts:" >> /etc/filebeat/filebeat.yml
@@ -208,7 +208,7 @@ test-12-filebeat_configure-AIO() {
 }
 
 test-12-filebeat_configure-AIO-assert() {
-    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/4.3/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300
+    curl -so /etc/filebeat/wazuh-template.json https://raw.githubusercontent.com/wazuh/wazuh/main/extensions/elasticsearch/7.x/wazuh-template.json --max-time 300
     chmod go+r /etc/filebeat/wazuh-template.json
     installCommon_getConfig filebeat/filebeat_assistant.yml /etc/filebeat/filebeat.yml
     mkdir /etc/filebeat/certs

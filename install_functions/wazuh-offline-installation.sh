@@ -23,7 +23,7 @@ function offline_checkPrerequisites(){
         if [ "${sys_type}" == "yum" ]; then
             eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
         elif [ "${sys_type}" == "apt-get" ]; then
-            eval "apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/"
+            eval "dpkg -l "${dep}" 2>/dev/null | grep -q -E '^ii\s'"
         fi
 
         if [ "${PIPESTATUS[0]}" != 0 ]; then

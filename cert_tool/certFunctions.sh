@@ -8,7 +8,7 @@
 
 
 function cert_cleanFiles() {
-    
+
     common_logger -d "Cleaning certificate files."
     eval "rm -f ${cert_tmp_path}/*.csr ${debug}"
     eval "rm -f ${cert_tmp_path}/*.srl ${debug}"
@@ -227,7 +227,7 @@ function cert_parseYaml() {
 
     local s='[[:space:]]*' sm='[ \t]*' w='[a-zA-Z0-9_]*' fs=${fs:-$(echo @|tr @ '\034')} i=${i:-  }
     cat $1 2>/dev/null | \
-    awk -F$fs "{multi=0; 
+    awk -F$fs "{multi=0;
         if(match(\$0,/$sm\|$sm$/)){multi=1; sub(/$sm\|$sm$/,\"\");}
         if(match(\$0,/$sm>$sm$/)){multi=2; sub(/$sm>$sm$/,\"\");}
         while(multi>0){
@@ -327,7 +327,7 @@ function cert_parseYaml() {
 }
 
 function cert_checkPrivateIp() {
-    
+
     local ip=$1
     common_logger -d "Checking if ${ip} is private."
 
@@ -362,17 +362,20 @@ function cert_readConfig() {
         eval "indexer_node_ips=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
         eval "server_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
         eval "dashboard_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" | cut -d = -f 2 ) )"
-        eval "server_node_types=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+[_]+node_type=" | cut -d = -f 2 ) )"
         eval "number_server_ips=( $(cert_parseYaml "${config_file}" | grep -o -E 'nodes[_]+server[_]+[0-9]+[_]+ip' | sort -u | wc -l) )"
         all_ips=("${indexer_node_ips[@]}" "${server_node_ips[@]}" "${dashboard_node_ips[@]}")
 
         for ip in "${all_ips[@]}"; do
             isIP=$(echo "${ip}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
+            isDNS=$(echo "${ip}" | grep -P "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.([A-Za-z]{2,})$" )
             if [[ -n "${isIP}" ]]; then
                 if ! cert_checkPrivateIp "$ip"; then
                     common_logger -e "The IP ${ip} is public."
                     exit 1
                 fi
+            elif [[ -n "${isDNS}" ]]; then
+                common_logger -e "The DNS ${ip} is not valid."
+                exit 1
             fi
         done
 
@@ -382,25 +385,25 @@ function cert_readConfig() {
         done
 
         unique_names=($(echo "${indexer_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_names[@]}" -ne "${#indexer_node_names[@]}" ]; then 
+        if [ "${#unique_names[@]}" -ne "${#indexer_node_names[@]}" ]; then
             common_logger -e "Duplicated indexer node names."
             exit 1
         fi
 
         unique_ips=($(echo "${indexer_node_ips[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_ips[@]}" -ne "${#indexer_node_ips[@]}" ]; then 
+        if [ "${#unique_ips[@]}" -ne "${#indexer_node_ips[@]}" ]; then
             common_logger -e "Duplicated indexer node ips."
             exit 1
         fi
 
         unique_names=($(echo "${server_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_names[@]}" -ne "${#server_node_names[@]}" ]; then 
+        if [ "${#unique_names[@]}" -ne "${#server_node_names[@]}" ]; then
             common_logger -e "Duplicated Wazuh server node names."
             exit 1
         fi
 
         unique_ips=($(echo "${server_node_ips[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_ips[@]}" -ne "${#server_node_ips[@]}" ]; then 
+        if [ "${#unique_ips[@]}" -ne "${#server_node_ips[@]}" ]; then
             common_logger -e "Duplicated Wazuh server node ips."
             exit 1
         fi
@@ -417,32 +420,6 @@ function cert_readConfig() {
             exit 1
         fi
 
-        for i in "${server_node_types[@]}"; do
-            if ! echo "$i" | grep -ioq master && ! echo "$i" | grep -ioq worker; then
-                common_logger -e "Incorrect node_type $i must be master or worker"
-                exit 1
-            fi
-        done
-
-        if [ "${#server_node_names[@]}" -le 1 ]; then
-            if [ "${#server_node_types[@]}" -ne 0 ]; then
-                common_logger -e "The tag node_type can only be used with more than one Wazuh server."
-                exit 1
-            fi
-        elif [ "${#server_node_names[@]}" -gt "${#server_node_types[@]}" ]; then
-            common_logger -e "The tag node_type needs to be specified for all Wazuh server nodes."
-            exit 1
-        elif [ "${#server_node_names[@]}" -lt "${#server_node_types[@]}" ]; then
-            common_logger -e "Found extra node_type tags."
-            exit 1
-        elif [ "$(grep -io master <<< "${server_node_types[*]}" | wc -l)" -ne 1 ]; then
-            common_logger -e "Wazuh cluster needs a single master node."
-            exit 1
-        elif [ "$(grep -io worker <<< "${server_node_types[*]}" | wc -l)" -ne $(( ${#server_node_types[@]} - 1 )) ]; then
-            common_logger -e "Incorrect number of workers."
-            exit 1
-        fi
-
         if [ "${#dashboard_node_names[@]}" -ne "${#dashboard_node_ips[@]}" ]; then
             common_logger -e "Different number of dashboard node names and IPs."
             exit 1
@@ -456,7 +433,21 @@ function cert_readConfig() {
 }
 
 function cert_setpermisions() {
-    eval "chmod -R 744 ${cert_tmp_path} ${debug}"
+    eval "chmod -R 744 ${1} ${debug}"
+}
+
+function cert_setDirectory() {
+
+    if [ -d "${base_path}/wazuh-certificates" ]; then
+        eval "cp -f ${cert_tmp_path}/* ${base_path}/wazuh-certificates ${debug}"
+        eval "rm -R ${cert_tmp_path}"
+        cert_setpermisions "${base_path}/wazuh-certificates"
+        common_logger -d "Wazuh-certificates directory exists. Copied files from '${cert_tmp_path}' to '${base_path}/wazuh-certificates' and removed '${cert_tmp_path}'."
+    else
+        cert_setpermisions "${cert_tmp_path}"
+        eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+        common_logger -d "Moved '${cert_tmp_path}' to '${base_path}/wazuh-certificates'."
+    fi
 }
 
 function cert_convertCRLFtoLF() {

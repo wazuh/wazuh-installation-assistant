@@ -16,7 +16,7 @@ readonly resources_certs="${base_path_builder}/cert_tool"
 readonly resources_passwords="${base_path_builder}/passwords_tool"
 readonly resources_common="${base_path_builder}/common_functions"
 readonly resources_download="${base_path_builder}/downloader"
-source_branch="v6.0.0"
+source_branch="6.0.0"
 
 function getHelp() {
 
@@ -198,6 +198,10 @@ function builder_main() {
 
     umask 066
 
+    if [ $# -eq 0 ]; then
+        getHelp
+    fi
+
     while [ -n "${1}" ]
     do
         case "${1}" in
@@ -241,7 +245,7 @@ function builder_main() {
 function checkDistDetectURL() {
 
     urls=("https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/src/init/dist-detect.sh"
-          "https://raw.githubusercontent.com/wazuh/wazuh/master/src/init/dist-detect.sh")
+          "https://raw.githubusercontent.com/wazuh/wazuh/main/src/init/dist-detect.sh")
 
     for url in "${urls[@]}"; do
         eval "curl -s -o /dev/null '${url}' --retry 5 --retry-delay 5 --max-time 300 --fail"

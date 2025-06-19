@@ -18,3 +18,13 @@ wazuh-offline/
 *.msi
 *.log
 *.key
+*__pycache__/
+pycache/
+*.pyc
+*.pyo
+*coverage.xml
+.coverage
+.vscode/
+*__pycache__/
+*.egg-info
+docs/book/

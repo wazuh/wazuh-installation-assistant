@@ -9,7 +9,7 @@
 
     tasks:
       - name: Test assistant AIO install
-        command: "bash {{ script_name }} -a -v -d {{ pkg_repository }}"
+        command: "bash {{ script_name }} -a -v -id -d {{ pkg_repository }}"
         args:
           chdir: "{{ script_path }}"
         register: install_results

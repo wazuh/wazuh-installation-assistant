@@ -1,6 +1,58 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [6.0.0]
+
+### Added
+
+- Add the packages manager module ([#384](https://github.com/wazuh/wazuh-installation-assistant/pull/384))
+- Create the config manager module and initialize project ([#356](https://github.com/wazuh/wazuh-installation-assistant/pull/356))
+- Improve asistant test completion status ([#188](https://github.com/wazuh/wazuh-installation-assistant/pull/188))
+- Added available packages check before installation ([#80](https://github.com/wazuh/wazuh-installation-assistant/pull/80))
+
+### Changed
+
+- Removed node_type option for wazuh-certs-tool.sh. ([#268](https://github.com/wazuh/wazuh-installation-assistant/pull/268))
+- Changed VERSION file to the new standard format. ([#245](https://github.com/wazuh/wazuh-installation-assistant/pull/245))
+- Check available space before the installation with the installation assistant ([#56](https://github.com/wazuh/wazuh-installation-assistant/pull/56))
+- Dependencies installation is reworked in Installation assistant. ([#90](https://github.com/wazuh/wazuh-installation-assistant/pull/90))
+- Change apt to dpkg for better performance. ([#89](https://github.com/wazuh/wazuh-installation-assistant/pull/89))
+- Added check when generating certificates for multiple DNS. ([#88](https://github.com/wazuh/wazuh-installation-assistant/pull/88))
+- Change cert-tool to use only one wazuh-certificates folder. ([#87](https://github.com/wazuh/wazuh-installation-assistant/pull/87))
+- Solve bugs when changing passwords in the manager, indexer and dashboard services. ([#86](https://github.com/wazuh/wazuh-installation-assistant/pull/86))
+- Fixed typo in Wazuh Installation Assistant. ([#85](https://github.com/wazuh/wazuh-installation-assistant/pull/85))
+- Print on console the wazuh user's password when installing Wazuh server. ([#84](https://github.com/wazuh/wazuh-installation-assistant/pull/84))
+- Improved service status and output management in Installation assistant. ([#82](https://github.com/wazuh/wazuh-installation-assistant/pull/82))
+- Fixed API password change to match the user in wazuh.yml. ([#81](https://github.com/wazuh/wazuh-installation-assistant/pull/81))
+
+### Fixed
+
+- Fixed Version file name. ([#247](https://github.com/wazuh/wazuh-installation-assistant/pull/247))
+- Solve confict in installVariables ([#149](https://github.com/wazuh/wazuh-installation-assistant/pull/149))
+- Print getHelp output when no parameter is passed to the builder script. ([#142](https://github.com/wazuh/wazuh-installation-assistant/pull/142))
+
+### Deleted
+
+- None
+
+## [5.0.0]
+
+### Added
+
+- None
+
+### Changed
+
+- None
+
+### Fixed
+
+- None
+
+### Deleted
+
+- None
+
 ## [4.13.0]
 
 ### Added
@@ -21,49 +73,7 @@ All notable changes to this project will be documented in this file.
 
 - Remove default installation assistant reference version from workflow ([#284](https://github.com/wazuh/wazuh-installation-assistant/pull/284))
 
-## [4.12.0]
-
-### Added
-
-- Add workflow step to add last_stage variable to the `wazuh-install.sh` ([#226](https://github.com/wazuh/wazuh-installation-assistant/pull/226))
-
-### Changed
-
-- Adapt existing workflows to new allocator YAML inventory ([#254](https://github.com/wazuh/wazuh-installation-assistant/pull/254))
-- Changed VERSION file to the new standard format. ([#244](https://github.com/wazuh/wazuh-installation-assistant/pull/244))
-- Added support ARM architecture for Wazuh central components ([#225](https://github.com/wazuh/wazuh-installation-assistant/pull/225))
-- Change gha runners to Ubuntu 22.04 ([#186](https://github.com/wazuh/wazuh-installation-assistant/pull/186))
-
-### Fixed
-
-- Fix Offline Download with new variable offline_filebeat_version. ([#314](https://github.com/wazuh/wazuh-installation-assistant/pull/314))
-- Fixed offline download for Filebeat package. ([#301](https://github.com/wazuh/wazuh-installation-assistant/pull/301))
-- Added revision to Filebeat package. ([#300](https://github.com/wazuh/wazuh-installation-assistant/pull/300))
-- Fixed handling of hash.sh script output in Password Tool. ([#290](https://github.com/wazuh/wazuh-installation-assistant/pull/290))
-
-### Deleted
-
-- None
-
-## [4.11.2]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- None
-
-### Deleted
-
-- None
-
-## [4.11.1]
+## [4.10.2]
 
 ### Added
 
