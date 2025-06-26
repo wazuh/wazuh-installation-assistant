@@ -26,7 +26,7 @@ function offline_download() {
   manager_revision="1"
   indexer_revision="1"
   dashboard_revision="1"
-  filebeat_revision="1"
+  filebeat_revision="2"
 
   if [ -n "${development}" ]; then
     filebeat_config_file="https://${bucket}/${wazuh_major}/tpl/wazuh/filebeat/filebeat.yml"
