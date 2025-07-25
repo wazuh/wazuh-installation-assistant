@@ -27,7 +27,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Increase filebeat revision ([#400](https://github.com/wazuh/wazuh-installation-assistant/pull/400)).
 
 ### Fixed
 
