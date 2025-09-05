@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add opensearch_dashboard.yml parameters. ([#447](https://github.com/wazuh/wazuh-installation-assistant/pull/447))
 - Integrate bumper script via GitHub action. ([#382](https://github.com/wazuh/wazuh-installation-assistant/pull/382))
 - Added repository_bumper.sh script. ([#315](https://github.com/wazuh/wazuh-installation-assistant/pull/315))
 
