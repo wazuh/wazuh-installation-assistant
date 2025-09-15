@@ -16,7 +16,6 @@
       - openssl
     apt_deps:
       - git
-      - software-properties-common
       - gnupg2
       - openssl
     pip_deps:
