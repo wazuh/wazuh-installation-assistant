@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Fixed deb dependencies ([#458](https://github.com/wazuh/wazuh-installation-assistant/pull/458))
 
 ### Deleted
 
