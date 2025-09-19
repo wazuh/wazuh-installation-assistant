@@ -13,7 +13,7 @@ on:
         type: boolean
         default: false
       add_last_stage:
-        description: "Add last stage? (alpha0, rc4, rc4, etc)"
+        description: "Add last stage? (alpha0, rc5, rc5, etc)"
         type: boolean
         default: false
       checksum:

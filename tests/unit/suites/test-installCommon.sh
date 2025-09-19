@@ -86,7 +86,7 @@ test-07-installCommon_installPrerequisites-apt-no-openssl() {
 
 test-07-installCommon_installPrerequisites-apt-no-openssl-assert() {
     apt update -q
-    apt install apt-transport-https curl unzip wget libcap2-bin tar software-properties-common gnupg openssl -y
+    apt install apt-transport-https curl unzip wget libcap2-bin tar gnupg openssl -y
 }
 
 test-08-installCommon_installPrerequisites-apt() {
@@ -99,7 +99,7 @@ test-08-installCommon_installPrerequisites-apt() {
 
 test-08-installCommon_installPrerequisites-apt-assert() {
     apt update -q
-    apt install apt-transport-https curl unzip wget libcap2-bin tar software-properties-common gnupg -y
+    apt install apt-transport-https curl unzip wget libcap2-bin tar gnupg -y
 }
 
 function load-installCommon_addWazuhRepo() {
