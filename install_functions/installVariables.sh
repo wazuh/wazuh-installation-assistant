@@ -7,8 +7,8 @@
 # Foundation.
 
 ## Package vars
-readonly wazuh_major="4.13"
-readonly wazuh_version="4.13.1"
+readonly wazuh_major="4.14"
+readonly wazuh_version="4.14.0"
 readonly filebeat_version="7.10.2-*"
 readonly wazuh_install_vesion="0.1"
 source_branch="v${wazuh_version}"
@@ -69,7 +69,7 @@ wazuh_dashboard_port="${http_port}"
 wia_yum_dependencies=( systemd grep tar coreutils sed procps-ng gawk curl )
 readonly wia_apt_dependencies=( systemd grep tar coreutils sed procps gawk curl )
 readonly wazuh_yum_dependencies=( libcap )
-readonly wazuh_apt_dependencies=( apt-transport-https libcap2-bin software-properties-common gnupg )
+readonly wazuh_apt_dependencies=( apt-transport-https libcap2-bin gnupg )
 readonly indexer_yum_dependencies=( coreutils )
 readonly indexer_apt_dependencies=( debconf adduser procps gnupg apt-transport-https )
 readonly dashboard_yum_dependencies=( libcap )

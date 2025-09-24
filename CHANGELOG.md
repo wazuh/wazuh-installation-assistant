@@ -1,6 +1,26 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [4.14.0]
+
+### Added
+
+- None
+
+### Changed
+
+- Rollback data source setting([#460](https://github.com/wazuh/wazuh-installation-assistant/pull/460)).
+- Dashboard settings added ([#459](https://github.com/wazuh/wazuh-installation-assistant/pull/459)).
+- Increase filebeat revision ([#400](https://github.com/wazuh/wazuh-installation-assistant/pull/400)).
+
+### Fixed
+
+- Fixed deb dependencies ([#458](https://github.com/wazuh/wazuh-installation-assistant/pull/458))
+
+### Deleted
+
+- None
+
 ## [4.13.1]
 
 ### Added
