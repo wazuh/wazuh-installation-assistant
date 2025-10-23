@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Remove dashboard chat setting([#476](https://github.com/wazuh/wazuh-installation-assistant/pull/476)).
 - Rollback data source setting([#460](https://github.com/wazuh/wazuh-installation-assistant/pull/460)).
 - Dashboard settings added ([#459](https://github.com/wazuh/wazuh-installation-assistant/pull/459)).
 - Increase filebeat revision ([#400](https://github.com/wazuh/wazuh-installation-assistant/pull/400)).
