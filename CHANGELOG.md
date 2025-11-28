@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- None
+- Add revision number([#479](https://github.com/wazuh/wazuh-installation-assistant/pull/479)).
 
 ### Changed
 

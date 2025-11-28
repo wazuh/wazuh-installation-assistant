@@ -20,6 +20,10 @@ on:
         description: "Add checksum"
         type: boolean
         default: false
+      revision:
+        description: "Add revision"
+        type: string
+        default: "1"
       id:
         description: "ID used to identify the workflow uniquely."
         type: string
@@ -39,6 +43,10 @@ on:
         description: "Add checksum"
         type: boolean
         default: false
+      revision:
+        description: "Add revision"
+        type: string
+        default: "1"
       id:
         type: string
         required: false
@@ -94,6 +102,13 @@ jobs:
           sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
           sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
           sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+
+      - name: Change files name for non-stage build
+        if: ${{ inputs.is_stage == true }}
+        run: |
+          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ inputs.revision }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ inputs.revision }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ inputs.revision }}.sh|g' "${{ env.BUILDER_PATH }}"
 
       - name: Build Installation Assistant packages
         run: bash builder.sh -i -c -p
