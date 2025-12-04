@@ -116,6 +116,11 @@ jobs:
       - name: Build Installation Assistant packages
         run: bash builder.sh -i -c -p
 
+      - name: Copy config file for stage build
+        if: ${{ inputs.is_stage == true }}
+        run: |
+          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config.yml
+
       - name: Save files name
         run: |
           WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh | xargs basename)
