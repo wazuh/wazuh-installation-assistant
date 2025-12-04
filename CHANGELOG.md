@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- None
+- Update the build workflow to upload config.yml ([#526](https://github.com/wazuh/wazuh-installation-assistant/pull/526))
 
 ### Changed
 
