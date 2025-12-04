@@ -199,7 +199,7 @@ function installCommon_createCertificates() {
     cert_generateRootCAcertificate
     cert_generateAdmincertificate
     cert_generateIndexercertificates
-    cert_generateFilebeatcertificates
+    cert_generateServercertificates
     cert_generateDashboardcertificates
     cert_cleanFiles
     eval "chmod 400 /tmp/wazuh-certificates/* ${debug}"
