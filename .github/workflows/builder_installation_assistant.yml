@@ -111,6 +111,7 @@ jobs:
           sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
           sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
           sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.COMMIT_SHORT_SHA }}.yml
 
       - name: Build Installation Assistant packages
         run: bash builder.sh -i -c -p
@@ -120,9 +121,11 @@ jobs:
           WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh | xargs basename)
           WAZUH_CERT_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_CERT_TOOL_NAME }}*.sh | xargs basename)
           WAZUH_PASSWORD_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh | xargs basename)
+          CONFIG_FILE_NAME=$(ls ${{ github.workspace }}/config*.yml | xargs basename)
           echo "WAZUH_INSTALL_NAME=$WAZUH_INSTALL_NAME" >> $GITHUB_ENV
           echo "WAZUH_CERT_TOOL_NAME=$WAZUH_CERT_TOOL_NAME" >> $GITHUB_ENV
           echo "WAZUH_PASSWORD_TOOL_NAME=$WAZUH_PASSWORD_TOOL_NAME" >> $GITHUB_ENV
+          echo "CONFIG_FILE_NAME=$CONFIG_FILE_NAME" >> $GITHUB_ENV
 
       - name: Prepare files
         run: |
@@ -130,7 +133,7 @@ jobs:
           mv ${{ env.WAZUH_INSTALL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
           mv ${{ env.WAZUH_CERT_TOOL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
           mv ${{ env.WAZUH_PASSWORD_TOOL_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
-          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/config.yml
+          mv ${{ env.CONFIG_FILE_NAME }} ${{ github.workspace }}/${{ env.WAZUH_VERSION }}
 
       - name: Build packages checksum
         if: ${{ inputs.checksum == true }}
@@ -138,7 +141,7 @@ jobs:
           sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_INSTALL_NAME }}.sha512
           sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_CERT_TOOL_NAME }}.sha512
           sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sha512
-          sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/config.yml > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/config.yml.sha512
+          sha512sum ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.CONFIG_FILE_NAME }} > ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.CONFIG_FILE_NAME }}.sha512
 
       - name: Upload files to S3
         run: |
@@ -151,8 +154,8 @@ jobs:
           aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/
           s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}"
           echo "S3 wazuh-passwords-tool URI: ${s3uri}"
-          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/config.yml s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/
-          s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/config.yml"
+          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.CONFIG_FILE_NAME }} s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/
+          s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.CONFIG_FILE_NAME }}"
           echo "S3 config.yml URI: ${s3uri}"
 
       - name: Upload checksum files to S3
@@ -167,6 +170,6 @@ jobs:
           aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sha512 s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/
           s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sha512"
           echo "S3 sha512 wazuh-passwords-tool checksum URI: ${s3uri}"
-          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/config.yml.sha512 s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/
-          s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/config.yml.sha512"
+          aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.CONFIG_FILE_NAME }}.sha512 s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/
+          s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.CONFIG_FILE_NAME }}.sha512"
           echo "S3 sha512 config.yml checksum URI: ${s3uri}"
