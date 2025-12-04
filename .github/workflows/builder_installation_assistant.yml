@@ -178,3 +178,50 @@ jobs:
           aws s3 cp ${{ github.workspace }}/${{ env.WAZUH_VERSION }}/${{ env.CONFIG_FILE_NAME }}.sha512 s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/
           s3uri="s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.CONFIG_FILE_NAME }}.sha512"
           echo "S3 sha512 config.yml checksum URI: ${s3uri}"
+
+      - name: Generate Job Summary
+        if: always()
+        run: |
+          echo "## 📦 Build Installation Assistant - Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Information" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Wazuh Version** | ${{ env.WAZUH_VERSION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version (from VERSION.json)** | ${{ env.VERSION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Reference** | ${{ inputs.wazuh_installation_assistant_reference }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit SHA** | ${{ env.COMMIT_SHORT_SHA }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Is Stage** | ${{ inputs.is_stage }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Add Last Stage** | ${{ inputs.add_last_stage }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Checksum Generated** | ${{ inputs.checksum }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 Generated Files" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Name |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Installation Assistant | \`${{ env.WAZUH_INSTALL_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Certificates Tool | \`${{ env.WAZUH_CERT_TOOL_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Passwords Tool | \`${{ env.WAZUH_PASSWORD_TOOL_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Config File | \`${{ env.CONFIG_FILE_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🗂️ S3 Repository Path" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 S3 URIs" >> $GITHUB_STEP_SUMMARY
+          echo "**Installation Files:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_INSTALL_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_CERT_TOOL_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.CONFIG_FILE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.checksum }}" == "true" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Checksum Files:**" >> $GITHUB_STEP_SUMMARY
+            echo "- \`s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_INSTALL_NAME }}.sha512\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_CERT_TOOL_NAME }}.sha512\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sha512\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`s3://${{ env.S3_BUCKET }}/${{ env.S3_REPOSITORY_PATH }}/${{ env.CONFIG_FILE_NAME }}.sha512\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Build completed successfully!" >> $GITHUB_STEP_SUMMARY
