@@ -655,7 +655,7 @@ test-33-installCommon_createCertificates-aio-assert() {
     cert_generateRootCAcertificate
     cert_generateAdmincertificate
     cert_generateIndexercertificates
-    cert_generateFilebeatcertificates
+    cert_generateServercertificates
     cert_generateDashboardcertificates
     cert_cleanFiles
 }
@@ -675,7 +675,7 @@ test-34-installCommon_createCertificates-no-aio-assert() {
     cert_generateRootCAcertificate
     cert_generateAdmincertificate
     cert_generateIndexercertificates
-    cert_generateFilebeatcertificates
+    cert_generateServercertificates
     cert_generateDashboardcertificates
     cert_cleanFiles
 }

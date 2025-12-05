@@ -164,10 +164,10 @@ function cert_generateIndexercertificates() {
 
 }
 
-function cert_generateFilebeatcertificates() {
+function cert_generateServercertificates() {
 
     if [ ${#server_node_names[@]} -gt 0 ]; then
-        common_logger "Generating Filebeat certificates."
+        common_logger "Generating Wazuh server certificates."
 
         for i in "${!server_node_names[@]}"; do
             server_name="${server_node_names[i]}"
