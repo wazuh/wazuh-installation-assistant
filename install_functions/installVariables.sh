@@ -9,7 +9,6 @@
 ## Package vars
 readonly wazuh_major="5.0"
 readonly wazuh_version="5.0.0"
-readonly filebeat_version="7.10.2-*"
 readonly wazuh_install_vesion="0.1"
 source_branch="v${wazuh_version}"
 last_stage=""
@@ -17,7 +16,6 @@ last_stage=""
 repogpg="https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 repobaseurl="https://packages.wazuh.com/5.x"
 reporelease="stable"
-filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"
 bucket="packages.wazuh.com"
 repository="5.x"
 
@@ -30,10 +28,10 @@ config_file="${base_path}/config.yml"
 readonly tar_file_name="wazuh-install-files.tar"
 tar_file="${base_path}/${tar_file_name}"
 
-filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
+wazuh_template_url="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
 
 readonly dashboard_cert_path="/etc/wazuh-dashboard/certs"
-readonly filebeat_cert_path="/etc/filebeat/certs"
+readonly server_cert_path="/var/ossec/etc/certs"
 readonly indexer_cert_path="/etc/wazuh-indexer/certs"
 
 readonly logfile="/var/log/wazuh-install.log"
@@ -44,18 +42,14 @@ readonly apt_lockfile="/var/lib/dpkg/lock"
 ## Offline Installation vars
 readonly base_dest_folder="wazuh-offline"
 manager_deb_base_url="${base_url}/apt/pool/main/w/wazuh-manager"
-filebeat_deb_base_url="${base_url}/apt/pool/main/f/filebeat"
 
 indexer_deb_base_url="${base_url}/apt/pool/main/w/wazuh-indexer"
 dashboard_deb_base_url="${base_url}/apt/pool/main/w/wazuh-dashboard"
 manager_rpm_base_url="${base_url}/yum"
-filebeat_rpm_base_url="${base_url}/yum"
 
 indexer_rpm_base_url="${base_url}/yum"
 dashboard_rpm_base_url="${base_url}/yum"
 readonly wazuh_gpg_key="https://${bucket}/key/GPG-KEY-WAZUH"
-filebeat_config_file="${resources}/tpl/wazuh/filebeat/filebeat.yml"
-readonly offline_filebeat_version="7.10.2"
 
 adminUser="wazuh"
 adminPassword="wazuh"
