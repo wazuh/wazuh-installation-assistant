@@ -260,11 +260,9 @@ test-19-installCommon_rollBack-aio-all-installed-yum() {
     indexer_installed=1
     wazuh_installed=1
     dashboard_installed=1
-    filebeat_installed=1
     wazuh_remaining_files=1
     indexer_remaining_files=1
     dashboard_remaining_files=1
-    filebeat_remaining_files=1
     sys_type="yum"
     debug=
     AIO=1
@@ -283,12 +281,6 @@ test-19-installCommon_rollBack-aio-all-installed-yum-assert() {
     rm -rf /usr/share/wazuh-indexer/
     rm -rf /etc/wazuh-indexer/
 
-    yum remove filebeat -y
-
-    rm -rf /var/lib/filebeat/
-    rm -rf /usr/share/filebeat/
-    rm -rf /etc/filebeat/
-
     yum remove wazuh-dashboard -y
 
     rm -rf /var/lib/wazuh-dashboard/
@@ -296,7 +288,7 @@ test-19-installCommon_rollBack-aio-all-installed-yum-assert() {
     rm -rf /etc/wazuh-dashboard/
     rm -rf /run/wazuh-dashboard/
 
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-20-installCommon_rollBack-aio-all-installed-apt() {
@@ -304,11 +296,9 @@ test-20-installCommon_rollBack-aio-all-installed-apt() {
     indexer_installed=1
     wazuh_installed=1
     dashboard_installed=1
-    filebeat_installed=1
     wazuh_remaining_files=1
     indexer_remaining_files=1
     dashboard_remaining_files=1
-    filebeat_remaining_files=1
     sys_type="apt-get"
     debug=
     AIO=1
@@ -326,12 +316,6 @@ test-20-installCommon_rollBack-aio-all-installed-apt-assert() {
     rm -rf /usr/share/wazuh-indexer/
     rm -rf /etc/wazuh-indexer/
 
-    apt remove --purge filebeat -y
-
-    rm -rf /var/lib/filebeat/
-    rm -rf /usr/share/filebeat/
-    rm -rf /etc/filebeat/
-
     apt remove --purge wazuh-dashboard -y
 
     rm -rf /var/lib/wazuh-dashboard/
@@ -339,7 +323,7 @@ test-20-installCommon_rollBack-aio-all-installed-apt-assert() {
     rm -rf /etc/wazuh-dashboard/
     rm -rf /run/wazuh-dashboard/
 
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-21-installCommon_rollBack-indexer-installation-all-installed-yum() {
@@ -347,11 +331,9 @@ test-21-installCommon_rollBack-indexer-installation-all-installed-yum() {
     indexer_installed=1
     wazuh_installed=1
     dashboard_installed=1
-    filebeat_installed=1
     wazuh_remaining_files=1
     indexer_remaining_files=1
     dashboard_remaining_files=1
-    filebeat_remaining_files=1
     sys_type="yum"
     debug=
     indexer=1
@@ -365,7 +347,7 @@ test-21-installCommon_rollBack-indexer-installation-all-installed-yum-assert() {
     rm -rf /usr/share/wazuh-indexer/
     rm -rf /etc/wazuh-indexer/
 
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-22-installCommon_rollBack-indexer-installation-all-installed-apt() {
@@ -373,11 +355,9 @@ test-22-installCommon_rollBack-indexer-installation-all-installed-apt() {
     indexer_installed=1
     wazuh_installed=1
     dashboard_installed=1
-    filebeat_installed=1
     wazuh_remaining_files=1
     indexer_remaining_files=1
     dashboard_remaining_files=1
-    filebeat_remaining_files=1
     sys_type="apt-get"
     debug=
     indexer=1
@@ -391,7 +371,7 @@ test-22-installCommon_rollBack-indexer-installation-all-installed-apt-assert() {
     rm -rf /usr/share/wazuh-indexer/
     rm -rf /etc/wazuh-indexer/
 
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-23-installCommon_rollBack-wazuh-installation-all-installed-yum() {
@@ -399,11 +379,9 @@ test-23-installCommon_rollBack-wazuh-installation-all-installed-yum() {
     indexer_installed=1
     wazuh_installed=1
     dashboard_installed=1
-    filebeat_installed=1
     wazuh_remaining_files=1
     indexer_remaining_files=1
     dashboard_remaining_files=1
-    filebeat_remaining_files=1
     sys_type="yum"
     debug=
     wazuh=1
@@ -415,13 +393,7 @@ test-23-installCommon_rollBack-wazuh-installation-all-installed-yum-assert() {
 
     rm -rf /var/ossec/
 
-    yum remove filebeat -y
-
-    rm -rf /var/lib/filebeat/
-    rm -rf /usr/share/filebeat/
-    rm -rf /etc/filebeat/
-
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-24-installCommon_rollBack-wazuh-installation-all-installed-apt() {
@@ -429,11 +401,9 @@ test-24-installCommon_rollBack-wazuh-installation-all-installed-apt() {
     indexer_installed=1
     wazuh_installed=1
     dashboard_installed=1
-    filebeat_installed=1
     wazuh_remaining_files=1
     indexer_remaining_files=1
     dashboard_remaining_files=1
-    filebeat_remaining_files=1
     sys_type="apt-get"
     debug=
     wazuh=1
@@ -445,13 +415,8 @@ test-24-installCommon_rollBack-wazuh-installation-all-installed-apt-assert() {
 
     rm -rf /var/ossec/
 
-    apt remove --purge filebeat -y
 
-    rm -rf /var/lib/filebeat/
-    rm -rf /usr/share/filebeat/
-    rm -rf /etc/filebeat/
-
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-25-installCommon_rollBack-dashboard-installation-all-installed-yum() {
@@ -459,11 +424,9 @@ test-25-installCommon_rollBack-dashboard-installation-all-installed-yum() {
     indexer_installed=1
     wazuh_installed=1
     dashboard_installed=1
-    filebeat_installed=1
     wazuh_remaining_files=1
     indexer_remaining_files=1
     dashboard_remaining_files=1
-    filebeat_remaining_files=1
     sys_type="yum"
     debug=
     dashboard=1
@@ -478,7 +441,7 @@ test-25-installCommon_rollBack-dashboard-installation-all-installed-yum-assert()
     rm -rf /etc/wazuh-dashboard/
     rm -rf /run/wazuh-dashboard/
 
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-26-installCommon_rollBack-dashboard-installation-all-installed-apt() {
@@ -486,11 +449,9 @@ test-26-installCommon_rollBack-dashboard-installation-all-installed-apt() {
     indexer_installed=1
     wazuh_installed=1
     dashboard_installed=1
-    filebeat_installed=1
     wazuh_remaining_files=1
     indexer_remaining_files=1
     dashboard_remaining_files=1
-    filebeat_remaining_files=1
     sys_type="apt-get"
     debug=
     dashboard=1
@@ -505,7 +466,7 @@ test-26-installCommon_rollBack-dashboard-installation-all-installed-apt-assert()
     rm -rf /etc/wazuh-dashboard/
     rm -rf /run/wazuh-dashboard/
 
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-27-installCommon_rollBack-aio-nothing-installed() {
@@ -513,11 +474,9 @@ test-27-installCommon_rollBack-aio-nothing-installed() {
     indexer_installed=
     wazuh_installed=
     dashboard_installed=
-    filebeat_installed=
     wazuh_remaining_files=
     indexer_remaining_files=
     dashboard_remaining_files=
-    filebeat_remaining_files=
     sys_type="yum"
     debug=
     AIO=1
@@ -530,11 +489,9 @@ test-28-installCommon_rollBack-aio-all-remaining-files-yum() {
     indexer_installed=
     wazuh_installed=
     dashboard_installed=
-    filebeat_installed=
     wazuh_remaining_files=1
     indexer_remaining_files=1
     dashboard_remaining_files=1
-    filebeat_remaining_files=1
     sys_type="yum"
     debug=
     AIO=1
@@ -548,16 +505,12 @@ test-28-installCommon_rollBack-aio-all-remaining-files-yum-assert() {
     rm -rf /usr/share/wazuh-indexer/
     rm -rf /etc/wazuh-indexer/
 
-    rm -rf /var/lib/filebeat/
-    rm -rf /usr/share/filebeat/
-    rm -rf /etc/filebeat/
-
     rm -rf /var/lib/wazuh-dashboard/
     rm -rf /usr/share/wazuh-dashboard/
     rm -rf /etc/wazuh-dashboard/
     rm -rf /run/wazuh-dashboard/
 
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-29-installCommon_rollBack-aio-all-remaining-files-apt() {
@@ -565,11 +518,9 @@ test-29-installCommon_rollBack-aio-all-remaining-files-apt() {
     indexer_installed=
     wazuh_installed=
     dashboard_installed=
-    filebeat_installed=
     wazuh_remaining_files=1
     indexer_remaining_files=1
     dashboard_remaining_files=1
-    filebeat_remaining_files=1
     sys_type="apt-get"
     debug=
     AIO=1
@@ -583,16 +534,12 @@ test-29-installCommon_rollBack-aio-all-remaining-files-apt-assert() {
     rm -rf /usr/share/wazuh-indexer/
     rm -rf /etc/wazuh-indexer/
 
-    rm -rf /var/lib/filebeat/
-    rm -rf /usr/share/filebeat/
-    rm -rf /etc/filebeat/
-
     rm -rf /var/lib/wazuh-dashboard/
     rm -rf /usr/share/wazuh-dashboard/
     rm -rf /etc/wazuh-dashboard/
     rm -rf /run/wazuh-dashboard/
 
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-30-installCommon_rollBack-nothing-installed-remove-yum-repo() {
@@ -606,7 +553,7 @@ test-30-installCommon_rollBack-nothing-installed-remove-yum-repo() {
 test-30-installCommon_rollBack-nothing-installed-remove-yum-repo-assert() {
     rm /etc/yum.repos.d/wazuh.repo
 
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-31-installCommon_rollBack-nothing-installed-remove-apt-repo() {
@@ -620,7 +567,7 @@ test-31-installCommon_rollBack-nothing-installed-remove-apt-repo() {
 test-31-installCommon_rollBack-nothing-installed-remove-apt-repo-assert() {
     rm /etc/apt/sources.list.d/wazuh.list
 
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 test-32-installCommon_rollBack-nothing-installed-remove-files() {
@@ -631,7 +578,7 @@ test-32-installCommon_rollBack-nothing-installed-remove-files() {
 }
 
 test-32-installCommon_rollBack-nothing-installed-remove-files-assert() {
-    rm  -rf /var/log/wazuh-indexer/ /var/log/filebeat/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/filebeat.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
+    rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
 
 function load-installCommon_createCertificates() {
@@ -985,29 +932,3 @@ test-51-installCommon_readPasswordFileUsers-no-changeall-kibana-correct-assert()
     @echo kibanaserver admin
     @echo kibanaserverpassword adminpassword
 }
-
-test-52-installCommon_readPasswordFileUsers-no-changeall-filebeat-correct() {
-    load-installCommon_readPasswordFileUsers
-    p_file=/tmp/passfile.yml
-    @mock grep -Pzc '\A(User:\s*name:\s*\w+\s*password:\s*[A-Za-z0-9_\-]+\s*)+\Z' /tmp/passfile.yml === @echo 1
-    @mock grep name: /tmp/passfile.yml === @out wazuh kibanaserver admin
-    @mock awk '{ print substr( $2, 1, length($2) ) }'
-    @mock grep password: /tmp/passfile.yml === @out wazuhpassword kibanaserverpassword adminpassword
-    @mock awk '{ print substr( $2, 1, length($2) ) }'
-    changeall=
-    filebeat_installed=1
-    wazuh=1
-    installCommon_readPasswordFileUsers
-    @echo ${fileusers[*]}
-    @echo ${filepasswords[*]}
-    @echo ${users[*]}
-    @echo ${passwords[*]}
-}
-
-test-52-installCommon_readPasswordFileUsers-no-changeall-filebeat-correct-assert() {
-    @echo wazuh kibanaserver admin
-    @echo wazuhpassword kibanaserverpassword adminpassword
-    @echo admin
-    @echo adminpassword
-}
-

@@ -74,7 +74,7 @@ function common_checkRoot() {
     fi
 
     common_logger -d "Checking sudo package."
-    if ! command -v sudo > /dev/null; then 
+    if ! command -v sudo > /dev/null; then
         common_logger -e "The sudo package is not installed and it is necessary for the installation."
         exit 1;
     fi
@@ -85,7 +85,6 @@ function common_checkInstalled() {
     common_logger -d "Checking Wazuh installation."
     wazuh_installed=""
     indexer_installed=""
-    filebeat_installed=""
     dashboard_installed=""
 
     if [ "${sys_type}" == "yum" ]; then
@@ -109,17 +108,6 @@ function common_checkInstalled() {
     if [ -d "/var/lib/wazuh-indexer/" ] || [ -d "/usr/share/wazuh-indexer" ] || [ -d "/etc/wazuh-indexer" ] || [ -f "${base_path}/search-guard-tlstool*" ]; then
         common_logger -d "There are Wazuh indexer remaining files."
         indexer_remaining_files=1
-    fi
-
-    if [ "${sys_type}" == "yum" ]; then
-        eval "rpm -q filebeat --quiet && filebeat_installed=1"
-    elif [ "${sys_type}" == "apt-get" ]; then
-        filebeat_installed=$(apt list --installed  2>/dev/null | grep filebeat)
-    fi
-
-    if [ -d "/var/lib/filebeat/" ] || [ -d "/usr/share/filebeat" ] || [ -d "/etc/filebeat" ]; then
-        common_logger -d "There are Filebeat remaining files."
-        filebeat_remaining_files=1
     fi
 
     if [ "${sys_type}" == "yum" ]; then

@@ -116,10 +116,6 @@ function checks_arguments() {
             common_logger "Wazuh manager not found in the system so it was not uninstalled."
         fi
 
-        if [ -z "${filebeat_installed}" ] && [ -z "${filebeat_remaining_files}" ]; then
-            common_logger "Filebeat not found in the system so it was not uninstalled."
-        fi
-
         if [ -z "${indexer_installed}" ] && [ -z "${indexer_remaining_files}" ]; then
             common_logger "Wazuh indexer not found in the system so it was not uninstalled."
         fi
@@ -153,10 +149,6 @@ function checks_arguments() {
         fi
         if [ -z "${overwrite}" ] && { [ -n "${dashboard_installed}" ] || [ -n "${dashboard_remaining_files}" ]; }; then
             common_logger -e "Wazuh dashboard already installed."
-            installedComponent=1
-        fi
-        if [ -z "${overwrite}" ] && { [ -n "${filebeat_installed}" ] || [ -n "${filebeat_remaining_files}" ]; }; then
-            common_logger -e "Filebeat already installed."
             installedComponent=1
         fi
         if [ -n "${installedComponent}" ]; then
@@ -196,11 +188,11 @@ function checks_arguments() {
     # -------------- Wazuh ------------------------------------------
 
     if [ -n "${wazuh}" ]; then
-        if [ -n "${wazuh_installed}" ] || [ -n "${wazuh_remaining_files}" ] || [ -n "${filebeat_installed}" ] || [ -n "${filebeat_remaining_files}" ]; then
+        if [ -n "${wazuh_installed}" ] || [ -n "${wazuh_remaining_files}" ]; then
             if [ -n "${overwrite}" ]; then
                 installCommon_rollBack
             else
-                common_logger -e "Wazuh server components (wazuh-manager and filebeat) are already installed in this node or some of their files have not been removed. Use option -o|--overwrite to overwrite all components."
+                common_logger -e "Wazuh server components (wazuh-manager) are already installed in this node or some of their files have not been removed. Use option -o|--overwrite to overwrite all components."
                 exit 1
             fi
         fi
@@ -483,30 +475,6 @@ function checks_available_port() {
                 exit 1
             fi
         done
-    fi
-}
-
-function checks_filebeatURL() {
-    # URL uses branch when the source_branch is not a stage branch
-    if [[ ! $last_stage ]]; then
-        source_branch="${source_branch#v}"
-        filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
-    fi
-
-    # URL using master branch
-    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/main}"
-
-    response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
-    if [ "${response}" != "200" ]; then
-        response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)
-
-        # Display error if both URLs do not get the resource
-        if [ "${response}" != "200" ]; then
-            common_logger -e "Could not get the Filebeat Wazuh template."
-        else
-            common_logger "Using Filebeat template from master branch."
-            filebeat_wazuh_template="${new_filebeat_url}"
-        fi
     fi
 }
 

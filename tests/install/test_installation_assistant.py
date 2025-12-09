@@ -177,10 +177,6 @@ def test_check_wazuh_manager_apid():
 def test_check_wazuh_manager_clusterd():
     assert check_call("ps -xa | grep clusterd.py | grep -v grep", shell=True) != ""
 
-@pytest.mark.wazuh
-def test_check_filebeat_process():
-    assert check_call("ps -xa | grep \"/usr/share/filebeat/bin/filebeat\" | grep -v grep", shell=True) != ""
-
 @pytest.mark.indexer
 def test_check_indexer_process():
     assert check_call("ps -xa | grep wazuh-indexer | grep -v grep | cut -d \" \" -f15", shell=True) != ""

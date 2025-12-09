@@ -69,11 +69,6 @@ test-04-common_checkInstalled-all-installed-yum() {
     @mkdir /usr/share/wazuh-indexer
     @mkdir /etc/wazuh-indexer
 
-    @mock grep filebeat === @echo filebeat.x86_64 7.10.2-1 @wazuh
-    @mkdir /var/lib/filebeat/
-    @mkdir /usr/share/filebeat
-    @mkdir /etc/filebeat
-
     @mock grep wazuh-dashboard === @echo wazuh-dashboard.x86_64
     @mkdir /var/lib/wazuh-dashboard/
     @mkdir /usr/share/wazuh-dashboard/
@@ -90,12 +85,6 @@ test-04-common_checkInstalled-all-installed-yum() {
     @rmdir /usr/share/wazuh-indexer
     @rmdir /etc/wazuh-indexer
 
-    @echo $filebeat_installed
-    @echo $filebeat_remaining_files
-    @rmdir /var/lib/filebeat/
-    @rmdir /usr/share/filebeat
-    @rmdir /etc/filebeat
-
     @echo $dashboard_installed
     @echo $dashboard_remaining_files
     @rmdir /var/lib/wazuh-dashboard/
@@ -109,9 +98,6 @@ test-05-common_checkInstalled-all-installed-yum-assert() {
     @echo 1
 
     @echo "wazuh-indexer.x86_64 5.0.0-1 @wazuh"
-    @echo 1
-
-    @echo "filebeat.x86_64 7.10.2-1 @wazuh"
     @echo 1
 
     @echo "wazuh-dashboard.x86_64"
@@ -134,11 +120,6 @@ test-05-common_checkInstalled-all-installed-apt() {
     @mkdir /usr/share/wazuh-indexer
     @mkdir /etc/wazuh-indexer
 
-    @mock grep filebeat === @echo filebeat/now 7.10.2 amd64 [installed,local]
-    @mkdir /var/lib/filebeat/
-    @mkdir /usr/share/filebeat
-    @mkdir /etc/filebeat
-
     @mock grep wazuh-dashboard === @echo wazuh-dashboard/now 1.13.2 amd64 [installed,local]
     @mkdir /var/lib/wazuh-dashboard/
     @mkdir /usr/share/wazuh-dashboard/
@@ -155,12 +136,6 @@ test-05-common_checkInstalled-all-installed-apt() {
     @rmdir /usr/share/wazuh-indexer
     @rmdir /etc/wazuh-indexer
 
-    @echo $filebeat_installed
-    @echo $filebeat_remaining_files
-    @rmdir /var/lib/filebeat/
-    @rmdir /usr/share/filebeat
-    @rmdir /etc/filebeat
-
     @echo $dashboard_installed
     @echo $dashboard_remaining_files
     @rmdir /var/lib/wazuh-dashboard/
@@ -174,9 +149,6 @@ test-05-common_checkInstalled-all-installed-apt-assert() {
     @echo 1
 
     @echo "wazuh-indexer/stable,now 1.13.2-1 amd64 [installed]"
-    @echo 1
-
-    @echo "filebeat/now 7.10.2 amd64 [installed,local]"
     @echo 1
 
     @echo "wazuh-dashboard/now 1.13.2 amd64 [installed,local]"
@@ -193,9 +165,6 @@ test-06-common_checkInstalled-nothing-installed-apt() {
 
     @mock grep wazuh-indexer
 
-
-    @mock grep filebeat
-
     @mock grep wazuh-dashboard
 
     common_checkInstalled
@@ -204,9 +173,6 @@ test-06-common_checkInstalled-nothing-installed-apt() {
 
     @echo $indexer_installed
     @echo $indexer_remaining_files
-
-    @echo $filebeat_installed
-    @echo $filebeat_remaining_files
 
     @echo $dashboard_installed
     @echo $dashboard_remaining_files
@@ -236,9 +202,6 @@ test-07-common_checkInstalled-nothing-installed-yum() {
 
     @mock grep wazuh-indexer
 
-
-    @mock grep filebeat
-
     @mock grep wazuh-dashboard
 
     common_checkInstalled
@@ -247,9 +210,6 @@ test-07-common_checkInstalled-nothing-installed-yum() {
 
     @echo $indexer_installed
     @echo $indexer_remaining_files
-
-    @echo $filebeat_installed
-    @echo $filebeat_remaining_files
 
     @echo $dashboard_installed
     @echo $dashboard_remaining_files

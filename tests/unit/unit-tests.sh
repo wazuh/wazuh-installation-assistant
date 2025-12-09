@@ -4,7 +4,7 @@ today="$(date +"%d_%m_%y")"
 logfile="./${today}-unit_test.log"
 echo "-------------------------" >> ${logfile}
 debug=">> ${logfile}"
-install_files=("checks" "dashboard" "filebeat" "indexer" "installCommon" "manager")
+install_files=("checks" "dashboard" "indexer" "installCommon" "manager")
 cert_files=("certFunctions")
 passwords_files=("passwordsFunctions")
 common_files=("common")
@@ -18,7 +18,7 @@ SHARED_VOLUME="$(pwd -P)/tmp/"
 function common_logger() {
 
     now=$(date +'%d/%m/%Y %H:%M:%S')
-    case ${1} in 
+    case ${1} in
         "-e")
             mtype="ERROR:"
             message="${2}"
@@ -56,7 +56,7 @@ function createImage() {
         if [ "$?" != 0 ]; then
             common_logger -e "Docker encountered some error."
             exit 1
-        else 
+        else
             common_logger "Docker image built successfully."
         fi
     else
@@ -87,7 +87,7 @@ function testFile() {
     eval "docker run -t --rm --volume ${SHARED_VOLUME}:/tests/ --env TERM=xterm-256color ${IMAGE_NAME} ${1} | tee -a ${logfile}"
     if [ "$?" != 0 ]; then
         common_logger -e "Docker encountered some error running the unit tests for ${1}.sh"
-    else 
+    else
         common_logger "All unit tests for the functions in ${1}.sh finished."
     fi
 }
@@ -191,7 +191,7 @@ main() {
         for file in "${common_file[@]}"; do
             testFile ${file}
         done
-    else 
+    else
         for file in "${TEST_FILES[@]}"; do
             testFile ${file}
         done

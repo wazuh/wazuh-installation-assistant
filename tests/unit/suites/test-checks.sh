@@ -182,8 +182,6 @@ test-16-checks_arguments-uninstall-no-component-installed() {
     wazuh_remaining_files=""
     dashboard_installed=""
     dashboard_remaining_files=""
-    filebeat_installed=""
-    filebeat_remaining_files=""
     checks_arguments
     @assert-success
 }
@@ -434,46 +432,6 @@ test-43-checks_arguments-install-wazuh-remaining-files-overwrite() {
 }
 
 test-43-checks_arguments-install-wazuh-remaining-files-overwrite-assert() {
-    installCommon_rollBack
-}
-
-test-ASSERT-FAIL-44-checks_arguments-install-wazuh-filebeat-already-installed-no-overwrite() {
-    load-checks_arguments
-    wazuh=1
-    filebeat_installed=1
-    overwrite=
-    checks_arguments
-}
-
-test-ASSERT-FAIL-45-checks_arguments-install-wazuh-filebeat-remaining-files-no-overwrite() {
-    load-checks_arguments
-    wazuh=1
-    filebeat_remaining_files=1
-    overwrite=
-    checks_arguments
-}
-
-test-46-checks_arguments-install-wazuh-filebeat-already-installed-overwrite() {
-    load-checks_arguments
-    wazuh=1
-    filebeat_installed=1
-    overwrite=1
-    checks_arguments
-}
-
-test-46-checks_arguments-install-wazuh-filebeat-already-installed-overwrite-assert() {
-    installCommon_rollBack
-}
-
-test-47-checks_arguments-install-wazuh-filebeat-remaining-files-overwrite() {
-    load-checks_arguments
-    wazuh=1
-    filebeat_remaining_files=1
-    overwrite=1
-    checks_arguments
-}
-
-test-47-checks_arguments-install-wazuh-filebeat-remaining-files-overwrite-assert() {
     installCommon_rollBack
 }
 

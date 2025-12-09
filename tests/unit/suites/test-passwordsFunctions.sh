@@ -100,24 +100,18 @@ test-05-passwords-changePassword-changeall-all-users-all-installed() {
     load-passwords-changePassword
     changeall=1
     indexerchinstalled=1
-    filebeat_installed=1
     kibanainstalled=1
     users=( "kibanaserver" "admin" )
     passwords=( "kibanaserverpassword" "adminpassword" )
     hashes=( "11" "22")
     @mkdir -p /usr/share/wazuh-indexer/backup/
     @touch /usr/share/wazuh-indexer/backup/internal_users.yml
-    @mkdir -p /etc/filebeat
-    @touch /etc/filebeat/filebeat.yml
     @mkdir -p /etc/kibana
     @touch /etc/kibana/kibana.yml
-    @mock grep "password:" /etc/filebeat/filebeat.yml === @out "wazuhpasswordold"
-    @mock awk '{sub("password: .*", "password: adminpassword")}1' /etc/filebeat/filebeat.yml === @out "admin_configuration_string"
     @mock grep "password:" /etc/kibana/kibana.yml === @out "kibanapasswordold"
     @mock awk '{sub("elasticsearch.password: .*", "elasticsearch.password: kibanaserverpassword")}1' /etc/kibana/kibana.yml === @out "kibanaserver_configuration_string"
     passwords-changePassword
     @rm /usr/share/wazuh-indexer/backup/internal_users.yml
-    @rm /etc/filebeat/filebeat.yml
     @rm /etc/kibana/kibana.yml
 }
 
@@ -127,7 +121,6 @@ test-05-passwords-changePassword-changeall-all-users-all-installed-assert() {
     awk -v new=22 'prev=="admin:"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /usr/share/wazuh-indexer/backup/internal_users.yml
     mv -f internal_users.yml_tmp /usr/share/wazuh-indexer/backup/internal_users.yml
     echo "admin_configuration_string"
-    recommon_startService "filebeat"
     echo "kibanaserver_configuration_string"
     recommon_startService "kibana"
 }
@@ -180,79 +173,23 @@ test-07-passwords-changePassword-nuser-kibanaserver-kibana-not-installed-assert(
     mv -f internal_users.yml_tmp /usr/share/wazuh-indexer/backup/internal_users.yml
 }
 
-test-08-passwords-changePassword-nuser-admin-filebeat-installed() {
-    load-passwords-changePassword
-    changeall=
-    indexerchinstalled=1
-    filebeat_installed=1
-    nuser="admin"
-    password="adminpassword"
-    hash="11"
-    @mkdir -p /usr/share/wazuh-indexer/backup/
-    @touch /usr/share/wazuh-indexer/backup/internal_users.yml
-    @mkdir -p /etc/filebeat
-    @touch /etc/filebeat/filebeat.yml
-    @mock grep "password:" /etc/filebeat/filebeat.yml === @out "wazuhpasswordold"
-    @mock awk '{sub("password: .*", "password: adminpassword")}1' /etc/filebeat/filebeat.yml === @out "admin_configuration_string"
-    passwords-changePassword
-    @rm /usr/share/wazuh-indexer/backup/internal_users.yml
-    @rm /etc/filebeat/filebeat.yml
-}
-
-test-08-passwords-changePassword-nuser-admin-filebeat-installed-assert() {
-    awk -v new=11 'prev=="admin:"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /usr/share/wazuh-indexer/backup/internal_users.yml
-    mv -f internal_users.yml_tmp /usr/share/wazuh-indexer/backup/internal_users.yml
-    echo "admin_configuration_string"
-    recommon_startService "filebeat"
-}
-
-test-09-passwords-changePassword-nuser-admin-filebeat-not-installed() {
-    load-passwords-changePassword
-    changeall=
-    indexerchinstalled=1
-    filebeat_installed=
-    nuser="admin"
-    password="adminpassword"
-    hash="11"
-    @mkdir -p /usr/share/wazuh-indexer/backup/
-    @touch /usr/share/wazuh-indexer/backup/internal_users.yml
-    @mkdir -p /etc/filebeat
-    @touch /etc/filebeat/filebeat.yml
-    @mock grep "password:" /etc/filebeat/filebeat.yml === @out "wazuhpasswordold"
-    @mock awk '{sub("password: .*", "password: adminpassword")}1' /etc/filebeat/filebeat.yml === @out "admin_configuration_string"
-    passwords-changePassword
-    @rm /usr/share/wazuh-indexer/backup/internal_users.yml
-    @rm /etc/filebeat/filebeat.yml
-}
-
-test-09-passwords-changePassword-nuser-admin-filebeat-not-installed-assert() {
-    awk -v new=11 'prev=="admin:"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /usr/share/wazuh-indexer/backup/internal_users.yml
-    mv -f internal_users.yml_tmp /usr/share/wazuh-indexer/backup/internal_users.yml
-}
-
 test-10-passwords-changePassword-changeall-all-users-nothing-installed() {
     load-passwords-changePassword
     changeall=1
     indexerchinstalled=
-    filebeat_installed=
     kibanainstalled=
     users=( "kibanaserver" "admin" )
     passwords=( "kibanaserverpassword" "adminpassword" )
     hashes=( "11" "22")
     @mkdir -p /usr/share/wazuh-indexer/backup/
     @touch /usr/share/wazuh-indexer/backup/internal_users.yml
-    @mkdir -p /etc/filebeat
-    @touch /etc/filebeat/filebeat.yml
     @mkdir -p /etc/kibana
     @touch /etc/kibana/kibana.yml
-    @mock grep "password:" /etc/filebeat/filebeat.yml === @out "wazuhpasswordold"
-    @mock awk '{sub("password: .*", "password: adminpassword")}1' /etc/filebeat/filebeat.yml === @out "admin_configuration_string"
     @mock grep "password:" /etc/kibana/kibana.yml === @out "kibanapasswordold"
     @mock awk '{sub("elasticsearch.password: .*", "elasticsearch.password: kibanaserverpassword")}1' /etc/kibana/kibana.yml === @out "kibanaserver_configuration_string"
     passwords-changePassword
     @assert-success
     @rm /usr/share/wazuh-indexer/backup/internal_users.yml
-    @rm /etc/filebeat/filebeat.yml
     @rm /etc/kibana/kibana.yml
 }
 
@@ -269,8 +206,6 @@ test-11-passwords-checkInstalledPass-all-installed-yum() {
     @mock grep opendistroforelasticsearch === @echo opendistroforelasticsearch.x86_64 1.13.2-1 @wazuh
     @mock grep -v kibana
 
-    @mock grep filebeat === @echo filebeat.x86_64 7.10.2-1 @wazuh
-
     @mock grep opendistroforelasticsearch-kibana === @echo opendistroforelasticsearch-kibana.x86_64
 
     @mock grep "plugins.security.ssl.transport.pemtrustedcas_filepath: " /etc/wazuh-indexer/opensearch.yml === @out "pem_path"
@@ -281,7 +216,6 @@ test-11-passwords-checkInstalledPass-all-installed-yum() {
     passwords-checkInstalledPass
 
     @echo $indexerchinstalled
-    @echo $filebeat_installed
     @echo $kibanainstalled
 }
 
@@ -290,7 +224,6 @@ test-11-passwords-checkInstalledPass-all-installed-yum-assert() {
     passwords-readAdmincerts
 
     @echo "opendistroforelasticsearch.x86_64 1.13.2-1 @wazuh"
-    @echo "filebeat.x86_64 7.10.2-1 @wazuh"
     @echo "opendistroforelasticsearch-kibana.x86_64"
 }
 
@@ -303,8 +236,6 @@ test-12-passwords-checkInstalledPass-all-installed-apt() {
     @mock grep opendistroforelasticsearch === @echo opendistroforelasticsearch/stable,now 1.13.2-1 amd64 [installed]
     @mock grep -v kibana
 
-    @mock grep filebeat === @echo filebeat/now 7.10.2 amd64 [installed,local]
-
     @mock grep opendistroforelasticsearch-kibana === @echo opendistroforelasticsearch-kibana/now 1.13.2 amd64 [installed,local]
 
     @mock grep "plugins.security.ssl.transport.pemtrustedcas_filepath: " /etc/wazuh-indexer/opensearch.yml === @out "pem_path"
@@ -315,7 +246,6 @@ test-12-passwords-checkInstalledPass-all-installed-apt() {
     passwords-checkInstalledPass
 
     @echo $indexerchinstalled
-    @echo $filebeat_installed
     @echo $kibanainstalled
 
 }
@@ -325,7 +255,6 @@ test-12-passwords-checkInstalledPass-all-installed-apt-assert() {
     passwords-readAdmincerts
 
     @echo "opendistroforelasticsearch/stable,now 1.13.2-1 amd64 [installed]"
-    @echo "filebeat/now 7.10.2 amd64 [installed,local]"
     @echo "opendistroforelasticsearch-kibana/now 1.13.2 amd64 [installed,local]"
 }
 
@@ -339,8 +268,6 @@ test-ASSERT-FAIL-13-passwords-checkInstalledPass-nothing-installed-apt() {
 
     @mock grep opendistroforelasticsearch
     @mock grep -v kibana
-
-    @mock grep filebeat
 
     @mock grep opendistroforelasticsearch-kibana
 
@@ -359,8 +286,6 @@ test-ASSERT-FAIL-14-passwords-checkInstalledPass-nothing-installed-yum() {
 
     @mock grep opendistroforelasticsearch
     @mock grep -v kibana
-
-    @mock grep filebeat
 
     @mock grep opendistroforelasticsearch-kibana
 
@@ -588,7 +513,7 @@ test-ASSERT-FAIL-28-recommon_startService-no-service-manager() {
 
 test-29-recommon_startService-systemd() {
     load-recommon_startService
-    @mockfalse ps -e === @out 
+    @mockfalse ps -e === @out
     @mocktrue grep -E -q "^\ *1\ .*systemd$"
     @mockfalse grep -E -q "^\ *1\ .*init$"
     recommon_startService wazuh-manager
@@ -601,7 +526,7 @@ test-29-recommon_startService-systemd-assert() {
 
 test-30-recommon_startService-systemd-error() {
     load-recommon_startService
-    @mock ps -e === @out 
+    @mock ps -e === @out
     @mocktrue grep -E -q "^\ *1\ .*systemd$"
     @mockfalse grep -E -q "^\ *1\ .*init$"
     @mockfalse systemctl restart wazuh-manager.service
@@ -617,7 +542,7 @@ test-30-recommon_startService-systemd-error-assert() {
 
 test-31-recommon_startService-initd() {
     load-recommon_startService
-    @mock ps -e === @out 
+    @mock ps -e === @out
     @mockfalse grep -E -q "^\ *1\ .*systemd$"
     @mocktrue grep -E -q "^\ *1\ .*init$"
     @mkdir -p /etc/init.d
@@ -636,7 +561,7 @@ test-31-recommon_startService-initd-assert() {
 
 test-32-recommon_startService-initd-error() {
     load-recommon_startService
-    @mock ps -e === @out 
+    @mock ps -e === @out
     @mockfalse grep -E -q "^\ *1\ .*systemd$"
     @mocktrue grep -E -q "^\ *1\ .*init$"
     @mkdir -p /etc/init.d
@@ -659,7 +584,7 @@ test-32-recommon_startService-initd-error-assert() {
 
 test-33-recommon_startService-rc.d/init.d() {
     load-recommon_startService
-    @mock ps -e === @out 
+    @mock ps -e === @out
     @mockfalse grep -E -q "^\ *1\ .*systemd$"
     @mockfalse grep -E -q "^\ *1\ .*init$"
 
