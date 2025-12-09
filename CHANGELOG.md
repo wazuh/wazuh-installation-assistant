@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Changed main branch as default branch for Filebeat module. ([#531](https://github.com/wazuh/wazuh-installation-assistant/pull/531))
 
 ### Deleted
 

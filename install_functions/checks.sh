@@ -494,7 +494,7 @@ function checks_filebeatURL() {
     fi
 
     # URL using master branch
-    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/main}"
+    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/${wazuh_version}}"
 
     response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
     if [ "${response}" != "200" ]; then
@@ -504,7 +504,7 @@ function checks_filebeatURL() {
         if [ "${response}" != "200" ]; then
             common_logger -e "Could not get the Filebeat Wazuh template."
         else
-            common_logger "Using Filebeat template from master branch."
+            common_logger "Using Filebeat template from ${wazuh_version} branch."
             filebeat_wazuh_template="${new_filebeat_url}"
         fi
     fi
@@ -532,8 +532,8 @@ function checks_source_branch() {
         "https://api.github.com/repos/wazuh/wazuh-installation-assistant/branches/$source_branch")
 
     if [ "$status_code" -ne 200 ]; then
-        common_logger -w "Branch '$source_branch' does not exist. Using the main branch."
-        source_branch="main"
+        common_logger -w "Branch '$source_branch' does not exist. Using the ${wazuh_version} branch."
+        source_branch="${wazuh_version}"
     fi
 }
 
