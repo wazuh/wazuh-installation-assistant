@@ -30,15 +30,6 @@ function checks_arguments() {
         fi
     fi
 
-    # -------------- Port option validation ---------------------
-
-    if [ -n "${port_specified}" ]; then
-        if [ -z "${AIO}" ] && [ -z "${dashboard}" ]; then
-            common_logger -e "The argument -p|--port can only be used with -a|--all-in-one or -wd|--wazuh-dashboard."
-            exit 1
-        fi
-    fi
-
     # -------------- Offline installation ---------------------
 
     if [ -n "${offline_install}" ]; then
@@ -92,7 +83,7 @@ function checks_arguments() {
     fi
 
     if [[ -n "${configurations}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${start_indexer_cluster}" || -n "${tar_conf}" || -n "${uninstall}" ) ]]; then
-        common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -t|--tar, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -ws|--wazuh-server."
+        common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -ws|--wazuh-server."
         exit 1
     fi
 
@@ -217,11 +208,6 @@ function checks_arguments() {
 
     if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ] && [ -z "${configurations}" ] && [ -z "${uninstall}" ] && [ -z "${download}" ]; then
         common_logger -e "At least one of these arguments is necessary -a|--all-in-one, -g|--generate-config-files, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -ws|--wazuh-server, -u|--uninstall, -dw|--download-wazuh."
-        exit 1
-    fi
-
-    if [ -n "${force}" ] && [ -z  "${dashboard}" ]; then
-        common_logger -e "The -fd|--force-install-dashboard argument needs to be used alongside -wd|--wazuh-dashboard."
         exit 1
     fi
 

@@ -9,7 +9,7 @@
 function dashboard_changePort() {
 
     chosen_port="$1"
-    http_port="${chosen_port}" 
+    http_port="${chosen_port}"
     wazuh_dashboard_port=( "${http_port}" )
     wazuh_aio_ports=(9200 9300 1514 1515 1516 55000 "${http_port}")
 
@@ -165,14 +165,9 @@ function dashboard_initialize() {
             common_logger "${flag}" "Wazuh indexer security settings not initialized. Please run the installation assistant using -s|--start-cluster in one of the wazuh indexer nodes."
         fi
 
-        if [ -z "${force}" ]; then
-            common_logger "If you want to install Wazuh dashboard without waiting for the Wazuh indexer cluster, use the -fd option"
-            installCommon_rollBack
-            exit 1
-        else
-            common_logger -nl "--- Summary ---"
-            common_logger -nl "When Wazuh dashboard is able to connect to your Wazuh indexer cluster, you can access the web interface https://${print_ip}\n    User: admin\n    Password: ${u_pass}"
-        fi
+        common_logger -nl "--- Summary ---"
+        common_logger -nl "When Wazuh dashboard is able to connect to your Wazuh indexer cluster, you can access the web interface https://${print_ip}\n    User: admin\n    Password: ${u_pass}"
+
     fi
 
 }
