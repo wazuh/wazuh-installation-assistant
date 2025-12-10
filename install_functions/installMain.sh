@@ -13,7 +13,7 @@ function getHelp() {
     echo -e "        $(basename "$0") - Install and configure Wazuh central components: Wazuh server, Wazuh indexer, and Wazuh dashboard."
     echo -e ""
     echo -e "SYNOPSIS"
-    echo -e "        $(basename "$0") [OPTIONS] -a | -c | -s | -wi <indexer-node-name> | -wd <dashboard-node-name> | -ws <server-node-name>"
+    echo -e "        $(basename "$0") [OPTIONS] -a | -s | -wi <indexer-node-name> | -wd <dashboard-node-name> | -ws <server-node-name>"
     echo -e ""
     echo -e "DESCRIPTION"
     echo -e "        -a,  --all-in-one"
