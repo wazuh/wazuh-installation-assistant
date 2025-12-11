@@ -129,10 +129,7 @@ function dashboard_initialize() {
         common_logger -nl "You can access the web interface https://${print_ip}:${http_port}\n    User: admin\n    Password: ${u_pass}"
 
     else
-        flag="-w"
-        if [ -z "${force}" ]; then
-            flag="-e"
-        fi
+        flag="-e"
         failed_nodes=()
         common_logger "${flag}" "Cannot connect to Wazuh dashboard."
 

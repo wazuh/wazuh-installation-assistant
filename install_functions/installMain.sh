@@ -252,10 +252,7 @@ function main() {
         checks_previousCertificate
     fi
 
-    if [ -n "${port_specified}" ]; then
-        checks_available_port "${port_number}" "${wazuh_aio_ports[@]}"
-        dashboard_changePort "${port_number}"
-    elif [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
+    if [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
         dashboard_changePort "${http_port}"
     fi
 
