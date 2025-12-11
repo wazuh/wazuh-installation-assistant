@@ -6,17 +6,6 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-function dashboard_changePort() {
-
-    chosen_port="$1"
-    http_port="${chosen_port}"
-    wazuh_dashboard_port=( "${http_port}" )
-    wazuh_aio_ports=(9200 9300 1514 1515 1516 55000 "${http_port}")
-
-    sed -i 's/server\.port: [0-9]\+$/server.port: '"${chosen_port}"'/' "$0"
-    common_logger "Wazuh web interface port will be ${chosen_port}."
-}
-
 function dashboard_configure() {
 
     common_logger -d "Configuring Wazuh dashboard."
