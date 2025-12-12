@@ -252,10 +252,6 @@ function main() {
         checks_previousCertificate
     fi
 
-    if [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
-        dashboard_changePort "${http_port}"
-    fi
-
     if [ -n "${AIO}" ]; then
         rm -f "${tar_file}"
         checks_ports "${wazuh_aio_ports[@]}"

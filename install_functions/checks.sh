@@ -72,6 +72,16 @@ function checks_arguments() {
 
     # -------------- Configurations ---------------------------------
 
+    if [ -f "${tar_file}" ]; then
+        if [ -n "${AIO}" ]; then
+            rm -f "${tar_file}"
+        fi
+        if [ -n "${configurations}" ]; then
+            common_logger -e "File ${tar_file} already exists. Please remove it if you want to use a new configuration."
+            exit 1
+        fi
+    fi
+
     if [[ -n "${configurations}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${start_indexer_cluster}" || -n "${uninstall}" ) ]]; then
         common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -ws|--wazuh-server."
         exit 1
@@ -444,21 +454,6 @@ function check_versions() {
         echo 0
     else
         echo 1
-    fi
-}
-
-function checks_available_port() {
-    chosen_port="$1"
-    shift
-    ports_list=("$@")
-
-    if [ "$chosen_port" -ne "${http_port}" ]; then
-        for port in "${ports_list[@]}"; do
-            if [ "$chosen_port" -eq "$port" ]; then
-                common_logger -e "Port ${chosen_port} is reserved by Wazuh. Please, choose another port."
-                exit 1
-            fi
-        done
     fi
 }
 
