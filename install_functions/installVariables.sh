@@ -17,7 +17,7 @@ last_stage=""
 repogpg="https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 repobaseurl="https://packages.wazuh.com/5.x"
 reporelease="stable"
-filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"
+filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.5.tar.gz"
 bucket="packages.wazuh.com"
 repository="5.x"
 

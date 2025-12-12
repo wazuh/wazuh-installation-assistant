@@ -19,7 +19,7 @@ All notable changes to this project will be documented in this file.
 
 - None
 
-## [4.14.2]
+## [4.14.3]
 
 ### Added
 
@@ -32,6 +32,24 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - None
+
+### Deleted
+
+- None
+
+## [4.14.2]
+
+### Added
+
+- None
+
+### Changed
+
+- Updated Wazuh Filebeat module from 0.4 to 0.5 version. ([#529](https://github.com/wazuh/wazuh-installation-assistant/pull/529))
+
+### Fixed
+
+- Changed main branch as default branch for Filebeat module. ([#531](https://github.com/wazuh/wazuh-installation-assistant/pull/531))
 
 ### Deleted
 
