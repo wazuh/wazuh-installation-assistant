@@ -124,7 +124,7 @@ function main() {
                 repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
                 reporelease="unstable"
                 filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
-                filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.4.tar.gz"
+                filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.5.tar.gz"
                 bucket="packages-dev.wazuh.com"
                 repository="${devrepo}"
                 ;;
