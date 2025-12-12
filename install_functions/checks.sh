@@ -532,8 +532,76 @@ function checks_source_branch() {
         "https://api.github.com/repos/wazuh/wazuh-installation-assistant/branches/$source_branch")
 
     if [ "$status_code" -ne 200 ]; then
-        common_logger -w "Branch '$source_branch' does not exist. Using the main branch."
-        source_branch="main"
+        common_logger -w "Branch '$source_branch' does not exist. Using the ${wazuh_version} branch."
+        source_branch="${wazuh_version}"
+    fi
+}
+
+function checks_localArtifactURLs_exists() {
+    common_logger -d "Checking if ${artifact_urls_file_name} exists locally."
+    if [ ! -f "${base_path}/${artifact_urls_file_name}" ]; then
+        common_logger -e "Cannot find ${artifact_urls_file_name} in ${base_path}."
+        exit 1
+    fi
+}
+
+function checks_ArtifactURLs_format() {
+    common_logger -d "Checking ${artifact_urls_file_name} file format."
+    artifact_file="${base_path}/${artifact_urls_file_name}"
+    # Check that all values are valid URLs
+    while IFS=': ' read -r key value; do
+        # Skip empty lines and comments
+        [[ -z "$key" || "$key" =~ ^#.*$ ]] && continue
+        
+        # Remove quotes and whitespace from value
+        value=$(echo "$value" | tr -d '"' | xargs)
+        
+        # Validate URL format (must start with http:// or https://)
+        if [[ ! "$value" =~ ^https?:// ]]; then
+            common_logger -e "Invalid URL format for key '${key}': ${value}"
+            common_logger -e "All values in ${artifact_urls_file_name} must be valid URLs starting with http:// or https://"
+            exit 1
+        fi
+    done < "$artifact_file"
+}
+
+function checks_ArtifactURLs_component_present() {
+    common_logger -d "Checking required component is present in ${artifact_urls_file_name} file."
+    artifact_file="${base_path}/${artifact_urls_file_name}"
+    # Determine package type based on system
+    if [ "${sys_type}" == "yum" ]; then
+        pkg_type="rpm"
+    elif [ "${sys_type}" == "apt-get" ]; then
+        pkg_type="deb"
+    fi
+    
+    # Determine architecture suffix for artifact keys
+    if [ "${architecture}" == "x86_64" ]; then
+        arch_suffix="amd64"
+    elif [ "${architecture}" == "aarch64" ]; then
+        arch_suffix="arm64"
+    fi
+
+    indexer_key="wazuh_indexer_${arch_suffix}_${pkg_type}"
+    dashboard_key="wazuh_dashboard_${arch_suffix}_${pkg_type}"
+    manager_key="wazuh_manager_${arch_suffix}_${pkg_type}"
+
+    # Check component-specific artifacts exist
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ]; then
+        if ! grep -q "^${indexer_key}:" "$artifact_file"; then
+            common_logger -e "Missing required artifact key: ${indexer_key}"
+            exit 1
+        fi
+    elif [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
+        if ! grep -q "^${dashboard_key}:" "$artifact_file"; then
+            common_logger -e "Missing required artifact key: ${dashboard_key}"
+            exit 1
+        fi
+    elif [ -n "${AIO}" ] || [ -n "${wazuh}" ]; then
+        if ! grep -q "^${manager_key}:" "$artifact_file"; then
+            common_logger -e "Missing required artifact key: ${manager_key}"
+            exit 1
+        fi
     fi
 }
 

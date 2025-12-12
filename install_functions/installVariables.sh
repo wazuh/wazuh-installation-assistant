@@ -29,6 +29,7 @@ readonly base_path
 config_file="${base_path}/config.yml"
 readonly tar_file_name="wazuh-install-files.tar"
 tar_file="${base_path}/${tar_file_name}"
+readonly artifact_urls_file_name="artifact_urls.yml"
 
 filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
 
@@ -68,11 +69,11 @@ wazuh_dashboard_port="${http_port}"
 # `lsof` and `openssl` are installed separately
 wia_yum_dependencies=( systemd grep tar coreutils sed procps-ng gawk curl )
 readonly wia_apt_dependencies=( systemd grep tar coreutils sed procps gawk curl )
-readonly wazuh_yum_dependencies=( libcap )
-readonly wazuh_apt_dependencies=( apt-transport-https libcap2-bin gnupg )
+readonly wazuh_yum_dependencies=()
+readonly wazuh_apt_dependencies=( apt-transport-https gnupg )
 readonly indexer_yum_dependencies=( coreutils )
-readonly indexer_apt_dependencies=( debconf adduser procps gnupg apt-transport-https )
-readonly dashboard_yum_dependencies=( libcap )
-readonly dashboard_apt_dependencies=( debhelper tar curl libcap2-bin gnupg apt-transport-https )
+readonly indexer_apt_dependencies=( debconf adduser procps )
+readonly dashboard_yum_dependencies=( libcap yum-utils )
+readonly dashboard_apt_dependencies=( debhelper tar curl libcap2-bin )
 readonly wia_offline_dependencies=( curl tar gnupg openssl lsof )
 wia_dependencies_installed=()

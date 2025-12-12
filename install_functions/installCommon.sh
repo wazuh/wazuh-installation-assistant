@@ -44,49 +44,6 @@ function installCommon_cleanExit() {
 
 }
 
-function installCommon_addWazuhRepo() {
-
-    common_logger -d "Adding the Wazuh repository."
-
-    if [ -n "${development}" ]; then
-        if [ "${sys_type}" == "yum" ]; then
-            eval "rm -f /etc/yum.repos.d/wazuh.repo ${debug}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            eval "rm -f /etc/apt/sources.list.d/wazuh.list ${debug}"
-        fi
-    fi
-
-    if [ ! -f "/etc/yum.repos.d/wazuh.repo" ] && [ ! -f "/etc/zypp/repos.d/wazuh.repo" ] && [ ! -f "/etc/apt/sources.list.d/wazuh.list" ] ; then
-        if [ "${sys_type}" == "yum" ]; then
-            eval "rpm --import ${repogpg} ${debug}"
-            if [ "${PIPESTATUS[0]}" != 0 ]; then
-                common_logger -e "Cannot import Wazuh GPG key"
-                exit 1
-            fi
-            eval "(echo -e '[wazuh]\ngpgcheck=1\ngpgkey=${repogpg}\nenabled=1\nname=EL-\${releasever} - Wazuh\nbaseurl='${repobaseurl}'/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh.repo)" "${debug}"
-            eval "chmod 644 /etc/yum.repos.d/wazuh.repo ${debug}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            eval "common_curl -s ${repogpg} --max-time 300 --retry 5 --retry-delay 5 --fail | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import - ${debug}"
-            if [ "${PIPESTATUS[0]}" != 0 ]; then
-                common_logger -e "Cannot import Wazuh GPG key"
-                exit 1
-            fi
-            eval "chmod 644 /usr/share/keyrings/wazuh.gpg ${debug}"
-            eval "(echo \"deb [signed-by=/usr/share/keyrings/wazuh.gpg] ${repobaseurl}/apt/ ${reporelease} main\" | tee /etc/apt/sources.list.d/wazuh.list)" "${debug}"
-            eval "apt-get update -q ${debug}"
-            eval "chmod 644 /etc/apt/sources.list.d/wazuh.list ${debug}"
-        fi
-    else
-        common_logger -d "Wazuh repository already exists. Skipping addition."
-    fi
-
-    if [ -n "${development}" ]; then
-        common_logger "Wazuh development repository added."
-    else
-        common_logger "Wazuh repository added."
-    fi
-}
-
 function installCommon_aptInstall() {
 
     package="${1}"
@@ -324,6 +281,66 @@ function installCommon_configureCentOSRepositories() {
 
         common_logger -d "CentOS repositories added."
     fi
+
+}
+
+function installCommon_downloadArtifactURLs() {
+
+    common_logger -d "Downloading artifact URLs file."
+    artifact_url="https://${bucket}/${wazuh_major}/${artifact_urls_file_name}"
+    eval "common_curl -sSo ${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
+    
+    if [ ! -f "${artifact_urls_file_name}" ]; then
+        common_logger -e "Failed to download artifact URLs from ${artifact_url}."
+        exit 1
+    fi
+
+}
+
+function installCommon_downloadComponent() {
+    # TODO: review the behavior of this function
+    if [ "$#" -ne 1 ]; then
+        common_logger -e "installCommon_downloadComponent must be called with one argument (component name)."
+        exit 1
+    fi
+
+    component="${1}"
+    artifact_file="${base_path}/${artifact_urls_file_name}"
+    
+    # Determine package type based on system
+    if [ "${sys_type}" == "yum" ]; then
+        pkg_type="rpm"
+    elif [ "${sys_type}" == "apt-get" ]; then
+        pkg_type="deb"
+    fi
+    
+    # Determine architecture suffix for artifact keys
+    if [ "${architecture}" == "x86_64" ]; then
+        arch_suffix="amd64"
+    elif [ "${architecture}" == "aarch64" ]; then
+        arch_suffix="arm64"
+    fi
+    
+    # Build the artifact key
+    artifact_key="${component}_${arch_suffix}_${pkg_type}"
+    
+    # Get the URL from the artifact file
+    component_url=$(grep "^${artifact_key}:" "$artifact_file" | cut -d' ' -f2- | tr -d '"' | xargs)
+
+    # Extract filename from URL
+    component_filename=$(basename "$component_url")
+    
+    common_logger "Downloading ${component} package: ${component_filename}"
+    
+    # Download the component
+    eval "common_curl -sSLo ${component_filename} ${component_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
+    
+    if [ ! -f "${component_filename}" ]; then
+        common_logger -e "Failed to download ${component} from ${component_url}."
+        exit 1
+    fi
+    
+    common_logger "${component} package downloaded successfully: ${component_filename}"
 
 }
 

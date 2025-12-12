@@ -22,8 +22,8 @@ function getHelp() {
     echo -e "        -c,  --config-file <path-to-config-yml>"
     echo -e "                Path to the configuration file used to generate wazuh-install-files.tar file containing the files that will be needed for installation. By default, the Wazuh installation assistant will search for a file named config.yml in the same path as the script."
     echo -e ""
-    echo -e "        -d [pre-release|staging],  --development"
-    echo -e "                Use development repositories. By default it uses the pre-release package repository. If staging is specified, it will use that repository."
+    echo -e "        -d [pre-release|local],  --development"
+    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install.sh."
     echo -e ""
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
@@ -107,10 +107,10 @@ function main() {
             "-d"|"--development")
                 development=1
                 if [ -n "${2}" ] && [[ ! "${2}" =~ ^- ]]; then
-                    if [ "${2}" = "pre-release" ] || [ "${2}" = "staging" ]; then
+                    if [ "${2}" = "pre-release" ] || [ "${2}" = "local" ]; then
                         devrepo="${2}"
                     else
-                        common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'staging'."
+                        common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'local'."
                         getHelp
                         exit 1
                     fi
@@ -120,6 +120,7 @@ function main() {
                     shift 1
                 fi
                 checks_development_source_tag
+                # TODO: delete repo configs
                 repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
                 repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
                 reporelease="unstable"
@@ -339,9 +340,13 @@ function main() {
 
     if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
         check_curlVersion
-        if [ -z "${offline_install}" ]; then
-            installCommon_addWazuhRepo
+        if [ -n "${development}" ] && [ "${devrepo}" = "local" ]; then
+            checks_localArtifactURLs_exists
+        else
+            installCommon_downloadArtifactURLs
         fi
+        checks_ArtifactURLs_format
+        checks_ArtifactURLs_component_present
     fi
 
 # -------------- Configuration creation case  -----------------------
@@ -371,6 +376,7 @@ function main() {
 
     if [ -n "${indexer}" ]; then
         common_logger "--- Wazuh indexer ---"
+        installCommon_downloadComponent "wazuh-indexer"
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
