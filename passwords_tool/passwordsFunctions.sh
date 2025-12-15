@@ -111,8 +111,6 @@ function passwords_changeDashboardApiPassword() {
     if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
         common_logger "Updated wazuh-wui user password in wazuh dashboard. Remember to restart the service."
     fi
-    file_exists=1
-
 }
 
 function passwords_checkUser() {
