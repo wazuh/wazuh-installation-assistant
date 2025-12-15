@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Remove all the custom option from the installation assistant ([#534](https://github.com/wazuh/wazuh-installation-assistant/pull/534))
 - Update the build workflow to upload config.yml ([#526](https://github.com/wazuh/wazuh-installation-assistant/pull/526))
 
 ### Changed
