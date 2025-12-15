@@ -494,7 +494,7 @@ function checks_filebeatURL() {
     fi
 
     # URL using master branch
-    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/main}"
+    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/${wazuh_version}}"
 
     response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
     if [ "${response}" != "200" ]; then
@@ -504,7 +504,7 @@ function checks_filebeatURL() {
         if [ "${response}" != "200" ]; then
             common_logger -e "Could not get the Filebeat Wazuh template."
         else
-            common_logger "Using Filebeat template from master branch."
+            common_logger "Using Filebeat template from ${wazuh_version} branch."
             filebeat_wazuh_template="${new_filebeat_url}"
         fi
     fi
