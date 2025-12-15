@@ -376,11 +376,12 @@ function main() {
 
     if [ -n "${indexer}" ]; then
         common_logger "--- Wazuh indexer ---"
-        installCommon_downloadComponent "wazuh-indexer"
+        installCommon_downloadComponent "wazuh_indexer"
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_initialize
+        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
     fi
 
@@ -396,11 +397,13 @@ function main() {
 
     if [ -n "${dashboard}" ]; then
         common_logger "--- Wazuh dashboard ----"
+        installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
         installCommon_changePasswords
         dashboard_initialize
+        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
     fi
@@ -409,6 +412,7 @@ function main() {
 
     if [ -n "${wazuh}" ]; then
         common_logger "--- Wazuh server ---"
+        installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
         if [ -n "${server_node_types[*]}" ]; then
@@ -419,6 +423,7 @@ function main() {
         filebeat_configure
         installCommon_changePasswords
         installCommon_startService "filebeat"
+        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
     fi
 
@@ -427,11 +432,13 @@ function main() {
     if [ -n "${AIO}" ]; then
 
         common_logger "--- Wazuh indexer ---"
+        installCommon_downloadComponent "wazuh_indexer"
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_initialize
         common_logger "--- Wazuh server ---"
+        installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
         installCommon_startService "wazuh-manager"
@@ -439,11 +446,13 @@ function main() {
         filebeat_configure
         installCommon_startService "filebeat"
         common_logger "--- Wazuh dashboard ---"
+        installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
         installCommon_changePasswords
         dashboard_initializeAIO
+        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
     fi

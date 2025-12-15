@@ -30,6 +30,7 @@ config_file="${base_path}/config.yml"
 readonly tar_file_name="wazuh-install-files.tar"
 tar_file="${base_path}/${tar_file_name}"
 readonly artifact_urls_file_name="artifact_urls.yml"
+readonly download_packages_directory="wazuh-install-packages"
 
 filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
 

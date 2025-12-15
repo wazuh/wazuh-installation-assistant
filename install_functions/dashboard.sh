@@ -209,11 +209,26 @@ function dashboard_initializeAIO() {
 function dashboard_install() {
 
     common_logger "Starting Wazuh dashboard installation."
+
+    download_dir="${base_path}/${download_packages_directory}"
+    
+    # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
-        installCommon_yumInstall "wazuh-dashboard" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-dashboard-*.rpm 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh dashboard package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_yumInstall "${package_file}"
     elif [ "${sys_type}" == "apt-get" ]; then
-        installCommon_aptInstall "wazuh-dashboard" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-dashboard-*.deb 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh dashboard package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_aptInstall "${package_file}"
     fi
+    
     common_checkInstalled
     if [  "$install_result" != 0  ] || [ -z "${dashboard_installed}" ]; then
         common_logger -e "Wazuh dashboard installation failed."

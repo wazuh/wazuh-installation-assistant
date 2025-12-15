@@ -70,10 +70,24 @@ function manager_configure(){
 function manager_install() {
 
     common_logger "Starting the Wazuh manager installation."
+
+    download_dir="${base_path}/${download_packages_directory}"
+    
+    # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
-        installCommon_yumInstall "wazuh-manager" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-manager-*.rpm 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh manager package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_yumInstall "${package_file}"
     elif [ "${sys_type}" == "apt-get" ]; then
-        installCommon_aptInstall "wazuh-manager" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-manager-*.deb 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh manager package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_aptInstall "${package_file}"
     fi
 
     common_checkInstalled

@@ -49,19 +49,25 @@ function installCommon_aptInstall() {
     package="${1}"
     version="${2}"
     attempt=0
-    if [ -n "${version}" ]; then
-        installer=${package}${sep}${version}
+    
+    # Determine the installer package
+    if [[ "${package}" == *.deb ]]; then
+        installer="${package}"
+    elif [ -n "${version}" ]; then
+        installer="${package}${sep}${version}"
     else
-        installer=${package}
+        installer="${package}"
     fi
 
-    # Offline installation case: get package name and install it
-    if [ -n "${offline_install}" ]; then
+    # Override with offline package if needed
+    if [ -n "${offline_install}" ] && [[ "${package}" != *.deb ]]; then
         package_name=$(ls ${offline_packages_path} | grep ${package})
         installer="${offline_packages_path}/${package_name}"
     fi
 
+    # Build the installation command
     command="DEBIAN_FRONTEND=noninteractive apt-get install ${installer} -y -q"
+    
     common_checkAptLock
 
     if [ "${attempt}" -ne "${max_attempts}" ]; then
@@ -306,6 +312,16 @@ function installCommon_downloadComponent() {
 
     component="${1}"
     artifact_file="${base_path}/${artifact_urls_file_name}"
+    download_dir="${base_path}/${download_packages_directory}"
+    
+    # Create download directory if it doesn't exist
+    if [ ! -d "${download_dir}" ]; then
+        eval "mkdir -p ${download_dir} ${debug}"
+        if [ ! -d "${download_dir}" ]; then
+            common_logger -e "Failed to create download directory: ${download_dir}"
+            exit 1
+        fi
+    fi
     
     # Determine package type based on system
     if [ "${sys_type}" == "yum" ]; then
@@ -329,18 +345,19 @@ function installCommon_downloadComponent() {
 
     # Extract filename from URL
     component_filename=$(basename "$component_url")
+    component_filepath="${download_dir}/${component_filename}"
     
     common_logger "Downloading ${component} package: ${component_filename}"
     
-    # Download the component
-    eval "common_curl -sSLo ${component_filename} ${component_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
+    # Download the component to the download directory
+    eval "common_curl -sSLo ${component_filepath} ${component_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
     
-    if [ ! -f "${component_filename}" ]; then
+    if [ ! -f "${component_filepath}" ]; then
         common_logger -e "Failed to download ${component} from ${component_url}."
         exit 1
     fi
     
-    common_logger "${component} package downloaded successfully: ${component_filename}"
+    common_logger "${component} package downloaded successfully: ${component_filepath}"
 
 }
 
@@ -909,25 +926,52 @@ function installCommon_aptRemoveWIADependencies(){
     fi
 
 }
+
+function installCommon_removeDownloadPackagesDirectory() {
+
+    download_dir="${base_path}/${download_packages_directory}"
+    if [ -d "${download_dir}" ]; then
+        eval "rm -rf ${download_dir} ${debug}"
+        common_logger -d "Removed download packages directory: ${download_dir}"
+    else
+        common_logger -w "Download packages directory does not exist: ${download_dir}"
+    fi
+
+}
+
 function installCommon_yumInstall() {
 
     package="${1}"
     version="${2}"
     install_result=1
-    if [ -n "${version}" ]; then
-        installer="${package}-${version}"
-    else
+    
+    # If package is a file path (contains .rpm), install directly
+    if [[ "${package}" == *.rpm ]]; then
         installer="${package}"
-    fi
-
-    # Offline installation case: get package name and install it
-    if [ -n "${offline_install}" ]; then
-        package_name=$(ls ${offline_packages_path} | grep ${package})
-        installer="${offline_packages_path}/${package_name}"
         command="rpm -ivh ${installer}"
         common_logger -d "Installing local package: ${installer}"
+    elif [ -n "${version}" ]; then
+        installer="${package}-${version}"
+        # Offline installation case: get package name and install it
+        if [ -n "${offline_install}" ]; then
+            package_name=$(ls ${offline_packages_path} | grep ${package})
+            installer="${offline_packages_path}/${package_name}"
+            command="rpm -ivh ${installer}"
+            common_logger -d "Installing local package: ${installer}"
+        else
+            command="yum install ${installer} -y"
+        fi
     else
-        command="yum install ${installer} -y"
+        installer="${package}"
+        # Offline installation case: get package name and install it
+        if [ -n "${offline_install}" ]; then
+            package_name=$(ls ${offline_packages_path} | grep ${package})
+            installer="${offline_packages_path}/${package_name}"
+            command="rpm -ivh ${installer}"
+            common_logger -d "Installing local package: ${installer}"
+        else
+            command="yum install ${installer} -y"
+        fi
     fi
     common_checkYumLock
 

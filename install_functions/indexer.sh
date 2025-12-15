@@ -144,10 +144,23 @@ function indexer_install() {
 
     common_logger "Starting Wazuh indexer installation."
 
+    download_dir="${base_path}/${download_packages_directory}"
+    
+    # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
-        installCommon_yumInstall "wazuh-indexer" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-indexer-*.rpm 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh indexer package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_yumInstall "${package_file}"
     elif [ "${sys_type}" == "apt-get" ]; then
-        installCommon_aptInstall "wazuh-indexer" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-indexer-*.deb 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh indexer package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_aptInstall "${package_file}"
     fi
 
     common_checkInstalled
