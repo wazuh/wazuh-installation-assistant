@@ -30,15 +30,6 @@ function checks_arguments() {
         fi
     fi
 
-    # -------------- Port option validation ---------------------
-
-    if [ -n "${port_specified}" ]; then
-        if [ -z "${AIO}" ] && [ -z "${dashboard}" ]; then
-            common_logger -e "The argument -p|--port can only be used with -a|--all-in-one or -wd|--wazuh-dashboard."
-            exit 1
-        fi
-    fi
-
     # -------------- Offline installation ---------------------
 
     if [ -n "${offline_install}" ]; then
@@ -91,8 +82,8 @@ function checks_arguments() {
         fi
     fi
 
-    if [[ -n "${configurations}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${start_indexer_cluster}" || -n "${tar_conf}" || -n "${uninstall}" ) ]]; then
-        common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -t|--tar, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -ws|--wazuh-server."
+    if [[ -n "${configurations}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${start_indexer_cluster}" || -n "${uninstall}" ) ]]; then
+        common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -ws|--wazuh-server."
         exit 1
     fi
 
@@ -208,7 +199,7 @@ function checks_arguments() {
 
     # -------------- Cluster start ----------------------------------
 
-    if [[ -n "${start_indexer_cluster}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${configurations}" || -n "${tar_conf}" || -n "${uninstall}") ]]; then
+    if [[ -n "${start_indexer_cluster}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${configurations}" || -n "${uninstall}") ]]; then
         common_logger -e "The argument -s|--start-cluster can't be used with -a|--all-in-one, -g|--generate-config-files,-o|--overwrite , -u|--uninstall, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -ws|--wazuh-server."
         exit 1
     fi
@@ -217,11 +208,6 @@ function checks_arguments() {
 
     if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ] && [ -z "${configurations}" ] && [ -z "${uninstall}" ] && [ -z "${download}" ]; then
         common_logger -e "At least one of these arguments is necessary -a|--all-in-one, -g|--generate-config-files, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -ws|--wazuh-server, -u|--uninstall, -dw|--download-wazuh."
-        exit 1
-    fi
-
-    if [ -n "${force}" ] && [ -z  "${dashboard}" ]; then
-        common_logger -e "The -fd|--force-install-dashboard argument needs to be used alongside -wd|--wazuh-dashboard."
         exit 1
     fi
 
@@ -471,21 +457,6 @@ function check_versions() {
     fi
 }
 
-function checks_available_port() {
-    chosen_port="$1"
-    shift
-    ports_list=("$@")
-
-    if [ "$chosen_port" -ne "${http_port}" ]; then
-        for port in "${ports_list[@]}"; do
-            if [ "$chosen_port" -eq "$port" ]; then
-                common_logger -e "Port ${chosen_port} is reserved by Wazuh. Please, choose another port."
-                exit 1
-            fi
-        done
-    fi
-}
-
 function checks_filebeatURL() {
     # URL uses branch when the source_branch is not a stage branch
     if [[ ! $last_stage ]]; then
@@ -494,7 +465,7 @@ function checks_filebeatURL() {
     fi
 
     # URL using master branch
-    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/main}"
+    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/${wazuh_version}}"
 
     response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
     if [ "${response}" != "200" ]; then
@@ -504,7 +475,7 @@ function checks_filebeatURL() {
         if [ "${response}" != "200" ]; then
             common_logger -e "Could not get the Filebeat Wazuh template."
         else
-            common_logger "Using Filebeat template from master branch."
+            common_logger "Using Filebeat template from ${wazuh_version} branch."
             filebeat_wazuh_template="${new_filebeat_url}"
         fi
     fi
@@ -532,8 +503,8 @@ function checks_source_branch() {
         "https://api.github.com/repos/wazuh/wazuh-installation-assistant/branches/$source_branch")
 
     if [ "$status_code" -ne 200 ]; then
-        common_logger -w "Branch '$source_branch' does not exist. Using the main branch."
-        source_branch="main"
+        common_logger -w "Branch '$source_branch' does not exist. Using the ${wazuh_version} branch."
+        source_branch="${wazuh_version}"
     fi
 }
 
