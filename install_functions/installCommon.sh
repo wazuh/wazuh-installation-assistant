@@ -343,14 +343,14 @@ function installCommon_downloadComponent() {
     # Get the URL from the artifact file
     component_url=$(grep "^${artifact_key}:" "$artifact_file" | cut -d' ' -f2- | tr -d '"' | xargs)
 
-    # Extract filename from URL
-    component_filename=$(basename "$component_url")
+    # Extract filename from URL (remove query parameters after ?)
+    component_filename=$(basename "${component_url%%\?*}")
     component_filepath="${download_dir}/${component_filename}"
     
     common_logger "Downloading ${component} package: ${component_filename}"
     
     # Download the component to the download directory
-    eval "common_curl -sSLo ${component_filepath} ${component_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
+    common_curl -sSLo '${component_filepath}' '${component_url}' --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}
     
     if [ ! -f "${component_filepath}" ]; then
         common_logger -e "Failed to download ${component} from ${component_url}."
