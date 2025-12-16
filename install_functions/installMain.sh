@@ -13,7 +13,7 @@ function getHelp() {
     echo -e "        $(basename "$0") - Install and configure Wazuh central components: Wazuh server, Wazuh indexer, and Wazuh dashboard."
     echo -e ""
     echo -e "SYNOPSIS"
-    echo -e "        $(basename "$0") [OPTIONS] -a | -c | -s | -wi <indexer-node-name> | -wd <dashboard-node-name> | -ws <server-node-name>"
+    echo -e "        $(basename "$0") [OPTIONS] -a | -s | -wi <indexer-node-name> | -wd <dashboard-node-name> | -ws <server-node-name>"
     echo -e ""
     echo -e "DESCRIPTION"
     echo -e "        -a,  --all-in-one"
@@ -31,9 +31,6 @@ function getHelp() {
     echo -e "        -da,  --download-arch <amd64|arm64|x86_64|aarch64>"
     echo -e "                Define the architecture of the packages to download for offline installation."
     echo -e ""
-    echo -e "        -fd,  --force-install-dashboard"
-    echo -e "                Force Wazuh dashboard installation to continue even when it is not capable of connecting to the Wazuh indexer."
-    echo -e ""
     echo -e "        -g,  --generate-config-files"
     echo -e "                Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts."
     echo -e ""
@@ -49,14 +46,8 @@ function getHelp() {
     echo -e "        -of,  --offline-installation"
     echo -e "                Perform an offline installation. This option must be used with -a, -ws, -s, -wi, or -wd."
     echo -e ""
-    echo -e "        -p,  --port"
-    echo -e "                Specifies the Wazuh web user interface port. By default is the 443 TCP port. Recommended ports are: 8443, 8444, 8080, 8888, 9000."
-    echo -e ""
     echo -e "        -s,  --start-cluster"
     echo -e "                Initialize Wazuh indexer cluster security settings."
-    echo -e ""
-    echo -e "        -t,  --tar <path-to-certs-tar>"
-    echo -e "                Path to tar file containing certificate files. By default, the Wazuh installation assistant will search for a file named wazuh-install-files.tar in the same path as the script."
     echo -e ""
     echo -e "        -u,  --uninstall"
     echo -e "                Uninstalls all Wazuh components. This will erase all the existing configuration and data."
@@ -94,16 +85,6 @@ function main() {
                 AIO=1
                 shift 1
                 ;;
-            "-c"|"--config-file")
-                if [ -z "${2}" ]; then
-                    common_logger -e "Error on arguments. Probably missing <path-to-config-yml> after -c|--config-file"
-                    getHelp
-                    exit 1
-                fi
-                file_conf=1
-                config_file="${2}"
-                shift 2
-                ;;
             "-d"|"--development")
                 development=1
                 if [ -n "${2}" ] && [[ ! "${2}" =~ ^- ]]; then
@@ -128,11 +109,6 @@ function main() {
                 bucket="packages-dev.wazuh.com"
                 repository="${devrepo}"
                 ;;
-
-            "-fd"|"--force-install-dashboard")
-                force=1
-                shift 1
-                ;;
             "-g"|"--generate-config-files")
                 configurations=1
                 shift 1
@@ -152,29 +128,9 @@ function main() {
                 offline_install=1
                 shift 1
                 ;;
-            "-p"|"--port")
-                if [ -z "${2}" ]; then
-                    common_logger -e "Error on arguments. Probably missing <port> after -p|--port"
-                    getHelp
-                    exit 1
-                fi
-                port_specified=1
-                port_number="${2}"
-                shift 2
-                ;;
             "-s"|"--start-cluster")
                 start_indexer_cluster=1
                 shift 1
-                ;;
-            "-t"|"--tar")
-                if [ -z "${2}" ]; then
-                    common_logger -e "Error on arguments. Probably missing <path-to-certs-tar> after -t|--tar"
-                    getHelp
-                    exit 1
-                fi
-                tar_conf=1
-                tar_file="${2}"
-                shift 2
                 ;;
             "-u"|"--uninstall")
                 uninstall=1
@@ -293,13 +249,6 @@ function main() {
 
     if [ -z "${configurations}" ] && [ -z "${AIO}" ] && [ -z "${download}" ]; then
         checks_previousCertificate
-    fi
-
-    if [ -n "${port_specified}" ]; then
-        checks_available_port "${port_number}" "${wazuh_aio_ports[@]}"
-        dashboard_changePort "${port_number}"
-    elif [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
-        dashboard_changePort "${http_port}"
     fi
 
     if [ -n "${AIO}" ]; then

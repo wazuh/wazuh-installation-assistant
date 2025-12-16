@@ -122,17 +122,13 @@ All the options for the Wazuh installation assistant are listed in the following
 | Option | Description |
 |---------------------------------------|----------------------------------------|
 | `-a`, `--all-in-one`                  | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard.  |
-| `-c`, `--config-file <path-to-config-yml>` | Path to the configuration file used to generate `wazuh-install-files.tar` file containing the files needed for installation. By default, the Wazuh installation assistant will search for a file named `config.yml` in the same path as the script.  |
 | `-dw`, `--download-wazuh <deb,rpm>`   | Download all the packages necessary for offline installation. Specify the type of packages to download for offline installation (`rpm`, `deb`).  |
-| `-fd`, `--force-install-dashboard`    | Force Wazuh dashboard installation to continue even when it is not capable of connecting to the Wazuh indexer.  |
 | `-g`, `--generate-config-files`       | Generate `wazuh-install-files.tar` file containing the files needed for installation from `config.yml`. In distributed deployments, you will need to copy this file to all hosts.  |
 | `-h`, `--help`                        | Display this help and exit.  |
 | `-i`, `--ignore-check`                | Ignore the check for minimum hardware requirements.  |
 | `-o`, `--overwrite`                   | Overwrite previously installed components. This will erase all the existing configuration and data.  |
 | `-of`, `--offline-installation`       | Perform an offline installation. This option must be used with `-a`, `-ws`, `-s`, `-wi`, or `-wd`.  |
-| `-p`, `--port`                        | Specify the Wazuh web user interface port. Default is the `443` TCP port. Recommended ports are: `8443`, `8444`, `8080`, `8888`, `9000`.  |
 | `-s`, `--start-cluster`               | Initialize Wazuh indexer cluster security settings.  |
-| `-t`, `--tar <path-to-certs-tar>`     | Path to tar file containing certificate files. By default, the Wazuh installation assistant will search for a file named `wazuh-install-files.tar` in the same path as the script.  |
 | `-u`, `--uninstall`                   | Uninstall all Wazuh components. This will erase all the existing configuration and data.  |
 | `-v`, `--verbose`                     | Show the complete installation output.  |
 | `-V`, `--version`                     | Show the version of the script and Wazuh packages.  |

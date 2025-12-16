@@ -76,14 +76,14 @@ function manager_install() {
     
     # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
-        package_file=$(ls "${download_dir}"/wazuh-manager-*.rpm 2>/dev/null | head -n 1)
+        package_file=$(ls "${download_dir}"/wazuh-manager*.rpm 2>/dev/null | head -n 1)
         if [ -z "${package_file}" ]; then
             common_logger -e "Wazuh manager package file not found in ${download_dir}."
             exit 1
         fi
         installCommon_yumInstall "${package_file}"
     elif [ "${sys_type}" == "apt-get" ]; then
-        package_file=$(ls "${download_dir}"/wazuh-manager-*.deb 2>/dev/null | head -n 1)
+        package_file=$(ls "${download_dir}"/wazuh-manager*.deb 2>/dev/null | head -n 1)
         if [ -z "${package_file}" ]; then
             common_logger -e "Wazuh manager package file not found in ${download_dir}."
             exit 1
