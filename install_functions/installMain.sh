@@ -74,7 +74,7 @@ function getHelp() {
     echo -e "                Install and configure Wazuh indexer, used for distributed deployments."
     echo -e ""
     echo -e "        -ws,  --wazuh-server <server-node-name>"
-    echo -e "                Install and configure Wazuh manager and Filebeat, used for distributed deployments."
+    echo -e "                Install and configure Wazuh manager, used for distributed deployments."
     exit 1
 
 }
@@ -124,8 +124,7 @@ function main() {
                 repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
                 repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
                 reporelease="unstable"
-                filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
-                filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.5.tar.gz"
+                wazuh_template_url="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
                 bucket="packages-dev.wazuh.com"
                 repository="${devrepo}"
                 ;;
@@ -254,7 +253,6 @@ function main() {
 
     if [ -n "${showVersion}" ]; then
         common_logger "Wazuh version: ${wazuh_version}"
-        common_logger "Filebeat version: ${filebeat_version}"
         common_logger "Wazuh installation assistant version: ${wazuh_install_vesion}"
         exit 0
     fi
@@ -278,9 +276,6 @@ function main() {
 
     common_checkInstalled
     checks_arguments
-    if [ -n "${development}" ]; then
-        checks_filebeatURL
-    fi
     if [ -n "${uninstall}" ]; then
         installCommon_rollBack
         exit 0
@@ -419,11 +414,7 @@ function main() {
             manager_startCluster
         fi
         installCommon_startService "wazuh-manager"
-        filebeat_install
-        filebeat_configure
         installCommon_changePasswords
-        installCommon_startService "filebeat"
-        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
     fi
 
@@ -442,9 +433,6 @@ function main() {
         manager_install
         manager_configure
         installCommon_startService "wazuh-manager"
-        filebeat_install
-        filebeat_configure
-        installCommon_startService "filebeat"
         common_logger "--- Wazuh dashboard ---"
         installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install

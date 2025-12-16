@@ -59,8 +59,9 @@ function manager_configure(){
             fi
         done
     fi
-    eval "sed -i s/filebeat.pem/${server_node_names[0]}.pem/ /var/ossec/etc/ossec.conf ${debug}"
-    eval "sed -i s/filebeat-key.pem/${server_node_names[0]}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
+    # Dejar comentado hasta deficion.
+    #eval "sed -i s/server.pem/${server_node_names[0]}.pem/ /var/ossec/etc/ossec.conf ${debug}"
+    #eval "sed -i s/server-key.pem/${server_node_names[0]}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
     eval "/var/ossec/bin/wazuh-keystore -f indexer -k username -v admin"
     eval "/var/ossec/bin/wazuh-keystore -f indexer -k password -v admin"
@@ -98,4 +99,40 @@ function manager_install() {
     else
         common_logger "Wazuh manager installation finished."
     fi
+}
+
+function manager_copyCertificates() {
+
+    common_logger -d "Copying Manager certificates."
+    if [ -f "${tar_file}" ]; then
+        if [ -n "${AIO}" ]; then
+            if ! tar -tvf "${tar_file}" | grep -q "${server_node_names[0]}" ; then
+                common_logger -e "Tar file does not contain certificate for the node ${server_node_names[0]}."
+                installCommon_rollBack
+                exit 1
+            fi
+            eval "tar -xf ${tar_file} -C ${server_cert_path} --wildcards wazuh-install-files/${server_node_names[0]}.pem --strip-components 1 ${debug}"
+            eval "tar -xf ${tar_file} -C ${server_cert_path} --wildcards wazuh-install-files/${server_node_names[0]}-key.pem --strip-components 1 ${debug}"
+            eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
+            eval "rm -rf ${server_cert_path}/wazuh-install-files/ ${debug}"
+        else
+            if ! tar -tvf "${tar_file}" | grep -q "${winame}" ; then
+                common_logger -e "Tar file does not contain certificate for the node ${winame}."
+                installCommon_rollBack
+                exit 1
+            fi
+            eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/${winame}.pem --strip-components 1 ${debug}"
+            eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/${winame}-key.pem --strip-components 1 ${debug}"
+            eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
+            eval "rm -rf ${server_cert_path}/wazuh-install-files/ ${debug}"
+        fi
+        eval "chmod 500 ${server_cert_path} ${debug}"
+        eval "chmod 400 ${server_cert_path}/* ${debug}"
+        eval "chown root:root ${server_cert_path}/* ${debug}"
+    else
+        common_logger -e "No certificates found. Could not initialize Wazuh manager"
+        installCommon_rollBack
+        exit 1
+    fi
+
 }

@@ -138,7 +138,7 @@ All the options for the Wazuh installation assistant are listed in the following
 | `-V`, `--version`                     | Show the version of the script and Wazuh packages.  |
 | `-wd`, `--wazuh-dashboard <dashboard-node-name>`  | Install and configure Wazuh dashboard, used for distributed deployments.  |
 | `-wi`, `--wazuh-indexer <indexer-node-name>`      | Install and configure Wazuh indexer, used for distributed deployments.  |
-| `-ws`, `--wazuh-server <server-node-name>`        | Install and configure Wazuh manager and Filebeat, used for distributed deployments.  |
+| `-ws`, `--wazuh-server <server-node-name>`        | Install and configure Wazuh manager, used for distributed deployments.  |
 
 
 ## Contribute

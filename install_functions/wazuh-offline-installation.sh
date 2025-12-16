@@ -68,16 +68,14 @@ function offline_extractFiles() {
     offline_packages_path="${base_path}/wazuh-offline/wazuh-packages"
 
     required_files=(
-        "${offline_files_path}/filebeat.yml"
         "${offline_files_path}/GPG-KEY-WAZUH"
-        "${offline_files_path}/wazuh-filebeat-*.tar.gz"
         "${offline_files_path}/wazuh-template.json"
     )
 
     if [ "${sys_type}" == "apt-get" ]; then
-        required_files+=("${offline_packages_path}/filebeat_*.deb" "${offline_packages_path}/wazuh-dashboard_*.deb" "${offline_packages_path}/wazuh-indexer_*.deb" "${offline_packages_path}/wazuh-manager_*.deb")
+        required_files+=("${offline_packages_path}/wazuh-dashboard_*.deb" "${offline_packages_path}/wazuh-indexer_*.deb" "${offline_packages_path}/wazuh-manager_*.deb")
     elif [ "${sys_type}" == "rpm" ]; then
-        required_files+=("${offline_packages_path}/filebeat-*.rpm" "${offline_packages_path}/wazuh-dashboard_*.rpm" "${offline_packages_path}/wazuh-indexer_*.rpm" "${offline_packages_path}/wazuh-manager_*.rpm")
+        required_files+=("${offline_packages_path}/wazuh-dashboard_*.rpm" "${offline_packages_path}/wazuh-indexer_*.rpm" "${offline_packages_path}/wazuh-manager_*.rpm")
     fi
 
     for file in "${required_files[@]}"; do

@@ -562,7 +562,7 @@ For Wazuh API users, the file must have this format:
             users=( kibanaserver admin )
         fi
 
-        if [ -n "${filebeat_installed}" ] && [ -n "${wazuh}" ]; then
+        if [ -n "${wazuh}" ]; then
             users=( admin )
         fi
 
@@ -701,33 +701,6 @@ function installCommon_rollBack() {
         eval "rm -rf /etc/wazuh-indexer/ ${debug}"
     fi
 
-    if [[ -n "${filebeat_installed}" && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
-        common_logger "Removing Filebeat."
-        if [ "${sys_type}" == "yum" ]; then
-            common_checkYumLock
-            if [ "${attempt}" -ne "${max_attempts}" ]; then
-                eval "yum remove filebeat -y ${debug}"
-                eval "rpm -q filebeat --quiet && filebeat_failed_uninstall=1"
-            fi
-        elif [ "${sys_type}" == "apt-get" ]; then
-            common_checkAptLock
-            eval "apt-get remove --purge filebeat -y ${debug}"
-            filebeat_failed_uninstall=$(apt list --installed 2>/dev/null | grep filebeat)
-        fi
-
-        if [ -n "${filebeat_failed_uninstall}" ]; then
-            common_logger -w "The Filebeat package could not be removed."
-        else
-            common_logger "Filebeat removed."
-        fi
-    fi
-
-    if [[ ( -n "${filebeat_remaining_files}" || -n "${filebeat_installed}" ) && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
-        eval "rm -rf /var/lib/filebeat/ ${debug}"
-        eval "rm -rf /usr/share/filebeat/ ${debug}"
-        eval "rm -rf /etc/filebeat/ ${debug}"
-    fi
-
     if [[ -n "${dashboard_installed}" && ( -n "${dashboard}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
         common_logger "Removing Wazuh dashboard."
         if [ "${sys_type}" == "yum" ]; then
@@ -757,11 +730,9 @@ function installCommon_rollBack() {
     fi
 
     elements_to_remove=(    "/var/log/wazuh-indexer/"
-                            "/var/log/filebeat/"
                             "/etc/systemd/system/opensearch.service.wants/"
                             "/securityadmin_demo.sh"
                             "/etc/systemd/system/multi-user.target.wants/wazuh-manager.service"
-                            "/etc/systemd/system/multi-user.target.wants/filebeat.service"
                             "/etc/systemd/system/multi-user.target.wants/opensearch.service"
                             "/etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service"
                             "/etc/systemd/system/wazuh-dashboard.service"
