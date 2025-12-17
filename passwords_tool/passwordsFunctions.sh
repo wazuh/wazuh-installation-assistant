@@ -255,7 +255,7 @@ function passwords_generatePassword() {
 function passwords_generatePasswordFile() {
 
     common_logger -d "Generating password file."
-    users=( admin anomalyadmin kibanaserver kibanaro logstash readall snapshotrestore )
+    users=( admin anomalyadmin kibanaserver kibanaro logstash readall snapshotrestore wazuh-server wazuh-dashboard )
     api_users=( wazuh wazuh-wui )
     user_description=(
         "Admin user for the web user interface and Wazuh indexer. Use this user to log in to Wazuh dashboard"
@@ -265,8 +265,8 @@ function passwords_generatePasswordFile() {
         "User used by Logstash to send processed logs to the Wazuh indexer"
         "User with READ access to all indices"
         "User with permissions to perform snapshot and restore operations"
-        "Admin user used to communicate with Wazuh API"
-        "Regular user to query Wazuh API"
+        "User for the Wazuh Server with read/write access to stateful indices and write-only access to stateless indices"
+        "User for Wazuh Dashboard with read access to stateful and stateless indices, and management level permissionsfor the monitoring indices"
     )
     api_user_description=(
         "Password for wazuh API user"
@@ -492,7 +492,7 @@ For Wazuh API users, the file must have this format:
 function passwords_readUsers() {
 
     passwords_updateInternalUsers
-    susers=$(grep -B 1 hash: /etc/wazuh-indexer/opensearch-security/internal_users.yml | grep -v hash: | grep -v "-" | awk '{ print substr( $0, 1, length($0)-1 ) }')
+    susers=$(grep '^[a-z-]*:$' /etc/wazuh-indexer/opensearch-security/internal_users.yml | sed 's/:$//')
     mapfile -t users <<< "${susers[@]}"
 
 }
