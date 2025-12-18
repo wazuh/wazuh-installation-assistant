@@ -73,46 +73,6 @@ function enable_start_service() {
 
 }
 
-function filebeat_installation() {
-
-    install_package "filebeat"
-    check_package "filebeat"
-
-    cp ./wazuh-offline/wazuh-files/filebeat.yml /etc/filebeat/ &&\
-    cp ./wazuh-offline/wazuh-files/wazuh-template.json /etc/filebeat/ &&\
-    chmod go+r /etc/filebeat/wazuh-template.json
-
-    sed -i 's|\("index.number_of_shards": \)".*"|\1 "1"|' /etc/filebeat/wazuh-template.json
-    filebeat keystore create
-    echo admin | filebeat keystore add username --stdin --force
-    echo admin | filebeat keystore add password --stdin --force
-    tar -xzf ./wazuh-offline/wazuh-files/wazuh-filebeat-0.5.tar.gz -C /usr/share/filebeat/module
-
-    echo "INFO: Generating certificates of Filebeat..."
-    NODE_NAME=wazuh-1
-    mkdir /etc/filebeat/certs
-    mv -n wazuh-certificates/$NODE_NAME.pem /etc/filebeat/certs/filebeat.pem
-    mv -n wazuh-certificates/$NODE_NAME-key.pem /etc/filebeat/certs/filebeat-key.pem
-    cp wazuh-certificates/root-ca.pem /etc/filebeat/certs/
-    chmod 500 /etc/filebeat/certs
-    chmod 400 /etc/filebeat/certs/*
-    chown -R root:root /etc/filebeat/certs
-
-    if [ "${sys_type}" == "deb" ]; then
-        enable_start_service "filebeat"
-    elif [ "${sys_type}" == "rpm" ]; then
-        /usr/share/filebeat/bin/filebeat --environment systemd -c /etc/filebeat/filebeat.yml --path.home /usr/share/filebeat --path.config /etc/filebeat --path.data /var/lib/filebeat --path.logs /var/log/filebeat &
-    fi
-
-    sleep 30
-    eval "filebeat test output"
-    if [ "${PIPESTATUS[0]}" != 0 ]; then
-        echo "ERROR: The Filebeat installation has failed."
-        exit 1
-    fi
-
-}
-
 function indexer_initialize() {
     /usr/share/wazuh-indexer/bin/indexer-security-init.sh
 
@@ -199,9 +159,6 @@ echo "INFO: Wazuh indexer installation completed."
 
 manager_installation
 echo "INFO: Wazuh manager installation completed."
-
-filebeat_installation
-echo "INFO: Filebeat installation completed."
 
 dashboard_installation
 echo "INFO: Wazuh dashboard installation completed."
