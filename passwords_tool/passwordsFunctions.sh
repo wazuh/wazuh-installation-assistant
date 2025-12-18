@@ -46,20 +46,7 @@ function passwords_changePassword() {
     fi
 
     if [ "${nuser}" == "admin" ] || [ -n "${changeall}" ]; then
-        if [ -n "${filebeat_installed}" ] && [ -z "${dashboard}" ]; then
-            file_username=$(grep "username:" /etc/filebeat/filebeat.yml | awk '{print $2}')
-            file_password=$(grep "password:" /etc/filebeat/filebeat.yml | awk '{print $2}')
-            if [ "$file_username" != "\${username}" ] || [ "$file_password" != "\${password}" ]; then
-                common_logger -w "The user and password configured in the filebeat.yml file will be updated and stored in Filebeat Keystore."
-            fi
-            eval "echo ${adminpass} | filebeat keystore add password --force --stdin ${debug}"
-            conf="$(awk '{sub("password: .*", "password: ${password}")}1' /etc/filebeat/filebeat.yml)"
-            echo "${conf}" > /etc/filebeat/filebeat.yml
-            eval "echo admin | filebeat keystore add username --force --stdin ${debug}"
-            conf="$(awk '{sub("username: .*", "username: ${username}")}1' /etc/filebeat/filebeat.yml)"
-            echo "${conf}" > /etc/filebeat/filebeat.yml
-            common_logger "The filebeat.yml file has been updated to use the Filebeat Keystore username and password."
-            passwords_restartService "filebeat"
+        if [ -n "${wazuh_installed}" ] && [ -z "${dashboard}" ]; then
             eval "/var/ossec/bin/wazuh-keystore -f indexer -k password -v ${adminpass}"
             passwords_restartService "wazuh-manager"
         fi
@@ -120,19 +107,10 @@ function passwords_changePasswordApi() {
 
 function passwords_changeDashboardApiPassword() {
 
-    j=0
-    until [ -n "${file_exists}" ] || [ "${j}" -eq "12" ]; do
-        if [ -f "/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml" ]; then
-            eval "sed -i 's|password: .*|password: \"${1}\"|g' /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml ${debug}"
-            if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
-                common_logger "Updated wazuh-wui user password in wazuh dashboard. Remember to restart the service."
-            fi
-            file_exists=1
-        fi
-        sleep 5
-        j=$((j+1))
-    done
-
+    eval "sed -i 's|password: .*|password: \"${1}\"|g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
+    if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
+        common_logger "Updated wazuh-wui user password in wazuh dashboard. Remember to restart the service."
+    fi
 }
 
 function passwords_checkUser() {
@@ -172,8 +150,8 @@ function passwords_checkPassword() {
 
 function passwords_createBackUp() {
 
-    if [ -z "${indexer_installed}" ] && [ -z "${dashboard_installed}" ] && [ -z "${filebeat_installed}" ]; then
-        common_logger -e "Cannot find Wazuh indexer, Wazuh dashboard or Filebeat on the system."
+    if [ -z "${indexer_installed}" ] && [ -z "${dashboard_installed}" ]; then
+        common_logger -e "Cannot find Wazuh indexer or Wazuh dashboard on the system."
         exit 1;
     else
         if [ -n "${indexer_installed}" ]; then
@@ -277,18 +255,18 @@ function passwords_generatePassword() {
 function passwords_generatePasswordFile() {
 
     common_logger -d "Generating password file."
-    users=( admin anomalyadmin kibanaserver kibanaro logstash readall snapshotrestore )
+    users=( admin anomalyadmin kibanaserver kibanaro logstash readall snapshotrestore wazuh-server wazuh-dashboard )
     api_users=( wazuh wazuh-wui )
     user_description=(
         "Admin user for the web user interface and Wazuh indexer. Use this user to log in to Wazuh dashboard"
         "Anomaly detection user for the web user interface"
         "Wazuh dashboard user for establishing the connection with Wazuh indexer"
         "Regular Dashboard user, only has read permissions to all indices and all permissions on the .kibana index"
-        "Filebeat user for CRUD operations on Wazuh indices"
+        "User used by Logstash to send processed logs to the Wazuh indexer"
         "User with READ access to all indices"
         "User with permissions to perform snapshot and restore operations"
-        "Admin user used to communicate with Wazuh API"
-        "Regular user to query Wazuh API"
+        "User for the Wazuh Server with read/write access to stateful indices and write-only access to stateless indices"
+        "User for Wazuh Dashboard with read access to stateful and stateless indices, and management level permissionsfor the monitoring indices"
     )
     api_user_description=(
         "Password for wazuh API user"
@@ -514,7 +492,7 @@ For Wazuh API users, the file must have this format:
 function passwords_readUsers() {
 
     passwords_updateInternalUsers
-    susers=$(grep -B 1 hash: /etc/wazuh-indexer/opensearch-security/internal_users.yml | grep -v hash: | grep -v "-" | awk '{ print substr( $0, 1, length($0)-1 ) }')
+    susers=$(grep '^[a-z-]*:$' /etc/wazuh-indexer/opensearch-security/internal_users.yml | sed 's/:$//')
     mapfile -t users <<< "${susers[@]}"
 
 }
@@ -583,8 +561,8 @@ function passwords_restartService() {
 function passwords_runSecurityAdmin() {
 
     common_logger -d "Running security admin tool."
-    if [ -z "${indexer_installed}" ] && [ -z "${dashboard_installed}" ] && [ -z "${filebeat_installed}" ]; then
-        common_logger -e "Cannot find Wazuh indexer, Wazuh dashboard or Filebeat on the system."
+    if [ -z "${indexer_installed}" ] && [ -z "${dashboard_installed}" ]; then
+        common_logger -e "Cannot find Wazuh indexer or Wazuh dashboard on the system."
         exit 1;
     else
         if [ -n "${indexer_installed}" ]; then
@@ -605,11 +583,11 @@ function passwords_runSecurityAdmin() {
 
     if [[ -n "${nuser}" ]] && [[ -n ${autopass} ]]; then
         common_logger -nl "The password for user ${nuser} is ${password}"
-        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard, Wazuh server, and Filebeat nodes if necessary, and restart the services."
+        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh server nodes if necessary, and restart the services."
     fi
 
     if [[ -n "${nuser}" ]] && [[ -z ${autopass} ]]; then
-        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard, Wazuh server, and Filebeat nodes if necessary, and restart the services."
+        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh server nodes if necessary, and restart the services."
     fi
 
     if [ -n "${changeall}" ]; then
@@ -617,7 +595,7 @@ function passwords_runSecurityAdmin() {
             for i in "${!users[@]}"; do
                 common_logger -nl "The password for user ${users[i]} is ${passwords[i]}"
             done
-            common_logger -w "Wazuh indexer passwords changed. Remember to update the password in the Wazuh dashboard, Wazuh server, and Filebeat nodes if necessary, and restart the services."
+            common_logger -w "Wazuh indexer passwords changed. Remember to update the password in the Wazuh dashboard, Wazuh server and the Wazuh server nodes if necessary, and restart the services."
         else
             common_logger -d "Passwords changed."
         fi

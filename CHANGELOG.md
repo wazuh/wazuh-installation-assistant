@@ -5,11 +5,32 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add new internal users to the password generation process in the Password tool ([#540](https://github.com/wazuh/wazuh-installation-assistant/pull/540))
+- Remove filebeat references and replace wazuh.yml to opensearch_dashboards.yml in the password tool ([#539](https://github.com/wazuh/wazuh-installation-assistant/pull/539))
+- Remove all the custom option from the installation assistant ([#534](https://github.com/wazuh/wazuh-installation-assistant/pull/534))
 - Update the build workflow to upload config.yml ([#526](https://github.com/wazuh/wazuh-installation-assistant/pull/526))
 
 ### Changed
 
 - Change Filebeat references to server in the certs tool ([#528](https://github.com/wazuh/wazuh-installation-assistant/pull/528))
+
+### Fixed
+
+- None
+
+### Deleted
+
+- None
+
+## [4.14.3]
+
+### Added
+
+- None
+
+### Changed
+
+- None
 
 ### Fixed
 
@@ -27,11 +48,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Updated Wazuh Filebeat module from 0.4 to 0.5 version. ([#529](https://github.com/wazuh/wazuh-installation-assistant/pull/529))
 
 ### Fixed
 
-- None
+- Changed main branch as default branch for Filebeat module. ([#531](https://github.com/wazuh/wazuh-installation-assistant/pull/531))
 
 ### Deleted
 
