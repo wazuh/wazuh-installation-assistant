@@ -155,7 +155,7 @@ function common_checkWazuhConfigYaml() {
 function common_curl() {
 
     if [ -n "${curl_has_connrefused}" ]; then
-        eval "curl $@ --retry-connrefused"
+        eval "curl --retry-connrefused $@"
         e_code="${PIPESTATUS[0]}"
     else
         retries=0
@@ -169,28 +169,6 @@ function common_curl() {
         done
     fi
     return "${e_code}"
-
-}
-
-function common_remove_gpg_key() {
-
-    common_logger -d "Removing GPG key from system."
-    if [ "${sys_type}" == "yum" ]; then
-        if { rpm -q gpg-pubkey --qf '%{NAME}-%{VERSION}-%{RELEASE}\t%{SUMMARY}\n' | grep "Wazuh"; } >/dev/null ; then
-            key=$(rpm -q gpg-pubkey --qf '%{NAME}-%{VERSION}-%{RELEASE}\t%{SUMMARY}\n' | grep "Wazuh Signing Key" | awk '{print $1}' )
-            rpm -e "${key}"
-        else
-            common_logger "Wazuh GPG key not found in the system"
-            return 1
-        fi
-    elif [ "${sys_type}" == "apt-get" ]; then
-        if [ -f "/usr/share/keyrings/wazuh.gpg" ]; then
-            rm -rf "/usr/share/keyrings/wazuh.gpg" "${debug}"
-        else
-            common_logger "Wazuh GPG key not found in the system"
-            return 1
-        fi
-    fi
 
 }
 

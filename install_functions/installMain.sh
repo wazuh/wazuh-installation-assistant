@@ -416,10 +416,6 @@ function main() {
 
 # -------------------------------------------------------------------
 
-    if [ -z "${configurations}" ] && [ -z "${download}" ] && [ -z "${offline_install}" ]; then
-        installCommon_restoreWazuhrepo
-    fi
-
     if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
         eval "rm -rf /tmp/wazuh-install-files ${debug}"
         common_logger "Installation finished."

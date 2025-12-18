@@ -296,6 +296,12 @@ function installCommon_downloadArtifactURLs() {
     artifact_url="https://${bucket}/${wazuh_major}/${artifact_urls_file_name}"
     eval "common_curl -sSo ${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
     
+    curl_exit_code="${PIPESTATUS[0]}"
+    if [ "${curl_exit_code}" -ne 0 ]; then
+        common_logger -e "Failed to download artifact URLs from ${artifact_url}. Exit code: ${curl_exit_code}"
+        exit 1
+    fi
+    
     if [ ! -f "${artifact_urls_file_name}" ]; then
         common_logger -e "Failed to download artifact URLs from ${artifact_url}."
         exit 1
@@ -606,24 +612,6 @@ For Wazuh API users, the file must have this format:
 
 }
 
-function installCommon_restoreWazuhrepo() {
-
-    common_logger -d "Restoring Wazuh repository."
-    if [ -n "${development}" ]; then
-        if [ "${sys_type}" == "yum" ] && [ -f "/etc/yum.repos.d/wazuh.repo" ]; then
-            file="/etc/yum.repos.d/wazuh.repo"
-        elif [ "${sys_type}" == "apt-get" ] && [ -f "/etc/apt/sources.list.d/wazuh.list" ]; then
-            file="/etc/apt/sources.list.d/wazuh.list"
-        else
-            common_logger -w -d "Wazuh repository does not exists."
-        fi
-        eval "sed -i 's/-dev//g' ${file} ${debug}"
-        eval "sed -i 's/pre-release/5.x/g' ${file} ${debug}"
-        eval "sed -i 's/unstable/stable/g' ${file} ${debug}"
-    fi
-
-}
-
 function installCommon_removeCentOSrepositories() {
 
     eval "rm -f ${centos_repo} ${debug}"
@@ -638,14 +626,6 @@ function installCommon_rollBack() {
 
     if [ -z "${uninstall}" ]; then
         common_logger "--- Removing existing Wazuh installation ---"
-    fi
-
-    if [ -f "/etc/yum.repos.d/wazuh.repo" ]; then
-        eval "rm /etc/yum.repos.d/wazuh.repo ${debug}"
-    elif [ -f "/etc/zypp/repos.d/wazuh.repo" ]; then
-        eval "rm /etc/zypp/repos.d/wazuh.repo ${debug}"
-    elif [ -f "/etc/apt/sources.list.d/wazuh.list" ]; then
-        eval "rm /etc/apt/sources.list.d/wazuh.list ${debug}"
     fi
 
     if [[ -n "${wazuh_installed}" && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]];then
@@ -769,8 +749,6 @@ function installCommon_rollBack() {
                             "/lib/firewalld/services/opensearch.xml" )
 
     eval "rm -rf ${elements_to_remove[*]} ${debug}"
-
-    common_remove_gpg_key
 
     installCommon_removeWIADependencies
 
