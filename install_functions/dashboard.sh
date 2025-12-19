@@ -121,6 +121,7 @@ function dashboard_initialize() {
         if [ -f "/etc/wazuh-dashboard/opensearch_dashboards.yml" ]; then
             eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
         fi
+        installCommon_restartService "wazuh-dashboard"
 
         common_logger "Wazuh dashboard web application initialized."
         common_logger -nl "--- Summary ---"
@@ -175,6 +176,7 @@ function dashboard_initializeAIO() {
         if [ -f "/etc/wazuh-dashboard/opensearch_dashboards.yml" ]; then
             eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
         fi
+        installCommon_restartService "wazuh-dashboard"
         common_logger "Wazuh dashboard web application initialized."
         common_logger -nl "--- Summary ---"
         common_logger -nl "You can access the web interface https://<wazuh-dashboard-ip>:${http_port}\n    User: admin\n    Password: ${u_pass}"

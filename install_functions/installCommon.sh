@@ -791,6 +791,60 @@ function installCommon_startService() {
 
 }
 
+function installCommon_restartService() {
+
+    if [ "$#" -ne 1 ]; then
+        common_logger -e "installCommon_restartService must be called with 1 argument."
+        exit 1
+    fi
+
+    common_logger "Restarting service ${1}."
+
+    if [[ -d /run/systemd/system ]]; then
+        eval "systemctl restart ${1}.service ${debug}"
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "${1} could not be restarted."
+            if [ -n "$(command -v journalctl)" ]; then
+                eval "journalctl -u ${1} >> ${logfile}"
+            fi
+            installCommon_rollBack
+            exit 1
+        else
+            common_logger "${1} service restarted."
+        fi
+    elif ps -p 1 -o comm= | grep "init"; then
+        eval "chkconfig ${1} on ${debug}"
+        eval "service ${1} restart ${debug}"
+        eval "/etc/init.d/${1} restart ${debug}"
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "${1} could not be restarted."
+            if [ -n "$(command -v journalctl)" ]; then
+                eval "journalctl -u ${1} >> ${logfile}"
+            fi
+            installCommon_rollBack
+            exit 1
+        else
+            common_logger "${1} service restarted."
+        fi
+    elif [ -x "/etc/rc.d/init.d/${1}" ] ; then
+        eval "/etc/rc.d/init.d/${1} restart ${debug}"
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "${1} could not be restarted."
+            if [ -n "$(command -v journalctl)" ]; then
+                eval "journalctl -u ${1} >> ${logfile}"
+            fi
+            installCommon_rollBack
+            exit 1
+        else
+            common_logger "${1} service restarted."
+        fi
+    else
+        common_logger -e "${1} could not restart. No service manager found on the system."
+        exit 1
+    fi
+
+}
+
 function installCommon_yumInstallList(){
 
     dependencies=("$@")
