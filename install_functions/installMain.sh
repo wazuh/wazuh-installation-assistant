@@ -19,9 +19,6 @@ function getHelp() {
     echo -e "        -a,  --all-in-one"
     echo -e "                Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard."
     echo -e ""
-    echo -e "        -c,  --config-file <path-to-config-yml>"
-    echo -e "                Path to the configuration file used to generate wazuh-install-files.tar file containing the files that will be needed for installation. By default, the Wazuh installation assistant will search for a file named config.yml in the same path as the script."
-    echo -e ""
     echo -e "        -d [pre-release|local],  --development"
     echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install.sh."
     echo -e ""
@@ -101,11 +98,6 @@ function main() {
                     shift 1
                 fi
                 checks_development_source_tag
-                # TODO: delete repo configs
-                repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
-                repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
-                reporelease="unstable"
-                wazuh_template_url="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
                 bucket="packages-dev.wazuh.com"
                 repository="${devrepo}"
                 ;;
