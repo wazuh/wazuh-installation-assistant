@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Replace wazuh.yml references to opensearch_dashboards.yml in the installation assistant ([#545](https://github.com/wazuh/wazuh-installation-assistant/pull/545))
 - Change Filebeat references to server in the certs tool ([#528](https://github.com/wazuh/wazuh-installation-assistant/pull/528))
 
 ### Fixed
