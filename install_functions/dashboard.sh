@@ -120,8 +120,8 @@ function dashboard_initialize() {
                 fi
             done
         fi
-        if [ -f "/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml" ]; then
-            eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml ${debug}"
+        if [ -f "/etc/wazuh-dashboard/opensearch_dashboards.yml" ]; then
+            eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
         fi
 
         common_logger "Wazuh dashboard web application initialized."
@@ -174,8 +174,8 @@ function dashboard_initializeAIO() {
         sleep 15
     done
     if [ "${http_code}" -eq "200" ]; then
-        if [ -f "/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml" ]; then
-            eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml ${debug}"
+        if [ -f "/etc/wazuh-dashboard/opensearch_dashboards.yml" ]; then
+            eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
         fi
         common_logger "Wazuh dashboard web application initialized."
         common_logger -nl "--- Summary ---"
