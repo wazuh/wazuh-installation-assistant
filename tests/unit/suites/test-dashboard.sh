@@ -162,7 +162,7 @@ test-10-dashboard_initialize-distributed-one-kibana-node-one-wazuh-node-curl-cor
 
 test-10-dashboard_initialize-distributed-one-kibana-node-one-wazuh-node-curl-correct-assert() {
     installCommon_getPass "admin"
-    sed -i 's,url: https://localhost,url: https://2.2.2.2,g' /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+    sed -i 's,url: https://localhost,url: https://2.2.2.2,g' /etc/wazuh-dashboard/opensearch_dashboards.yml
 }
 
 test-ASSERT-FAIL-11-dashboard_initialize-distributed-one-kibana-node-one-wazuh-node-curl-error() {
@@ -190,7 +190,7 @@ test-12-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-nodes-curl-c
 
 test-12-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-nodes-curl-correct-assert() {
     installCommon_getPass "admin"
-    sed -i 's,url: https://localhost,url: https://1.1.2.2,g' /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+    sed -i 's,url: https://localhost,url: https://1.1.2.2,g' /etc/wazuh-dashboard/opensearch_dashboards.yml
 }
 
 test-ASSERT-FAIL-13-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-nodes-curl-error() {
@@ -233,7 +233,7 @@ test-14-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-nodes-curl-e
     sleep  10
     sleep  10
     sleep  10
-    sed  -i  's,url: https://localhost,url: https://1.1.2.2,g'  /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+    sed  -i  's,url: https://localhost,url: https://1.1.2.2,g'  /etc/wazuh-dashboard/opensearch_dashboards.yml
 }
 
 function load-dashboard_initializeAIO() {
