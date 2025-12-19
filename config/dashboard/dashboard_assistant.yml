@@ -17,3 +17,12 @@ opensearch_security.cookie.secure: true
 opensearch_security.cookie.ttl: 900000
 opensearch_security.session.ttl: 900000
 opensearch_security.session.keepalive: true
+
+# Define the Wazuh server hosts
+wazuh_core.hosts:
+  default:
+    url: https://localhost
+    port: 55000
+    username: wazuh-wui
+    password: wazuh-wui
+    run_as: false

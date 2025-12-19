@@ -43,8 +43,6 @@ function dashboard_configure() {
         fi
     fi
 
-    sed -i 's/server\.port: [0-9]\+$/server.port: '"${chosen_port}"'/' /etc/wazuh-dashboard/opensearch_dashboards.yml
-
     common_logger "Wazuh dashboard post-install configuration finished."
 
 }
@@ -123,6 +121,7 @@ function dashboard_initialize() {
         if [ -f "/etc/wazuh-dashboard/opensearch_dashboards.yml" ]; then
             eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
         fi
+        installCommon_restartService "wazuh-dashboard"
 
         common_logger "Wazuh dashboard web application initialized."
         common_logger -nl "--- Summary ---"
@@ -177,6 +176,7 @@ function dashboard_initializeAIO() {
         if [ -f "/etc/wazuh-dashboard/opensearch_dashboards.yml" ]; then
             eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
         fi
+        installCommon_restartService "wazuh-dashboard"
         common_logger "Wazuh dashboard web application initialized."
         common_logger -nl "--- Summary ---"
         common_logger -nl "You can access the web interface https://<wazuh-dashboard-ip>:${http_port}\n    User: admin\n    Password: ${u_pass}"
@@ -190,11 +190,26 @@ function dashboard_initializeAIO() {
 function dashboard_install() {
 
     common_logger "Starting Wazuh dashboard installation."
+
+    download_dir="${base_path}/${download_packages_directory}"
+    
+    # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
-        installCommon_yumInstall "wazuh-dashboard" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-dashboard*.rpm 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh dashboard package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_yumInstall "${package_file}"
     elif [ "${sys_type}" == "apt-get" ]; then
-        installCommon_aptInstall "wazuh-dashboard" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-dashboard*.deb 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh dashboard package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_aptInstall "${package_file}"
     fi
+    
     common_checkInstalled
     if [  "$install_result" != 0  ] || [ -z "${dashboard_installed}" ]; then
         common_logger -e "Wazuh dashboard installation failed."

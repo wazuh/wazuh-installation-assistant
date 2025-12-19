@@ -59,9 +59,9 @@ function manager_configure(){
             fi
         done
     fi
-    # Dejar comentado hasta deficion.
-    #eval "sed -i s/server.pem/${server_node_names[0]}.pem/ /var/ossec/etc/ossec.conf ${debug}"
-    #eval "sed -i s/server-key.pem/${server_node_names[0]}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
+    eval "sed -i s/server.pem/${server_node_names[0]}.pem/ /var/ossec/etc/ossec.conf ${debug}"
+    eval "sed -i s/server-key.pem/${server_node_names[0]}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
+    manager_copyCertificates "${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
     eval "/var/ossec/bin/wazuh-keystore -f indexer -k username -v admin"
     eval "/var/ossec/bin/wazuh-keystore -f indexer -k password -v admin"
@@ -71,10 +71,24 @@ function manager_configure(){
 function manager_install() {
 
     common_logger "Starting the Wazuh manager installation."
+
+    download_dir="${base_path}/${download_packages_directory}"
+    
+    # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
-        installCommon_yumInstall "wazuh-manager" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-manager*.rpm 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh manager package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_yumInstall "${package_file}"
     elif [ "${sys_type}" == "apt-get" ]; then
-        installCommon_aptInstall "wazuh-manager" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-manager*.deb 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh manager package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_aptInstall "${package_file}"
     fi
 
     common_checkInstalled
@@ -97,6 +111,7 @@ function manager_copyCertificates() {
                 installCommon_rollBack
                 exit 1
             fi
+            eval "mkdir -p ${server_cert_path} ${debug}"
             eval "tar -xf ${tar_file} -C ${server_cert_path} --wildcards wazuh-install-files/${server_node_names[0]}.pem --strip-components 1 ${debug}"
             eval "tar -xf ${tar_file} -C ${server_cert_path} --wildcards wazuh-install-files/${server_node_names[0]}-key.pem --strip-components 1 ${debug}"
             eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
@@ -107,6 +122,7 @@ function manager_copyCertificates() {
                 installCommon_rollBack
                 exit 1
             fi
+            eval "mkdir -p ${server_cert_path} ${debug}"
             eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/${winame}.pem --strip-components 1 ${debug}"
             eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/${winame}-key.pem --strip-components 1 ${debug}"
             eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"

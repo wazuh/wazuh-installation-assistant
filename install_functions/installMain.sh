@@ -19,8 +19,8 @@ function getHelp() {
     echo -e "        -a,  --all-in-one"
     echo -e "                Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard."
     echo -e ""
-    echo -e "        -d [pre-release|staging],  --development"
-    echo -e "                Use development repositories. By default it uses the pre-release package repository. If staging is specified, it will use that repository."
+    echo -e "        -d [pre-release|local],  --development"
+    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install.sh."
     echo -e ""
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
@@ -85,10 +85,10 @@ function main() {
             "-d"|"--development")
                 development=1
                 if [ -n "${2}" ] && [[ ! "${2}" =~ ^- ]]; then
-                    if [ "${2}" = "pre-release" ] || [ "${2}" = "staging" ]; then
+                    if [ "${2}" = "pre-release" ] || [ "${2}" = "local" ]; then
                         devrepo="${2}"
                     else
-                        common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'staging'."
+                        common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'local'."
                         getHelp
                         exit 1
                     fi
@@ -98,10 +98,6 @@ function main() {
                     shift 1
                 fi
                 checks_development_source_tag
-                repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
-                repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
-                reporelease="unstable"
-                wazuh_template_url="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
                 bucket="packages-dev.wazuh.com"
                 repository="${devrepo}"
                 ;;
@@ -280,9 +276,13 @@ function main() {
 
     if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
         check_curlVersion
-        if [ -z "${offline_install}" ]; then
-            installCommon_addWazuhRepo
+        if [ -n "${development}" ] && [ "${devrepo}" = "local" ]; then
+            checks_localArtifactURLs_exists
+        else
+            installCommon_downloadArtifactURLs
         fi
+        checks_ArtifactURLs_format
+        checks_ArtifactURLs_component_present
     fi
 
 # -------------- Configuration creation case  -----------------------
@@ -312,10 +312,12 @@ function main() {
 
     if [ -n "${indexer}" ]; then
         common_logger "--- Wazuh indexer ---"
+        installCommon_downloadComponent "wazuh_indexer"
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_initialize
+        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
     fi
 
@@ -331,11 +333,13 @@ function main() {
 
     if [ -n "${dashboard}" ]; then
         common_logger "--- Wazuh dashboard ----"
+        installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
         installCommon_changePasswords
         dashboard_initialize
+        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
     fi
@@ -344,6 +348,7 @@ function main() {
 
     if [ -n "${wazuh}" ]; then
         common_logger "--- Wazuh server ---"
+        installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
         if [ -n "${server_node_types[*]}" ]; then
@@ -359,20 +364,24 @@ function main() {
     if [ -n "${AIO}" ]; then
 
         common_logger "--- Wazuh indexer ---"
+        installCommon_downloadComponent "wazuh_indexer"
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_initialize
         common_logger "--- Wazuh server ---"
+        installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
         installCommon_startService "wazuh-manager"
         common_logger "--- Wazuh dashboard ---"
+        installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
         installCommon_changePasswords
         dashboard_initializeAIO
+        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
     fi
@@ -386,10 +395,6 @@ function main() {
 
 
 # -------------------------------------------------------------------
-
-    if [ -z "${configurations}" ] && [ -z "${download}" ] && [ -z "${offline_install}" ]; then
-        installCommon_restoreWazuhrepo
-    fi
 
     if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
         eval "rm -rf /tmp/wazuh-install-files ${debug}"

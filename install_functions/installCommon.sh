@@ -44,67 +44,30 @@ function installCommon_cleanExit() {
 
 }
 
-function installCommon_addWazuhRepo() {
-
-    common_logger -d "Adding the Wazuh repository."
-
-    if [ -n "${development}" ]; then
-        if [ "${sys_type}" == "yum" ]; then
-            eval "rm -f /etc/yum.repos.d/wazuh.repo ${debug}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            eval "rm -f /etc/apt/sources.list.d/wazuh.list ${debug}"
-        fi
-    fi
-
-    if [ ! -f "/etc/yum.repos.d/wazuh.repo" ] && [ ! -f "/etc/zypp/repos.d/wazuh.repo" ] && [ ! -f "/etc/apt/sources.list.d/wazuh.list" ] ; then
-        if [ "${sys_type}" == "yum" ]; then
-            eval "rpm --import ${repogpg} ${debug}"
-            if [ "${PIPESTATUS[0]}" != 0 ]; then
-                common_logger -e "Cannot import Wazuh GPG key"
-                exit 1
-            fi
-            eval "(echo -e '[wazuh]\ngpgcheck=1\ngpgkey=${repogpg}\nenabled=1\nname=EL-\${releasever} - Wazuh\nbaseurl='${repobaseurl}'/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh.repo)" "${debug}"
-            eval "chmod 644 /etc/yum.repos.d/wazuh.repo ${debug}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            eval "common_curl -s ${repogpg} --max-time 300 --retry 5 --retry-delay 5 --fail | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import - ${debug}"
-            if [ "${PIPESTATUS[0]}" != 0 ]; then
-                common_logger -e "Cannot import Wazuh GPG key"
-                exit 1
-            fi
-            eval "chmod 644 /usr/share/keyrings/wazuh.gpg ${debug}"
-            eval "(echo \"deb [signed-by=/usr/share/keyrings/wazuh.gpg] ${repobaseurl}/apt/ ${reporelease} main\" | tee /etc/apt/sources.list.d/wazuh.list)" "${debug}"
-            eval "apt-get update -q ${debug}"
-            eval "chmod 644 /etc/apt/sources.list.d/wazuh.list ${debug}"
-        fi
-    else
-        common_logger -d "Wazuh repository already exists. Skipping addition."
-    fi
-
-    if [ -n "${development}" ]; then
-        common_logger "Wazuh development repository added."
-    else
-        common_logger "Wazuh repository added."
-    fi
-}
-
 function installCommon_aptInstall() {
 
     package="${1}"
     version="${2}"
     attempt=0
-    if [ -n "${version}" ]; then
-        installer=${package}${sep}${version}
+    
+    # Determine the installer package
+    if [[ "${package}" == *.deb ]]; then
+        installer="${package}"
+    elif [ -n "${version}" ]; then
+        installer="${package}${sep}${version}"
     else
-        installer=${package}
+        installer="${package}"
     fi
 
-    # Offline installation case: get package name and install it
-    if [ -n "${offline_install}" ]; then
+    # Override with offline package if needed
+    if [ -n "${offline_install}" ] && [[ "${package}" != *.deb ]]; then
         package_name=$(ls ${offline_packages_path} | grep ${package})
         installer="${offline_packages_path}/${package_name}"
     fi
 
+    # Build the installation command
     command="DEBIAN_FRONTEND=noninteractive apt-get install ${installer} -y -q"
+    
     common_checkAptLock
 
     if [ "${attempt}" -ne "${max_attempts}" ]; then
@@ -324,6 +287,83 @@ function installCommon_configureCentOSRepositories() {
 
         common_logger -d "CentOS repositories added."
     fi
+
+}
+
+function installCommon_downloadArtifactURLs() {
+
+    common_logger -d "Downloading artifact URLs file."
+    artifact_url="https://${bucket}/${wazuh_major}/${artifact_urls_file_name}"
+    eval "common_curl -sSo ${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
+    
+    curl_exit_code="${PIPESTATUS[0]}"
+    if [ "${curl_exit_code}" -ne 0 ]; then
+        common_logger -e "Failed to download artifact URLs from ${artifact_url}. Exit code: ${curl_exit_code}"
+        exit 1
+    fi
+    
+    if [ ! -f "${artifact_urls_file_name}" ]; then
+        common_logger -e "Failed to download artifact URLs from ${artifact_url}."
+        exit 1
+    fi
+
+}
+
+function installCommon_downloadComponent() {
+    # TODO: review the behavior of this function
+    if [ "$#" -ne 1 ]; then
+        common_logger -e "installCommon_downloadComponent must be called with one argument (component name)."
+        exit 1
+    fi
+
+    component="${1}"
+    artifact_file="${base_path}/${artifact_urls_file_name}"
+    download_dir="${base_path}/${download_packages_directory}"
+    
+    # Create download directory if it doesn't exist
+    if [ ! -d "${download_dir}" ]; then
+        eval "mkdir -p ${download_dir} ${debug}"
+        if [ ! -d "${download_dir}" ]; then
+            common_logger -e "Failed to create download directory: ${download_dir}"
+            exit 1
+        fi
+    fi
+    
+    # Determine package type based on system
+    if [ "${sys_type}" == "yum" ]; then
+        pkg_type="rpm"
+    elif [ "${sys_type}" == "apt-get" ]; then
+        pkg_type="deb"
+    fi
+    
+    # Determine architecture suffix for artifact keys
+    if [ "${architecture}" == "x86_64" ]; then
+        arch_suffix="amd64"
+    elif [ "${architecture}" == "aarch64" ]; then
+        arch_suffix="arm64"
+    fi
+    
+    # Build the artifact key
+    artifact_key="${component}_${arch_suffix}_${pkg_type}"
+    
+    # Get the URL from the artifact file
+    component_url=$(grep "^${artifact_key}:" "$artifact_file" | cut -d' ' -f2- | tr -d '"' | xargs)
+
+    # Extract filename from URL (remove query parameters after ?)
+    component_filename=$(basename "${component_url%%\?*}")
+    component_filepath="${download_dir}/${component_filename}"
+    
+    common_logger "Downloading ${component} package: ${component_filename}"
+    
+    # Download the component to the download directory
+    common_curl -sSLo '${component_filepath}' '${component_url}' --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}
+    
+    if [ ! -f "${component_filepath}" ]; then
+        common_logger -e "Failed to download ${component} from ${component_url}."
+        exit 1
+    fi
+    
+    common_logger "${component} package downloaded successfully: ${component_filepath}"
 
 }
 
@@ -572,24 +612,6 @@ For Wazuh API users, the file must have this format:
 
 }
 
-function installCommon_restoreWazuhrepo() {
-
-    common_logger -d "Restoring Wazuh repository."
-    if [ -n "${development}" ]; then
-        if [ "${sys_type}" == "yum" ] && [ -f "/etc/yum.repos.d/wazuh.repo" ]; then
-            file="/etc/yum.repos.d/wazuh.repo"
-        elif [ "${sys_type}" == "apt-get" ] && [ -f "/etc/apt/sources.list.d/wazuh.list" ]; then
-            file="/etc/apt/sources.list.d/wazuh.list"
-        else
-            common_logger -w -d "Wazuh repository does not exists."
-        fi
-        eval "sed -i 's/-dev//g' ${file} ${debug}"
-        eval "sed -i 's/pre-release/5.x/g' ${file} ${debug}"
-        eval "sed -i 's/unstable/stable/g' ${file} ${debug}"
-    fi
-
-}
-
 function installCommon_removeCentOSrepositories() {
 
     eval "rm -f ${centos_repo} ${debug}"
@@ -604,14 +626,6 @@ function installCommon_rollBack() {
 
     if [ -z "${uninstall}" ]; then
         common_logger "--- Removing existing Wazuh installation ---"
-    fi
-
-    if [ -f "/etc/yum.repos.d/wazuh.repo" ]; then
-        eval "rm /etc/yum.repos.d/wazuh.repo ${debug}"
-    elif [ -f "/etc/zypp/repos.d/wazuh.repo" ]; then
-        eval "rm /etc/zypp/repos.d/wazuh.repo ${debug}"
-    elif [ -f "/etc/apt/sources.list.d/wazuh.list" ]; then
-        eval "rm /etc/apt/sources.list.d/wazuh.list ${debug}"
     fi
 
     if [[ -n "${wazuh_installed}" && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]];then
@@ -707,8 +721,6 @@ function installCommon_rollBack() {
 
     eval "rm -rf ${elements_to_remove[*]} ${debug}"
 
-    common_remove_gpg_key
-
     installCommon_removeWIADependencies
 
     eval "systemctl daemon-reload ${debug}"
@@ -774,6 +786,60 @@ function installCommon_startService() {
         fi
     else
         common_logger -e "${1} could not start. No service manager found on the system."
+        exit 1
+    fi
+
+}
+
+function installCommon_restartService() {
+
+    if [ "$#" -ne 1 ]; then
+        common_logger -e "installCommon_restartService must be called with 1 argument."
+        exit 1
+    fi
+
+    common_logger "Restarting service ${1}."
+
+    if [[ -d /run/systemd/system ]]; then
+        eval "systemctl restart ${1}.service ${debug}"
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "${1} could not be restarted."
+            if [ -n "$(command -v journalctl)" ]; then
+                eval "journalctl -u ${1} >> ${logfile}"
+            fi
+            installCommon_rollBack
+            exit 1
+        else
+            common_logger "${1} service restarted."
+        fi
+    elif ps -p 1 -o comm= | grep "init"; then
+        eval "chkconfig ${1} on ${debug}"
+        eval "service ${1} restart ${debug}"
+        eval "/etc/init.d/${1} restart ${debug}"
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "${1} could not be restarted."
+            if [ -n "$(command -v journalctl)" ]; then
+                eval "journalctl -u ${1} >> ${logfile}"
+            fi
+            installCommon_rollBack
+            exit 1
+        else
+            common_logger "${1} service restarted."
+        fi
+    elif [ -x "/etc/rc.d/init.d/${1}" ] ; then
+        eval "/etc/rc.d/init.d/${1} restart ${debug}"
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "${1} could not be restarted."
+            if [ -n "$(command -v journalctl)" ]; then
+                eval "journalctl -u ${1} >> ${logfile}"
+            fi
+            installCommon_rollBack
+            exit 1
+        else
+            common_logger "${1} service restarted."
+        fi
+    else
+        common_logger -e "${1} could not restart. No service manager found on the system."
         exit 1
     fi
 
@@ -863,25 +929,52 @@ function installCommon_aptRemoveWIADependencies(){
     fi
 
 }
+
+function installCommon_removeDownloadPackagesDirectory() {
+
+    download_dir="${base_path}/${download_packages_directory}"
+    if [ -d "${download_dir}" ]; then
+        eval "rm -rf ${download_dir} ${debug}"
+        common_logger -d "Removed download packages directory: ${download_dir}"
+    else
+        common_logger -w "Download packages directory does not exist: ${download_dir}"
+    fi
+
+}
+
 function installCommon_yumInstall() {
 
     package="${1}"
     version="${2}"
     install_result=1
-    if [ -n "${version}" ]; then
-        installer="${package}-${version}"
-    else
+    
+    # If package is a file path (contains .rpm), install directly
+    if [[ "${package}" == *.rpm ]]; then
         installer="${package}"
-    fi
-
-    # Offline installation case: get package name and install it
-    if [ -n "${offline_install}" ]; then
-        package_name=$(ls ${offline_packages_path} | grep ${package})
-        installer="${offline_packages_path}/${package_name}"
         command="rpm -ivh ${installer}"
         common_logger -d "Installing local package: ${installer}"
+    elif [ -n "${version}" ]; then
+        installer="${package}-${version}"
+        # Offline installation case: get package name and install it
+        if [ -n "${offline_install}" ]; then
+            package_name=$(ls ${offline_packages_path} | grep ${package})
+            installer="${offline_packages_path}/${package_name}"
+            command="rpm -ivh ${installer}"
+            common_logger -d "Installing local package: ${installer}"
+        else
+            command="yum install ${installer} -y"
+        fi
     else
-        command="yum install ${installer} -y"
+        installer="${package}"
+        # Offline installation case: get package name and install it
+        if [ -n "${offline_install}" ]; then
+            package_name=$(ls ${offline_packages_path} | grep ${package})
+            installer="${offline_packages_path}/${package_name}"
+            command="rpm -ivh ${installer}"
+            common_logger -d "Installing local package: ${installer}"
+        else
+            command="yum install ${installer} -y"
+        fi
     fi
     common_checkYumLock
 
