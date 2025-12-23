@@ -310,6 +310,11 @@ function installCommon_downloadArtifactURLs() {
 }
 
 function installCommon_downloadComponent() {
+    if [ -n "${offline_install}" ]; then
+        common_logger -d "Skipping download in offline installation mode. Package already available."
+        return 0
+    fi
+    
     if [ "$#" -ne 1 ]; then
         common_logger -e "installCommon_downloadComponent must be called with one argument (component name)."
         exit 1
