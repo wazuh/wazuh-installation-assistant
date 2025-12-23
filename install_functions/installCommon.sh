@@ -310,7 +310,6 @@ function installCommon_downloadArtifactURLs() {
 }
 
 function installCommon_downloadComponent() {
-    # TODO: review the behavior of this function
     if [ "$#" -ne 1 ]; then
         common_logger -e "installCommon_downloadComponent must be called with one argument (component name)."
         exit 1

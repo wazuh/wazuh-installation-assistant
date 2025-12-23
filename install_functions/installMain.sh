@@ -390,6 +390,13 @@ function main() {
 
     if [ -n "${download}" ]; then
         common_logger "--- Download Packages ---"
+        if [ -n "${development}" ] && [ "${devrepo}" = "local" ]; then
+            checks_localArtifactURLs_exists
+        else
+            installCommon_downloadArtifactURLs
+        fi
+        checks_ArtifactURLs_format
+        offline_checkArtifactURLs_component_present
         offline_download
     fi
 
