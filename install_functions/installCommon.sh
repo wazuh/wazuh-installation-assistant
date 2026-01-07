@@ -49,7 +49,7 @@ function installCommon_aptInstall() {
     package="${1}"
     version="${2}"
     attempt=0
-    
+
     # Determine the installer package
     if [[ "${package}" == *.deb ]]; then
         installer="${package}"
@@ -67,7 +67,7 @@ function installCommon_aptInstall() {
 
     # Build the installation command
     command="DEBIAN_FRONTEND=noninteractive apt-get install ${installer} -y -q"
-    
+
     common_checkAptLock
 
     if [ "${attempt}" -ne "${max_attempts}" ]; then
@@ -186,17 +186,6 @@ function installCommon_createInstallFiles() {
     if eval "mkdir /tmp/wazuh-install-files ${debug}"; then
         common_logger "Generating configuration files."
 
-        dep="openssl"
-        if [ "${sys_type}" == "yum" ]; then
-            installCommon_yumInstallList "${dep}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            installCommon_aptInstallList "${dep}"
-        fi
-
-        if [ "${#not_installed[@]}" -gt 0 ]; then
-            wia_dependencies_installed+=("${dep}")
-        fi
-
         if [ -n "${configurations}" ]; then
             cert_checkOpenSSL
         fi
@@ -295,13 +284,13 @@ function installCommon_downloadArtifactURLs() {
     common_logger -d "Downloading artifact URLs file."
     artifact_url="https://${bucket}/${wazuh_major}/${artifact_urls_file_name}"
     eval "common_curl -sSo ${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
-    
+
     curl_exit_code="${PIPESTATUS[0]}"
     if [ "${curl_exit_code}" -ne 0 ]; then
         common_logger -e "Failed to download artifact URLs from ${artifact_url}. Exit code: ${curl_exit_code}"
         exit 1
     fi
-    
+
     if [ ! -f "${artifact_urls_file_name}" ]; then
         common_logger -e "Failed to download artifact URLs from ${artifact_url}."
         exit 1
@@ -319,7 +308,7 @@ function installCommon_downloadComponent() {
     component="${1}"
     artifact_file="${base_path}/${artifact_urls_file_name}"
     download_dir="${base_path}/${download_packages_directory}"
-    
+
     # Create download directory if it doesn't exist
     if [ ! -d "${download_dir}" ]; then
         eval "mkdir -p ${download_dir} ${debug}"
@@ -328,41 +317,41 @@ function installCommon_downloadComponent() {
             exit 1
         fi
     fi
-    
+
     # Determine package type based on system
     if [ "${sys_type}" == "yum" ]; then
         pkg_type="rpm"
     elif [ "${sys_type}" == "apt-get" ]; then
         pkg_type="deb"
     fi
-    
+
     # Determine architecture suffix for artifact keys
     if [ "${architecture}" == "x86_64" ]; then
         arch_suffix="amd64"
     elif [ "${architecture}" == "aarch64" ]; then
         arch_suffix="arm64"
     fi
-    
+
     # Build the artifact key
     artifact_key="${component}_${arch_suffix}_${pkg_type}"
-    
+
     # Get the URL from the artifact file
     component_url=$(grep "^${artifact_key}:" "$artifact_file" | cut -d' ' -f2- | tr -d '"' | xargs)
 
     # Extract filename from URL (remove query parameters after ?)
     component_filename=$(basename "${component_url%%\?*}")
     component_filepath="${download_dir}/${component_filename}"
-    
+
     common_logger "Downloading ${component} package: ${component_filename}"
-    
+
     # Download the component to the download directory
     common_curl -sSLo '${component_filepath}' '${component_url}' --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}
-    
+
     if [ ! -f "${component_filepath}" ]; then
         common_logger -e "Failed to download ${component} from ${component_url}."
         exit 1
     fi
-    
+
     common_logger "${component} package downloaded successfully: ${component_filepath}"
 
 }
@@ -735,6 +724,90 @@ function installCommon_rollBack() {
 
 }
 
+
+function installCommon_scanDependencies() {
+
+    wazuh_deps=()
+    if [ -n "${AIO}" ]; then
+        if [ "${sys_type}" == "yum" ]; then
+            wazuh_deps+=( "${indexer_yum_dependencies[@]}" "${wazuh_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" )
+        else
+            wazuh_deps+=( "${indexer_apt_dependencies[@]}" "${wazuh_apt_dependencies[@]}" "${dashboard_apt_dependencies[@]}" )
+        fi
+    elif [ -n "${indexer}" ]; then
+        if [ "${sys_type}" == "yum" ]; then
+            wazuh_deps+=( "${indexer_yum_dependencies[@]}" )
+        else
+            wazuh_deps+=( "${indexer_apt_dependencies[@]}" )
+        fi
+    elif [ -n "${wazuh}" ]; then
+        if [ "${sys_type}" == "yum" ]; then
+            wazuh_deps+=( "${wazuh_yum_dependencies[@]}" )
+        else
+            wazuh_deps+=( "${wazuh_apt_dependencies[@]}" )
+        fi
+    elif [ -n "${dashboard}" ]; then
+        if [ "${sys_type}" == "yum" ]; then
+            wazuh_deps+=( "${dashboard_yum_dependencies[@]}" )
+        else
+            wazuh_deps+=( "${dashboard_apt_dependencies[@]}" )
+        fi
+    fi
+
+    all_deps=( "${wazuh_deps[@]}" )
+    if [ "${sys_type}" == "apt-get" ]; then
+        assistant_deps+=( "${assistant_apt_dependencies[@]}" )
+        command='! apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/'
+    else
+        assistant_deps+=( "${assistant_yum_dependencies[@]}" )
+        command='! rpm -q ${dep} --quiet'
+    fi
+
+    # Remove openssl dependency if not necessary
+    if [ -z "${configurations}" ] && [ -z "${AIO}" ]; then
+        assistant_deps=( "${assistant_deps[@]/openssl}" )
+    fi
+
+    # Remove lsof dependency if not necessary
+    if [ -z "${AIO}" ] && [ -z "${wazuh}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ]; then
+        assistant_deps=( "${assistant_deps[@]/lsof}" )
+    fi
+
+    # Delete duplicates and sort
+    all_deps+=( "${assistant_deps[@]}" )
+    all_deps=( $(echo "${all_deps[@]}" | tr ' ' '\n' | sort -u) )
+    deps_to_install=()
+
+    # Get not installed dependencies of Assistant and Wazuh
+    for dep in "${all_deps[@]}"; do
+        if eval "${command}"; then
+            deps_to_install+=("${dep}")
+            if [[ "${assistant_deps[*]}" =~ "${dep}" ]]; then
+                assistant_deps_to_install+=("${dep}")
+            else
+                wazuh_deps_to_install+=("${dep}")
+            fi
+        fi
+    done
+
+    # Format and print the message if the option is not specified
+    if [ -z "${install_dependencies}" ] && [ "${#deps_to_install[@]}" -gt 0 ]; then
+        printf -v joined_deps_not_installed '%s, ' "${deps_to_install[@]}"
+        printf -v joined_assistant_not_installed '%s, ' "${assistant_deps_to_install[@]}"
+        joined_deps_not_installed="${joined_deps_not_installed%, }"
+        joined_assistant_not_installed="${joined_assistant_not_installed%, }"
+
+        message="To perform the installation, the following package/s must be installed: ${joined_deps_not_installed}."
+        if [ "${#assistant_deps_to_install[@]}" -gt 0 ]; then
+            message+=" The following package/s will be removed after the installation: ${joined_assistant_not_installed}."
+        fi
+        message+=" Add the -id|--install-dependencies parameter to install them automatically or install them manually."
+        common_logger -w "${message}"
+        exit 1
+    fi
+
+}
+
 function installCommon_startService() {
 
     if [ "$#" -ne 1 ]; then
@@ -947,7 +1020,7 @@ function installCommon_yumInstall() {
     package="${1}"
     version="${2}"
     install_result=1
-    
+
     # If package is a file path (contains .rpm), install directly
     if [[ "${package}" == *.rpm ]]; then
         installer="${package}"

@@ -398,19 +398,6 @@ function checks_specifications() {
 
 function checks_ports() {
 
-    if [ -z "${offline_install}" ]; then
-        dep="lsof"
-        if [ "${sys_type}" == "yum" ]; then
-            installCommon_yumInstallList "${dep}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            installCommon_aptInstallList "${dep}"
-        fi
-
-        if [ "${#not_installed[@]}" -gt 0 ]; then
-                wia_dependencies_installed+=("${dep}")
-        fi
-    fi
-
     common_logger -d "Checking ports availability."
     used_port=0
     ports=("$@")
@@ -491,10 +478,10 @@ function checks_ArtifactURLs_format() {
     while IFS=': ' read -r key value; do
         # Skip empty lines and comments
         [[ -z "$key" || "$key" =~ ^#.*$ ]] && continue
-        
+
         # Remove quotes and whitespace from value
         value=$(echo "$value" | tr -d '"' | xargs)
-        
+
         # Validate URL format (must start with http:// or https://)
         if [[ ! "$value" =~ ^https?:// ]]; then
             common_logger -e "Invalid URL format for key '${key}': ${value}"
@@ -513,7 +500,7 @@ function checks_ArtifactURLs_component_present() {
     elif [ "${sys_type}" == "apt-get" ]; then
         pkg_type="deb"
     fi
-    
+
     # Determine architecture suffix for artifact keys
     if [ "${architecture}" == "x86_64" ]; then
         arch_suffix="amd64"
