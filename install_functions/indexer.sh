@@ -218,5 +218,4 @@ function indexer_startCluster() {
         fi
         http_status=$(eval "${indexer_security_admin_comm}")
     done
-
 }
