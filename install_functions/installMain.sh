@@ -224,7 +224,9 @@ function main() {
     fi
 
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
-        installCommon_installDependencies
+        installCommon_scanDependencies
+        installCommon_installCheckDependencies "assistant"
+        installCommon_determinePorts
     elif [ -n "${offline_install}" ]; then
         offline_checkPrerequisites "wia_offline_dependencies" "${wia_offline_dependencies[@]}"
     fi
@@ -237,14 +239,6 @@ function main() {
     fi
 
     checks_arch
-
-    if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
-        installCommon_scanDependencies
-        installCommon_installDependencies "assistant"
-        installCommon_determinePorts
-    elif [ -n "${offline_install}" ]; then
-        offline_checkPrerequisites "wia_offline_dependencies" "${wia_offline_dependencies[@]}"
-    fi
 
     if [ -n "${ignore}" ]; then
         common_logger -w "Hardware checks ignored."

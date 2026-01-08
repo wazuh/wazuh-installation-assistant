@@ -375,7 +375,7 @@ function installCommon_getPass() {
     done
 }
 
-function installCommon_installDependencies() {
+function installCommon_installCheckDependencies() {
 
     if [ "${1}" == "assistant" ]; then
         installing_assistant_deps=1
