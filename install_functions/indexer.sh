@@ -12,7 +12,7 @@ function indexer_configure() {
     eval "export JAVA_HOME=/usr/share/wazuh-indexer/jdk/"
 
     # Configure JVM options for Wazuh indexer
-    ram_gb=$(free -m | awk 'FNR == 2 {print $2}')
+    ram_mb=$(free -m | awk 'FNR == 2 {print $2}')
     ram="$(( ram_mb / 2 ))"
 
     if [ "${ram}" -eq "0" ]; then
@@ -145,7 +145,7 @@ function indexer_install() {
     common_logger "Starting Wazuh indexer installation."
 
     download_dir="${base_path}/${download_packages_directory}"
-    
+
     # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
         package_file=$(ls "${download_dir}"/wazuh-indexer*.rpm 2>/dev/null | head -n 1)
@@ -214,16 +214,4 @@ function indexer_startCluster() {
         fi
         http_status=$(eval "${indexer_security_admin_comm}")
     done
-
-    # Wazuh alerts template injection
-    if [ -n "${offline_install}" ]; then
-        wazuh_template_url="file://${offline_files_path}/wazuh-template.json"
-    fi
-    http_status=$(eval "common_curl --silent '${wazuh_template_url}' --max-time 300 --retry 5 --retry-delay 5" | eval "common_curl -X PUT 'https://${indexer_node_ips[pos]}:9200/_template/wazuh' -H \'Content-Type: application/json\' -d @- -uadmin:admin -k --max-time 300 --silent --retry 5 --retry-delay 5 -w "%{http_code}" -o /dev/null")
-    if [ -z "${http_status}" ] || [ "${http_status}" -ne 200 ]; then
-        common_logger -e "The wazuh-alerts template could not be inserted into the Wazuh indexer cluster."
-        exit 1
-    else
-        common_logger -d "Inserted wazuh-alerts template into the Wazuh indexer cluster."
-    fi
 }

@@ -518,12 +518,14 @@ function checks_ArtifactURLs_component_present() {
             common_logger -e "Missing required artifact key: ${indexer_key}"
             exit 1
         fi
-    elif [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
+    fi
+    if [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
         if ! grep -q "^${dashboard_key}:" "$artifact_file"; then
             common_logger -e "Missing required artifact key: ${dashboard_key}"
             exit 1
         fi
-    elif [ -n "${AIO}" ] || [ -n "${wazuh}" ]; then
+    fi
+    if [ -n "${AIO}" ] || [ -n "${wazuh}" ]; then
         if ! grep -q "^${manager_key}:" "$artifact_file"; then
             common_logger -e "Missing required artifact key: ${manager_key}"
             exit 1

@@ -6,22 +6,6 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-function installCommon_addCentOSRepository() {
-
-    local repo_name="$1"
-    local repo_description="$2"
-    local repo_baseurl="$3"
-
-    echo "[$repo_name]" >> "${centos_repo}"
-    echo "name=${repo_description}" >> "${centos_repo}"
-    echo "baseurl=${repo_baseurl}" >> "${centos_repo}"
-    echo 'gpgcheck=1' >> "${centos_repo}"
-    echo 'enabled=1' >> "${centos_repo}"
-    echo "gpgkey=file://${centos_key}" >> "${centos_repo}"
-    echo '' >> "${centos_repo}"
-
-}
-
 function installCommon_cleanExit() {
 
     rollback_conf=""
@@ -251,32 +235,19 @@ function installCommon_changePasswords() {
 
 }
 
-# Adds the CentOS repository to install lsof.
-function installCommon_configureCentOSRepositories() {
+function installCommon_determinePorts {
 
-    centos_repos_configured=1
-    centos_key="/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial"
-    eval "common_curl -sLo ${centos_key} 'https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official' --max-time 300 --retry 5 --retry-delay 5 --fail"
+    used_ports=()
 
-    if [ ! -f "${centos_key}" ]; then
-        common_logger -w "The CentOS key could not be added. Some dependencies may not be installed."
-    else
-        centos_repo="/etc/yum.repos.d/centos.repo"
-        eval "touch ${centos_repo} ${debug}"
-        common_logger -d "CentOS repository file created."
-
-        if [ "${DIST_VER}" == "9" ]; then
-            installCommon_addCentOSRepository "appstream" "CentOS Stream \$releasever - AppStream" "https://mirror.stream.centos.org/9-stream/AppStream/\$basearch/os/"
-            installCommon_addCentOSRepository "baseos" "CentOS Stream \$releasever - BaseOS" "https://mirror.stream.centos.org/9-stream/BaseOS/\$basearch/os/"
-        elif [ "${DIST_VER}" == "8" ]; then
-            installCommon_addCentOSRepository "extras" "CentOS Linux \$releasever - Extras" "http://vault.centos.org/centos/\$releasever/extras/\$basearch/os/"
-            installCommon_addCentOSRepository "baseos" "CentOS Linux \$releasever - BaseOS" "http://vault.centos.org/centos/\$releasever/BaseOS/\$basearch/os/"
-            installCommon_addCentOSRepository "appstream" "CentOS Linux \$releasever - AppStream" "http://vault.centos.org/centos/\$releasever/AppStream/\$basearch/os/"
-        fi
-
-        common_logger -d "CentOS repositories added."
+    if [ -n "${AIO}" ]; then
+        used_ports+=( "${wazuh_aio_ports[@]}" )
+    elif [ -n "${wazuh}" ]; then
+        used_ports+=( "${wazuh_manager_ports[@]}" )
+    elif [ -n "${indexer}" ]; then
+        used_ports+=( "${wazuh_indexer_ports[@]}" )
+    elif [ -n "${dashboard}" ]; then
+        used_ports+=( "${wazuh_dashboard_port[@]}" )
     fi
-
 }
 
 function installCommon_downloadArtifactURLs() {
@@ -345,7 +316,19 @@ function installCommon_downloadComponent() {
     common_logger "Downloading ${component} package: ${component_filename}"
 
     # Download the component to the download directory
-    common_curl -sSLo '${component_filepath}' '${component_url}' --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}
+    common_curl -sSLo '${component_filepath}' '${component_url}' --max-time 600 --retry 5 --retry-delay 5 --fail ${debug}
+    curl_exit_code="${PIPESTATUS[0]}"
+
+    # Check if download was successful
+    if [ "${curl_exit_code}" -ne 0 ]; then
+        common_logger -e "Failed to download ${component} from ${component_url}. Curl exit code: ${curl_exit_code}"
+        # Remove incomplete file if it exists
+        if [ -f "${component_filepath}" ]; then
+            common_logger -d "Removing incomplete download: ${component_filepath}"
+            eval "rm -f ${component_filepath} ${debug}"
+        fi
+        exit 1
+    fi
 
     if [ ! -f "${component_filepath}" ]; then
         common_logger -e "Failed to download ${component} from ${component_url}."
@@ -392,23 +375,44 @@ function installCommon_getPass() {
     done
 }
 
-function installCommon_installCheckDependencies() {
+function installCommon_installDependencies() {
 
-    common_logger -d "Installing check dependencies."
-    if [ "${sys_type}" == "yum" ]; then
-        if [[ "${DIST_NAME}" == "rhel" ]] && [[ "${DIST_VER}" == "8" || "${DIST_VER}" == "9" ]]; then
-            installCommon_configureCentOSRepositories
+    if [ "${1}" == "assistant" ]; then
+        installing_assistant_deps=1
+        assistant_deps_installed=()
+        installCommon_installList "${assistant_deps_to_install[@]}"
+    else
+        installing_assistant_deps=0
+        installCommon_installList "${wazuh_deps_to_install[@]}"
+    fi
+}
+
+function installCommon_installList(){
+
+    dependencies=("$@")
+    if [ "${#dependencies[@]}" -gt 0 ]; then
+
+        if [ "${sys_type}" == "apt-get" ]; then
+            eval "apt-get update -q ${debug}"
         fi
-        installCommon_yumInstallList "${wia_yum_dependencies[@]}"
 
-        # In RHEL cases, remove the CentOS repositories configuration
-        if [ "${centos_repos_configured}" == 1 ]; then
-            installCommon_removeCentOSrepositories
-        fi
-
-    elif [ "${sys_type}" == "apt-get" ]; then
-        eval "apt-get update -q ${debug}"
-        installCommon_aptInstallList "${wia_apt_dependencies[@]}"
+        common_logger "--- Dependencies ----"
+        for dep in "${dependencies[@]}"; do
+            common_logger "Installing $dep."
+            if [ "${sys_type}" = "apt-get" ]; then
+                installCommon_aptInstall "${dep}"
+            else
+                installCommon_yumInstall "${dep}"
+            fi
+            if [ "${install_result}" != 0 ]; then
+                common_logger -e "Cannot install dependency: ${dep}."
+                installCommon_rollBack
+                exit 1
+            fi
+            if [ "${installing_assistant_deps}" == 1 ]; then
+                assistant_deps_installed+=("${dep}")
+            fi
+        done
     fi
 
 }
