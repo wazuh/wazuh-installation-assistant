@@ -109,40 +109,6 @@ function installCommon_aptInstallList(){
 
 }
 
-function installCommon_changePasswordApi() {
-
-    common_logger -d "Changing API passwords."
-
-    #Change API password tool
-    if [ -n "${changeall}" ]; then
-        for i in "${!api_passwords[@]}"; do
-            if [ -n "${wazuh}" ] || [ -n "${AIO}" ]; then
-                passwords_getApiUserId "${api_users[i]}"
-                WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
-                eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
-                if [ "${api_users[i]}" == "${adminUser}" ]; then
-                    sleep 1
-                    adminPassword="${api_passwords[i]}"
-                    passwords_getApiToken
-                fi
-            fi
-            if [ "${api_users[i]}" == "wazuh-wui" ] && { [ -n "${dashboard}" ] || [ -n "${AIO}" ]; }; then
-                passwords_changeDashboardApiPassword "${api_passwords[i]}"
-            fi
-        done
-    else
-        if [ -n "${wazuh}" ] || [ -n "${AIO}" ]; then
-            passwords_getApiUserId "${nuser}"
-            WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-            eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
-        fi
-        if [ "${nuser}" == "wazuh-wui" ] && { [ -n "${dashboard}" ] || [ -n "${AIO}" ]; }; then
-                passwords_changeDashboardApiPassword "${password}"
-        fi
-    fi
-
-}
-
 function installCommon_createCertificates() {
 
     common_logger -d "Creating Wazuh certificates."
@@ -204,62 +170,16 @@ function installCommon_createInstallFiles() {
         if [ -n "${server_node_types[*]}" ]; then
             installCommon_createClusterKey
         fi
-        gen_file="/tmp/wazuh-install-files/wazuh-passwords.txt"
-        passwords_generatePasswordFile
         eval "cp '${config_file}' '/tmp/wazuh-install-files/config.yml' ${debug}"
         eval "chown root:root /tmp/wazuh-install-files/* ${debug}"
         eval "tar -zcf '${tar_file}' -C '/tmp/' wazuh-install-files/ ${debug}"
         eval "rm -rf '/tmp/wazuh-install-files' ${debug}"
 	    eval "rm -rf ${config_file} ${debug}"
-        common_logger "Created ${tar_file_name}. It contains the Wazuh cluster key, certificates, and passwords necessary for installation."
+        common_logger "Created ${tar_file_name}. It contains the Wazuh cluster key and the certificates necessary for installation."
     else
         common_logger -e "Unable to create /tmp/wazuh-install-files"
         exit 1
     fi
-}
-
-function installCommon_changePasswords() {
-
-    common_logger -d "Setting Wazuh indexer cluster passwords."
-    if [ -f "${tar_file}" ]; then
-        eval "tar -xf ${tar_file} -C /tmp wazuh-install-files/wazuh-passwords.txt ${debug}"
-        p_file="/tmp/wazuh-install-files/wazuh-passwords.txt"
-        common_checkInstalled
-        if [ -n "${start_indexer_cluster}" ] || [ -n "${AIO}" ]; then
-            changeall=1
-            passwords_readUsers
-        else
-            no_indexer_backup=1
-        fi
-        if { [ -n "${wazuh}" ] || [ -n "${AIO}" ]; } && { [ "${server_node_types[pos]}" == "master" ] || [ "${#server_node_names[@]}" -eq 1 ]; }; then
-            passwords_getApiToken
-            passwords_getApiUsers
-            passwords_getApiIds
-        else
-            api_users=( wazuh wazuh-wui )
-        fi
-        installCommon_readPasswordFileUsers
-    else
-        common_logger -e "Cannot find passwords file. Exiting"
-        installCommon_rollBack
-        exit 1
-    fi
-    if [ -n "${start_indexer_cluster}" ] || [ -n "${AIO}" ]; then
-        passwords_getNetworkHost
-        passwords_generateHash
-    fi
-
-    passwords_changePassword
-
-    if [ -n "${start_indexer_cluster}" ] || [ -n "${AIO}" ]; then
-        passwords_runSecurityAdmin
-    fi
-    if [ -n "${wazuh}" ] || [ -n "${dashboard}" ] || [ -n "${AIO}" ]; then
-        if [ "${server_node_types[pos]}" == "master" ] || [ "${#server_node_names[@]}" -eq 1 ] || [ -n "${dashboard_installed}" ]; then
-            installCommon_changePasswordApi
-        fi
-    fi
-
 }
 
 # Adds the CentOS repository to install lsof.
@@ -394,15 +314,6 @@ function installCommon_getConfig() {
     eval "echo \"\${${config_name}}\"" > "${2}"
 }
 
-function installCommon_getPass() {
-
-    for i in "${!users[@]}"; do
-        if [ "${users[i]}" == "${1}" ]; then
-            u_pass=${passwords[i]}
-        fi
-    done
-}
-
 function installCommon_installCheckDependencies() {
 
     common_logger -d "Installing check dependencies."
@@ -490,124 +401,6 @@ function installCommon_installPrerequisites() {
                 offline_checkPrerequisites "${wazuh_apt_dependencies[@]}"
             fi
         fi
-    fi
-
-}
-
-function installCommon_readPasswordFileUsers() {
-
-    filecorrect=$(grep -Ev '^#|^\s*$' "${p_file}" | grep -Pzc "\A(\s*(indexer_username|api_username|indexer_password|api_password):[ \t]+[\'\"]?[\w.*+?-]+[\'\"]?)+\Z")
-    if [[ "${filecorrect}" -ne 1 ]]; then
-        common_logger -e "The password file does not have a correct format or password uses invalid characters. Allowed characters: A-Za-z0-9.*+?
-
-For Wazuh indexer users, the file must have this format:
-
-# Description
-  indexer_username: <user>
-  indexer_password: <password>
-
-For Wazuh API users, the file must have this format:
-
-# Description
-  api_username: <user>
-  api_password: <password>
-
-"
-	    installCommon_rollBack
-        exit 1
-    fi
-
-    sfileusers=$(grep indexer_username: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-    sfilepasswords=$(grep indexer_password: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-
-    sfileapiusers=$(grep api_username: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-    sfileapipasswords=$(grep api_password: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-
-
-    mapfile -t fileusers < <(printf '%s\n' "${sfileusers}")
-    mapfile -t filepasswords < <(printf '%s\n' "${sfilepasswords}")
-    mapfile -t fileapiusers < <(printf '%s\n' "${sfileapiusers}")
-    mapfile -t fileapipasswords < <(printf '%s\n' "${sfileapipasswords}")
-
-    if [ -n "${changeall}" ]; then
-        for j in "${!fileusers[@]}"; do
-            supported=false
-            for i in "${!users[@]}"; do
-                if [[ ${users[i]} == "${fileusers[j]}" ]]; then
-                    passwords_checkPassword "${filepasswords[j]}"
-                    passwords[i]=${filepasswords[j]}
-                    supported=true
-                fi
-            done
-            if [ "${supported}" = false ] && [ -n "${indexer_installed}" ]; then
-                common_logger -e -d "The given user ${fileusers[j]} does not exist"
-            fi
-        done
-
-        for j in "${!fileapiusers[@]}"; do
-            supported=false
-            for i in "${!api_users[@]}"; do
-                if [[ "${api_users[i]}" == "${fileapiusers[j]}" ]]; then
-                    passwords_checkPassword "${fileapipasswords[j]}"
-                    api_passwords[i]=${fileapipasswords[j]}
-                    supported=true
-                fi
-            done
-            if [ "${supported}" = false ] && [ -n "${indexer_installed}" ]; then
-                common_logger -e "The Wazuh API user ${fileapiusers[j]} does not exist"
-            fi
-        done
-    else
-        finalusers=()
-        finalpasswords=()
-
-        finalapiusers=()
-        finalapipasswords=()
-
-        if [ -n "${dashboard_installed}" ] &&  [ -n "${dashboard}" ]; then
-            users=( kibanaserver admin )
-        fi
-
-        if [ -n "${wazuh}" ]; then
-            users=( admin )
-        fi
-
-        for j in "${!fileusers[@]}"; do
-            supported=false
-            for i in "${!users[@]}"; do
-                if [[ "${users[i]}" == "${fileusers[j]}" ]]; then
-                    passwords_checkPassword "${filepasswords[j]}"
-                    finalusers+=(${fileusers[j]})
-                    finalpasswords+=(${filepasswords[j]})
-                    supported=true
-                fi
-            done
-            if [ "${supported}" = "false" ] && [ -n "${indexer_installed}" ] && [ -n "${changeall}" ]; then
-                common_logger -e -d "The given user ${fileusers[j]} does not exist"
-            fi
-        done
-
-        for j in "${!fileapiusers[@]}"; do
-            supported=false
-            for i in "${!api_users[@]}"; do
-                if [[ "${api_users[i]}" == "${fileapiusers[j]}" ]]; then
-                    passwords_checkPassword "${fileapipasswords[j]}"
-                    finalapiusers+=("${fileapiusers[j]}")
-                    finalapipasswords+=("${fileapipasswords[j]}")
-                    supported=true
-                fi
-            done
-            if [ ${supported} = false ] && [ -n "${indexer_installed}" ]; then
-                common_logger -e "The Wazuh API user ${fileapiusers[j]} does not exist"
-            fi
-        done
-
-        users=()
-        mapfile -t users < <(printf '%s\n' "${finalusers[@]}")
-        mapfile -t passwords < <(printf '%s\n' "${finalpasswords[@]}")
-        mapfile -t api_users < <(printf '%s\n' "${finalapiusers[@]}")
-        mapfile -t api_passwords < <(printf '%s\n' "${finalapipasswords[@]}")
-        changeall=1
     fi
 
 }

@@ -132,10 +132,6 @@ function indexer_initialize() {
         fi
     fi
 
-    if [ "${#indexer_node_names[@]}" -eq 1 ] && [ -z "${AIO}" ]; then
-        installCommon_changePasswords
-    fi
-
     common_logger "Wazuh indexer cluster initialized."
 
 }
@@ -214,16 +210,4 @@ function indexer_startCluster() {
         fi
         http_status=$(eval "${indexer_security_admin_comm}")
     done
-
-    # Wazuh alerts template injection
-    if [ -n "${offline_install}" ]; then
-        wazuh_template_url="file://${offline_files_path}/wazuh-template.json"
-    fi
-    http_status=$(eval "common_curl --silent '${wazuh_template_url}' --max-time 300 --retry 5 --retry-delay 5" | eval "common_curl -X PUT 'https://${indexer_node_ips[pos]}:9200/_template/wazuh' -H \'Content-Type: application/json\' -d @- -uadmin:admin -k --max-time 300 --silent --retry 5 --retry-delay 5 -w "%{http_code}" -o /dev/null")
-    if [ -z "${http_status}" ] || [ "${http_status}" -ne 200 ]; then
-        common_logger -e "The wazuh-alerts template could not be inserted into the Wazuh indexer cluster."
-        exit 1
-    else
-        common_logger -d "Inserted wazuh-alerts template into the Wazuh indexer cluster."
-    fi
 }
