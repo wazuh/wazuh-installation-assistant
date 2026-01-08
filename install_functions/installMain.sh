@@ -346,7 +346,7 @@ function main() {
 # -------------- Wazuh server case  ---------------------------------------
 
     if [ -n "${wazuh}" ]; then
-        common_logger "--- Wazuh server ---"
+        common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
@@ -368,7 +368,7 @@ function main() {
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_initialize
-        common_logger "--- Wazuh server ---"
+        common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
