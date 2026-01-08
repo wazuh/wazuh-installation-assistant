@@ -30,8 +30,6 @@ tar_file="${base_path}/${tar_file_name}"
 readonly artifact_urls_file_name="artifact_urls.yml"
 readonly download_packages_directory="wazuh-install-packages"
 
-wazuh_template_url="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
-
 readonly dashboard_cert_path="/etc/wazuh-dashboard/certs"
 readonly server_cert_path="/var/ossec/etc/certs"
 readonly indexer_cert_path="/etc/wazuh-indexer/certs"
@@ -52,9 +50,6 @@ manager_rpm_base_url="${base_url}/yum"
 indexer_rpm_base_url="${base_url}/yum"
 dashboard_rpm_base_url="${base_url}/yum"
 readonly wazuh_gpg_key="https://${bucket}/key/GPG-KEY-WAZUH"
-
-adminUser="wazuh"
-adminPassword="wazuh"
 
 http_port=443
 wazuh_aio_ports=( 9200 9300 1514 1515 1516 55000 "${http_port}")
