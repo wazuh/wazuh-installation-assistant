@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Back port install-dependencies option ([#557](https://github.com/wazuh/wazuh-installation-assistant/pull/557))
 - Add new internal users to the password generation process in the Password tool ([#540](https://github.com/wazuh/wazuh-installation-assistant/pull/540))
 - Remove filebeat references and replace wazuh.yml to opensearch_dashboards.yml in the password tool ([#539](https://github.com/wazuh/wazuh-installation-assistant/pull/539))
 - Remove all the custom option from the installation assistant ([#534](https://github.com/wazuh/wazuh-installation-assistant/pull/534))

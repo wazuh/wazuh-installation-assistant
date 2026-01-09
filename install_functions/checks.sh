@@ -398,19 +398,6 @@ function checks_specifications() {
 
 function checks_ports() {
 
-    if [ -z "${offline_install}" ]; then
-        dep="lsof"
-        if [ "${sys_type}" == "yum" ]; then
-            installCommon_yumInstallList "${dep}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            installCommon_aptInstallList "${dep}"
-        fi
-
-        if [ "${#not_installed[@]}" -gt 0 ]; then
-                wia_dependencies_installed+=("${dep}")
-        fi
-    fi
-
     common_logger -d "Checking ports availability."
     used_port=0
     ports=("$@")
@@ -491,10 +478,10 @@ function checks_ArtifactURLs_format() {
     while IFS=': ' read -r key value; do
         # Skip empty lines and comments
         [[ -z "$key" || "$key" =~ ^#.*$ ]] && continue
-        
+
         # Remove quotes and whitespace from value
         value=$(echo "$value" | tr -d '"' | xargs)
-        
+
         # Validate URL format (must start with http:// or https://)
         if [[ ! "$value" =~ ^https?:// ]]; then
             common_logger -e "Invalid URL format for key '${key}': ${value}"
@@ -513,7 +500,7 @@ function checks_ArtifactURLs_component_present() {
     elif [ "${sys_type}" == "apt-get" ]; then
         pkg_type="deb"
     fi
-    
+
     # Determine architecture suffix for artifact keys
     if [ "${architecture}" == "x86_64" ]; then
         arch_suffix="amd64"
@@ -531,12 +518,14 @@ function checks_ArtifactURLs_component_present() {
             common_logger -e "Missing required artifact key: ${indexer_key}"
             exit 1
         fi
-    elif [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
+    fi
+    if [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
         if ! grep -q "^${dashboard_key}:" "$artifact_file"; then
             common_logger -e "Missing required artifact key: ${dashboard_key}"
             exit 1
         fi
-    elif [ -n "${AIO}" ] || [ -n "${wazuh}" ]; then
+    fi
+    if [ -n "${AIO}" ] || [ -n "${wazuh}" ]; then
         if ! grep -q "^${manager_key}:" "$artifact_file"; then
             common_logger -e "Missing required artifact key: ${manager_key}"
             exit 1
