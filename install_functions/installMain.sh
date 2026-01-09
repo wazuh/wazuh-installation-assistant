@@ -271,7 +271,6 @@ function main() {
     if [ -n "${offline_install}" ]; then
         offline_checkPreinstallation
         offline_extractFiles
-        offline_importGPGKey
     fi
 
     if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
@@ -345,7 +344,7 @@ function main() {
 # -------------- Wazuh server case  ---------------------------------------
 
     if [ -n "${wazuh}" ]; then
-        common_logger "--- Wazuh server ---"
+        common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
@@ -366,7 +365,7 @@ function main() {
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_initialize
-        common_logger "--- Wazuh server ---"
+        common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
@@ -386,6 +385,13 @@ function main() {
 
     if [ -n "${download}" ]; then
         common_logger "--- Download Packages ---"
+        if [ -n "${development}" ] && [ "${devrepo}" = "local" ]; then
+            checks_localArtifactURLs_exists
+        else
+            installCommon_downloadArtifactURLs
+        fi
+        checks_ArtifactURLs_format
+        offline_checkArtifactURLs_component_present
         offline_download
     fi
 
