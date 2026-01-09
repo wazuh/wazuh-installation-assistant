@@ -132,10 +132,6 @@ function indexer_initialize() {
         fi
     fi
 
-    if [ "${#indexer_node_names[@]}" -eq 1 ] && [ -z "${AIO}" ]; then
-        installCommon_changePasswords
-    fi
-
     common_logger "Wazuh indexer cluster initialized."
 
 }

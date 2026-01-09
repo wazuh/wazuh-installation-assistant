@@ -324,7 +324,6 @@ function main() {
 
     if [ -n "${start_indexer_cluster}" ]; then
         indexer_startCluster
-        installCommon_changePasswords
         installCommon_removeWIADependencies
     fi
 
@@ -336,7 +335,6 @@ function main() {
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
-        installCommon_changePasswords
         dashboard_initialize
         installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
@@ -354,7 +352,6 @@ function main() {
             manager_startCluster
         fi
         installCommon_startService "wazuh-manager"
-        installCommon_changePasswords
         installCommon_removeWIADependencies
     fi
 
@@ -378,7 +375,6 @@ function main() {
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
-        installCommon_changePasswords
         dashboard_initializeAIO
         installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies

@@ -103,9 +103,6 @@ function buildInstaller() {
     ## Certificate tool library functions
     sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_certs}/certFunctions.sh" >> "${output_script_path}"
 
-    ## Passwords tool library functions
-    sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_passwords}/passwordsFunctions.sh" >> "${output_script_path}"
-
     ## Main function and call to it
     echo >> "${output_script_path}"
     echo "main \"\$@\"" >> "${output_script_path}"
