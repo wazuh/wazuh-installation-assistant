@@ -53,7 +53,7 @@ env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
   AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && '5.0.0' || inputs.AUTOMATION_REFERENCE }}
   VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
-  COMPOSITE_NAME: "linux-SUBNAME-amd64"
+  COMPOSITE_NAME: "SUBNAME-amd64"
   SESSION_NAME: "Installation-Assistant-Test"
   REGION: "us-east-1"
   TMP_PATH: "/tmp/test"
@@ -98,17 +98,14 @@ jobs:
           "AmazonLinux_2")
             SUBNAME="amazon-2"
             ;;
-          "Ubuntu_16")
-            SUBNAME="ubuntu-16.04"
-            ;;
           "Ubuntu_18")
-            SUBNAME="ubuntu-18.04"
+            SUBNAME="ubuntu-18"
             ;;
           "Ubuntu_20")
-            SUBNAME="ubuntu-20.04"
+            SUBNAME="ubuntu-20"
             ;;
           "Ubuntu_22")
-            SUBNAME="ubuntu-22.04"
+            SUBNAME="ubuntu-22"
             ;;
           "RHEL7")
             SUBNAME="redhat-7"
