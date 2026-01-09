@@ -50,7 +50,7 @@ env:
   WAZUH_VERSION: "5.0"
   PKG_REPOSITORY: ${{ github.event_name == 'pull_request' && 'pre-release' || inputs.PKG_REPOSITORY }}
   VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
-  COMPOSITE_NAME: "linux-SUBNAME-amd64"
+  COMPOSITE_NAME: "SUBNAME-amd64"
   REGION: "us-east-1"
   TMP_PATH: "/tmp/test"
   REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
