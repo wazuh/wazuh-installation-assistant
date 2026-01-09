@@ -72,7 +72,11 @@ function manager_install() {
 
     common_logger "Starting the Wazuh manager installation."
 
-    download_dir="${base_path}/${download_packages_directory}"
+    if [ -n "${offline_install}" ]; then
+        download_dir="${offline_packages_path}"
+    else
+        download_dir="${base_path}/${download_packages_directory}"
+    fi
     
     # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
