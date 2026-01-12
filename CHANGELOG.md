@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Updated run_as parameter from wazuh dashboard templates. ([#568](https://github.com/wazuh/wazuh-installation-assistant/pull/568))
 - Composite names update ([#562](https://github.com/wazuh/wazuh-installation-assistant/pull/562))
 - Change offline assistant install from repositories to packages ([#550](https://github.com/wazuh/wazuh-installation-assistant/pull/550))
 - Replace wazuh.yml references to opensearch_dashboards.yml in the installation assistant ([#545](https://github.com/wazuh/wazuh-installation-assistant/pull/545))
