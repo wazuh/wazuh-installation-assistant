@@ -146,10 +146,6 @@ function main() {
             getHelp
         fi
 
-        if [ -z "${nuser}" ] && [ -n "${password}" ]; then
-            getHelp
-        fi
-
         if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ] && [ -z "${api}" ]; then
             getHelp
         fi

@@ -54,6 +54,7 @@ function passwords_changePasswordApi() {
         passwords_getApiUserId "${nuser}"
         WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
         eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
+        common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
     fi
     if [ "${nuser}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
         passwords_changeDashboardApiPassword "${password}"
