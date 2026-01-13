@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 
 ### Deleted
 
+- Delete all passwords change and passwords file support ([#567](https://github.com/wazuh/wazuh-installation-assistant/pull/567))
 - Remove the Password Tool from the Installation Assistant files ([#560](https://github.com/wazuh/wazuh-installation-assistant/pull/560))
 
 ## [4.14.3]
