@@ -6,42 +6,51 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-function dashboard_configure() {
+function dashboard_obtainNodeIp() {
 
-    common_logger -d "Configuring Wazuh dashboard."
-    if [ -n "${AIO}" ]; then
-        eval "installCommon_getConfig dashboard/dashboard_assistant.yml /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
-        dashboard_copyCertificates "${debug}"
-    else
-        eval "installCommon_getConfig dashboard/dashboard_assistant_distributed.yml /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
-        dashboard_copyCertificates "${debug}"
-        if [ "${#dashboard_node_names[@]}" -eq 1 ]; then
-            pos=0
-            ip=${dashboard_node_ips[0]}
-        else
+    if [ -z "${dashboard_ip}"]; then
+        if [ "${AIO}" ]; then
+            dashboard_ip="${dashboard_node_ips[0]}"
+        else 
             for i in "${!dashboard_node_names[@]}"; do
                 if [[ "${dashboard_node_names[i]}" == "${dashname}" ]]; then
-                    pos="${i}";
+                    dashboard_ip=${dashboard_node_ips[i]};
+                    break
                 fi
-            done
-            ip=${dashboard_node_ips[pos]}
-        fi
-
-        if [[ "${ip}" != "127.0.0.1" ]]; then
-            echo "server.host: ${ip}" >> /etc/wazuh-dashboard/opensearch_dashboards.yml
-        else
-            echo 'server.host: '0.0.0.0'' >> /etc/wazuh-dashboard/opensearch_dashboards.yml
-        fi
-
-        if [ "${#indexer_node_names[@]}" -eq 1 ]; then
-            echo "opensearch.hosts: https://${indexer_node_ips[0]}:9200" >> /etc/wazuh-dashboard/opensearch_dashboards.yml
-        else
-            echo "opensearch.hosts:" >> /etc/wazuh-dashboard/opensearch_dashboards.yml
-            for i in "${indexer_node_ips[@]}"; do
-                    echo "  - https://${i}:9200" >> /etc/wazuh-dashboard/opensearch_dashboards.yml
             done
         fi
     fi
+}
+
+function dashboard_configure() {
+
+    common_logger -d "Configuring Wazuh dashboard."
+
+    # dashboard configuration itself
+    dashboard_obtainNodeIp
+    dashboard_copyCertificates "${debug}"
+
+    sed -i "s|server.host:.*|server.host: \"${dashboard_ip}\"|" /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}
+
+    # dashboard configuration to connect to the indexer cluster
+    if [ "${#indexer_node_names[@]}" -eq 1 ]; then
+        sed -i "s|opensearch.hosts:.*|opensearch.hosts: https://${indexer_node_ips[0]}:9200|" /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}
+    else
+        ips_list="["
+        for i in "${indexer_node_ips[@]}"; do
+            ips_list+="\"https://${i}:9200\", "
+        done
+        ips_list=${ips_list%, }"]" # if there are more than one indexer, there will be a list of urls ["url1", "url2", ...]
+        sed -i "s|opensearch.hosts:.*|opensearch.hosts: ${ips_list}|" /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}
+    fi
+
+    # dashboard configuration to connect to the wazuh api
+    for i in "${!server_node_types[@]}"; do
+        if [[ "${server_node_types[i]}" == "master" ]]; then
+            wazuh_api_address=${server_node_ips[i]}
+        fi
+    done
+    sed -i "s|url:.*|url: https://${wazuh_api_address}|" /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}
 
     common_logger "Wazuh dashboard post-install configuration finished."
 
@@ -51,19 +60,22 @@ function dashboard_copyCertificates() {
 
     common_logger -d "Copying Wazuh dashboard certificates."
     eval "rm -f ${dashboard_cert_path}/* ${debug}"
-    name=${dashboard_node_names[pos]}
+    if [ "${AIO}" ]; then
+        dashname="${dashboard_node_ips[0]}"
+    fi
+    # else we assume that dashname is already set
 
     if [ -f "${tar_file}" ]; then
-        if ! tar -tvf "${tar_file}" | grep -q "${name}" ; then
-            common_logger -e "Tar file does not contain certificate for the node ${name}."
+        if ! tar -tvf "${tar_file}" | grep -q "${dashname}" ; then
+            common_logger -e "Tar file does not contain certificate for the node ${dashname}."
             installCommon_rollBack
             exit 1;
         fi
         eval "mkdir ${dashboard_cert_path} ${debug}"
-        eval "sed -i s/dashboard.pem/${name}.pem/ /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
-        eval "sed -i s/dashboard-key.pem/${name}-key.pem/ /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
-        eval "tar -xf ${tar_file} -C ${dashboard_cert_path} wazuh-install-files/${name}.pem --strip-components 1 ${debug}"
-        eval "tar -xf ${tar_file} -C ${dashboard_cert_path} wazuh-install-files/${name}-key.pem --strip-components 1 ${debug}"
+        eval "sed -i s/dashboard.pem/${dashname}.pem/ /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
+        eval "sed -i s/dashboard-key.pem/${dashname}-key.pem/ /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
+        eval "tar -xf ${tar_file} -C ${dashboard_cert_path} wazuh-install-files/${dashname}.pem --strip-components 1 ${debug}"
+        eval "tar -xf ${tar_file} -C ${dashboard_cert_path} wazuh-install-files/${dashname}-key.pem --strip-components 1 ${debug}"
         eval "tar -xf ${tar_file} -C ${dashboard_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
         eval "chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/ ${debug}"
         eval "chmod 500 ${dashboard_cert_path} ${debug}"
@@ -78,111 +90,16 @@ function dashboard_copyCertificates() {
 
 }
 
-function dashboard_initialize() {
+function dashboard_displaySummary() {
 
-    common_logger "Initializing Wazuh dashboard web application."
-    j=0
+    dashboard_obtainNodeIp
 
-    if [ "${#dashboard_node_names[@]}" -eq 1 ]; then
-        nodes_dashboard_ip=${dashboard_node_ips[0]}
-    else
-        for i in "${!dashboard_node_names[@]}"; do
-            if [[ "${dashboard_node_names[i]}" == "${dashname}" ]]; then
-                pos="${i}";
-            fi
-        done
-        nodes_dashboard_ip=${dashboard_node_ips[pos]}
-    fi
+    common_logger -d "Wazuh dashboard connection was successful."
 
-    if [ "${nodes_dashboard_ip}" == "localhost" ] || [[ "${nodes_dashboard_ip}" == 127.* ]]; then
-        print_ip="<wazuh-dashboard-ip>"
-    else
-        print_ip="${nodes_dashboard_ip}"
-    fi
+    common_logger "Wazuh dashboard web application initialized."
+    common_logger -nl "--- Summary ---"
+    common_logger -nl "You can access the web interface https://${dashboard_ip}:${http_port}\n    User: admin\n    Password: admin"
 
-    until [ "$(curl -XGET https://"${nodes_dashboard_ip}":"${http_port}"/status -uadmin:admin -k -w %"{http_code}" -s -o /dev/null)" -eq "200" ] || [ "${j}" -eq "12" ]; do
-        sleep 10
-        j=$((j+1))
-        common_logger -d "Retrying Wazuh dashboard connection..."
-    done
-
-    if [ ${j} -lt 12 ]; then
-        common_logger -d "Wazuh dashboard connection was successful."
-        if [ "${#server_node_names[@]}" -eq 1 ]; then
-            wazuh_api_address=${server_node_ips[0]}
-        else
-            for i in "${!server_node_types[@]}"; do
-                if [[ "${server_node_types[i]}" == "master" ]]; then
-                    wazuh_api_address=${server_node_ips[i]}
-                fi
-            done
-        fi
-        if [ -f "/etc/wazuh-dashboard/opensearch_dashboards.yml" ]; then
-            eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
-        fi
-        installCommon_restartService "wazuh-dashboard"
-
-        common_logger "Wazuh dashboard web application initialized."
-        common_logger -nl "--- Summary ---"
-        common_logger -nl "You can access the web interface https://${print_ip}:${http_port}\n    User: admin\n    Password: admin"
-
-    else
-        flag="-e"
-        failed_nodes=()
-        common_logger "${flag}" "Cannot connect to Wazuh dashboard."
-
-        for i in "${!indexer_node_ips[@]}"; do
-            curl=$(common_curl -XGET https://"${indexer_node_ips[i]}":9200/ -uadmin:admin -k -s --max-time 300 --retry 5 --retry-delay 5 --fail)
-            exit_code=${PIPESTATUS[0]}
-            if [[ "${exit_code}" -eq "7" ]]; then
-                failed_connect=1
-                failed_nodes+=("${indexer_node_names[i]}")
-            elif [ "${exit_code}" -eq "22" ]; then
-                sec_not_initialized=1
-            fi
-        done
-        if [ -n "${failed_connect}" ]; then
-            common_logger "${flag}" "Failed to connect with ${failed_nodes[*]}. Connection refused."
-        fi
-
-        if [ -n "${sec_not_initialized}" ]; then
-            common_logger "${flag}" "Wazuh indexer security settings not initialized. Please run the installation assistant using -s|--start-cluster in one of the wazuh indexer nodes."
-        fi
-
-        common_logger -nl "--- Summary ---"
-        common_logger -nl "When Wazuh dashboard is able to connect to your Wazuh indexer cluster, you can access the web interface https://${print_ip}\n    User: admin\n    Password: admin"
-
-    fi
-
-}
-
-function dashboard_initializeAIO() {
-
-    wazuh_api_address=${server_node_ips[0]}
-    common_logger "Initializing Wazuh dashboard web application."
-    http_code=$(curl -XGET https://localhost:"${http_port}"/status -uadmin:admin -k -w %"{http_code}" -s -o /dev/null)
-    retries=0
-    max_dashboard_initialize_retries=20
-    while [ "${http_code}" -ne "200" ] && [ "${retries}" -lt "${max_dashboard_initialize_retries}" ]
-    do
-        http_code=$(curl -XGET https://localhost:"${http_port}"/status -uadmin:admin -k -w %"{http_code}" -s -o /dev/null)
-        common_logger "Wazuh dashboard web application not yet initialized. Waiting..."
-        retries=$((retries+1))
-        sleep 15
-    done
-    if [ "${http_code}" -eq "200" ]; then
-        if [ -f "/etc/wazuh-dashboard/opensearch_dashboards.yml" ]; then
-            eval "sed -i 's,url: https://localhost,url: https://${wazuh_api_address},g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
-        fi
-        installCommon_restartService "wazuh-dashboard"
-        common_logger "Wazuh dashboard web application initialized."
-        common_logger -nl "--- Summary ---"
-        common_logger -nl "You can access the web interface https://<wazuh-dashboard-ip>:${http_port}\n    User: admin\n    Password: admin"
-    else
-        common_logger -e "Wazuh dashboard installation failed."
-        installCommon_rollBack
-        exit 1
-    fi
 }
 
 function dashboard_install() {

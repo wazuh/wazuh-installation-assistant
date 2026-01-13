@@ -113,7 +113,26 @@ function installCommon_createCertificates() {
 
     common_logger -d "Creating Wazuh certificates."
     if [ -n "${AIO}" ]; then
-        eval "installCommon_getConfig certificate/config_aio.yml ${config_file} ${debug}"
+        artifact_file="${base_path}/${artifact_urls_file_name}"
+        artifact_key="wazuh_config_yml"
+        component_url=$(grep "^${artifact_key}:" "$artifact_file" | cut -d' ' -f2- | tr -d '"' | xargs)
+        common_logger -d "Downloading configuration file for the AIO installation."
+        common_curl -sSLO '${component_url}' --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}
+    
+        if [ ! -f "${component_filepath}" ]; then
+            common_logger -e "Failed to download te configuration file from ${component_url}."
+            installCommon_rollBack
+            exit 1
+        fi
+        
+        common_logger -d "Configuration file downloaded successfully"
+
+        sed -i "s|- name: node-1|- name: wazuh-indexer|" "${config_file}" ${debug}
+        sed -i "s|ip: \"<indexer-node-ip>\"|ip: \"127.0.0.1\"|" "${config_file}" ${debug}
+        sed -i "s|- name: wazuh-1|- name: wazuh-server|" "${config_file}" ${debug}
+        sed -i "s|ip: \"<wazuh-manager-ip>\"|ip: \"127.0.0.1\"|" "${config_file}" ${debug}
+        sed -i "s|- name: dashboard|- name: wazuh-dashboard|" "${config_file}" ${debug}
+        sed -i "s|ip: \"<dashboard-node-ip>\"|ip: \"127.0.0.1\"|" "${config_file}" ${debug}
     fi
 
     cert_readConfig

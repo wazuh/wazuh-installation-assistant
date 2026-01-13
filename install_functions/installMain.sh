@@ -316,7 +316,6 @@ function main() {
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
-        indexer_initialize
         installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
     fi
@@ -336,7 +335,7 @@ function main() {
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
-        dashboard_initialize
+        dashboard_displaySummary
         installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
@@ -365,7 +364,7 @@ function main() {
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
-        indexer_initialize
+        indexer_startCluster
         common_logger "--- Wazuh server ---"
         installCommon_downloadComponent "wazuh_manager"
         manager_install
@@ -376,7 +375,7 @@ function main() {
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
-        dashboard_initializeAIO
+        dashboard_displaySummary
         installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
