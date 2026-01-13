@@ -12,7 +12,7 @@ function indexer_configure() {
     eval "export JAVA_HOME=/usr/share/wazuh-indexer/jdk/"
 
     # Configure JVM options for Wazuh indexer
-    ram_gb=$(free -m | awk 'FNR == 2 {print $2}')
+    ram_mb=$(free -m | awk 'FNR == 2 {print $2}')
     ram="$(( ram_mb / 2 ))"
 
     if [ "${ram}" -eq "0" ]; then
@@ -127,12 +127,10 @@ function indexer_initialize() {
             common_logger -e "The Wazuh indexer cluster security configuration could not be initialized."
             installCommon_rollBack
             exit 1
-        else
-            common_logger "Wazuh indexer cluster security configuration initialized."
         fi
     fi
 
-    common_logger "Wazuh indexer cluster initialized."
+    common_logger "Wazuh indexer cluster security configuration initialized."
 
 }
 
@@ -145,7 +143,7 @@ function indexer_install() {
     else
         download_dir="${base_path}/${download_packages_directory}"
     fi
-    
+
     # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
         package_file=$(ls "${download_dir}"/wazuh-indexer*.rpm 2>/dev/null | head -n 1)
