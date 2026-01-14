@@ -100,7 +100,7 @@ function dashboard_displaySummary() {
 
     common_logger "Wazuh dashboard web application initialized."
     common_logger -nl "--- Summary ---"
-    common_logger -nl "You can access the web interface https://${dashboard_ip}:${http_port}\n    User: admin\n    Password: admin"
+    common_logger -nl "You can access the web interface https://<wazuh_dashboard_ip>:${http_port}\n    User: admin\n    Password: admin"
 
 }
 
