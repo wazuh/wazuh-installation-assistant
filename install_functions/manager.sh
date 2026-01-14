@@ -46,21 +46,19 @@ function manager_configure(){
 
     common_logger -d "Configuring Wazuh manager."
 
-    if [ ${#indexer_node_names[@]} -eq 1 ]; then
-        eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' /var/ossec/etc/ossec.conf ${debug}"
-    else
-        lstart=$(grep -n "<hosts>" /var/ossec/etc/ossec.conf | cut -d : -f 1)
-        lend=$(grep -n "</hosts>" /var/ossec/etc/ossec.conf | cut -d : -f 1)
-        for i in "${!indexer_node_ips[@]}"; do
-            if [ $i -eq 0 ]; then
-                eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' /var/ossec/etc/ossec.conf ${debug}"
-            else
-                eval "sed -i '/<hosts>/a\      <host>https:\/\/${indexer_node_ips[$i]}:9200<\/host>' /var/ossec/etc/ossec.conf"
-            fi
-        done
+    for i in "${!indexer_node_ips[@]}"; do
+        if [ $i -eq 0 ]; then
+            eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' /var/ossec/etc/ossec.conf ${debug}"
+        else
+            eval "sed -i '/<hosts>/a\      <host>https:\/\/${indexer_node_ips[$i]}:9200<\/host>' /var/ossec/etc/ossec.conf"
+        fi
+    done
+
+    if [ "${AIO}" ]; then
+        winame="${server_node_names[0]}"
     fi
-    eval "sed -i s/server.pem/${server_node_names[0]}.pem/ /var/ossec/etc/ossec.conf ${debug}"
-    eval "sed -i s/server-key.pem/${server_node_names[0]}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
+    eval "sed -i s/server.pem/${winame}.pem/ /var/ossec/etc/ossec.conf ${debug}"
+    eval "sed -i s/server-key.pem/${winame}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
     manager_copyCertificates "${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
     eval "/var/ossec/bin/wazuh-keystore -f indexer -k username -v admin"
@@ -108,30 +106,22 @@ function manager_install() {
 function manager_copyCertificates() {
 
     common_logger -d "Copying Manager certificates."
+
+    if [ "${AIO}" ]; then
+        winame="${server_node_names[0]}"
+    fi
+
     if [ -f "${tar_file}" ]; then
-        if [ -n "${AIO}" ]; then
-            if ! tar -tvf "${tar_file}" | grep -q "${server_node_names[0]}" ; then
-                common_logger -e "Tar file does not contain certificate for the node ${server_node_names[0]}."
-                installCommon_rollBack
-                exit 1
-            fi
-            eval "mkdir -p ${server_cert_path} ${debug}"
-            eval "tar -xf ${tar_file} -C ${server_cert_path} --wildcards wazuh-install-files/${server_node_names[0]}.pem --strip-components 1 ${debug}"
-            eval "tar -xf ${tar_file} -C ${server_cert_path} --wildcards wazuh-install-files/${server_node_names[0]}-key.pem --strip-components 1 ${debug}"
-            eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
-            eval "rm -rf ${server_cert_path}/wazuh-install-files/ ${debug}"
-        else
-            if ! tar -tvf "${tar_file}" | grep -q "${winame}" ; then
-                common_logger -e "Tar file does not contain certificate for the node ${winame}."
-                installCommon_rollBack
-                exit 1
-            fi
-            eval "mkdir -p ${server_cert_path} ${debug}"
-            eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/${winame}.pem --strip-components 1 ${debug}"
-            eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/${winame}-key.pem --strip-components 1 ${debug}"
-            eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
-            eval "rm -rf ${server_cert_path}/wazuh-install-files/ ${debug}"
+        if ! tar -tvf "${tar_file}" | grep -q "${winame}" ; then
+            common_logger -e "Tar file does not contain certificate for the node ${winame}."
+            installCommon_rollBack
+            exit 1
         fi
+        eval "mkdir -p ${server_cert_path} ${debug}"
+        eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/${winame}.pem --strip-components 1 ${debug}"
+        eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/${winame}-key.pem --strip-components 1 ${debug}"
+        eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
+        eval "rm -rf ${server_cert_path}/wazuh-install-files/ ${debug}"
         eval "chmod 500 ${server_cert_path} ${debug}"
         eval "chmod 400 ${server_cert_path}/* ${debug}"
         eval "chown root:root ${server_cert_path}/* ${debug}"

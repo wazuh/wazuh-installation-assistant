@@ -66,14 +66,6 @@ function buildInstaller() {
     grep -Ev '^#|^\s*$' ${resources_installer}/installVariables.sh >> "${output_script_path}"
     echo >> "${output_script_path}"
 
-    ## Configuration files as variables
-    configuration_files=($(find "${resources_config}" -type f))
-    config_file_name=($(eval "echo "${configuration_files[@]}" | sed 's|${resources_config}||g;s|/|_|g;s|.yml||g'"))
-    for index in "${!config_file_name[@]}"; do
-        echo "config_file${config_file_name[$index]}=\"$(cat "${configuration_files[$index]}" | sed 's|\"|\\\"|g;s|\$|\\\$|g')\"" >> "${output_script_path}"
-        echo >> "${output_script_path}"
-    done
-
     ## Sigint trap
     echo "trap installCommon_cleanExit SIGINT" >> "${output_script_path}"
 
