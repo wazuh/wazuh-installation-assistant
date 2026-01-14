@@ -8,7 +8,7 @@
 
 function dashboard_obtainNodeIp() {
 
-    if [ -z "${dashboard_ip}"]; then
+    if [ -z "${dashboard_ip}" ]; then
         if [ "${AIO}" ]; then
             dashboard_ip="${dashboard_node_ips[0]}"
         else 
@@ -30,27 +30,29 @@ function dashboard_configure() {
     dashboard_obtainNodeIp
     dashboard_copyCertificates "${debug}"
 
-    sed -i "s|server.host:.*|server.host: \"${dashboard_ip}\"|" /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}
-
     # dashboard configuration to connect to the indexer cluster
     if [ "${#indexer_node_names[@]}" -eq 1 ]; then
-        sed -i "s|opensearch.hosts:.*|opensearch.hosts: https://${indexer_node_ips[0]}:9200|" /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}
+        eval "sed -i 's|opensearch.hosts:.*|opensearch.hosts: https://${indexer_node_ips[0]}:9200|' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
     else
         ips_list="["
         for i in "${indexer_node_ips[@]}"; do
             ips_list+="\"https://${i}:9200\", "
         done
         ips_list=${ips_list%, }"]" # if there are more than one indexer, there will be a list of urls ["url1", "url2", ...]
-        sed -i "s|opensearch.hosts:.*|opensearch.hosts: ${ips_list}|" /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}
+        eval "sed -i 's|opensearch.hosts:.*|opensearch.hosts: ${ips_list}|' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
     fi
 
     # dashboard configuration to connect to the wazuh api
-    for i in "${!server_node_types[@]}"; do
-        if [[ "${server_node_types[i]}" == "master" ]]; then
-            wazuh_api_address=${server_node_ips[i]}
-        fi
-    done
-    sed -i "s|url:.*|url: https://${wazuh_api_address}|" /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}
+    if [ -n "${AIO}" ]; then
+        wazuh_api_address=${server_node_ips[0]}
+    else
+        for i in "${!server_node_types[@]}"; do
+            if [[ "${server_node_types[i]}" == "master" ]]; then
+                wazuh_api_address=${server_node_ips[i]}
+            fi
+        done
+    fi
+    eval "sed -i 's|url:.*|url: https://${wazuh_api_address}|' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
 
     common_logger "Wazuh dashboard post-install configuration finished."
 
@@ -61,7 +63,7 @@ function dashboard_copyCertificates() {
     common_logger -d "Copying Wazuh dashboard certificates."
     eval "rm -f ${dashboard_cert_path}/* ${debug}"
     if [ "${AIO}" ]; then
-        dashname="${dashboard_node_ips[0]}"
+        dashname="${dashboard_node_names[0]}"
     fi
     # else we assume that dashname is already set
 

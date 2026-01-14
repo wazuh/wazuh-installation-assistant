@@ -22,7 +22,7 @@ function indexer_configure() {
 
     if [ "${AIO}" ]; then
         indexer_ip="${indexer_node_ips[0]}"
-        indxname="${indexer_node_ips[0]}"
+        indxname="${indexer_node_names[0]}"
         # This variables are used to not overwrite the indexer_node* arrays
         indexer_configuration_ips=("${indexer_node_ips[0]}") # I'll take only the first ip
         indexer_configuration_names=("${indexer_node_names[0]}") # I'll take only the first name
@@ -37,31 +37,31 @@ function indexer_configure() {
         indexer_configuration_names=("${indexer_node_names[@]}") # I'll take all the names
     fi
 
-    sed -i "s|node.name:.*|node.name: ${indxname}|" /etc/wazuh-indexer/opensearch.yml ${debug}
-    sed -i "s|network.host:.*|network.host: ${indexer_ip}|" /etc/wazuh-indexer/opensearch.yml ${debug}
-    sed -i "/.*- \"node-.*/d" /etc/wazuh-indexer/opensearch.yml ${debug}
+    eval "sed -i 's|node.name:.*|node.name: ${indxname}|' /etc/wazuh-indexer/opensearch.yml ${debug}"
+    eval "sed -i 's|network.host:.*|network.host: ${indexer_ip}|' /etc/wazuh-indexer/opensearch.yml ${debug}"
+    eval "sed -i '/.*- \"node-.*/d' /etc/wazuh-indexer/opensearch.yml ${debug}"
 
     # cluster.initial_cluster_manager_nodes configuration
     indexer_master_nodes="cluster.initial_cluster_manager_nodes:\n"
     for node_name in "${indexer_configuration_names[@]}"; do
         indexer_master_nodes+="- \"${node_name}\"\n"
     done
-    sed -i "s|cluster.initial_cluster_manager_nodes:.*|${indexer_master_nodes}|" /etc/wazuh-indexer/opensearch.yml ${debug}
+    eval "sed -i 's|cluster.initial_cluster_manager_nodes:.*|${indexer_master_nodes}|' /etc/wazuh-indexer/opensearch.yml ${debug}"
 
     # seed_hosts configuration
     indexer_seed_hosts="discovery.seed_hosts:\n"
     for ip in "${indexer_configuration_ips[@]}"; do
         indexer_seed_hosts+="  - \"${ip}\"\n"
     done
-    sed -i "s|#discovery.seed_hosts:.*|${indexer_seed_hosts}|" /etc/wazuh-indexer/opensearch.yml ${debug}
+    eval "sed -i 's|#discovery.seed_hosts:.*|${indexer_seed_hosts}|' /etc/wazuh-indexer/opensearch.yml ${debug}"
     
     # CN configuration
-    sed -i "/.*- \"CN=node-.*/d" /etc/wazuh-indexer/opensearch.yml ${debug}
+    eval "sed -i '/.*- \"CN=node-.*/d' /etc/wazuh-indexer/opensearch.yml ${debug}"
     indexer_cn_nodes="plugins.security.nodes_dn:\n"
     for node_name in "${indexer_configuration_names[@]}"; do
         indexer_cn_nodes+="- \"CN=${node_name},OU=Wazuh,O=Wazuh,L=California,C=US\"\n"
     done
-    sed -i "s|plugins.security.nodes_dn:.*|${indexer_cn_nodes}|" /etc/wazuh-indexer/opensearch.yml ${debug}
+    eval "sed -i 's|plugins.security.nodes_dn:.*|${indexer_cn_nodes}|' /etc/wazuh-indexer/opensearch.yml ${debug}"
 
     indexer_copyCertificates
 
@@ -85,7 +85,7 @@ function indexer_copyCertificates() {
     eval "rm -f ${indexer_cert_path}/* ${debug}"
 
     if [ "${AIO}" ]; then
-        indxname="${indexer_node_ips[0]}"
+        indxname="${indexer_node_names[0]}"
     fi
 
     if [ -f "${tar_file}" ]; then
