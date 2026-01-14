@@ -11,7 +11,7 @@ function indexer_configure() {
     common_logger -d "Configuring Wazuh indexer."
 
     # Configure JVM options for Wazuh indexer
-    ram_gb=$(free -m | awk 'FNR == 2 {print $2}')
+    ram_mb=$(free -m | awk 'FNR == 2 {print $2}')
     ram="$(( ram_mb / 2 ))"
 
     if [ "${ram}" -eq "0" ]; then
@@ -118,8 +118,12 @@ function indexer_install() {
 
     common_logger "Starting Wazuh indexer installation."
 
-    download_dir="${base_path}/${download_packages_directory}"
-    
+    if [ -n "${offline_install}" ]; then
+        download_dir="${offline_packages_path}"
+    else
+        download_dir="${base_path}/${download_packages_directory}"
+    fi
+
     # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
         package_file=$(ls "${download_dir}"/wazuh-indexer*.rpm 2>/dev/null | head -n 1)

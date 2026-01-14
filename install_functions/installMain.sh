@@ -37,6 +37,9 @@ function getHelp() {
     echo -e "        -i,  --ignore-check"
     echo -e "                Ignore the check for minimum hardware requirements."
     echo -e ""
+    echo -e "        -id,  --install-dependencies"
+    echo -e "                Installs automatically the necessary dependencies for the installation."
+    echo -e ""
     echo -e "        -o,  --overwrite"
     echo -e "                Overwrites previously installed components. This will erase all the existing configuration and data."
     echo -e ""
@@ -110,6 +113,10 @@ function main() {
                 ;;
             "-i"|"--ignore-check")
                 ignore=1
+                shift 1
+                ;;
+            "-id"|"--install-dependencies")
+                install_dependencies=1
                 shift 1
                 ;;
             "-o"|"--overwrite")
@@ -217,7 +224,9 @@ function main() {
     fi
 
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
-        installCommon_installCheckDependencies
+        installCommon_scanDependencies
+        installCommon_installCheckDependencies "assistant"
+        installCommon_determinePorts
     elif [ -n "${offline_install}" ]; then
         offline_checkPrerequisites "wia_offline_dependencies" "${wia_offline_dependencies[@]}"
     fi
@@ -230,12 +239,14 @@ function main() {
     fi
 
     checks_arch
+
     if [ -n "${ignore}" ]; then
         common_logger -w "Hardware checks ignored."
     else
         common_logger "Verifying that your system meets the recommended minimum hardware requirements."
         checks_health
     fi
+
 
 # -------------- Preliminary checks and Prerequisites --------------------------------
 
@@ -271,7 +282,6 @@ function main() {
     if [ -n "${offline_install}" ]; then
         offline_checkPreinstallation
         offline_extractFiles
-        offline_importGPGKey
     fi
 
     if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
@@ -344,7 +354,7 @@ function main() {
 # -------------- Wazuh server case  ---------------------------------------
 
     if [ -n "${wazuh}" ]; then
-        common_logger "--- Wazuh server ---"
+        common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
@@ -365,7 +375,7 @@ function main() {
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_startCluster
-        common_logger "--- Wazuh server ---"
+        common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
@@ -385,6 +395,13 @@ function main() {
 
     if [ -n "${download}" ]; then
         common_logger "--- Download Packages ---"
+        if [ -n "${development}" ] && [ "${devrepo}" = "local" ]; then
+            checks_localArtifactURLs_exists
+        else
+            installCommon_downloadArtifactURLs
+        fi
+        checks_ArtifactURLs_format
+        offline_checkArtifactURLs_component_present
         offline_download
     fi
 
