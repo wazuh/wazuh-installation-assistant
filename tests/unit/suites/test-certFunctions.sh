@@ -173,25 +173,25 @@ test-10-generateElasticsearchcertificates-two-nodes-assert() {
 
 }
 
-function load-cert_generateFilebeatcertificates() {
-    @load_function "${base_dir}/wazuh-cert-tool.sh" cert_generateFilebeatcertificates
+function load-cert_generateServercertificates() {
+    @load_function "${base_dir}/wazuh-cert-tool.sh" cert_generateServercertificates
 }
 
-test-11-cert_generateFilebeatcertificates-no-nodes() {
-    load-cert_generateFilebeatcertificates
+test-11-cert_generateServercertificates-no-nodes() {
+    load-cert_generateServercertificates
     server_node_names=()
-    cert_generateFilebeatcertificates
+    cert_generateServercertificates
     @assert-success
 }
 
-test-12-cert_generateFilebeatcertificates-two-nodes() {
-    load-cert_generateFilebeatcertificates
+test-12-cert_generateServercertificates-two-nodes() {
+    load-cert_generateServercertificates
     server_node_names=("wazuh1" "wazuh2")
     server_node_ips=("1.1.1.1" "1.1.1.2")
-    cert_generateFilebeatcertificates
+    cert_generateServercertificates
 }
 
-test-12-cert_generateFilebeatcertificates-two-nodes-assert() {
+test-12-cert_generateServercertificates-two-nodes-assert() {
     cert_generateCertificateconfiguration "wazuh1" "1.1.1.1"
     openssl req -new -nodes -newkey rsa:2048 -keyout /tmp/wazuh-cert-tool/certs/wazuh1-key.pem -out /tmp/wazuh-cert-tool/certs/wazuh1.csr -config /tmp/wazuh-cert-tool/certs/wazuh1.conf -days 3650
     openssl x509 -req -in /tmp/wazuh-cert-tool/certs/wazuh1.csr -CA /tmp/wazuh-cert-tool/certs/root-ca.pem -CAkey /tmp/wazuh-cert-tool/certs/root-ca.key -CAcreateserial -out /tmp/wazuh-cert-tool/certs/wazuh1.pem -extfile /tmp/wazuh-cert-tool/certs/wazuh1.conf -extensions v3_req -days 3650

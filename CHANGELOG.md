@@ -1,6 +1,33 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [5.0.0]
+
+### Added
+
+- Back port install-dependencies option ([#557](https://github.com/wazuh/wazuh-installation-assistant/pull/557))
+- Add new internal users to the password generation process in the Password tool ([#540](https://github.com/wazuh/wazuh-installation-assistant/pull/540))
+- Remove filebeat references and replace wazuh.yml to opensearch_dashboards.yml in the password tool ([#539](https://github.com/wazuh/wazuh-installation-assistant/pull/539))
+- Remove all the custom option from the installation assistant ([#534](https://github.com/wazuh/wazuh-installation-assistant/pull/534))
+- Update the build workflow to upload config.yml ([#526](https://github.com/wazuh/wazuh-installation-assistant/pull/526))
+
+### Changed
+
+- Composite names update ([#562](https://github.com/wazuh/wazuh-installation-assistant/pull/562))
+- Change offline assistant install from repositories to packages ([#550](https://github.com/wazuh/wazuh-installation-assistant/pull/550))
+- Replace wazuh.yml references to opensearch_dashboards.yml in the installation assistant ([#545](https://github.com/wazuh/wazuh-installation-assistant/pull/545))
+- Change Filebeat references to server in the certs tool ([#528](https://github.com/wazuh/wazuh-installation-assistant/pull/528))
+
+### Fixed
+
+- Update Indexer cluster security initialization message ([#563](https://github.com/wazuh/wazuh-installation-assistant/pull/563))
+
+### Deleted
+
+- Remove hardcoded config files and use component defaults ([#572](https://github.com/wazuh/wazuh-installation-assistant/pull/572))
+- Delete all passwords change option and passwords file support ([#567](https://github.com/wazuh/wazuh-installation-assistant/pull/567))
+- Remove the Password Tool from the Installation Assistant files ([#560](https://github.com/wazuh/wazuh-installation-assistant/pull/560))
+
 ## [4.14.3]
 
 ### Added

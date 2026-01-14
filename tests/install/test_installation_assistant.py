@@ -85,7 +85,7 @@ def api_call_indexer(host,query,address,api_protocol,api_user,api_pass,api_port)
 
     else: # Executing query search
         if (api_pass != "" and api_pass != ""):
-            resp = requests.post(api_protocol + '://' + address + ':' + api_port + "/wazuh-alerts-4.x-*/_search",
+            resp = requests.post(api_protocol + '://' + address + ':' + api_port + "/wazuh-alerts-5.x-*/_search",
                         json=query,
                         auth=(api_user,
                         api_pass),
@@ -177,10 +177,6 @@ def test_check_wazuh_manager_apid():
 def test_check_wazuh_manager_clusterd():
     assert check_call("ps -xa | grep clusterd.py | grep -v grep", shell=True) != ""
 
-@pytest.mark.wazuh
-def test_check_filebeat_process():
-    assert check_call("ps -xa | grep \"/usr/share/filebeat/bin/filebeat\" | grep -v grep", shell=True) != ""
-
 @pytest.mark.indexer
 def test_check_indexer_process():
     assert check_call("ps -xa | grep wazuh-indexer | grep -v grep | cut -d \" \" -f15", shell=True) != ""
@@ -214,7 +210,7 @@ def test_check_log_errors():
         "ERROR: Could not send message through the cluster after '10' attempts"
 
     ]
-    
+
     with open('/var/ossec/logs/ossec.log', 'r') as f:
         for line in f.readlines():
             if 'ERROR' in line:

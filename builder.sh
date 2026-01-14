@@ -16,7 +16,7 @@ readonly resources_certs="${base_path_builder}/cert_tool"
 readonly resources_passwords="${base_path_builder}/passwords_tool"
 readonly resources_common="${base_path_builder}/common_functions"
 readonly resources_download="${base_path_builder}/downloader"
-source_branch="v4.14.3"
+source_branch="v5.0.0"
 
 function getHelp() {
 
@@ -66,14 +66,6 @@ function buildInstaller() {
     grep -Ev '^#|^\s*$' ${resources_installer}/installVariables.sh >> "${output_script_path}"
     echo >> "${output_script_path}"
 
-    ## Configuration files as variables
-    configuration_files=($(find "${resources_config}" -type f))
-    config_file_name=($(eval "echo "${configuration_files[@]}" | sed 's|${resources_config}||g;s|/|_|g;s|.yml||g'"))
-    for index in "${!config_file_name[@]}"; do
-        echo "config_file${config_file_name[$index]}=\"$(cat "${configuration_files[$index]}" | sed 's|\"|\\\"|g;s|\$|\\\$|g')\"" >> "${output_script_path}"
-        echo >> "${output_script_path}"
-    done
-
     ## Sigint trap
     echo "trap installCommon_cleanExit SIGINT" >> "${output_script_path}"
 
@@ -102,9 +94,6 @@ function buildInstaller() {
 
     ## Certificate tool library functions
     sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_certs}/certFunctions.sh" >> "${output_script_path}"
-
-    ## Passwords tool library functions
-    sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_passwords}/passwordsFunctions.sh" >> "${output_script_path}"
 
     ## Main function and call to it
     echo >> "${output_script_path}"

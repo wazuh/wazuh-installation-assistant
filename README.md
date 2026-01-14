@@ -45,9 +45,9 @@ The Wazuh installation assistant uses the following tools to enhance security du
 ## User Guide
 
 ### Downloads
-- [Download the Wazuh installation assistant.](https://packages.wazuh.com/4.14/wazuh-install.sh)
-- [Download the Wazuh password tool.](https://packages.wazuh.com/4.14/wazuh-passwords-tool.sh)
-- [Download the Wazuh cert tool.](https://packages.wazuh.com/4.14/wazuh-certs-tool.sh)
+- [Download the Wazuh installation assistant.](https://packages.wazuh.com/5.0/wazuh-install.sh)
+- [Download the Wazuh password tool.](https://packages.wazuh.com/5.0/wazuh-passwords-tool.sh)
+- [Download the Wazuh cert tool.](https://packages.wazuh.com/5.0/wazuh-certs-tool.sh)
 
 ### Build the scripts
 As an alternative to downloading, use the `builder.sh` script to build the Wazuh installation assistant and tools:
@@ -70,14 +70,14 @@ As an alternative to downloading, use the `builder.sh` script to build the Wazuh
 
 ## Use Cases
 
-Start by downloading the [configuration file](https://packages.wazuh.com/4.14/config.yml) and replace the node names and IP values with the corresponding ones.
+Start by downloading the [configuration file](https://packages.wazuh.com/5.0/config.yml) and replace the node names and IP values with the corresponding ones.
 
 > [!NOTE]
 > It is not necessary to download the Wazuh password tool and the Wazuh cert tool to use the Wazuh installation assistant. The Wazuh installation assistant has embedded the previous tools.
 
 ### Common commands
 
-1. Generate the passwords and certificates. Needs the [configuration file](https://packages.wazuh.com/4.14/config.yml).
+1. Generate the passwords and certificates. Needs the [configuration file](https://packages.wazuh.com/5.0/config.yml).
    ```bash
    bash wazuh-install.sh -g
    ```
@@ -122,23 +122,19 @@ All the options for the Wazuh installation assistant are listed in the following
 | Option | Description |
 |---------------------------------------|----------------------------------------|
 | `-a`, `--all-in-one`                  | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard.  |
-| `-c`, `--config-file <path-to-config-yml>` | Path to the configuration file used to generate `wazuh-install-files.tar` file containing the files needed for installation. By default, the Wazuh installation assistant will search for a file named `config.yml` in the same path as the script.  |
 | `-dw`, `--download-wazuh <deb,rpm>`   | Download all the packages necessary for offline installation. Specify the type of packages to download for offline installation (`rpm`, `deb`).  |
-| `-fd`, `--force-install-dashboard`    | Force Wazuh dashboard installation to continue even when it is not capable of connecting to the Wazuh indexer.  |
 | `-g`, `--generate-config-files`       | Generate `wazuh-install-files.tar` file containing the files needed for installation from `config.yml`. In distributed deployments, you will need to copy this file to all hosts.  |
 | `-h`, `--help`                        | Display this help and exit.  |
 | `-i`, `--ignore-check`                | Ignore the check for minimum hardware requirements.  |
 | `-o`, `--overwrite`                   | Overwrite previously installed components. This will erase all the existing configuration and data.  |
 | `-of`, `--offline-installation`       | Perform an offline installation. This option must be used with `-a`, `-ws`, `-s`, `-wi`, or `-wd`.  |
-| `-p`, `--port`                        | Specify the Wazuh web user interface port. Default is the `443` TCP port. Recommended ports are: `8443`, `8444`, `8080`, `8888`, `9000`.  |
 | `-s`, `--start-cluster`               | Initialize Wazuh indexer cluster security settings.  |
-| `-t`, `--tar <path-to-certs-tar>`     | Path to tar file containing certificate files. By default, the Wazuh installation assistant will search for a file named `wazuh-install-files.tar` in the same path as the script.  |
 | `-u`, `--uninstall`                   | Uninstall all Wazuh components. This will erase all the existing configuration and data.  |
 | `-v`, `--verbose`                     | Show the complete installation output.  |
 | `-V`, `--version`                     | Show the version of the script and Wazuh packages.  |
 | `-wd`, `--wazuh-dashboard <dashboard-node-name>`  | Install and configure Wazuh dashboard, used for distributed deployments.  |
 | `-wi`, `--wazuh-indexer <indexer-node-name>`      | Install and configure Wazuh indexer, used for distributed deployments.  |
-| `-ws`, `--wazuh-server <server-node-name>`        | Install and configure Wazuh manager and Filebeat, used for distributed deployments.  |
+| `-ws`, `--wazuh-server <server-node-name>`        | Install and configure Wazuh manager, used for distributed deployments.  |
 
 
 ## Contribute

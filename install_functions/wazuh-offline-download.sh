@@ -8,6 +8,52 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
+function offline_checkArtifactURLs_component_present() {
+    common_logger -d "Checking required components are present in ${artifact_urls_file_name} file for download."
+    common_logger -d "Architecture: ${arch}"
+    common_logger -d "Package type: ${package_type}"
+    artifact_file="${base_path}/${artifact_urls_file_name}"
+    
+    # Determine architecture suffix for artifact keys based on arch variable
+    if [ "${arch}" == "x86_64" ] || [ "${arch}" == "amd64" ]; then
+        arch_suffix="amd64"
+    elif [ "${arch}" == "aarch64" ] || [ "${arch}" == "arm64" ]; then
+        arch_suffix="arm64"
+    else
+        common_logger -e "Unsupported architecture: ${arch}"
+        exit 1
+    fi
+
+    indexer_key="wazuh_indexer_${arch_suffix}_${package_type}"
+    dashboard_key="wazuh_dashboard_${arch_suffix}_${package_type}"
+    manager_key="wazuh_manager_${arch_suffix}_${package_type}"
+
+    # Check that all required artifacts exist for offline download
+    missing_keys=()
+    
+    if ! grep -q "^${indexer_key}:" "$artifact_file"; then
+        missing_keys+=("${indexer_key}")
+    fi
+    
+    if ! grep -q "^${dashboard_key}:" "$artifact_file"; then
+        missing_keys+=("${dashboard_key}")
+    fi
+    
+    if ! grep -q "^${manager_key}:" "$artifact_file"; then
+        missing_keys+=("${manager_key}")
+    fi
+    
+    if [ "${#missing_keys[@]}" -gt 0 ]; then
+        common_logger -e "Missing required artifact keys in ${artifact_urls_file_name}:"
+        for key in "${missing_keys[@]}"; do
+            common_logger -e "  - ${key}"
+        done
+        exit 1
+    fi
+    
+    common_logger -d "All required artifact keys found for offline download."
+}
+
 function offline_download() {
 
   common_logger "Starting Wazuh packages download."
@@ -21,189 +67,55 @@ function offline_download() {
     eval "mkdir -m700 -p ${dest_path} ${debug}" # Create folder if it does not exist
   fi
 
-  packages_to_download=( "manager" "filebeat" "indexer" "dashboard" )
-
-  manager_revision="1"
-  indexer_revision="1"
-  dashboard_revision="1"
-  filebeat_revision="2"
-
-  if [ -n "${development}" ]; then
-    filebeat_config_file="https://${bucket}/${wazuh_major}/tpl/wazuh/filebeat/filebeat.yml"
-    if [ "${package_type}" == "rpm" ]; then
-      manager_rpm_base_url="${repobaseurl}/yum"
-      indexer_rpm_base_url="${repobaseurl}/yum"
-      dashboard_rpm_base_url="${repobaseurl}/yum"
-      filebeat_rpm_base_url="${repobaseurl}/yum"
-    elif [ "${package_type}" == "deb" ]; then
-      manager_deb_base_url="${repobaseurl}/apt/pool/main/w/wazuh-manager"
-      indexer_deb_base_url="${repobaseurl}/apt/pool/main/w/wazuh-indexer"
-      dashboard_deb_base_url="${repobaseurl}/apt/pool/main/w/wazuh-dashboard"
-      filebeat_deb_base_url="${repobaseurl}/apt/pool/main/f/filebeat"
-    fi
-  fi
-
-  if [ "${package_type}" == "rpm" ]; then
-    manager_rpm_package="wazuh-manager-${wazuh_version}-${manager_revision}.${arch}.${package_type}"
-    indexer_rpm_package="wazuh-indexer-${wazuh_version}-${indexer_revision}.${arch}.${package_type}"
-    dashboard_rpm_package="wazuh-dashboard-${wazuh_version}-${dashboard_revision}.${arch}.${package_type}"
-    filebeat_rpm_package="filebeat-${offline_filebeat_version}-${filebeat_revision}.${arch}.${package_type}"
-    manager_base_url="${manager_rpm_base_url}"
-    indexer_base_url="${indexer_rpm_base_url}"
-    dashboard_base_url="${dashboard_rpm_base_url}"
-    filebeat_base_url="${filebeat_rpm_base_url}"
-    manager_package="${manager_rpm_package}"
-    indexer_package="${indexer_rpm_package}"
-    dashboard_package="${dashboard_rpm_package}"
-    filebeat_package="${filebeat_rpm_package}"
-  elif [ "${package_type}" == "deb" ]; then
-    manager_deb_package="wazuh-manager_${wazuh_version}-${manager_revision}_${arch}.${package_type}"
-    indexer_deb_package="wazuh-indexer_${wazuh_version}-${indexer_revision}_${arch}.${package_type}"
-    dashboard_deb_package="wazuh-dashboard_${wazuh_version}-${dashboard_revision}_${arch}.${package_type}"
-    filebeat_deb_package="filebeat_${offline_filebeat_version}-${filebeat_revision}_${arch}.${package_type}"
-    manager_base_url="${manager_deb_base_url}"
-    indexer_base_url="${indexer_deb_base_url}"
-    dashboard_base_url="${dashboard_deb_base_url}"
-    filebeat_base_url="${filebeat_deb_base_url}"
-    manager_package="${manager_deb_package}"
-    indexer_package="${indexer_deb_package}"
-    dashboard_package="${dashboard_deb_package}"
-    filebeat_package="${filebeat_deb_package}"
+  # Determine architecture suffix for artifact keys based on arch variable
+  if [ "${arch}" == "x86_64" ] || [ "${arch}" == "amd64" ]; then
+    arch_suffix="amd64"
+  elif [ "${arch}" == "aarch64" ] || [ "${arch}" == "arm64" ]; then
+    arch_suffix="arm64"
   else
-    common_logger "Unsupported package type: ${package_type}"
+    common_logger -e "Unsupported architecture: ${arch}"
     exit 1
   fi
 
-  while common_curl -s -I -o /dev/null -w "%{http_code}" "${manager_base_url}/${manager_package}" --max-time 300 --retry 5 --retry-delay 5 --fail | grep -q "200"; do
-    manager_revision=$((manager_revision+1))
-    if [ "${package_type}" == "rpm" ]; then
-      manager_rpm_package="wazuh-manager-${wazuh_version}-${manager_revision}.${arch}.rpm"
-      manager_package="${manager_rpm_package}"
-    else
-      manager_deb_package="wazuh-manager_${wazuh_version}-${manager_revision}_${arch}.deb"
-      manager_package="${manager_deb_package}"
-    fi
-  done
-  if [ "$manager_revision" -gt 1 ] && [ "$(common_curl -s -I -o /dev/null -w "%{http_code}" "${manager_base_url}/${manager_package}" --max-time 300 --retry 5 --retry-delay 5 --fail)" -ne "200" ]; then
-    manager_revision=$((manager_revision-1))
-    if [ "${package_type}" == "rpm" ]; then
-      manager_rpm_package="wazuh-manager-${wazuh_version}-${manager_revision}.${arch}.rpm"
-    else
-      manager_deb_package="wazuh-manager_${wazuh_version}-${manager_revision}_${arch}.deb"
-    fi
-  fi
-  common_logger -d "Wazuh manager package revision fetched."
-
-  while common_curl -s -I -o /dev/null -w "%{http_code}" "${filebeat_base_url}/${filebeat_package}" --max-time 300 --retry 5 --retry-delay 5 --fail | grep -q "200"; do
-    filebeat_revision=$((filebeat_revision+1))
-    if [ "${package_type}" == "rpm" ]; then
-      filebeat_rpm_package="filebeat-${offline_filebeat_version}-${filebeat_revision}.${arch}.rpm"
-      filebeat_package="${filebeat_rpm_package}"
-    else
-      filebeat_deb_package="filebeat_${offline_filebeat_version}-${filebeat_revision}_${arch}.deb"
-      filebeat_package="${filebeat_deb_package}"
-    fi
-  done
-  if [ "$filebeat_revision" -gt 1 ] && [ "$(common_curl -s -I -o /dev/null -w "%{http_code}" "${filebeat_base_url}/${filebeat_package}" --max-time 300 --retry 5 --retry-delay 5 --fail)" -ne "200" ]; then
-    filebeat_revision=$((filebeat_revision-1))
-    if [ "${package_type}" == "rpm" ]; then
-      filebeat_rpm_package="filebeat-${offline_filebeat_version}-${filebeat_revision}.${arch}.rpm"
-    else
-      filebeat_deb_package="filebeat_${offline_filebeat_version}-${filebeat_revision}_${arch}.deb"
-    fi
-  fi
-  common_logger -d "Filebeat package revision fetched."
-
-  while common_curl -s -I -o /dev/null -w "%{http_code}" "${indexer_base_url}/${indexer_package}" --max-time 300 --retry 5 --retry-delay 5 --fail | grep -q "200"; do
-    indexer_revision=$((indexer_revision+1))
-    if [ "${package_type}" == "rpm" ]; then
-      indexer_rpm_package="wazuh-indexer-${wazuh_version}-${indexer_revision}.${arch}.rpm"
-      indexer_package="${indexer_rpm_package}"
-    else
-      indexer_deb_package="wazuh-indexer_${wazuh_version}-${indexer_revision}_${arch}.deb"
-      indexer_package="${indexer_deb_package}"
-    fi
-  done
-  if [ "$indexer_revision" -gt 1 ] && [ "$(common_curl -s -I -o /dev/null -w "%{http_code}" "${indexer_base_url}/${indexer_package}" --max-time 300 --retry 5 --retry-delay 5 --fail)" -ne "200" ]; then
-    indexer_revision=$((indexer_revision-1))
-    if [ "${package_type}" == "rpm" ]; then
-      indexer_rpm_package="wazuh-indexer-${wazuh_version}-${indexer_revision}.${arch}.rpm"
-    else
-      indexer_deb_package="wazuh-indexer_${wazuh_version}-${indexer_revision}_${arch}.deb"
-    fi
-  fi
-  common_logger -d "Wazuh indexer package revision fetched."
-
-  while common_curl -s -I -o /dev/null -w "%{http_code}" "${dashboard_base_url}/${dashboard_package}" --max-time 300 --retry 5 --retry-delay 5 --fail | grep -q "200"; do
-    dashboard_revision=$((dashboard_revision+1))
-    if [ "${package_type}" == "rpm" ]; then
-      dashboard_rpm_package="wazuh-dashboard-${wazuh_version}-${dashboard_revision}.${arch}.rpm"
-      dashboard_package="${dashboard_rpm_package}"
-    else
-      dashboard_deb_package="wazuh-dashboard_${wazuh_version}-${dashboard_revision}_${arch}.deb"
-      dashboard_package="${dashboard_deb_package}"
-    fi
-  done
-  if [ "$dashboard_revision" -gt 1 ] && [ "$(common_curl -s -I -o /dev/null -w "%{http_code}" "${dashboard_base_url}/${dashboard_package}" --max-time 300 --retry 5 --retry-delay 5 --fail)" -ne "200" ]; then
-    dashboard_revision=$((dashboard_revision-1))
-    if [ "${package_type}" == "rpm" ]; then
-      dashboard_rpm_package="wazuh-dashboard-${wazuh_version}-${dashboard_revision}.${arch}.rpm"
-    else
-      dashboard_deb_package="wazuh-dashboard_${wazuh_version}-${dashboard_revision}_${arch}.deb"
-    fi
-  fi
-  common_logger -d "Wazuh dashboard package revision fetched."
-
-  for package in "${packages_to_download[@]}"
-  do
-    common_logger -d "Downloading Wazuh ${package} package..."
-    package_name="${package}_${package_type}_package"
-    eval "package_base_url=${package}_${package_type}_base_url"
-
-    if output=$(common_curl -sSo "${dest_path}/${!package_name}" "${!package_base_url}/${!package_name}" --max-time 300 --retry 5 --retry-delay 5 --fail 2>&1); then
-      common_logger "The ${package} package was downloaded."
-    else
-      common_logger -e "The ${package} package could not be downloaded. Exiting."
-      eval "echo \${output} ${debug}"
+  artifact_file="${base_path}/${artifact_urls_file_name}"
+  
+  # Define components to download
+  components=("wazuh_indexer" "wazuh_dashboard" "wazuh_manager")
+  
+  for component in "${components[@]}"; do
+    # Build the artifact key
+    artifact_key="${component}_${arch_suffix}_${package_type}"
+    
+    # Get the URL from the artifact file
+    component_url=$(grep "^${artifact_key}:" "$artifact_file" | cut -d' ' -f2- | tr -d '"' | xargs)
+    
+    if [ -z "${component_url}" ]; then
+      common_logger -e "Could not find URL for ${artifact_key} in ${artifact_urls_file_name}"
       exit 1
     fi
-
+    
+    # Extract filename from URL (remove query parameters after ?)
+    component_filename=$(basename "${component_url%%\?*}")
+    component_filepath="${dest_path}/${component_filename}"
+    
+    common_logger "Downloading ${component} package: ${component_filename}"
+    
+    # Download the component to the destination directory
+    common_curl -sSLo '${component_filepath}' '${component_url}' --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}
+    
+    if [ ! -f "${component_filepath}" ]; then
+      common_logger -e "Failed to download ${component} from ${component_url}."
+      exit 1
+    fi
+    
+    common_logger "The ${component} package was downloaded."
   done
 
   common_logger "The packages are in ${dest_path}"
 
-# --------------------------------------------------
-
-  common_logger "Downloading configuration files and assets."
-  dest_path="${base_dest_folder}/wazuh-files"
-
-  if [ -d "${dest_path}" ]; then
-    eval "rm -f ${dest_path}/* ${debug}" # Clean folder before downloading specific versions
-    eval "chmod 700 ${dest_path} ${debug}"
-  else
-    eval "mkdir -m700 -p ${dest_path} ${debug}" # Create folder if it does not exist
-  fi
-
-  files_to_download=( "${wazuh_gpg_key}" "${filebeat_config_file}" "${filebeat_wazuh_template}" "${filebeat_wazuh_module}" )
-
-  eval "cd ${dest_path}"
-  for file in "${files_to_download[@]}"
-  do
-    common_logger -d "Downloading ${file}..."
-    if output=$(common_curl -sSO ${file} --max-time 300 --retry 5 --retry-delay 5 --fail 2>&1); then
-        common_logger "The resource ${file} was downloaded."
-    else
-        common_logger -e "The resource ${file} could not be downloaded. Exiting."
-        eval "echo \${output} ${debug}"
-        exit 1
-    fi
-
-  done
-  eval "cd - > /dev/null"
-
   eval "chmod 500 ${base_dest_folder} ${debug}"
 
-  common_logger "The configuration files and assets are in wazuh-offline.tar.gz"
+  common_logger "Creating wazuh-offline.tar.gz with all packages."
 
   eval "tar -czf ${base_dest_folder}.tar.gz ${base_dest_folder} ${debug}"
   eval "chmod -R 700 ${base_dest_folder} && rm -rf ${base_dest_folder} ${debug}"

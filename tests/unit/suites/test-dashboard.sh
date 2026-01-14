@@ -6,10 +6,10 @@ source "${base_dir}"/bach.sh
 @setup-test {
     @ignore common_logger
     k_certs_path="/etc/wazuh-dashboard/certs/"
-    wazuh_version="4.14.3"
+    wazuh_version="5.0.0"
     elasticsearch_oss_version="7.10.2"
     wazuh_kibana_plugin_revision="1"
-    repobaseurl="https://packages.wazuh.com/4.x"
+    repobaseurl="https://packages.wazuh.com/5.x"
     kibana_wazuh_plugin="${repobaseurl}/ui/kibana/wazuh_kibana-${wazuh_version}_${elasticsearch_oss_version}-${wazuh_kibana_plugin_revision}.zip"
 }
 
@@ -55,7 +55,7 @@ test-03-dashboard_install-yum() {
     load-dashboard_install
     sys_type="yum"
     sep="-"
-    wazuh_version="4.14.3"
+    wazuh_version="5.0.0"
     wazuh_revision="1"
     dashboard_install
 }
@@ -68,7 +68,7 @@ test-ASSERT-FAIL-04-dashboard_install-yum-error() {
     load-dashboard_install
     sys_type="yum"
     sep="-"
-    wazuh_version="4.14.3"
+    wazuh_version="5.0.0"
     wazuh_revision="1"
     @mockfalse yum install wazuh-dashboard-1.13.2-1 -y
     dashboard_install
@@ -78,7 +78,7 @@ test-05-dashboard_install-apt() {
     load-dashboard_install
     sys_type="apt-get"
     sep="="
-    wazuh_version="4.14.3"
+    wazuh_version="5.0.0"
     wazuh_revision="1"
     dashboard_install
 }
@@ -91,7 +91,7 @@ test-ASSERT-FAIL-06-dashboard_install-apt-error() {
     load-dashboard_install
     sys_type="apt-get"
     sep="="
-    wazuh_version="4.14.3"
+    wazuh_version="5.0.0"
     wazuh_revision="1"
     @mockfalse apt install wazuh-dashboard=1.13.2-1 -y
     dashboard_install
@@ -162,7 +162,7 @@ test-10-dashboard_initialize-distributed-one-kibana-node-one-wazuh-node-curl-cor
 
 test-10-dashboard_initialize-distributed-one-kibana-node-one-wazuh-node-curl-correct-assert() {
     installCommon_getPass "admin"
-    sed -i 's,url: https://localhost,url: https://2.2.2.2,g' /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+    sed -i 's,url: https://localhost,url: https://2.2.2.2,g' /etc/wazuh-dashboard/opensearch_dashboards.yml
 }
 
 test-ASSERT-FAIL-11-dashboard_initialize-distributed-one-kibana-node-one-wazuh-node-curl-error() {
@@ -190,7 +190,7 @@ test-12-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-nodes-curl-c
 
 test-12-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-nodes-curl-correct-assert() {
     installCommon_getPass "admin"
-    sed -i 's,url: https://localhost,url: https://1.1.2.2,g' /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+    sed -i 's,url: https://localhost,url: https://1.1.2.2,g' /etc/wazuh-dashboard/opensearch_dashboards.yml
 }
 
 test-ASSERT-FAIL-13-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-nodes-curl-error() {
@@ -233,7 +233,7 @@ test-14-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-nodes-curl-e
     sleep  10
     sleep  10
     sleep  10
-    sed  -i  's,url: https://localhost,url: https://1.1.2.2,g'  /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+    sed  -i  's,url: https://localhost,url: https://1.1.2.2,g'  /etc/wazuh-dashboard/opensearch_dashboards.yml
 }
 
 function load-dashboard_initializeAIO() {

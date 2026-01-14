@@ -6,22 +6,6 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-function installCommon_addCentOSRepository() {
-
-    local repo_name="$1"
-    local repo_description="$2"
-    local repo_baseurl="$3"
-
-    echo "[$repo_name]" >> "${centos_repo}"
-    echo "name=${repo_description}" >> "${centos_repo}"
-    echo "baseurl=${repo_baseurl}" >> "${centos_repo}"
-    echo 'gpgcheck=1' >> "${centos_repo}"
-    echo 'enabled=1' >> "${centos_repo}"
-    echo "gpgkey=file://${centos_key}" >> "${centos_repo}"
-    echo '' >> "${centos_repo}"
-
-}
-
 function installCommon_cleanExit() {
 
     rollback_conf=""
@@ -44,67 +28,30 @@ function installCommon_cleanExit() {
 
 }
 
-function installCommon_addWazuhRepo() {
-
-    common_logger -d "Adding the Wazuh repository."
-
-    if [ -n "${development}" ]; then
-        if [ "${sys_type}" == "yum" ]; then
-            eval "rm -f /etc/yum.repos.d/wazuh.repo ${debug}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            eval "rm -f /etc/apt/sources.list.d/wazuh.list ${debug}"
-        fi
-    fi
-
-    if [ ! -f "/etc/yum.repos.d/wazuh.repo" ] && [ ! -f "/etc/zypp/repos.d/wazuh.repo" ] && [ ! -f "/etc/apt/sources.list.d/wazuh.list" ] ; then
-        if [ "${sys_type}" == "yum" ]; then
-            eval "rpm --import ${repogpg} ${debug}"
-            if [ "${PIPESTATUS[0]}" != 0 ]; then
-                common_logger -e "Cannot import Wazuh GPG key"
-                exit 1
-            fi
-            eval "(echo -e '[wazuh]\ngpgcheck=1\ngpgkey=${repogpg}\nenabled=1\nname=EL-\${releasever} - Wazuh\nbaseurl='${repobaseurl}'/yum/\nprotect=1' | tee /etc/yum.repos.d/wazuh.repo)" "${debug}"
-            eval "chmod 644 /etc/yum.repos.d/wazuh.repo ${debug}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            eval "common_curl -s ${repogpg} --max-time 300 --retry 5 --retry-delay 5 --fail | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import - ${debug}"
-            if [ "${PIPESTATUS[0]}" != 0 ]; then
-                common_logger -e "Cannot import Wazuh GPG key"
-                exit 1
-            fi
-            eval "chmod 644 /usr/share/keyrings/wazuh.gpg ${debug}"
-            eval "(echo \"deb [signed-by=/usr/share/keyrings/wazuh.gpg] ${repobaseurl}/apt/ ${reporelease} main\" | tee /etc/apt/sources.list.d/wazuh.list)" "${debug}"
-            eval "apt-get update -q ${debug}"
-            eval "chmod 644 /etc/apt/sources.list.d/wazuh.list ${debug}"
-        fi
-    else
-        common_logger -d "Wazuh repository already exists. Skipping addition."
-    fi
-
-    if [ -n "${development}" ]; then
-        common_logger "Wazuh development repository added."
-    else
-        common_logger "Wazuh repository added."
-    fi
-}
-
 function installCommon_aptInstall() {
 
     package="${1}"
     version="${2}"
     attempt=0
-    if [ -n "${version}" ]; then
-        installer=${package}${sep}${version}
+
+    # Determine the installer package
+    if [[ "${package}" == *.deb ]]; then
+        installer="${package}"
+    elif [ -n "${version}" ]; then
+        installer="${package}${sep}${version}"
     else
-        installer=${package}
+        installer="${package}"
     fi
 
-    # Offline installation case: get package name and install it
-    if [ -n "${offline_install}" ]; then
+    # Override with offline package if needed
+    if [ -n "${offline_install}" ] && [[ "${package}" != *.deb ]]; then
         package_name=$(ls ${offline_packages_path} | grep ${package})
         installer="${offline_packages_path}/${package_name}"
     fi
 
+    # Build the installation command
     command="DEBIAN_FRONTEND=noninteractive apt-get install ${installer} -y -q"
+
     common_checkAptLock
 
     if [ "${attempt}" -ne "${max_attempts}" ]; then
@@ -146,45 +93,44 @@ function installCommon_aptInstallList(){
 
 }
 
-function installCommon_changePasswordApi() {
-
-    common_logger -d "Changing API passwords."
-
-    #Change API password tool
-    if [ -n "${changeall}" ]; then
-        for i in "${!api_passwords[@]}"; do
-            if [ -n "${wazuh}" ] || [ -n "${AIO}" ]; then
-                passwords_getApiUserId "${api_users[i]}"
-                WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
-                eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
-                if [ "${api_users[i]}" == "${adminUser}" ]; then
-                    sleep 1
-                    adminPassword="${api_passwords[i]}"
-                    passwords_getApiToken
-                fi
-            fi
-            if [ "${api_users[i]}" == "wazuh-wui" ] && { [ -n "${dashboard}" ] || [ -n "${AIO}" ]; }; then
-                passwords_changeDashboardApiPassword "${api_passwords[i]}"
-            fi
-        done
-    else
-        if [ -n "${wazuh}" ] || [ -n "${AIO}" ]; then
-            passwords_getApiUserId "${nuser}"
-            WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-            eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
-        fi
-        if [ "${nuser}" == "wazuh-wui" ] && { [ -n "${dashboard}" ] || [ -n "${AIO}" ]; }; then
-                passwords_changeDashboardApiPassword "${password}"
-        fi
-    fi
-
-}
-
 function installCommon_createCertificates() {
 
     common_logger -d "Creating Wazuh certificates."
     if [ -n "${AIO}" ]; then
-        eval "installCommon_getConfig certificate/config_aio.yml ${config_file} ${debug}"
+        #Create download directory if it doesn't exist
+        download_dir="${base_path}/${download_packages_directory}"
+        if [ ! -d "${download_dir}" ]; then
+            eval "mkdir -p ${download_dir} ${debug}"
+            if [ ! -d "${download_dir}" ]; then
+                common_logger -e "Failed to create download directory: ${download_dir}"
+                exit 1
+            fi
+        fi
+
+        artifact_file="${base_path}/${artifact_urls_file_name}"
+        artifact_key="wazuh_config_yml"
+        config_filename=$(basename "${config_file}")
+        component_url=$(grep "^${artifact_key}:" "$artifact_file" | cut -d' ' -f2- | tr -d '"' | xargs)
+        component_filepath="${download_dir}/${config_filename}"
+
+        common_logger -d "Downloading configuration file for the AIO installation."
+        common_curl -sSLo '${component_filepath}' '${component_url}' --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}
+        mv "${download_dir}/${config_filename}" "${config_file}"
+
+        if [ ! -f "${config_file}" ]; then
+            common_logger -e "Failed to download te configuration file from ${component_url}."
+            installCommon_rollBack
+            exit 1
+        fi
+        
+        common_logger -d "Configuration file downloaded successfully"
+
+        eval "sed -i 's|- name: node-1|- name: wazuh-indexer|' '${config_file}'" ${debug}
+        eval "sed -i 's|ip: \"<indexer-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
+        eval "sed -i 's|- name: wazuh-1|- name: wazuh-server|' '${config_file}'" ${debug}
+        eval "sed -i 's|ip: \"<wazuh-manager-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
+        eval "sed -i 's|- name: dashboard|- name: wazuh-dashboard|' '${config_file}'" ${debug}
+        eval "sed -i 's|ip: \"<dashboard-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
     fi
 
     cert_readConfig
@@ -199,7 +145,7 @@ function installCommon_createCertificates() {
     cert_generateRootCAcertificate
     cert_generateAdmincertificate
     cert_generateIndexercertificates
-    cert_generateFilebeatcertificates
+    cert_generateServercertificates
     cert_generateDashboardcertificates
     cert_cleanFiles
     eval "chmod 400 /tmp/wazuh-certificates/* ${debug}"
@@ -223,17 +169,6 @@ function installCommon_createInstallFiles() {
     if eval "mkdir /tmp/wazuh-install-files ${debug}"; then
         common_logger "Generating configuration files."
 
-        dep="openssl"
-        if [ "${sys_type}" == "yum" ]; then
-            installCommon_yumInstallList "${dep}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            installCommon_aptInstallList "${dep}"
-        fi
-
-        if [ "${#not_installed[@]}" -gt 0 ]; then
-            wia_dependencies_installed+=("${dep}")
-        fi
-
         if [ -n "${configurations}" ]; then
             cert_checkOpenSSL
         fi
@@ -241,89 +176,123 @@ function installCommon_createInstallFiles() {
         if [ -n "${server_node_types[*]}" ]; then
             installCommon_createClusterKey
         fi
-        gen_file="/tmp/wazuh-install-files/wazuh-passwords.txt"
-        passwords_generatePasswordFile
         eval "cp '${config_file}' '/tmp/wazuh-install-files/config.yml' ${debug}"
         eval "chown root:root /tmp/wazuh-install-files/* ${debug}"
         eval "tar -zcf '${tar_file}' -C '/tmp/' wazuh-install-files/ ${debug}"
         eval "rm -rf '/tmp/wazuh-install-files' ${debug}"
 	    eval "rm -rf ${config_file} ${debug}"
-        common_logger "Created ${tar_file_name}. It contains the Wazuh cluster key, certificates, and passwords necessary for installation."
+        common_logger "Created ${tar_file_name}. It contains the Wazuh cluster key and the certificates necessary for installation."
     else
         common_logger -e "Unable to create /tmp/wazuh-install-files"
         exit 1
     fi
 }
 
-function installCommon_changePasswords() {
+function installCommon_determinePorts {
 
-    common_logger -d "Setting Wazuh indexer cluster passwords."
-    if [ -f "${tar_file}" ]; then
-        eval "tar -xf ${tar_file} -C /tmp wazuh-install-files/wazuh-passwords.txt ${debug}"
-        p_file="/tmp/wazuh-install-files/wazuh-passwords.txt"
-        common_checkInstalled
-        if [ -n "${start_indexer_cluster}" ] || [ -n "${AIO}" ]; then
-            changeall=1
-            passwords_readUsers
-        else
-            no_indexer_backup=1
-        fi
-        if { [ -n "${wazuh}" ] || [ -n "${AIO}" ]; } && { [ "${server_node_types[pos]}" == "master" ] || [ "${#server_node_names[@]}" -eq 1 ]; }; then
-            passwords_getApiToken
-            passwords_getApiUsers
-            passwords_getApiIds
-        else
-            api_users=( wazuh wazuh-wui )
-        fi
-        installCommon_readPasswordFileUsers
-    else
-        common_logger -e "Cannot find passwords file. Exiting"
-        installCommon_rollBack
+    used_ports=()
+
+    if [ -n "${AIO}" ]; then
+        used_ports+=( "${wazuh_aio_ports[@]}" )
+    elif [ -n "${wazuh}" ]; then
+        used_ports+=( "${wazuh_manager_ports[@]}" )
+    elif [ -n "${indexer}" ]; then
+        used_ports+=( "${wazuh_indexer_ports[@]}" )
+    elif [ -n "${dashboard}" ]; then
+        used_ports+=( "${wazuh_dashboard_port[@]}" )
+    fi
+}
+
+function installCommon_downloadArtifactURLs() {
+
+    common_logger -d "Downloading artifact URLs file."
+    artifact_url="https://${bucket}/${wazuh_major}/${artifact_urls_file_name}"
+    eval "common_curl -sSo ${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
+
+    curl_exit_code="${PIPESTATUS[0]}"
+    if [ "${curl_exit_code}" -ne 0 ]; then
+        common_logger -e "Failed to download artifact URLs from ${artifact_url}. Exit code: ${curl_exit_code}"
         exit 1
     fi
-    if [ -n "${start_indexer_cluster}" ] || [ -n "${AIO}" ]; then
-        passwords_getNetworkHost
-        passwords_generateHash
-    fi
 
-    passwords_changePassword
-
-    if [ -n "${start_indexer_cluster}" ] || [ -n "${AIO}" ]; then
-        passwords_runSecurityAdmin
-    fi
-    if [ -n "${wazuh}" ] || [ -n "${dashboard}" ] || [ -n "${AIO}" ]; then
-        if [ "${server_node_types[pos]}" == "master" ] || [ "${#server_node_names[@]}" -eq 1 ] || [ -n "${dashboard_installed}" ]; then
-            installCommon_changePasswordApi
-        fi
+    if [ ! -f "${artifact_urls_file_name}" ]; then
+        common_logger -e "Failed to download artifact URLs from ${artifact_url}."
+        exit 1
     fi
 
 }
 
-# Adds the CentOS repository to install lsof.
-function installCommon_configureCentOSRepositories() {
-
-    centos_repos_configured=1
-    centos_key="/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial"
-    eval "common_curl -sLo ${centos_key} 'https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official' --max-time 300 --retry 5 --retry-delay 5 --fail"
-
-    if [ ! -f "${centos_key}" ]; then
-        common_logger -w "The CentOS key could not be added. Some dependencies may not be installed."
-    else
-        centos_repo="/etc/yum.repos.d/centos.repo"
-        eval "touch ${centos_repo} ${debug}"
-        common_logger -d "CentOS repository file created."
-
-        if [ "${DIST_VER}" == "9" ]; then
-            installCommon_addCentOSRepository "appstream" "CentOS Stream \$releasever - AppStream" "https://mirror.stream.centos.org/9-stream/AppStream/\$basearch/os/"
-            installCommon_addCentOSRepository "baseos" "CentOS Stream \$releasever - BaseOS" "https://mirror.stream.centos.org/9-stream/BaseOS/\$basearch/os/"
-        elif [ "${DIST_VER}" == "8" ]; then
-            installCommon_addCentOSRepository "extras" "CentOS Linux \$releasever - Extras" "http://vault.centos.org/centos/\$releasever/extras/\$basearch/os/"
-            installCommon_addCentOSRepository "baseos" "CentOS Linux \$releasever - BaseOS" "http://vault.centos.org/centos/\$releasever/BaseOS/\$basearch/os/"
-            installCommon_addCentOSRepository "appstream" "CentOS Linux \$releasever - AppStream" "http://vault.centos.org/centos/\$releasever/AppStream/\$basearch/os/"
-        fi
-
-        common_logger -d "CentOS repositories added."
+function installCommon_downloadComponent() {
+    if [ -n "${offline_install}" ]; then
+        common_logger -d "Skipping download in offline installation mode. Package already available."
+        return 0
     fi
+    
+    if [ "$#" -ne 1 ]; then
+        common_logger -e "installCommon_downloadComponent must be called with one argument (component name)."
+        exit 1
+    fi
+
+    component="${1}"
+    artifact_file="${base_path}/${artifact_urls_file_name}"
+    download_dir="${base_path}/${download_packages_directory}"
+
+    # Create download directory if it doesn't exist
+    if [ ! -d "${download_dir}" ]; then
+        eval "mkdir -p ${download_dir} ${debug}"
+        if [ ! -d "${download_dir}" ]; then
+            common_logger -e "Failed to create download directory: ${download_dir}"
+            exit 1
+        fi
+    fi
+
+    # Determine package type based on system
+    if [ "${sys_type}" == "yum" ]; then
+        pkg_type="rpm"
+    elif [ "${sys_type}" == "apt-get" ]; then
+        pkg_type="deb"
+    fi
+
+    # Determine architecture suffix for artifact keys
+    if [ "${architecture}" == "x86_64" ]; then
+        arch_suffix="amd64"
+    elif [ "${architecture}" == "aarch64" ]; then
+        arch_suffix="arm64"
+    fi
+
+    # Build the artifact key
+    artifact_key="${component}_${arch_suffix}_${pkg_type}"
+
+    # Get the URL from the artifact file
+    component_url=$(grep "^${artifact_key}:" "$artifact_file" | cut -d' ' -f2- | tr -d '"' | xargs)
+
+    # Extract filename from URL (remove query parameters after ?)
+    component_filename=$(basename "${component_url%%\?*}")
+    component_filepath="${download_dir}/${component_filename}"
+
+    common_logger "Downloading ${component} package: ${component_filename}"
+
+    # Download the component to the download directory
+    common_curl -sSLo '${component_filepath}' '${component_url}' --max-time 600 --retry 5 --retry-delay 5 --fail ${debug}
+    curl_exit_code="${PIPESTATUS[0]}"
+
+    # Check if download was successful
+    if [ "${curl_exit_code}" -ne 0 ]; then
+        common_logger -e "Failed to download ${component} from ${component_url}. Curl exit code: ${curl_exit_code}"
+        # Remove incomplete file if it exists
+        if [ -f "${component_filepath}" ]; then
+            common_logger -d "Removing incomplete download: ${component_filepath}"
+            eval "rm -f ${component_filepath} ${debug}"
+        fi
+        exit 1
+    fi
+
+    if [ ! -f "${component_filepath}" ]; then
+        common_logger -e "Failed to download ${component} from ${component_url}."
+        exit 1
+    fi
+
+    common_logger "${component} package downloaded successfully: ${component_filepath}"
 
 }
 
@@ -354,32 +323,44 @@ function installCommon_getConfig() {
     eval "echo \"\${${config_name}}\"" > "${2}"
 }
 
-function installCommon_getPass() {
-
-    for i in "${!users[@]}"; do
-        if [ "${users[i]}" == "${1}" ]; then
-            u_pass=${passwords[i]}
-        fi
-    done
-}
-
 function installCommon_installCheckDependencies() {
 
-    common_logger -d "Installing check dependencies."
-    if [ "${sys_type}" == "yum" ]; then
-        if [[ "${DIST_NAME}" == "rhel" ]] && [[ "${DIST_VER}" == "8" || "${DIST_VER}" == "9" ]]; then
-            installCommon_configureCentOSRepositories
-        fi
-        installCommon_yumInstallList "${wia_yum_dependencies[@]}"
+    if [ "${1}" == "assistant" ]; then
+        installing_assistant_deps=1
+        assistant_deps_installed=()
+        installCommon_installList "${assistant_deps_to_install[@]}"
+    else
+        installing_assistant_deps=0
+        installCommon_installList "${wazuh_deps_to_install[@]}"
+    fi
+}
 
-        # In RHEL cases, remove the CentOS repositories configuration
-        if [ "${centos_repos_configured}" == 1 ]; then
-            installCommon_removeCentOSrepositories
+function installCommon_installList(){
+
+    dependencies=("$@")
+    if [ "${#dependencies[@]}" -gt 0 ]; then
+
+        if [ "${sys_type}" == "apt-get" ]; then
+            eval "apt-get update -q ${debug}"
         fi
 
-    elif [ "${sys_type}" == "apt-get" ]; then
-        eval "apt-get update -q ${debug}"
-        installCommon_aptInstallList "${wia_apt_dependencies[@]}"
+        common_logger "--- Dependencies ----"
+        for dep in "${dependencies[@]}"; do
+            common_logger "Installing $dep."
+            if [ "${sys_type}" = "apt-get" ]; then
+                installCommon_aptInstall "${dep}"
+            else
+                installCommon_yumInstall "${dep}"
+            fi
+            if [ "${install_result}" != 0 ]; then
+                common_logger -e "Cannot install dependency: ${dep}."
+                installCommon_rollBack
+                exit 1
+            fi
+            if [ "${installing_assistant_deps}" == 1 ]; then
+                assistant_deps_installed+=("${dep}")
+            fi
+        done
     fi
 
 }
@@ -454,142 +435,6 @@ function installCommon_installPrerequisites() {
 
 }
 
-function installCommon_readPasswordFileUsers() {
-
-    filecorrect=$(grep -Ev '^#|^\s*$' "${p_file}" | grep -Pzc "\A(\s*(indexer_username|api_username|indexer_password|api_password):[ \t]+[\'\"]?[\w.*+?-]+[\'\"]?)+\Z")
-    if [[ "${filecorrect}" -ne 1 ]]; then
-        common_logger -e "The password file does not have a correct format or password uses invalid characters. Allowed characters: A-Za-z0-9.*+?
-
-For Wazuh indexer users, the file must have this format:
-
-# Description
-  indexer_username: <user>
-  indexer_password: <password>
-
-For Wazuh API users, the file must have this format:
-
-# Description
-  api_username: <user>
-  api_password: <password>
-
-"
-	    installCommon_rollBack
-        exit 1
-    fi
-
-    sfileusers=$(grep indexer_username: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-    sfilepasswords=$(grep indexer_password: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-
-    sfileapiusers=$(grep api_username: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-    sfileapipasswords=$(grep api_password: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-
-
-    mapfile -t fileusers < <(printf '%s\n' "${sfileusers}")
-    mapfile -t filepasswords < <(printf '%s\n' "${sfilepasswords}")
-    mapfile -t fileapiusers < <(printf '%s\n' "${sfileapiusers}")
-    mapfile -t fileapipasswords < <(printf '%s\n' "${sfileapipasswords}")
-
-    if [ -n "${changeall}" ]; then
-        for j in "${!fileusers[@]}"; do
-            supported=false
-            for i in "${!users[@]}"; do
-                if [[ ${users[i]} == "${fileusers[j]}" ]]; then
-                    passwords_checkPassword "${filepasswords[j]}"
-                    passwords[i]=${filepasswords[j]}
-                    supported=true
-                fi
-            done
-            if [ "${supported}" = false ] && [ -n "${indexer_installed}" ]; then
-                common_logger -e -d "The given user ${fileusers[j]} does not exist"
-            fi
-        done
-
-        for j in "${!fileapiusers[@]}"; do
-            supported=false
-            for i in "${!api_users[@]}"; do
-                if [[ "${api_users[i]}" == "${fileapiusers[j]}" ]]; then
-                    passwords_checkPassword "${fileapipasswords[j]}"
-                    api_passwords[i]=${fileapipasswords[j]}
-                    supported=true
-                fi
-            done
-            if [ "${supported}" = false ] && [ -n "${indexer_installed}" ]; then
-                common_logger -e "The Wazuh API user ${fileapiusers[j]} does not exist"
-            fi
-        done
-    else
-        finalusers=()
-        finalpasswords=()
-
-        finalapiusers=()
-        finalapipasswords=()
-
-        if [ -n "${dashboard_installed}" ] &&  [ -n "${dashboard}" ]; then
-            users=( kibanaserver admin )
-        fi
-
-        if [ -n "${filebeat_installed}" ] && [ -n "${wazuh}" ]; then
-            users=( admin )
-        fi
-
-        for j in "${!fileusers[@]}"; do
-            supported=false
-            for i in "${!users[@]}"; do
-                if [[ "${users[i]}" == "${fileusers[j]}" ]]; then
-                    passwords_checkPassword "${filepasswords[j]}"
-                    finalusers+=(${fileusers[j]})
-                    finalpasswords+=(${filepasswords[j]})
-                    supported=true
-                fi
-            done
-            if [ "${supported}" = "false" ] && [ -n "${indexer_installed}" ] && [ -n "${changeall}" ]; then
-                common_logger -e -d "The given user ${fileusers[j]} does not exist"
-            fi
-        done
-
-        for j in "${!fileapiusers[@]}"; do
-            supported=false
-            for i in "${!api_users[@]}"; do
-                if [[ "${api_users[i]}" == "${fileapiusers[j]}" ]]; then
-                    passwords_checkPassword "${fileapipasswords[j]}"
-                    finalapiusers+=("${fileapiusers[j]}")
-                    finalapipasswords+=("${fileapipasswords[j]}")
-                    supported=true
-                fi
-            done
-            if [ ${supported} = false ] && [ -n "${indexer_installed}" ]; then
-                common_logger -e "The Wazuh API user ${fileapiusers[j]} does not exist"
-            fi
-        done
-
-        users=()
-        mapfile -t users < <(printf '%s\n' "${finalusers[@]}")
-        mapfile -t passwords < <(printf '%s\n' "${finalpasswords[@]}")
-        mapfile -t api_users < <(printf '%s\n' "${finalapiusers[@]}")
-        mapfile -t api_passwords < <(printf '%s\n' "${finalapipasswords[@]}")
-        changeall=1
-    fi
-
-}
-
-function installCommon_restoreWazuhrepo() {
-
-    common_logger -d "Restoring Wazuh repository."
-    if [ -n "${development}" ]; then
-        if [ "${sys_type}" == "yum" ] && [ -f "/etc/yum.repos.d/wazuh.repo" ]; then
-            file="/etc/yum.repos.d/wazuh.repo"
-        elif [ "${sys_type}" == "apt-get" ] && [ -f "/etc/apt/sources.list.d/wazuh.list" ]; then
-            file="/etc/apt/sources.list.d/wazuh.list"
-        else
-            common_logger -w -d "Wazuh repository does not exists."
-        fi
-        eval "sed -i 's/-dev//g' ${file} ${debug}"
-        eval "sed -i 's/pre-release/4.x/g' ${file} ${debug}"
-        eval "sed -i 's/unstable/stable/g' ${file} ${debug}"
-    fi
-
-}
-
 function installCommon_removeCentOSrepositories() {
 
     eval "rm -f ${centos_repo} ${debug}"
@@ -604,14 +449,6 @@ function installCommon_rollBack() {
 
     if [ -z "${uninstall}" ]; then
         common_logger "--- Removing existing Wazuh installation ---"
-    fi
-
-    if [ -f "/etc/yum.repos.d/wazuh.repo" ]; then
-        eval "rm /etc/yum.repos.d/wazuh.repo ${debug}"
-    elif [ -f "/etc/zypp/repos.d/wazuh.repo" ]; then
-        eval "rm /etc/zypp/repos.d/wazuh.repo ${debug}"
-    elif [ -f "/etc/apt/sources.list.d/wazuh.list" ]; then
-        eval "rm /etc/apt/sources.list.d/wazuh.list ${debug}"
     fi
 
     if [[ -n "${wazuh_installed}" && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]];then
@@ -667,33 +504,6 @@ function installCommon_rollBack() {
         eval "rm -rf /etc/wazuh-indexer/ ${debug}"
     fi
 
-    if [[ -n "${filebeat_installed}" && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
-        common_logger "Removing Filebeat."
-        if [ "${sys_type}" == "yum" ]; then
-            common_checkYumLock
-            if [ "${attempt}" -ne "${max_attempts}" ]; then
-                eval "yum remove filebeat -y ${debug}"
-                eval "rpm -q filebeat --quiet && filebeat_failed_uninstall=1"
-            fi
-        elif [ "${sys_type}" == "apt-get" ]; then
-            common_checkAptLock
-            eval "apt-get remove --purge filebeat -y ${debug}"
-            filebeat_failed_uninstall=$(apt list --installed 2>/dev/null | grep filebeat)
-        fi
-
-        if [ -n "${filebeat_failed_uninstall}" ]; then
-            common_logger -w "The Filebeat package could not be removed."
-        else
-            common_logger "Filebeat removed."
-        fi
-    fi
-
-    if [[ ( -n "${filebeat_remaining_files}" || -n "${filebeat_installed}" ) && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
-        eval "rm -rf /var/lib/filebeat/ ${debug}"
-        eval "rm -rf /usr/share/filebeat/ ${debug}"
-        eval "rm -rf /etc/filebeat/ ${debug}"
-    fi
-
     if [[ -n "${dashboard_installed}" && ( -n "${dashboard}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
         common_logger "Removing Wazuh dashboard."
         if [ "${sys_type}" == "yum" ]; then
@@ -723,11 +533,9 @@ function installCommon_rollBack() {
     fi
 
     elements_to_remove=(    "/var/log/wazuh-indexer/"
-                            "/var/log/filebeat/"
                             "/etc/systemd/system/opensearch.service.wants/"
                             "/securityadmin_demo.sh"
                             "/etc/systemd/system/multi-user.target.wants/wazuh-manager.service"
-                            "/etc/systemd/system/multi-user.target.wants/filebeat.service"
                             "/etc/systemd/system/multi-user.target.wants/opensearch.service"
                             "/etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service"
                             "/etc/systemd/system/wazuh-dashboard.service"
@@ -735,8 +543,6 @@ function installCommon_rollBack() {
                             "/lib/firewalld/services/opensearch.xml" )
 
     eval "rm -rf ${elements_to_remove[*]} ${debug}"
-
-    common_remove_gpg_key
 
     installCommon_removeWIADependencies
 
@@ -748,6 +554,90 @@ function installCommon_rollBack() {
         else
             common_logger "Installation cleaned. Check the ${logfile} file to learn more about the issue."
         fi
+    fi
+
+}
+
+
+function installCommon_scanDependencies() {
+
+    wazuh_deps=()
+    if [ -n "${AIO}" ]; then
+        if [ "${sys_type}" == "yum" ]; then
+            wazuh_deps+=( "${indexer_yum_dependencies[@]}" "${wazuh_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" )
+        else
+            wazuh_deps+=( "${indexer_apt_dependencies[@]}" "${wazuh_apt_dependencies[@]}" "${dashboard_apt_dependencies[@]}" )
+        fi
+    elif [ -n "${indexer}" ]; then
+        if [ "${sys_type}" == "yum" ]; then
+            wazuh_deps+=( "${indexer_yum_dependencies[@]}" )
+        else
+            wazuh_deps+=( "${indexer_apt_dependencies[@]}" )
+        fi
+    elif [ -n "${wazuh}" ]; then
+        if [ "${sys_type}" == "yum" ]; then
+            wazuh_deps+=( "${wazuh_yum_dependencies[@]}" )
+        else
+            wazuh_deps+=( "${wazuh_apt_dependencies[@]}" )
+        fi
+    elif [ -n "${dashboard}" ]; then
+        if [ "${sys_type}" == "yum" ]; then
+            wazuh_deps+=( "${dashboard_yum_dependencies[@]}" )
+        else
+            wazuh_deps+=( "${dashboard_apt_dependencies[@]}" )
+        fi
+    fi
+
+    all_deps=( "${wazuh_deps[@]}" )
+    if [ "${sys_type}" == "apt-get" ]; then
+        assistant_deps+=( "${assistant_apt_dependencies[@]}" )
+        command='! apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/'
+    else
+        assistant_deps+=( "${assistant_yum_dependencies[@]}" )
+        command='! rpm -q ${dep} --quiet'
+    fi
+
+    # Remove openssl dependency if not necessary
+    if [ -z "${configurations}" ] && [ -z "${AIO}" ]; then
+        assistant_deps=( "${assistant_deps[@]/openssl}" )
+    fi
+
+    # Remove lsof dependency if not necessary
+    if [ -z "${AIO}" ] && [ -z "${wazuh}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ]; then
+        assistant_deps=( "${assistant_deps[@]/lsof}" )
+    fi
+
+    # Delete duplicates and sort
+    all_deps+=( "${assistant_deps[@]}" )
+    all_deps=( $(echo "${all_deps[@]}" | tr ' ' '\n' | sort -u) )
+    deps_to_install=()
+
+    # Get not installed dependencies of Assistant and Wazuh
+    for dep in "${all_deps[@]}"; do
+        if eval "${command}"; then
+            deps_to_install+=("${dep}")
+            if [[ "${assistant_deps[*]}" =~ "${dep}" ]]; then
+                assistant_deps_to_install+=("${dep}")
+            else
+                wazuh_deps_to_install+=("${dep}")
+            fi
+        fi
+    done
+
+    # Format and print the message if the option is not specified
+    if [ -z "${install_dependencies}" ] && [ "${#deps_to_install[@]}" -gt 0 ]; then
+        printf -v joined_deps_not_installed '%s, ' "${deps_to_install[@]}"
+        printf -v joined_assistant_not_installed '%s, ' "${assistant_deps_to_install[@]}"
+        joined_deps_not_installed="${joined_deps_not_installed%, }"
+        joined_assistant_not_installed="${joined_assistant_not_installed%, }"
+
+        message="To perform the installation, the following package/s must be installed: ${joined_deps_not_installed}."
+        if [ "${#assistant_deps_to_install[@]}" -gt 0 ]; then
+            message+=" The following package/s will be removed after the installation: ${joined_assistant_not_installed}."
+        fi
+        message+=" Add the -id|--install-dependencies parameter to install them automatically or install them manually."
+        common_logger -w "${message}"
+        exit 1
     fi
 
 }
@@ -803,6 +693,60 @@ function installCommon_startService() {
         fi
     else
         common_logger -e "${1} could not start. No service manager found on the system."
+        exit 1
+    fi
+
+}
+
+function installCommon_restartService() {
+
+    if [ "$#" -ne 1 ]; then
+        common_logger -e "installCommon_restartService must be called with 1 argument."
+        exit 1
+    fi
+
+    common_logger "Restarting service ${1}."
+
+    if [[ -d /run/systemd/system ]]; then
+        eval "systemctl restart ${1}.service ${debug}"
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "${1} could not be restarted."
+            if [ -n "$(command -v journalctl)" ]; then
+                eval "journalctl -u ${1} >> ${logfile}"
+            fi
+            installCommon_rollBack
+            exit 1
+        else
+            common_logger "${1} service restarted."
+        fi
+    elif ps -p 1 -o comm= | grep "init"; then
+        eval "chkconfig ${1} on ${debug}"
+        eval "service ${1} restart ${debug}"
+        eval "/etc/init.d/${1} restart ${debug}"
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "${1} could not be restarted."
+            if [ -n "$(command -v journalctl)" ]; then
+                eval "journalctl -u ${1} >> ${logfile}"
+            fi
+            installCommon_rollBack
+            exit 1
+        else
+            common_logger "${1} service restarted."
+        fi
+    elif [ -x "/etc/rc.d/init.d/${1}" ] ; then
+        eval "/etc/rc.d/init.d/${1} restart ${debug}"
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "${1} could not be restarted."
+            if [ -n "$(command -v journalctl)" ]; then
+                eval "journalctl -u ${1} >> ${logfile}"
+            fi
+            installCommon_rollBack
+            exit 1
+        else
+            common_logger "${1} service restarted."
+        fi
+    else
+        common_logger -e "${1} could not restart. No service manager found on the system."
         exit 1
     fi
 
@@ -892,25 +836,52 @@ function installCommon_aptRemoveWIADependencies(){
     fi
 
 }
+
+function installCommon_removeDownloadPackagesDirectory() {
+
+    download_dir="${base_path}/${download_packages_directory}"
+    if [ -d "${download_dir}" ]; then
+        eval "rm -rf ${download_dir} ${debug}"
+        common_logger -d "Removed download packages directory: ${download_dir}"
+    else
+        common_logger -w "Download packages directory does not exist: ${download_dir}"
+    fi
+
+}
+
 function installCommon_yumInstall() {
 
     package="${1}"
     version="${2}"
     install_result=1
-    if [ -n "${version}" ]; then
-        installer="${package}-${version}"
-    else
-        installer="${package}"
-    fi
 
-    # Offline installation case: get package name and install it
-    if [ -n "${offline_install}" ]; then
-        package_name=$(ls ${offline_packages_path} | grep ${package})
-        installer="${offline_packages_path}/${package_name}"
+    # If package is a file path (contains .rpm), install directly
+    if [[ "${package}" == *.rpm ]]; then
+        installer="${package}"
         command="rpm -ivh ${installer}"
         common_logger -d "Installing local package: ${installer}"
+    elif [ -n "${version}" ]; then
+        installer="${package}-${version}"
+        # Offline installation case: get package name and install it
+        if [ -n "${offline_install}" ]; then
+            package_name=$(ls ${offline_packages_path} | grep ${package})
+            installer="${offline_packages_path}/${package_name}"
+            command="rpm -ivh ${installer}"
+            common_logger -d "Installing local package: ${installer}"
+        else
+            command="yum install ${installer} -y"
+        fi
     else
-        command="yum install ${installer} -y"
+        installer="${package}"
+        # Offline installation case: get package name and install it
+        if [ -n "${offline_install}" ]; then
+            package_name=$(ls ${offline_packages_path} | grep ${package})
+            installer="${offline_packages_path}/${package_name}"
+            command="rpm -ivh ${installer}"
+            common_logger -d "Installing local package: ${installer}"
+        else
+            command="yum install ${installer} -y"
+        fi
     fi
     common_checkYumLock
 

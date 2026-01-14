@@ -64,20 +64,12 @@ function offline_extractFiles() {
         fi
     fi
 
-    offline_files_path="${base_path}/wazuh-offline/wazuh-files"
     offline_packages_path="${base_path}/wazuh-offline/wazuh-packages"
 
-    required_files=(
-        "${offline_files_path}/filebeat.yml"
-        "${offline_files_path}/GPG-KEY-WAZUH"
-        "${offline_files_path}/wazuh-filebeat-*.tar.gz"
-        "${offline_files_path}/wazuh-template.json"
-    )
-
     if [ "${sys_type}" == "apt-get" ]; then
-        required_files+=("${offline_packages_path}/filebeat_*.deb" "${offline_packages_path}/wazuh-dashboard_*.deb" "${offline_packages_path}/wazuh-indexer_*.deb" "${offline_packages_path}/wazuh-manager_*.deb")
+        required_files+=("${offline_packages_path}/wazuh-dashboard*.deb" "${offline_packages_path}/wazuh-indexer*.deb" "${offline_packages_path}/wazuh-manager*.deb")
     elif [ "${sys_type}" == "rpm" ]; then
-        required_files+=("${offline_packages_path}/filebeat-*.rpm" "${offline_packages_path}/wazuh-dashboard_*.rpm" "${offline_packages_path}/wazuh-indexer_*.rpm" "${offline_packages_path}/wazuh-manager_*.rpm")
+        required_files+=("${offline_packages_path}/wazuh-dashboard*.rpm" "${offline_packages_path}/wazuh-indexer*.rpm" "${offline_packages_path}/wazuh-manager*.rpm")
     fi
 
     for file in "${required_files[@]}"; do
@@ -88,25 +80,4 @@ function offline_extractFiles() {
     done
 
     common_logger -d "Offline files extracted successfully."
-}
-
-# Imports the GPG key from the extracted tar file
-function offline_importGPGKey() {
-
-    common_logger -d "Importing Wazuh GPG key."
-    if [ "${sys_type}" == "yum" ]; then
-        eval "rpm --import ${offline_files_path}/GPG-KEY-WAZUH ${debug}"
-        if [ "${PIPESTATUS[0]}" != 0 ]; then
-            common_logger -e "Cannot import Wazuh GPG key"
-            exit 1
-        fi
-    elif [ "${sys_type}" == "apt-get" ]; then
-        eval "gpg --import ${offline_files_path}/GPG-KEY-WAZUH ${debug}"
-        if [ "${PIPESTATUS[0]}" != 0 ]; then
-            common_logger -e "Cannot import Wazuh GPG key"
-            exit 1
-        fi
-        eval "chmod 644 ${offline_files_path}/GPG-KEY-WAZUH ${debug}"
-    fi
-
 }
