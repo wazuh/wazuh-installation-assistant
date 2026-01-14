@@ -8,51 +8,30 @@
 
 function passwords_changePassword() {
 
-    if [ -n "${changeall}" ]; then
-        if [ -n "${indexer_installed}" ] && [ -z ${no_indexer_backup} ]; then
-            eval "mkdir /etc/wazuh-indexer/backup/ ${debug}"
-            eval "cp /etc/wazuh-indexer/opensearch-security/* /etc/wazuh-indexer/backup/ ${debug}"
-            passwords_createBackUp
-        fi
-        for i in "${!passwords[@]}"
-        do
-            if [ -n "${indexer_installed}" ] && [ -f "/etc/wazuh-indexer/backup/internal_users.yml" ]; then
-                awk -v new='"'"${hashes[i]}"'"' 'prev=="'${users[i]}':"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /etc/wazuh-indexer/backup/internal_users.yml > internal_users.yml_tmp && mv -f internal_users.yml_tmp /etc/wazuh-indexer/backup/internal_users.yml
-            fi
-
-            if [ "${users[i]}" == "admin" ]; then
-                adminpass=${passwords[i]}
-            elif [ "${users[i]}" == "kibanaserver" ]; then
-                dashpass=${passwords[i]}
-            fi
-
-        done
-    else
-        if [ -z "${api}" ] && [ -n "${indexer_installed}" ]; then
-            eval "mkdir /etc/wazuh-indexer/backup/ ${debug}"
-            eval "cp /etc/wazuh-indexer/opensearch-security/* /etc/wazuh-indexer/backup/ ${debug}"
-            passwords_createBackUp
-        fi
-        if [ -n "${indexer_installed}" ] && [ -f "/etc/wazuh-indexer/backup/internal_users.yml" ]; then
-            awk -v new='"'"${hash}"'"' 'prev=="'${nuser}':"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /etc/wazuh-indexer/backup/internal_users.yml > internal_users.yml_tmp && mv -f internal_users.yml_tmp /etc/wazuh-indexer/backup/internal_users.yml
-        fi
-
-        if [ "${nuser}" == "admin" ]; then
-            adminpass=${password}
-        elif [ "${nuser}" == "kibanaserver" ]; then
-            dashpass=${password}
-        fi
-
+    if [ -z "${api}" ] && [ -n "${indexer_installed}" ]; then
+        eval "mkdir /etc/wazuh-indexer/backup/ ${debug}"
+        eval "cp /etc/wazuh-indexer/opensearch-security/* /etc/wazuh-indexer/backup/ ${debug}"
+        passwords_createBackUp
+    fi
+    
+    if [ -n "${indexer_installed}" ] && [ -f "/etc/wazuh-indexer/backup/internal_users.yml" ]; then
+        awk -v new='"'"${hash}"'"' 'prev=="'${nuser}':"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /etc/wazuh-indexer/backup/internal_users.yml > internal_users.yml_tmp && mv -f internal_users.yml_tmp /etc/wazuh-indexer/backup/internal_users.yml
     fi
 
-    if [ "${nuser}" == "admin" ] || [ -n "${changeall}" ]; then
-        if [ -n "${wazuh_installed}" ] && [ -z "${dashboard}" ]; then
+    if [ "${nuser}" == "admin" ]; then
+        adminpass=${password}
+    elif [ "${nuser}" == "kibanaserver" ]; then
+        dashpass=${password}
+    fi
+
+    if [ "${nuser}" == "admin" ]; then
+        if [ -n "${wazuh_installed}" ]; then
             eval "/var/ossec/bin/wazuh-keystore -f indexer -k password -v ${adminpass}"
             passwords_restartService "wazuh-manager"
         fi
     fi
 
-    if [ "$nuser" == "kibanaserver" ] || [ -n "$changeall" ]; then
+    if [ "${nuser}" == "kibanaserver" ]; then
         if [ -n "${dashboard_installed}" ] && [ -n "${dashpass}" ]; then
             if /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root list | grep -q opensearch.password; then
                 eval "echo ${dashpass} | /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root add -f --stdin opensearch.password ${debug_pass} > /dev/null 2>&1"
@@ -70,47 +49,21 @@ function passwords_changePassword() {
 }
 
 function passwords_changePasswordApi() {
-    #Change API password tool
-    if [ -n "${changeall}" ]; then
-        for i in "${!api_passwords[@]}"; do
-            if [ -n "${wazuh_installed}" ]; then
-                passwords_getApiUserId "${api_users[i]}"
-                WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
-                eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
-                if [ "${api_users[i]}" == "${adminUser}" ]; then
-                    sleep 1
-                    adminPassword="${api_passwords[i]}"
-                    passwords_getApiToken
-                fi
-                if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
-                    common_logger -nl $"The password for Wazuh API user ${api_users[i]} is ${api_passwords[i]}"
-                fi
-            fi
-            if [ "${api_users[i]}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
-                passwords_changeDashboardApiPassword "${api_passwords[i]}"
-            fi
-        done
-    else
-        if [ -n "${wazuh_installed}" ]; then
-            passwords_getApiUserId "${nuser}"
-            WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-            eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
-            if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
-                common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
-            fi
-        fi
-        if [ "${nuser}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
-                passwords_changeDashboardApiPassword "${password}"
-        fi
+    # Change API password tool
+    if [ -n "${wazuh_installed}" ]; then
+        passwords_getApiUserId "${nuser}"
+        WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
+        eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
+        common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
+    fi
+    if [ "${nuser}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
+        passwords_changeDashboardApiPassword "${password}"
     fi
 }
 
 function passwords_changeDashboardApiPassword() {
 
     eval "sed -i 's|password: .*|password: \"${1}\"|g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
-    if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
-        common_logger "Updated wazuh-wui user password in wazuh dashboard. Remember to restart the service."
-    fi
 }
 
 function passwords_checkUser() {
@@ -179,118 +132,32 @@ function passwords_createBackUp() {
 
 function passwords_generateHash() {
 
-    if [ -n "${changeall}" ]; then
-        common_logger -d "Generating password hashes."
-        for i in "${!passwords[@]}"
-        do
-            nhash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${passwords[i]}" 2>&1)
-            if [  "${PIPESTATUS[0]}" != 0  ]; then
-                common_logger -e "Hash generation failed."
-                if [[ $(type -t installCommon_rollBack) == "function" ]]; then
-                    installCommon_rollBack
-                fi
-                exit 1;
-            fi
-            hashes+=("${nhash}")
-        done
-        common_logger -d "Password hashes generated."
-    else
-        common_logger "Generating password hash"
-        hash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${password}" 2>&1)
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
-            common_logger -e "Hash generation failed."
-            if [[ $(type -t installCommon_rollBack) == "function" ]]; then
-                installCommon_rollBack
-            fi
-            exit 1;
+    common_logger "Generating password hash"
+    hash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${password}" 2>&1)
+    if [  "${PIPESTATUS[0]}" != 0  ]; then
+        common_logger -e "Hash generation failed."
+        if [[ $(type -t installCommon_rollBack) == "function" ]]; then
+            installCommon_rollBack
         fi
-        common_logger -d "Password hash generated."
+        exit 1;
     fi
+    common_logger -d "Password hash generated."
 
 }
 
 function passwords_generatePassword() {
 
-    if [ -n "${nuser}" ]; then
-        common_logger -d "Generating random password."
-        pass=$(< /dev/urandom tr -dc "A-Za-z0-9.*+?" | head -c "${1:-28}";echo;)
-        special_char=$(< /dev/urandom tr -dc ".*+?" | head -c "${1:-1}";echo;)
-        minus_char=$(< /dev/urandom tr -dc "a-z" | head -c "${1:-1}";echo;)
-        mayus_char=$(< /dev/urandom tr -dc "A-Z" | head -c "${1:-1}";echo;)
-        number_char=$(< /dev/urandom tr -dc "0-9" | head -c "${1:-1}";echo;)
-        password="$(echo "${pass}${special_char}${minus_char}${mayus_char}${number_char}" | fold -w1 | shuf | tr -d '\n')"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
-            common_logger -e "The password could not been generated."
-            exit 1;
-        fi
-    else
-        common_logger -d "Generating random passwords."
-        for i in "${!users[@]}"; do
-            pass=$(< /dev/urandom tr -dc "A-Za-z0-9.*+?" | head -c "${1:-28}";echo;)
-            special_char=$(< /dev/urandom tr -dc ".*+?" | head -c "${1:-1}";echo;)
-            minus_char=$(< /dev/urandom tr -dc "a-z" | head -c "${1:-1}";echo;)
-            mayus_char=$(< /dev/urandom tr -dc "A-Z" | head -c "${1:-1}";echo;)
-            number_char=$(< /dev/urandom tr -dc "0-9" | head -c "${1:-1}";echo;)
-            passwords+=("$(echo "${pass}${special_char}${minus_char}${mayus_char}${number_char}" | fold -w1 | shuf | tr -d '\n')")
-            if [ "${PIPESTATUS[0]}" != 0 ]; then
-                common_logger -e "The password could not been generated."
-                exit 1;
-            fi
-        done
-        for i in "${!api_users[@]}"; do
-            pass=$(< /dev/urandom tr -dc "A-Za-z0-9.*+?" | head -c "${1:-28}";echo;)
-            special_char=$(< /dev/urandom tr -dc ".*+?" | head -c "${1:-1}";echo;)
-            minus_char=$(< /dev/urandom tr -dc "a-z" | head -c "${1:-1}";echo;)
-            mayus_char=$(< /dev/urandom tr -dc "A-Z" | head -c "${1:-1}";echo;)
-            number_char=$(< /dev/urandom tr -dc "0-9" | head -c "${1:-1}";echo;)
-            api_passwords+=("$(echo "${pass}${special_char}${minus_char}${mayus_char}${number_char}" | fold -w1 | shuf | tr -d '\n')")
-            if [ "${PIPESTATUS[0]}" != 0 ]; then
-                common_logger -e "The password could not been generated."
-                exit 1;
-            fi
-        done
+    common_logger -d "Generating random password."
+    pass=$(< /dev/urandom tr -dc "A-Za-z0-9.*+?" | head -c "${1:-28}";echo;)
+    special_char=$(< /dev/urandom tr -dc ".*+?" | head -c "${1:-1}";echo;)
+    minus_char=$(< /dev/urandom tr -dc "a-z" | head -c "${1:-1}";echo;)
+    mayus_char=$(< /dev/urandom tr -dc "A-Z" | head -c "${1:-1}";echo;)
+    number_char=$(< /dev/urandom tr -dc "0-9" | head -c "${1:-1}";echo;)
+    password="$(echo "${pass}${special_char}${minus_char}${mayus_char}${number_char}" | fold -w1 | shuf | tr -d '\n')"
+    if [  "${PIPESTATUS[0]}" != 0  ]; then
+        common_logger -e "The password could not been generated."
+        exit 1;
     fi
-}
-
-function passwords_generatePasswordFile() {
-
-    common_logger -d "Generating password file."
-    users=( admin anomalyadmin kibanaserver kibanaro logstash readall snapshotrestore wazuh-server wazuh-dashboard )
-    api_users=( wazuh wazuh-wui )
-    user_description=(
-        "Admin user for the web user interface and Wazuh indexer. Use this user to log in to Wazuh dashboard"
-        "Anomaly detection user for the web user interface"
-        "Wazuh dashboard user for establishing the connection with Wazuh indexer"
-        "Regular Dashboard user, only has read permissions to all indices and all permissions on the .kibana index"
-        "User used by Logstash to send processed logs to the Wazuh indexer"
-        "User with READ access to all indices"
-        "User with permissions to perform snapshot and restore operations"
-        "User for the Wazuh Server with read/write access to stateful indices and write-only access to stateless indices"
-        "User for Wazuh Dashboard with read access to stateful and stateless indices, and management level permissionsfor the monitoring indices"
-    )
-    api_user_description=(
-        "Password for wazuh API user"
-        "Password for wazuh-wui API user"
-    )
-    passwords_generatePassword
-
-    for i in "${!users[@]}"; do
-        {
-        echo "# ${user_description[${i}]}"
-        echo "  indexer_username: '${users[${i}]}'"
-        echo "  indexer_password: '${passwords[${i}]}'"
-        echo ""
-        } >> "${gen_file}"
-    done
-
-    for i in "${!api_users[@]}"; do
-        {
-        echo "# ${api_user_description[${i}]}"
-        echo "  api_username: '${api_users[${i}]}'"
-        echo "  api_password: '${api_passwords[${i}]}'"
-        echo ""
-        } >> "${gen_file}"
-    done
 
 }
 
@@ -372,121 +239,6 @@ function passwords_getNetworkHost() {
     if [ "${IP}" == "0.0.0.0" ]; then
         IP="localhost"
     fi
-}
-
-function passwords_readFileUsers() {
-
-    filecorrect=$(grep -Ev '^#|^\s*$' "${p_file}" | grep -Pzc "\A(\s*(indexer_username|api_username|indexer_password|api_password):[ \t]+[\'\"]?[\w.*+?-]+[\'\"]?)+\Z")
-    if [[ "${filecorrect}" -ne 1 ]]; then
-        common_logger -e "The password file does not have a correct format or password uses invalid characters. Allowed characters: A-Za-z0-9.*+?
-
-For Wazuh indexer users, the file must have this format:
-
-# Description
-  indexer_username: <user>
-  indexer_password: <password>
-
-For Wazuh API users, the file must have this format:
-
-# Description
-  api_username: <user>
-  api_password: <password>
-
-"
-        exit 1
-    fi
-
-    sfileusers=$(grep indexer_username: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-    sfilepasswords=$(grep indexer_password: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-
-    sfileapiusers=$(grep api_username: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-    sfileapipasswords=$(grep api_password: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
-
-    mapfile -t fileusers <<< "${sfileusers}"
-    mapfile -t filepasswords <<< "${sfilepasswords}"
-
-    mapfile -t fileapiusers <<< "${sfileapiusers}"
-    mapfile -t fileapipasswords <<< "${sfileapipasswords}"
-
-    if [ -n "${changeall}" ]; then
-        for j in "${!fileusers[@]}"; do
-            supported=false
-            for i in "${!users[@]}"; do
-                if [[ "${users[i]}" == "${fileusers[j]}" ]]; then
-                    passwords_checkPassword "${filepasswords[j]}"
-                    passwords[i]=${filepasswords[j]}
-                    supported=true
-                fi
-            done
-            if [ "${supported}" = false ] && [ -n "${indexer_installed}" ]; then
-                common_logger -e "The user ${fileusers[j]} does not exist"
-            fi
-        done
-
-        if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
-            for j in "${!fileapiusers[@]}"; do
-                supported=false
-                for i in "${!api_users[@]}"; do
-                    if [[ "${api_users[i]}" == "${fileapiusers[j]}" ]]; then
-                        passwords_checkPassword "${fileapipasswords[j]}"
-                        api_passwords[i]=${fileapipasswords[j]}
-                        supported=true
-                    fi
-                done
-                if [ "${supported}" = false ] && [ -n "${indexer_installed}" ]; then
-                    common_logger -e "The Wazuh API user ${fileapiusers[j]} does not exist"
-                fi
-            done
-        fi
-    else
-        finalusers=()
-        finalpasswords=()
-
-        finalapiusers=()
-        finalapipasswords=()
-
-        for j in "${!fileusers[@]}"; do
-            supported=false
-            for i in "${!users[@]}"; do
-                if [[ "${users[i]}" == "${fileusers[j]}" ]]; then
-                    passwords_checkPassword "${filepasswords[j]}"
-                    finalusers+=("${fileusers[j]}")
-                    finalpasswords+=("${filepasswords[j]}")
-                    supported=true
-                fi
-            done
-            if [ ${supported} = false ] && [ -n "${indexer_installed}" ]; then
-                common_logger -e "The user ${fileusers[j]} does not exist"
-            fi
-        done
-
-        if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
-            for j in "${!fileapiusers[@]}"; do
-                supported=false
-                for i in "${!api_users[@]}"; do
-                    if [[ "${api_users[i]}" == "${fileapiusers[j]}" ]]; then
-                        passwords_checkPassword "${fileapipasswords[j]}"
-                        finalapiusers+=("${fileapiusers[j]}")
-                        finalapipasswords+=("${fileapipasswords[j]}")
-                        supported=true
-                    fi
-                done
-                if [ ${supported} = false ] && [ -n "${indexer_installed}" ]; then
-                    common_logger -e "The Wazuh API user ${fileapiusers[j]} does not exist"
-                fi
-            done
-        fi
-
-        users=()
-        passwords=()
-        mapfile -t users < <(printf "%s\n" "${finalusers[@]}")
-        mapfile -t passwords < <(printf "%s\n" "${finalpasswords[@]}")
-        mapfile -t api_users < <(printf "%s\n" "${finalapiusers[@]}")
-        mapfile -t api_passwords < <(printf "%s\n" "${finalapipasswords[@]}")
-
-        changeall=1
-    fi
-
 }
 
 function passwords_readUsers() {
@@ -588,17 +340,6 @@ function passwords_runSecurityAdmin() {
 
     if [[ -n "${nuser}" ]] && [[ -z ${autopass} ]]; then
         common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh server nodes if necessary, and restart the services."
-    fi
-
-    if [ -n "${changeall}" ]; then
-        if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
-            for i in "${!users[@]}"; do
-                common_logger -nl "The password for user ${users[i]} is ${passwords[i]}"
-            done
-            common_logger -w "Wazuh indexer passwords changed. Remember to update the password in the Wazuh dashboard, Wazuh server and the Wazuh server nodes if necessary, and restart the services."
-        else
-            common_logger -d "Passwords changed."
-        fi
     fi
 
 }
