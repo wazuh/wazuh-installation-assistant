@@ -16,8 +16,8 @@ on:
         description: "Add last stage? (alpha1, beta1, rc2, etc)"
         type: boolean
         default: false
-      file_patch:
-        description: "Version patch (only when is stage, else it will use the commit SHA)."
+      file_revision:
+        description: "Version revision (only when is stage, else it will use the commit SHA)."
         type: string
         required: false
         default: "1"
@@ -44,8 +44,8 @@ on:
         description: "Add last stage? (alpha1, beta1, rc2, etc)"
         type: boolean
         default: false
-      file_patch:
-        description: "Version patch (only when is stage, else it will use the commit SHA)."
+      file_revision:
+        description: "Version revision (only when is stage, else it will use the commit SHA)."
         type: string
         required: false
         default: "1"
@@ -127,13 +127,13 @@ jobs:
           sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.VERSION }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
           cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.VERSION }}-${{ env.COMMIT_SHORT_SHA }}.yml
       
-      - name: Change files name for non-stage build adding version and file_patch
+      - name: Change files name for non-stage build adding version and file_revision
         if: ${{ inputs.is_stage == true }}
         run: |
-          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.VERSION }}-${{ inputs.file_patch }}.sh|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.VERSION }}-${{ inputs.file_patch }}.sh|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.VERSION }}-${{ inputs.file_patch }}.sh|g' "${{ env.BUILDER_PATH }}"
-          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.VERSION }}-${{ inputs.file_patch }}.yml
+          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.VERSION }}-${{ inputs.file_revision }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.VERSION }}-${{ inputs.file_revision }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.VERSION }}-${{ inputs.file_revision }}.sh|g' "${{ env.BUILDER_PATH }}"
+          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.VERSION }}-${{ inputs.file_revision }}.yml
   
       - name: Build Installation Assistant packages
         run: bash builder.sh -i -c -p
