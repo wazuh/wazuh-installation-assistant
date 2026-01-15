@@ -40,6 +40,15 @@ on:
         description: "Is stage?"
         type: boolean
         default: false
+      add_last_stage:
+        description: "Add last stage? (alpha1, beta1, rc2, etc)"
+        type: boolean
+        default: false
+      file_patch:
+        description: "Version patch (only when is stage, else it will use the commit SHA)."
+        type: string
+        required: false
+        default: "1"
       checksum:
         description: "Add checksum"
         type: boolean
