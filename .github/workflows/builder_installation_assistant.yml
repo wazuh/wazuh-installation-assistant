@@ -122,10 +122,18 @@ jobs:
       - name: Change files name for stage build adding version and commit sha
         if: ${{ inputs.is_stage == false }}
         run: |
-          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.VERSION }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.VERSION }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.VERSION }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
-          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.VERSION }}-${{ env.COMMIT_SHORT_SHA }}.yml
+          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.VERSION }}-${{ inputs.file_revision }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.VERSION }}-${{ inputs.file_revision }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.VERSION }}-${{ inputs.file_revision }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.VERSION }}-${{ inputs.file_revision }}-${{ env.COMMIT_SHORT_SHA }}.yml
+
+      - name: Change files name with a latest tag for non-stage build
+        if: ${{ inputs.is_stage == false }}
+        run: |
+          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.VERSION }}-latest.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.VERSION }}-latest.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.VERSION }}-latest.sh|g' "${{ env.BUILDER_PATH }}"
+          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.VERSION }}-latest.yml
       
       - name: Change files name for non-stage build adding version and file_revision
         if: ${{ inputs.is_stage == true }}
