@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add version and revision suffix to built files ([#578](https://github.com/wazuh/wazuh-installation-assistant/pull/578))
 - Back port install-dependencies option ([#557](https://github.com/wazuh/wazuh-installation-assistant/pull/557))
 - Add new internal users to the password generation process in the Password tool ([#540](https://github.com/wazuh/wazuh-installation-assistant/pull/540))
 - Remove filebeat references and replace wazuh.yml to opensearch_dashboards.yml in the password tool ([#539](https://github.com/wazuh/wazuh-installation-assistant/pull/539))
