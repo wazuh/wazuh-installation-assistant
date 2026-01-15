@@ -17,7 +17,7 @@ on:
         type: boolean
         default: false
       file_patch:
-        description: "Patch (default to 1)."
+        description: "Version patch (only when is stage, else it will use the commit SHA)."
         type: string
         required: false
         default: "1"
@@ -110,14 +110,22 @@ jobs:
         run: |
           sed -i "s|last_stage=\"\"|last_stage=\"${{ env.LAST_STAGE }}\"|g" ${{ github.workspace }}/install_functions/installVariables.sh
 
-      - name: Change files name for stage build
+      - name: Change files name for stage build adding version and commit sha
         if: ${{ inputs.is_stage == false }}
         run: |
-          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
-          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.COMMIT_SHORT_SHA }}.yml
-
+          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.VERSION }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.VERSION }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.VERSION }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
+          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.VERSION }}-${{ env.COMMIT_SHORT_SHA }}.yml
+      
+      - name: Change files name for non-stage build adding version and file_patch
+        if: ${{ inputs.is_stage == true }}
+        run: |
+          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.VERSION }}-${{ inputs.file_patch }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.VERSION }}-${{ inputs.file_patch }}.sh|g' "${{ env.BUILDER_PATH }}"
+          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.VERSION }}-${{ inputs.file_patch }}.sh|g' "${{ env.BUILDER_PATH }}"
+          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.VERSION }}-${{ inputs.file_patch }}.yml
+  
       - name: Build Installation Assistant packages
         run: bash builder.sh -i -c -p
 
@@ -128,7 +136,6 @@ jobs:
 
       - name: Save files name
         run: |
-          version_suffix="${{ env.VERSION }}-${{ inputs.file_patch }}"
           WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh | xargs basename)
           WAZUH_INSTALL_NAME="${WAZUH_INSTALL_NAME%.sh}-${version_suffix}.sh"
           WAZUH_CERT_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_CERT_TOOL_NAME }}*.sh | xargs basename)
