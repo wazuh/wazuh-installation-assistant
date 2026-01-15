@@ -17,7 +17,7 @@ on:
         type: boolean
         default: false
       file_patch:
-        description: "File patch to apply before building (default: 1)."
+        description: "Patch (default to 1)."
         type: string
         required: false
         default: "1"
