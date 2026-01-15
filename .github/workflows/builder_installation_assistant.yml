@@ -16,6 +16,11 @@ on:
         description: "Add last stage? (alpha1, beta1, rc2, etc)"
         type: boolean
         default: false
+      file_patch:
+        description: "File patch to apply before building (default: 1)."
+        type: string
+        required: false
+        default: "1"
       checksum:
         description: "Add checksum"
         type: boolean
@@ -123,10 +128,15 @@ jobs:
 
       - name: Save files name
         run: |
+          version_suffix="${{ env.VERSION }}-${{ inputs.file_patch }}"
           WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh | xargs basename)
+          WAZUH_INSTALL_NAME="${WAZUH_INSTALL_NAME%.sh}-${version_suffix}.sh"
           WAZUH_CERT_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_CERT_TOOL_NAME }}*.sh | xargs basename)
+          WAZUH_CERT_TOOL_NAME="${WAZUH_CERT_TOOL_NAME%.sh}-${version_suffix}.sh"
           WAZUH_PASSWORD_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh | xargs basename)
+          WAZUH_PASSWORD_TOOL_NAME="${WAZUH_PASSWORD_TOOL_NAME%.sh}-${version_suffix}.sh"
           CONFIG_FILE_NAME=$(ls ${{ github.workspace }}/config*.yml | xargs basename)
+          CONFIG_FILE_NAME="${CONFIG_FILE_NAME%.yml}-${version_suffix}.yml"
           echo "WAZUH_INSTALL_NAME=$WAZUH_INSTALL_NAME" >> $GITHUB_ENV
           echo "WAZUH_CERT_TOOL_NAME=$WAZUH_CERT_TOOL_NAME" >> $GITHUB_ENV
           echo "WAZUH_PASSWORD_TOOL_NAME=$WAZUH_PASSWORD_TOOL_NAME" >> $GITHUB_ENV
