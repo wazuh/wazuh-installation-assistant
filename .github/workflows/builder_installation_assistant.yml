@@ -137,13 +137,13 @@ jobs:
       - name: Save files name
         run: |
           WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh | xargs basename)
-          WAZUH_INSTALL_NAME="${WAZUH_INSTALL_NAME%.sh}-${version_suffix}.sh"
+          WAZUH_INSTALL_NAME="${WAZUH_INSTALL_NAME%.sh}.sh"
           WAZUH_CERT_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_CERT_TOOL_NAME }}*.sh | xargs basename)
-          WAZUH_CERT_TOOL_NAME="${WAZUH_CERT_TOOL_NAME%.sh}-${version_suffix}.sh"
+          WAZUH_CERT_TOOL_NAME="${WAZUH_CERT_TOOL_NAME%.sh}.sh"
           WAZUH_PASSWORD_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh | xargs basename)
-          WAZUH_PASSWORD_TOOL_NAME="${WAZUH_PASSWORD_TOOL_NAME%.sh}-${version_suffix}.sh"
+          WAZUH_PASSWORD_TOOL_NAME="${WAZUH_PASSWORD_TOOL_NAME%.sh}.sh"
           CONFIG_FILE_NAME=$(ls ${{ github.workspace }}/config*.yml | xargs basename)
-          CONFIG_FILE_NAME="${CONFIG_FILE_NAME%.yml}-${version_suffix}.yml"
+          CONFIG_FILE_NAME="${CONFIG_FILE_NAME%.yml}.yml"
           echo "WAZUH_INSTALL_NAME=$WAZUH_INSTALL_NAME" >> $GITHUB_ENV
           echo "WAZUH_CERT_TOOL_NAME=$WAZUH_CERT_TOOL_NAME" >> $GITHUB_ENV
           echo "WAZUH_PASSWORD_TOOL_NAME=$WAZUH_PASSWORD_TOOL_NAME" >> $GITHUB_ENV
