@@ -16,6 +16,11 @@ on:
         description: "Add last stage? (alpha1, beta1, rc2, etc)"
         type: boolean
         default: false
+      file_revision:
+        description: "Version revision (only when is stage, else it will use the commit SHA)."
+        type: string
+        required: false
+        default: "1"
       checksum:
         description: "Add checksum"
         type: boolean
@@ -35,6 +40,15 @@ on:
         description: "Is stage?"
         type: boolean
         default: false
+      add_last_stage:
+        description: "Add last stage? (alpha1, beta1, rc2, etc)"
+        type: boolean
+        default: false
+      file_revision:
+        description: "Version revision (only when is stage, else it will use the commit SHA)."
+        type: string
+        required: false
+        default: "1"
       checksum:
         description: "Add checksum"
         type: boolean
@@ -57,8 +71,39 @@ permissions:
   contents: read
 
 jobs:
+  setup:
+    runs-on: ubuntu-22.04
+    outputs:
+      suffix: ${{ steps.set-matrix.outputs.suffix }}
+    steps:
+      - name: Checkout wazuh-installation-assistant repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.wazuh_installation_assistant_reference }}
+          
+      - name: Set matrix based on is_stage
+        id: set-matrix
+        run: |
+          WAZUH_VERSION=$(jq -r '.version' VERSION.json)
+          if [[ "${{ inputs.is_stage }}" == "false" ]]; then
+            # non-stage: generate with commit sha and latest
+            COMMIT_SHORT_SHA=$(git rev-parse --short ${{ github.sha }})
+            COMMIT_SUFFIX=${WAZUH_VERSION}-${{ inputs.file_revision }}-${COMMIT_SHORT_SHA}
+            LATEST_SUFFIX=${WAZUH_VERSION}-latest
+            SUFFIX='["'$COMMIT_SUFFIX'", "'$LATEST_SUFFIX'"]'
+          else
+            # Stage: generate with file_revision
+            STAGE_SUFFIX=${WAZUH_VERSION}-${{ inputs.file_revision }}
+            SUFFIX='["'$STAGE_SUFFIX'"]'
+          fi
+          echo "suffix=$SUFFIX" >> $GITHUB_OUTPUT
+
   Build_Installation_Assistant:
     runs-on: ubuntu-22.04
+    needs: setup
+    strategy:
+      matrix: 
+        suffix: ${{ fromJson(needs.setup.outputs.suffix) }}
 
     steps:
       - name: View parameters
@@ -77,60 +122,46 @@ jobs:
 
       - name: Get version from VERSION.json and set dynamic paths
         run: |
-          VERSION=$(jq -r '.version' VERSION.json)
-          MAJOR=$(echo $VERSION | cut -d '.' -f 1)
-          MINOR=$(echo $VERSION | cut -d '.' -f 2)
-          PATCH=$(echo $VERSION | cut -d '.' -f 3)
+          WAZUH_VERSION=$(jq -r '.version' VERSION.json)
+          MAJOR=$(echo $WAZUH_VERSION | cut -d '.' -f 1)
+          MINOR=$(echo $WAZUH_VERSION | cut -d '.' -f 2)
+          PATCH=$(echo $WAZUH_VERSION | cut -d '.' -f 3)
 
           S3_REPOSITORY_PATH="development/wazuh/${MAJOR}.x/secondary/installation-assistant/${MAJOR}.${MINOR}.${PATCH}"
 
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "WAZUH_VERSION=$WAZUH_VERSION" >> $GITHUB_ENV
           echo "MAJOR=$MAJOR" >> $GITHUB_ENV
           echo "MINOR=$MINOR" >> $GITHUB_ENV
           echo "PATCH=$PATCH" >> $GITHUB_ENV
           echo "S3_REPOSITORY_PATH=$S3_REPOSITORY_PATH" >> $GITHUB_ENV
 
-          echo "Version: $VERSION"
+          echo "Version: $WAZUH_VERSION"
           echo "S3 Path: $S3_REPOSITORY_PATH"
-
-      - name: Get short sha and wazuh version
-        run: |
-          COMMIT_SHORT_SHA=$(git rev-parse --short ${{ github.sha }})
-          WAZUH_VERSION=$(grep -oP '(?<=readonly wazuh_version=").*(?=")' ${{github.workspace}}/install_functions/installVariables.sh)
-          echo "WAZUH_VERSION=$WAZUH_VERSION" >> $GITHUB_ENV
-          echo "COMMIT_SHORT_SHA=$COMMIT_SHORT_SHA" >> $GITHUB_ENV
 
       - name: Fill last_stage variable in wazuh-install.sh
         if: ${{ inputs.add_last_stage == true }}
         run: |
           sed -i "s|last_stage=\"\"|last_stage=\"${{ env.LAST_STAGE }}\"|g" ${{ github.workspace }}/install_functions/installVariables.sh
-
-      - name: Change files name for stage build
-        if: ${{ inputs.is_stage == false }}
+      
+      - name: Configure filenames
         run: |
-          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${{ env.WAZUH_INSTALL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${{ env.WAZUH_CERT_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ env.COMMIT_SHORT_SHA }}.sh|g' "${{ env.BUILDER_PATH }}"
-          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config-${{ env.COMMIT_SHORT_SHA }}.yml
+          WAZUH_INSTALL_NAME_WITH_SUFFIX="${{ env.WAZUH_INSTALL_NAME }}-${{ matrix.suffix }}.sh"
+          WAZUH_CERT_TOOL_NAME_WITH_SUFFIX="${{ env.WAZUH_CERT_TOOL_NAME }}-${{ matrix.suffix }}.sh"
+          WAZUH_PASSWORD_TOOL_NAME_WITH_SUFFIX="${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ matrix.suffix }}.sh"
+          CONFIG_FILE_NAME_WITH_SUFFIX="$(basename ${{ env.CONFIG_FILE_PATH }} | cut -d '.' -f 1)-${{ matrix.suffix }}.yml"
+          
+          sed -i "s|${{ env.WAZUH_INSTALL_NAME }}.sh|${WAZUH_INSTALL_NAME_WITH_SUFFIX}|g" "${{ env.BUILDER_PATH }}"
+          sed -i "s|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${WAZUH_CERT_TOOL_NAME_WITH_SUFFIX}|g" "${{ env.BUILDER_PATH }}"
+          sed -i "s|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${WAZUH_PASSWORD_TOOL_NAME_WITH_SUFFIX}|g" "${{ env.BUILDER_PATH }}"
+          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/${CONFIG_FILE_NAME_WITH_SUFFIX}
 
+          echo "WAZUH_INSTALL_NAME=${WAZUH_INSTALL_NAME_WITH_SUFFIX}" >> $GITHUB_ENV
+          echo "WAZUH_CERT_TOOL_NAME=${WAZUH_CERT_TOOL_NAME_WITH_SUFFIX}" >> $GITHUB_ENV
+          echo "WAZUH_PASSWORD_TOOL_NAME=${WAZUH_PASSWORD_TOOL_NAME_WITH_SUFFIX}" >> $GITHUB_ENV
+          echo "CONFIG_FILE_NAME=${CONFIG_FILE_NAME_WITH_SUFFIX}" >> $GITHUB_ENV
+          
       - name: Build Installation Assistant packages
         run: bash builder.sh -i -c -p
-
-      - name: Copy config file for stage build
-        if: ${{ inputs.is_stage == true }}
-        run: |
-          cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/config.yml
-
-      - name: Save files name
-        run: |
-          WAZUH_INSTALL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_INSTALL_NAME }}*.sh | xargs basename)
-          WAZUH_CERT_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_CERT_TOOL_NAME }}*.sh | xargs basename)
-          WAZUH_PASSWORD_TOOL_NAME=$(ls ${{ github.workspace }}/${{ env.WAZUH_PASSWORD_TOOL_NAME }}*.sh | xargs basename)
-          CONFIG_FILE_NAME=$(ls ${{ github.workspace }}/config*.yml | xargs basename)
-          echo "WAZUH_INSTALL_NAME=$WAZUH_INSTALL_NAME" >> $GITHUB_ENV
-          echo "WAZUH_CERT_TOOL_NAME=$WAZUH_CERT_TOOL_NAME" >> $GITHUB_ENV
-          echo "WAZUH_PASSWORD_TOOL_NAME=$WAZUH_PASSWORD_TOOL_NAME" >> $GITHUB_ENV
-          echo "CONFIG_FILE_NAME=$CONFIG_FILE_NAME" >> $GITHUB_ENV
 
       - name: Prepare files
         run: |
@@ -188,9 +219,8 @@ jobs:
           echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Wazuh Version** | ${{ env.WAZUH_VERSION }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Version (from VERSION.json)** | ${{ env.VERSION }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Reference** | ${{ inputs.wazuh_installation_assistant_reference }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Commit SHA** | ${{ env.COMMIT_SHORT_SHA }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit SHA** | $(git rev-parse --short ${{ github.sha }}) |" >> $GITHUB_STEP_SUMMARY
           echo "| **Is Stage** | ${{ inputs.is_stage }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Add Last Stage** | ${{ inputs.add_last_stage }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Checksum Generated** | ${{ inputs.checksum }} |" >> $GITHUB_STEP_SUMMARY
