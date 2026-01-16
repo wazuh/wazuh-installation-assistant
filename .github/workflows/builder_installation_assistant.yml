@@ -150,9 +150,9 @@ jobs:
           WAZUH_PASSWORD_TOOL_NAME_WITH_SUFFIX="${{ env.WAZUH_PASSWORD_TOOL_NAME }}-${{ matrix.suffix }}.sh"
           CONFIG_FILE_NAME_WITH_SUFFIX="$(basename ${{ env.CONFIG_FILE_PATH }} | cut -d '.' -f 1)-${{ matrix.suffix }}.yml"
           
-          sed -i 's|${{ env.WAZUH_INSTALL_NAME }}.sh|${WAZUH_INSTALL_NAME_WITH_SUFFIX}|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${WAZUH_CERT_TOOL_NAME_WITH_SUFFIX}|g' "${{ env.BUILDER_PATH }}"
-          sed -i 's|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${WAZUH_PASSWORD_TOOL_NAME_WITH_SUFFIX}|g' "${{ env.BUILDER_PATH }}"
+          sed -i "s|${{ env.WAZUH_INSTALL_NAME }}.sh|${WAZUH_INSTALL_NAME_WITH_SUFFIX}|g" "${{ env.BUILDER_PATH }}"
+          sed -i "s|${{ env.WAZUH_CERT_TOOL_NAME }}.sh|${WAZUH_CERT_TOOL_NAME_WITH_SUFFIX}|g" "${{ env.BUILDER_PATH }}"
+          sed -i "s|${{ env.WAZUH_PASSWORD_TOOL_NAME }}.sh|${WAZUH_PASSWORD_TOOL_NAME_WITH_SUFFIX}|g" "${{ env.BUILDER_PATH }}"
           cp ${{ env.CONFIG_FILE_PATH }} ${{ github.workspace }}/${CONFIG_FILE_NAME_WITH_SUFFIX}
 
           echo "WAZUH_INSTALL_NAME=${WAZUH_INSTALL_NAME_WITH_SUFFIX}" >> $GITHUB_ENV
@@ -161,7 +161,7 @@ jobs:
           echo "CONFIG_FILE_NAME=${CONFIG_FILE_NAME_WITH_SUFFIX}" >> $GITHUB_ENV
           
       - name: Build Installation Assistant packages
-        run: sudo bash builder.sh -i -c -p
+        run: bash builder.sh -i -c -p
 
       - name: Prepare files
         run: |
