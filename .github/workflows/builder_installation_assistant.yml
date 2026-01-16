@@ -76,13 +76,18 @@ jobs:
     outputs:
       suffix: ${{ steps.set-matrix.outputs.suffix }}
     steps:
+      - name: Checkout wazuh-installation-assistant repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.wazuh_installation_assistant_reference }}
+          
       - name: Set matrix based on is_stage
         id: set-matrix
         run: |
           if [[ "${{ inputs.is_stage }}" == "false" ]]; then
             # non-stage: generate with commit sha and latest
             COMMIT_SHORT_SHA=$(git rev-parse --short ${{ github.sha }})
-            COMMIT_SUFFIX=${{ env.WAZUH_VERSION }}-${{ inputs.file_revision }}-${COMMIT_SHORT_SHA}
+            COMMIT_SUFFIX=${{ env.WAZUH_VERSION }}-${{ inputs.file_revision }}-$COMMIT_SHORT_SHA
             LATEST_SUFFIX=${{ env.WAZUH_VERSION }}-latest
             SUFFIX='["'$COMMIT_SUFFIX'", "'$LATEST_SUFFIX'"]'
           else
