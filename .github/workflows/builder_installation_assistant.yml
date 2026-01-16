@@ -161,7 +161,7 @@ jobs:
           echo "CONFIG_FILE_NAME=${CONFIG_FILE_NAME_WITH_SUFFIX}" >> $GITHUB_ENV
           
       - name: Build Installation Assistant packages
-        run: bash builder.sh -i -c -p
+        run: sudo bash builder.sh -i -c -p
 
       - name: Prepare files
         run: |
