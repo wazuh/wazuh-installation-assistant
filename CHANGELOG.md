@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add documentation for Installation Assistant Tools in 5.0 ([#583](https://github.com/wazuh/wazuh-installation-assistant/pull/583))
 - Add version and revision suffix to built files ([#578](https://github.com/wazuh/wazuh-installation-assistant/pull/578))
 - Back port install-dependencies option ([#557](https://github.com/wazuh/wazuh-installation-assistant/pull/557))
 - Add new internal users to the password generation process in the Password tool ([#540](https://github.com/wazuh/wazuh-installation-assistant/pull/540))
