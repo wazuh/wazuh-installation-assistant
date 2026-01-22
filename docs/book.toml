@@ -1,0 +1,6 @@
+[book]
+title = "Wazuh Installation Assistant Documentation"
+authors = ["Wazuh DevOps Team"]
+description = "The technical documentation for the Wazuh Installation Assistant including the Wazuh Passwords Tool and the Wazuh Certs Tool, composed by the development documentation and the reference manual."
+language = "en"
+src = "."

@@ -18,3 +18,4 @@ wazuh-offline/
 *.msi
 *.log
 *.key
+docs/book/*
