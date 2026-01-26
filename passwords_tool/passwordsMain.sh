@@ -36,12 +36,6 @@ function getHelp() {
     echo -e "        -p,  --password <password>"
     echo -e "                Indicates the new password, must be used with option -u."
     echo -e ""
-    echo -e "        -c,  --cert <route-admin-certificate>"
-    echo -e "                Indicates route to the admin certificate."
-    echo -e ""
-    echo -e "        -k,  --certkey <route-admin-certificate-key>"
-    echo -e "                Indicates route to the admin certificate key."
-    echo -e ""
     echo -e "        -v,  --verbose"
     echo -e "                Shows the complete script execution output."
     echo -e ""
@@ -104,24 +98,6 @@ function main() {
                     exit 1
                 fi
                 password=${2}
-                shift 2
-                ;;
-            "-c"|"--cert")
-                if [ -z "${2}" ]; then
-                    echo "Argument --cert needs a second argument"
-                    getHelp
-                    exit 1
-                fi
-                adminpem=${2}
-                shift 2
-                ;;
-            "-k"|"--certkey")
-                if [ -z "${2}" ]; then
-                    echo "Argument --certkey needs a second argument"
-                    getHelp
-                    exit 1
-                fi
-                adminkey=${2}
                 shift 2
                 ;;
             "-h"|"--help")
