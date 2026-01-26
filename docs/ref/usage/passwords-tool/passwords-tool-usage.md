@@ -11,8 +11,6 @@ The `wazuh-passwords-tool.sh` script provides the following options for managing
 | `-ap\|--admin-password <ADMIN_PASSWORD>` | Password for the Wazuh server API admin user. Required for changing the Wazuh server API passwords. Requires `-A\|--api`. |
 | `-u\|--user <USER>` | Indicates the name of the user whose password will be changed. If no password is specified, it will generate a random one. |
 | `-p\|--password <PASSWORD>` | Indicates the new password. Must be used with option `-u\|--user <USER>`. |
-| `-c\|--cert <ROUTE_ADMIN_CERTIFICATE>` | Indicates route to the admin certificate. |
-| `-k\|--certkey <ROUTE_ADMIN_CERTIFICATE_KEY>` | Indicates route to the admin certificate key. |
 | `-v\|--verbose` | Shows the complete script execution output. |
 | `-h\|--help` | Shows help. |
 
