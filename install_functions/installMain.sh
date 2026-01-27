@@ -87,22 +87,15 @@ function main() {
                 ;;
             "-d"|"--development")
                 development=1
-                if [ -n "${2}" ] && [[ ! "${2}" =~ ^- ]]; then
-                    if [ "${2}" = "pre-release" ] || [ "${2}" = "local" ]; then
-                        devrepo="${2}"
-                    else
-                        common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'local'."
-                        getHelp
-                        exit 1
-                    fi
-                    shift 2
+                if [ "${2}" = "pre-release" ] || [ "${2}" = "local" ]; then
+                    devrepo="${2}"
+                    bucket="packages-dev.wazuh.com"
                 else
-                    devrepo="pre-release"
-                    shift 1
+                    common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'local'."
+                    getHelp
+                    exit 1
                 fi
-                checks_development_source_tag
-                bucket="packages-dev.wazuh.com"
-                repository="${devrepo}"
+                shift 2        
                 ;;
             "-g"|"--generate-config-files")
                 configurations=1
