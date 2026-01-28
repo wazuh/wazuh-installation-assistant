@@ -438,33 +438,6 @@ function check_versions() {
     fi
 }
 
-function checks_development_source_tag() {
-    source_branch="${source_branch}-${last_stage}"
-
-    # Check if the stage tag exists
-    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
-        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/git/refs/tags/$source_branch")
-
-    if [ "$status_code" -ne 200 ]; then
-        common_logger -w "Tag '$source_branch' does not exist. Using the source branch related to the Wazuh version ($wazuh_version)."
-        source_branch="${wazuh_version}"
-
-        # Check if the source branch exists
-        checks_source_branch
-    fi
-}
-
-function checks_source_branch() {
-    # Check if the source branch exists
-    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
-        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/branches/$source_branch")
-
-    if [ "$status_code" -ne 200 ]; then
-        common_logger -w "Branch '$source_branch' does not exist. Using the ${wazuh_version} branch."
-        source_branch="${wazuh_version}"
-    fi
-}
-
 function checks_localArtifactURLs_exists() {
     common_logger -d "Checking if ${artifact_urls_file_name} exists locally."
     if [ ! -f "${base_path}/${artifact_urls_file_name}" ]; then

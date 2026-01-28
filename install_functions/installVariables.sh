@@ -10,18 +10,9 @@
 readonly wazuh_major="5.0"
 readonly wazuh_version="5.0.0"
 readonly wazuh_install_vesion="0.1"
-source_branch="v${wazuh_version}"
-last_stage=""
-
-repogpg="https://packages.wazuh.com/key/GPG-KEY-WAZUH"
-repobaseurl="https://packages.wazuh.com/5.x"
-reporelease="stable"
 bucket="packages.wazuh.com"
-repository="5.x"
 
 ## Links and paths to resources
-readonly resources="https://${bucket}/${wazuh_major}"
-readonly base_url="https://${bucket}/${repository}"
 base_path="$(dirname "$(readlink -f "$0")")"
 readonly base_path
 config_file="${base_path}/config.yml"
@@ -41,15 +32,6 @@ readonly apt_lockfile="/var/lib/dpkg/lock"
 
 ## Offline Installation vars
 readonly base_dest_folder="wazuh-offline"
-manager_deb_base_url="${base_url}/apt/pool/main/w/wazuh-manager"
-
-indexer_deb_base_url="${base_url}/apt/pool/main/w/wazuh-indexer"
-dashboard_deb_base_url="${base_url}/apt/pool/main/w/wazuh-dashboard"
-manager_rpm_base_url="${base_url}/yum"
-
-indexer_rpm_base_url="${base_url}/yum"
-dashboard_rpm_base_url="${base_url}/yum"
-readonly wazuh_gpg_key="https://${bucket}/key/GPG-KEY-WAZUH"
 
 http_port=443
 wazuh_aio_ports=( 9200 9300 1514 1515 1516 55000 "${http_port}")

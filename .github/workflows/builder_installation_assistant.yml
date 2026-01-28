@@ -12,10 +12,6 @@ on:
         description: "Is stage?"
         type: boolean
         default: false
-      add_last_stage:
-        description: "Add last stage? (alpha1, beta1, rc2, etc)"
-        type: boolean
-        default: false
       file_revision:
         description: "Version revision (only when is stage, else it will use the commit SHA)."
         type: string
@@ -38,10 +34,6 @@ on:
         default: 5.0.0
       is_stage:
         description: "Is stage?"
-        type: boolean
-        default: false
-      add_last_stage:
-        description: "Add last stage? (alpha1, beta1, rc2, etc)"
         type: boolean
         default: false
       file_revision:
@@ -138,11 +130,6 @@ jobs:
           echo "Version: $WAZUH_VERSION"
           echo "S3 Path: $S3_REPOSITORY_PATH"
 
-      - name: Fill last_stage variable in wazuh-install.sh
-        if: ${{ inputs.add_last_stage == true }}
-        run: |
-          sed -i "s|last_stage=\"\"|last_stage=\"${{ env.LAST_STAGE }}\"|g" ${{ github.workspace }}/install_functions/installVariables.sh
-      
       - name: Configure filenames
         run: |
           WAZUH_INSTALL_NAME_WITH_SUFFIX="${{ env.WAZUH_INSTALL_NAME }}-${{ matrix.suffix }}.sh"
@@ -222,7 +209,6 @@ jobs:
           echo "| **Reference** | ${{ inputs.wazuh_installation_assistant_reference }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit SHA** | $(git rev-parse --short ${{ github.sha }}) |" >> $GITHUB_STEP_SUMMARY
           echo "| **Is Stage** | ${{ inputs.is_stage }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Add Last Stage** | ${{ inputs.add_last_stage }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Checksum Generated** | ${{ inputs.checksum }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📁 Generated Files" >> $GITHUB_STEP_SUMMARY
