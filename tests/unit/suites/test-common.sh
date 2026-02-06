@@ -62,7 +62,7 @@ test-04-common_checkInstalled-all-installed-yum() {
     @mocktrue yum list installed
 
     @mock grep wazuh-manager === @echo wazuh-manager.x86_64 5.0.0-1 @wazuh
-    @mkdir /var/ossec
+    @mkdir /var/wazuh-manager
 
     @mock grep wazuh-indexer === @echo wazuh-indexer.x86_64 1.13.2-1 @wazuh
     @mkdir /var/lib/wazuh-indexer/
@@ -77,7 +77,7 @@ test-04-common_checkInstalled-all-installed-yum() {
     common_checkInstalled
     @echo $wazuh_installed
     @echo $wazuh_remaining_files
-    @rmdir /var/ossec
+    @rmdir /var/wazuh-manager
 
     @echo $indexer_installed
     @echo $indexer_remaining_files
@@ -112,7 +112,7 @@ test-05-common_checkInstalled-all-installed-apt() {
     @mocktrue apt list --installed
 
     @mock grep wazuh-manager === @echo wazuh-manager/now 4.2.5-1 amd64 [installed,local]
-    @mkdir /var/ossec
+    @mkdir /var/wazuh-manager
 
     @mock grep wazuh-indexer === @echo wazuh-indexer/stable,now 1.13.2-1 amd64 [installed]
 
@@ -128,7 +128,7 @@ test-05-common_checkInstalled-all-installed-apt() {
     common_checkInstalled
     @echo $wazuh_installed
     @echo $wazuh_remaining_files
-    @rmdir /var/ossec
+    @rmdir /var/wazuh-manager
 
     @echo $indexer_installed
     @echo $indexer_remaining_files
