@@ -85,9 +85,9 @@ test-05-manager_startCluster() {
     tarfile=/tmp/tarfile.tar
     @mock tar -axf "${tar_file}" ./clusterkey -O === @out 68b6975cf186649490e2afbc6230c317
     @mock cut -d : -f 1
-    @mock grep -n "<cluster>" /var/ossec/etc/ossec.conf === @out 1
-    @mock grep -n "</cluster>" /var/ossec/etc/ossec.conf === @out 20
-    @mocktrue sed -i -e "1,20s/<name>.*<\/name>/<name>wazuh_cluster<\/name>/"  -e  "1,20s/<node_name>.*<\/node_name>/<node_name>wazuh<\/node_name>/"  -e  "1,20s/<node_type>.*<\/node_type>/<node_type>master<\/node_type>/"  -e  "1,20s/<key>.*<\/key>/<key>68b6975cf186649490e2afbc6230c317<\/key>/"  -e  "1,20s/<port>.*<\/port>/<port>1516<\/port>/"  -e  "1,20s/<bind_addr>.*<\/bind_addr>/<bind_addr>0.0.0.0<\/bind_addr>/"  -e  "1,20s/<node>.*<\/node>/<node>1.1.1.1<\/node>/"  -e  "1,20s/<hidden>.*<\/hidden>/<hidden>no<\/hidden>/"  -e  "1,20s/<disabled>.*<\/disabled>/<disabled>no<\/disabled>/"  /var/ossec/etc/ossec.conf
+    @mock grep -n "<cluster>" /var/wazuh-manager/etc/wazuh-manager.conf === @out 1
+    @mock grep -n "</cluster>" /var/wazuh-manager/etc/wazuh-manager.conf === @out 20
+    @mocktrue sed -i -e "1,20s/<name>.*<\/name>/<name>wazuh_cluster<\/name>/"  -e  "1,20s/<node_name>.*<\/node_name>/<node_name>wazuh<\/node_name>/"  -e  "1,20s/<node_type>.*<\/node_type>/<node_type>master<\/node_type>/"  -e  "1,20s/<key>.*<\/key>/<key>68b6975cf186649490e2afbc6230c317<\/key>/"  -e  "1,20s/<port>.*<\/port>/<port>1516<\/port>/"  -e  "1,20s/<bind_addr>.*<\/bind_addr>/<bind_addr>0.0.0.0<\/bind_addr>/"  -e  "1,20s/<node>.*<\/node>/<node>1.1.1.1<\/node>/"  -e  "1,20s/<hidden>.*<\/hidden>/<hidden>no<\/hidden>/"  -e  "1,20s/<disabled>.*<\/disabled>/<disabled>no<\/disabled>/"  /var/wazuh-manager/etc/wazuh-manager.conf
 
     manager_startCluster
     @echo $pos

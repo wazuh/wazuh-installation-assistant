@@ -273,7 +273,7 @@ test-19-installCommon_rollBack-aio-all-installed-yum-assert() {
 
     yum remove wazuh-manager -y
 
-    rm -rf /var/ossec/
+    rm -rf /var/wazuh-manager/
 
     yum remove wazuh-indexer -y
 
@@ -308,7 +308,7 @@ test-20-installCommon_rollBack-aio-all-installed-apt() {
 test-20-installCommon_rollBack-aio-all-installed-apt-assert() {
     apt remove --purge wazuh-manager -y
 
-    rm -rf /var/ossec/
+    rm -rf /var/wazuh-manager/
 
     apt remove --purge ^wazuh-indexer -y
 
@@ -391,7 +391,7 @@ test-23-installCommon_rollBack-wazuh-installation-all-installed-yum() {
 test-23-installCommon_rollBack-wazuh-installation-all-installed-yum-assert() {
     yum remove wazuh-manager -y
 
-    rm -rf /var/ossec/
+    rm -rf /var/wazuh-manager/
 
     rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
 }
@@ -413,7 +413,7 @@ test-24-installCommon_rollBack-wazuh-installation-all-installed-apt() {
 test-24-installCommon_rollBack-wazuh-installation-all-installed-apt-assert() {
     apt remove --purge wazuh-manager -y
 
-    rm -rf /var/ossec/
+    rm -rf /var/wazuh-manager/
 
 
     rm  -rf /var/log/wazuh-indexer/ /etc/systemd/system/opensearch.service.wants/ /securityadmin_demo.sh /etc/systemd/system/multi-user.target.wants/wazuh-manager.service /etc/systemd/system/multi-user.target.wants/opensearch.service /etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service /etc/systemd/system/wazuh-dashboard.service /lib/firewalld/services/dashboard.xml /lib/firewalld/services/opensearch.xml
@@ -499,7 +499,7 @@ test-28-installCommon_rollBack-aio-all-remaining-files-yum() {
 }
 
 test-28-installCommon_rollBack-aio-all-remaining-files-yum-assert() {
-    rm -rf /var/ossec/
+    rm -rf /var/wazuh-manager/
 
     rm -rf /var/lib/wazuh-indexer/
     rm -rf /usr/share/wazuh-indexer/
@@ -528,7 +528,7 @@ test-29-installCommon_rollBack-aio-all-remaining-files-apt() {
 }
 
 test-29-installCommon_rollBack-aio-all-remaining-files-apt-assert() {
-    rm -rf /var/ossec/
+    rm -rf /var/wazuh-manager/
 
     rm -rf /var/lib/wazuh-indexer/
     rm -rf /usr/share/wazuh-indexer/
