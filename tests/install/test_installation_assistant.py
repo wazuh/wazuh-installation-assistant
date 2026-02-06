@@ -211,7 +211,7 @@ def test_check_log_errors():
 
     ]
 
-    with open('/var/wazuh-manager/logs/wazuh.log', 'r') as f:
+    with open('/var/wazuh-manager/logs/wazuh-manager.log', 'r') as f:
         for line in f.readlines():
             if 'ERROR' in line:
                 if not any(exception in line for exception in exceptions):
