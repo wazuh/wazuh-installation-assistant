@@ -101,9 +101,9 @@ Start by downloading the [configuration file](https://packages.wazuh.com/5.0/con
    bash wazuh-install.sh --start-cluster
    ```
 
-6. Install the Wazuh server specifying the same name as specified in the configuration file:
+6. Install the Wazuh manager specifying the same name as specified in the configuration file:
    ```bash
-   bash wazuh-install.sh --wazuh-server <NODE_NAME>
+   bash wazuh-install.sh --wazuh-manager <NODE_NAME>
    ```
 
 7. Install the Wazuh dashboard specifying the same name as specified in the configuration file:
@@ -121,20 +121,20 @@ Start by downloading the [configuration file](https://packages.wazuh.com/5.0/con
 All the options for the Wazuh installation assistant are listed in the following table:
 | Option | Description |
 |---------------------------------------|----------------------------------------|
-| `-a`, `--all-in-one`                  | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard.  |
+| `-a`, `--all-in-one`                  | Install and configure Wazuh manager, Wazuh indexer, Wazuh dashboard.  |
 | `-dw`, `--download-wazuh <deb,rpm>`   | Download all the packages necessary for offline installation. Specify the type of packages to download for offline installation (`rpm`, `deb`).  |
 | `-g`, `--generate-config-files`       | Generate `wazuh-install-files.tar` file containing the files needed for installation from `config.yml`. In distributed deployments, you will need to copy this file to all hosts.  |
 | `-h`, `--help`                        | Display this help and exit.  |
 | `-i`, `--ignore-check`                | Ignore the check for minimum hardware requirements.  |
 | `-o`, `--overwrite`                   | Overwrite previously installed components. This will erase all the existing configuration and data.  |
-| `-of`, `--offline-installation`       | Perform an offline installation. This option must be used with `-a`, `-ws`, `-s`, `-wi`, or `-wd`.  |
+| `-of`, `--offline-installation`       | Perform an offline installation. This option must be used with `-a`, `-wm`, `-s`, `-wi`, or `-wd`.  |
 | `-s`, `--start-cluster`               | Initialize Wazuh indexer cluster security settings.  |
 | `-u`, `--uninstall`                   | Uninstall all Wazuh components. This will erase all the existing configuration and data.  |
 | `-v`, `--verbose`                     | Show the complete installation output.  |
 | `-V`, `--version`                     | Show the version of the script and Wazuh packages.  |
 | `-wd`, `--wazuh-dashboard <dashboard-node-name>`  | Install and configure Wazuh dashboard, used for distributed deployments.  |
 | `-wi`, `--wazuh-indexer <indexer-node-name>`      | Install and configure Wazuh indexer, used for distributed deployments.  |
-| `-ws`, `--wazuh-server <server-node-name>`        | Install and configure Wazuh manager, used for distributed deployments.  |
+| `-wm`, `--wazuh-manager <manager-node-name>`        | Install and configure Wazuh manager, used for distributed deployments.  |
 
 
 ## Contribute

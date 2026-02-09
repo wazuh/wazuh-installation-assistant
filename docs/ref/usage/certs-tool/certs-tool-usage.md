@@ -12,8 +12,8 @@ The certs-tool is used by running the previously downloaded `wazuh-certs-tool.sh
 | `-v`, `--verbose` | Enables verbose mode. |
 | `-wd`, `--wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh dashboard certificates, add root-ca.pem and root-ca.key. |
 | `-wi`, `--wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh indexer certificates, add root-ca.pem and root-ca.key. |
-| `-ws`, `--wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh server certificates, add root-ca.pem and root-ca.key. |
-| `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws |
+| `-wm`, `--wazuh-manager-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh manager certificates, add root-ca.pem and root-ca.key. |
+| `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm |
 
 ## config.yml configuration
 
@@ -33,10 +33,10 @@ nodes:
     #- name: node-3
     #  ip: "<indexer-node-ip>"
 
-  # Wazuh server nodes
-  # If there is more than one Wazuh server
+  # Wazuh manager nodes
+  # If there is more than one Wazuh manager
   # node, each one must have a node_type
-  server:
+  manager:
     - name: wazuh-1
       ip: "<wazuh-manager-ip>"
     #  node_type: master
@@ -53,7 +53,7 @@ nodes:
       ip: "<dashboard-node-ip>"
 ```
 
-Each node must have a unique name and an associated IP address. In the case of Wazuh server nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.
+Each node must have a unique name and an associated IP address. In the case of Wazuh manager nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.
 
 For the certs-tool to detect the file, it must be located in the same path as the `wazuh-certs-tool.sh` script.
 
@@ -92,11 +92,11 @@ You can create only the certificates for a component as well as the CA or admin 
     # or use the short version
     sudo bash wazuh-certs-tool.sh -wi </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
-- Create Wazuh server certificates:
+- Create Wazuh manager certificates:
     ```bash
-    sudo bash wazuh-certs-tool.sh --wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
+    sudo bash wazuh-certs-tool.sh --wazuh-manager-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
-    sudo bash wazuh-certs-tool.sh -ws </path/to/root-ca.pem> </path/to/root-ca.key>
+    sudo bash wazuh-certs-tool.sh -wm </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
 - Create Wazuh dashboard certificates:
     ```bash

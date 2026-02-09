@@ -34,12 +34,12 @@ function getHelp() {
     echo -e "        -wi,  --wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
     echo -e "                Creates the Wazuh indexer certificates, add root-ca.pem and root-ca.key."
     echo -e ""
-    echo -e "        -ws,  --wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates the Wazuh server certificates, add root-ca.pem and root-ca.key."
+    echo -e "        -wm,  --wazuh-manager-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
+    echo -e "                Creates the Wazuh manager certificates, add root-ca.pem and root-ca.key."
     echo -e ""
     echo -e "        -tmp,  --cert_tmp_path </path/to/tmp_dir>"
     echo -e "                Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one."
-    echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws"
+    echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm"
     echo -e ""
 
     exit 1
@@ -124,20 +124,20 @@ function main() {
                     shift 3
                 fi
                 ;;
-            "-ws"|"--wazuh-server-certificates")
+            "-wm"|"--wazuh-manager-certificates")
                 if [[ -z "${2}" || -z "${3}" ]]; then
-                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -ws|--wazuh-server-certificates"
+                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -wm|--wazuh-manager-certificates"
                     getHelp
                     exit 1
                 else
-                    cserver=1
+                    cmanager=1
                     rootca="${2}"
                     rootcakey="${3}"
                     shift 3
                 fi
                 ;;
             "-tmp"|"--cert_tmp_path")
-                if [[ -n "${3}" || ( "${cadmin}" == 1 || "${all}" == 1 || "${ca}" == 1 || "${cdashboard}" == 1 || "${cindexer}" == 1 || "${cserver}" == 1 ) ]]; then
+                if [[ -n "${3}" || ( "${cadmin}" == 1 || "${all}" == 1 || "${ca}" == 1 || "${cdashboard}" == 1 || "${cindexer}" == 1 || "${cmanager}" == 1 ) ]]; then
                     if [[ -z "${2}" || ! "${2}" == /* ]]; then
                         common_logger -e "Error on arguments. Probably missing </path/to/tmp_dir> or path does not start with '/'."
                         getHelp
@@ -147,7 +147,7 @@ function main() {
                         shift 2
                     fi
                 else
-                    common_logger -e "Error: -tmp must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws"
+                    common_logger -e "Error: -tmp must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm"
                     getHelp
                     exit 1
                 fi
@@ -194,8 +194,8 @@ function main() {
             if cert_generateIndexercertificates; then
                 common_logger "Wazuh indexer certificates created."
             fi
-            if cert_generateServercertificates; then
-                common_logger "Wazuh server certificates created."
+            if cert_generateManagercertificates; then
+                common_logger "Wazuh manager certificates created."
             fi
             if cert_generateDashboardcertificates; then
                 common_logger "Wazuh dashboard certificates created."
@@ -226,16 +226,16 @@ function main() {
             fi
         fi
 
-        if [[ -n "${cserver}" ]]; then
-            if [ ${#server_node_names[@]} -gt 0 ]; then
+        if [[ -n "${cmanager}" ]]; then
+            if [ ${#manager_node_names[@]} -gt 0 ]; then
                 cert_checkRootCA
-                cert_generateServercertificates
-                common_logger "Wazuh server certificates created."
+                cert_generateManagercertificates
+                common_logger "Wazuh manager certificates created."
                 cert_cleanFiles
                 cert_setpermisions
                 eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
             else
-                common_logger -e "Server node not present in config.yml."
+                common_logger -e "Manager node not present in config.yml."
                 exit 1
             fi
         fi
