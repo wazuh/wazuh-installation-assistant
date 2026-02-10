@@ -6,7 +6,7 @@ Among the Wazuh indexer users, it is worth mentioning the following:
 
 - `admin`: is the default administrator account of the Wazuh indexer. It's used to log in to the Wazuh dashboard and for communications between Filebeat and the Wazuh indexer. If you change the admin password, you must update it in Filebeat and the Wazuh manager.
 
-- `kibanaserver`: is used for communications between the Wazuh dashboard and the Wazuh indexer. If you change the kibanamanager password, you must update it in the Wazuh dashboard.
+- `kibanaserver`: is used for communications between the Wazuh dashboard and the Wazuh indexer. If you change the kibanaserver password, you must update it in the Wazuh dashboard.
 
 On the other hand, the Wazuh manager API has two default users:
 
