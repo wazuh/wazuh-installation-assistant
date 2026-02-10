@@ -227,7 +227,6 @@ function main() {
             if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
                 passwords_getApiToken
                 passwords_getApiUsers
-                passwords_getApiIds
             elif [ -n "${indexer_installed}" ]; then
                 passwords_readUsers
             fi
@@ -251,7 +250,6 @@ function main() {
             if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
                 passwords_getApiToken
                 passwords_getApiUsers
-                passwords_getApiIds
             else
                 common_logger "Wazuh API admin credentials not provided, Wazuh API passwords not changed."
             fi
