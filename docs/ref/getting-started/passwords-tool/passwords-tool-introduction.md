@@ -4,14 +4,14 @@ The `wazuh-passwords-tool.sh` script is used to manage passwords related to Wazu
 
 Among the Wazuh indexer users, it is worth mentioning the following:
 
-- `admin`: is the default administrator account of the Wazuh indexer. It's used to log in to the Wazuh dashboard and for communications between Filebeat and the Wazuh indexer. If you change the admin password, you must update it in Filebeat and the Wazuh server.
+- `admin`: is the default administrator account of the Wazuh indexer. It's used to log in to the Wazuh dashboard and for communications between Filebeat and the Wazuh indexer. If you change the admin password, you must update it in Filebeat and the Wazuh manager.
 
 - `kibanaserver`: is used for communications between the Wazuh dashboard and the Wazuh indexer. If you change the kibanaserver password, you must update it in the Wazuh dashboard.
 
-On the other hand, the Wazuh server API has two default users:
+On the other hand, the Wazuh manager API has two default users:
 
-- `wazuh`: is the default Wazuh server API administrator user.
-- `wazuh-wui`: is an admin user used for communications between Wazuh dashboard and the Wazuh server API. If you change the wazuh-wui password, you must ensure it updates in the Wazuh dashboard.
+- `wazuh`: is the default Wazuh manager API administrator user.
+- `wazuh-wui`: is an admin user used for communications between Wazuh dashboard and the Wazuh manager API. If you change the wazuh-wui password, you must ensure it updates in the Wazuh dashboard.
 
 > **note** By default, in all Wazuh installations, Wazuh users have default passwords, so it is highly recommended to change them to more secure ones using this tool.
 

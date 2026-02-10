@@ -143,7 +143,7 @@ function common_checkSystem() {
 function common_checkWazuhConfigYaml() {
 
     common_logger -d "Checking Wazuh YAML configuration file."
-    filecorrect=$(cert_parseYaml "${config_file}" | grep -Ev '^#|^\s*$' | grep -Pzc "\A(\s*(nodes_indexer__name|nodes_indexer__ip|nodes_server__name|nodes_server__ip|nodes_server__node_type|nodes_dashboard__name|nodes_dashboard__ip)=.*?)+\Z")
+    filecorrect=$(cert_parseYaml "${config_file}" | grep -Ev '^#|^\s*$' | grep -Pzc "\A(\s*(nodes_indexer__name|nodes_indexer__ip|nodes_manager__name|nodes_manager__ip|nodes_manager__node_type|nodes_dashboard__name|nodes_dashboard__ip)=.*?)+\Z")
     if [[ "${filecorrect}" -ne 1 ]]; then
         common_logger -e "The configuration file ${config_file} does not have a correct format."
         exit 1
