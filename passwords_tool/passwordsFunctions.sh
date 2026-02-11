@@ -45,7 +45,7 @@ function passwords_changePassword() {
 
     fi
 
-    if [ "${nuser}" == "admin" ] || [ -n "${changeall}" ]; then
+    if [ "${nuser}" == "admin" ] || ([ -n "${changeall}" ] && [[ " ${users[*]} " =~ " admin " ]]); then
         if [ -n "${filebeat_installed}" ] && [ -z "${dashboard}" ]; then
             file_username=$(grep "username:" /etc/filebeat/filebeat.yml | awk '{print $2}')
             file_password=$(grep "password:" /etc/filebeat/filebeat.yml | awk '{print $2}')
@@ -217,7 +217,7 @@ function passwords_generateHash() {
         done
         common_logger -d "Password hashes generated."
     else
-        common_logger "Generating password hash"
+        common_logger -d "Generating password hash"
         hash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${password}" 2>&1)
         if [  "${PIPESTATUS[0]}" != 0  ]; then
             common_logger -e "Hash generation failed."
@@ -350,22 +350,10 @@ function passwords_getApiUsers() {
 
 }
 
-function passwords_getApiIds() {
-
-    mapfile -t api_ids < <(common_curl -s -k -X GET -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\"  \"https://localhost:55000/security/users?pretty=true\" --max-time 300 --retry 5 --retry-delay 5 | grep id | awk -F': ' '{print $2}' | sed -e "s/[\'\",]//g")
-
-}
-
 function passwords_getApiUserId() {
+    user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
 
-    user_id="noid"
-    for u in "${!api_users[@]}"; do
-        if [ "${1}" == "${api_users[u]}" ]; then
-            user_id="${api_ids[u]}"
-        fi
-    done
-
-    if [ "${user_id}" == "noid" ]; then
+    if [ -z "${user_id}" ]; then
         common_logger -e "User ${1} is not registered in Wazuh API"
         if [[ $(type -t installCommon_rollBack) == "function" ]]; then
                 installCommon_rollBack
@@ -424,11 +412,20 @@ For Wazuh API users, the file must have this format:
     sfileapiusers=$(grep api_username: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
     sfileapipasswords=$(grep api_password: "${p_file}" | awk '{ print substr( $2, 1, length($2) ) }' | sed -e "s/[\'\"]//g")
 
-    mapfile -t fileusers <<< "${sfileusers}"
-    mapfile -t filepasswords <<< "${sfilepasswords}"
+    fileusers=()
+    filepasswords=()
+    fileapiusers=()
+    fileapipasswords=()
 
-    mapfile -t fileapiusers <<< "${sfileapiusers}"
-    mapfile -t fileapipasswords <<< "${sfileapipasswords}"
+    if [ -n "${sfileusers}" ] && [ -n "${sfilepasswords}" ]; then
+        mapfile -t fileusers <<< "${sfileusers}"
+        mapfile -t filepasswords <<< "${sfilepasswords}"
+    fi
+    
+    if [ -n "${sfileapiusers}" ] && [ -n "${sfileapipasswords}" ]; then
+        mapfile -t fileapiusers <<< "${sfileapiusers}"
+        mapfile -t fileapipasswords <<< "${sfileapipasswords}"
+    fi
 
     if [ -n "${changeall}" ]; then
         for j in "${!fileusers[@]}"; do
@@ -466,7 +463,6 @@ For Wazuh API users, the file must have this format:
 
         finalapiusers=()
         finalapipasswords=()
-
         for j in "${!fileusers[@]}"; do
             supported=false
             for i in "${!users[@]}"; do
@@ -501,10 +497,16 @@ For Wazuh API users, the file must have this format:
 
         users=()
         passwords=()
-        mapfile -t users < <(printf "%s\n" "${finalusers[@]}")
-        mapfile -t passwords < <(printf "%s\n" "${finalpasswords[@]}")
-        mapfile -t api_users < <(printf "%s\n" "${finalapiusers[@]}")
-        mapfile -t api_passwords < <(printf "%s\n" "${finalapipasswords[@]}")
+
+        if [ -n "${finalusers}" ] && [ -n "${finalpasswords}" ]; then
+            mapfile -t users < <(printf "%s\n" "${finalusers[@]}")
+            mapfile -t passwords < <(printf "%s\n" "${finalpasswords[@]}")
+        fi
+
+        if [ -n "${finalapiusers}" ] && [ -n "${finalapipasswords}" ]; then
+            mapfile -t api_users < <(printf "%s\n" "${finalapiusers[@]}")
+            mapfile -t api_passwords < <(printf "%s\n" "${finalapipasswords[@]}")
+        fi
 
         changeall=1
     fi
@@ -613,7 +615,7 @@ function passwords_runSecurityAdmin() {
     fi
 
     if [ -n "${changeall}" ]; then
-        if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
+        if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ] && [ -n "${users}" ]; then
             for i in "${!users[@]}"; do
                 common_logger -nl "The password for user ${users[i]} is ${passwords[i]}"
             done
