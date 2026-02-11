@@ -8,10 +8,10 @@ nodes:
     #- name: node-3
     #  ip: "<indexer-node-ip>"
 
-  # Wazuh server nodes
-  # If there is more than one Wazuh server
+  # Wazuh manager nodes
+  # If there is more than one Wazuh manager
   # node, each one must have a node_type
-  server:
+  manager:
     - name: wazuh-1
       ip: "<wazuh-manager-ip>"
     #  node_type: master

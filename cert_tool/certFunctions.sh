@@ -164,21 +164,21 @@ function cert_generateIndexercertificates() {
 
 }
 
-function cert_generateServercertificates() {
+function cert_generateManagercertificates() {
 
-    if [ ${#server_node_names[@]} -gt 0 ]; then
-        common_logger "Generating Wazuh server certificates."
+    if [ ${#manager_node_names[@]} -gt 0 ]; then
+        common_logger "Generating Wazuh manager certificates."
 
-        for i in "${!server_node_names[@]}"; do
-            server_name="${server_node_names[i]}"
-            common_logger -d "Generating the certificates for ${server_name} server node."
+        for i in "${!manager_node_names[@]}"; do
+            manager_name="${manager_node_names[i]}"
+            common_logger -d "Generating the certificates for ${manager_name} manager node."
             j=$((i+1))
-            declare -a server_ips=(server_node_ip_"$j"[@])
-            cert_generateCertificateconfiguration "${server_name}" "${!server_ips}"
-            common_logger -d "Creating the Wazuh server tmp key pair."
-            cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${server_name}-key.pem -out ${cert_tmp_path}/${server_name}.csr  -config ${cert_tmp_path}/${server_name}.conf"
-            common_logger -d "Creating the Wazuh server certificates."
-            cert_executeAndValidate "openssl x509 -req -in ${cert_tmp_path}/${server_name}.csr -CA ${cert_tmp_path}/root-ca.pem -CAkey ${cert_tmp_path}/root-ca.key -CAcreateserial -out ${cert_tmp_path}/${server_name}.pem -extfile ${cert_tmp_path}/${server_name}.conf -extensions v3_req -days 3650"
+            declare -a manager_ips=(manager_node_ip_"$j"[@])
+            cert_generateCertificateconfiguration "${manager_name}" "${!manager_ips}"
+            common_logger -d "Creating the Wazuh manager tmp key pair."
+            cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${manager_name}-key.pem -out ${cert_tmp_path}/${manager_name}.csr  -config ${cert_tmp_path}/${manager_name}.conf"
+            common_logger -d "Creating the Wazuh manager certificates."
+            cert_executeAndValidate "openssl x509 -req -in ${cert_tmp_path}/${manager_name}.csr -CA ${cert_tmp_path}/root-ca.pem -CAkey ${cert_tmp_path}/root-ca.key -CAcreateserial -out ${cert_tmp_path}/${manager_name}.pem -extfile ${cert_tmp_path}/${manager_name}.conf -extensions v3_req -days 3650"
         done
     else
         return 1
@@ -357,14 +357,14 @@ function cert_readConfig() {
         eval "$(cert_convertCRLFtoLF "${config_file}")"
 
         eval "indexer_node_names=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+=" | cut -d = -f 2 ) )"
-        eval "server_node_names=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+=" | cut -d = -f 2 ) )"
+        eval "manager_node_names=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+manager[_]+[0-9]+=" | cut -d = -f 2 ) )"
         eval "dashboard_node_names=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+[0-9]+=" | cut -d = -f 2) )"
         eval "indexer_node_ips=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
-        eval "server_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
+        eval "manager_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
         eval "dashboard_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" | cut -d = -f 2 ) )"
-        eval "server_node_types=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+[_]+node_type=" | cut -d = -f 2 ) )"
-        eval "number_server_ips=( $(cert_parseYaml "${config_file}" | grep -o -E 'nodes[_]+server[_]+[0-9]+[_]+ip' | sort -u | wc -l) )"
-        all_ips=("${indexer_node_ips[@]}" "${server_node_ips[@]}" "${dashboard_node_ips[@]}")
+        eval "manager_node_types=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" | cut -d = -f 2 ) )"
+        eval "number_manager_ips=( $(cert_parseYaml "${config_file}" | grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip' | sort -u | wc -l) )"
+        all_ips=("${indexer_node_ips[@]}" "${manager_node_ips[@]}" "${dashboard_node_ips[@]}")
 
         for ip in "${all_ips[@]}"; do
             isIP=$(echo "${ip}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
@@ -376,9 +376,9 @@ function cert_readConfig() {
             fi
         done
 
-        for i in $(seq 1 "${number_server_ips}"); do
-            nodes_server="nodes[_]+server[_]+${i}[_]+ip"
-            eval "server_node_ip_$i=( $( cert_parseYaml "${config_file}" | grep -E "${nodes_server}" | sed '/\./!d' | cut -d = -f 2 | sed -r 's/\s+//g') )"
+        for i in $(seq 1 "${number_manager_ips}"); do
+            nodes_manager="nodes[_]+manager[_]+${i}[_]+ip"
+            eval "manager_node_ip_$i=( $( cert_parseYaml "${config_file}" | grep -E "${nodes_manager}" | sed '/\./!d' | cut -d = -f 2 | sed -r 's/\s+//g') )"
         done
 
         unique_names=($(echo "${indexer_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
@@ -393,15 +393,15 @@ function cert_readConfig() {
             exit 1
         fi
 
-        unique_names=($(echo "${server_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_names[@]}" -ne "${#server_node_names[@]}" ]; then 
-            common_logger -e "Duplicated Wazuh server node names."
+        unique_names=($(echo "${manager_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+        if [ "${#unique_names[@]}" -ne "${#manager_node_names[@]}" ]; then 
+            common_logger -e "Duplicated Wazuh manager node names."
             exit 1
         fi
 
-        unique_ips=($(echo "${server_node_ips[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_ips[@]}" -ne "${#server_node_ips[@]}" ]; then 
-            common_logger -e "Duplicated Wazuh server node ips."
+        unique_ips=($(echo "${manager_node_ips[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+        if [ "${#unique_ips[@]}" -ne "${#manager_node_ips[@]}" ]; then 
+            common_logger -e "Duplicated Wazuh manager node ips."
             exit 1
         fi
 
@@ -417,28 +417,28 @@ function cert_readConfig() {
             exit 1
         fi
 
-        for i in "${server_node_types[@]}"; do
+        for i in "${manager_node_types[@]}"; do
             if ! echo "$i" | grep -ioq master && ! echo "$i" | grep -ioq worker; then
                 common_logger -e "Incorrect node_type $i must be master or worker"
                 exit 1
             fi
         done
 
-        if [ "${#server_node_names[@]}" -le 1 ]; then
-            if [ "${#server_node_types[@]}" -ne 0 ]; then
-                common_logger -e "The tag node_type can only be used with more than one Wazuh server."
+        if [ "${#manager_node_names[@]}" -le 1 ]; then
+            if [ "${#manager_node_types[@]}" -ne 0 ]; then
+                common_logger -e "The tag node_type can only be used with more than one Wazuh manager."
                 exit 1
             fi
-        elif [ "${#server_node_names[@]}" -gt "${#server_node_types[@]}" ]; then
-            common_logger -e "The tag node_type needs to be specified for all Wazuh server nodes."
+        elif [ "${#manager_node_names[@]}" -gt "${#manager_node_types[@]}" ]; then
+            common_logger -e "The tag node_type needs to be specified for all Wazuh manager nodes."
             exit 1
-        elif [ "${#server_node_names[@]}" -lt "${#server_node_types[@]}" ]; then
+        elif [ "${#manager_node_names[@]}" -lt "${#manager_node_types[@]}" ]; then
             common_logger -e "Found extra node_type tags."
             exit 1
-        elif [ "$(grep -io master <<< "${server_node_types[*]}" | wc -l)" -ne 1 ]; then
+        elif [ "$(grep -io master <<< "${manager_node_types[*]}" | wc -l)" -ne 1 ]; then
             common_logger -e "Wazuh cluster needs a single master node."
             exit 1
-        elif [ "$(grep -io worker <<< "${server_node_types[*]}" | wc -l)" -ne $(( ${#server_node_types[@]} - 1 )) ]; then
+        elif [ "$(grep -io worker <<< "${manager_node_types[*]}" | wc -l)" -ne $(( ${#manager_node_types[@]} - 1 )) ]; then
             common_logger -e "Incorrect number of workers."
             exit 1
         fi

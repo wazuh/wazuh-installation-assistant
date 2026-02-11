@@ -9,15 +9,15 @@
 function manager_startCluster() {
 
     common_logger -d "Starting Wazuh manager cluster."
-    for i in "${!server_node_names[@]}"; do
-        if [[ "${server_node_names[i]}" == "${winame}" ]]; then
+    for i in "${!manager_node_names[@]}"; do
+        if [[ "${manager_node_names[i]}" == "${winame}" ]]; then
             pos="${i}";
         fi
     done
 
-    for i in "${!server_node_types[@]}"; do
-        if [[ "${server_node_types[i],,}" == "master" ]]; then
-            master_address=${server_node_ips[i]}
+    for i in "${!manager_node_types[@]}"; do
+        if [[ "${manager_node_types[i],,}" == "master" ]]; then
+            master_address=${manager_node_ips[i]}
         fi
     done
 
@@ -31,7 +31,7 @@ function manager_startCluster() {
 
     eval 'sed -i -e "${lstart},${lend}s/<name>.*<\/name>/<name>wazuh_cluster<\/name>/" \
         -e "${lstart},${lend}s/<node_name>.*<\/node_name>/<node_name>${winame}<\/node_name>/" \
-        -e "${lstart},${lend}s/<node_type>.*<\/node_type>/<node_type>${server_node_types[pos],,}<\/node_type>/" \
+        -e "${lstart},${lend}s/<node_type>.*<\/node_type>/<node_type>${manager_node_types[pos],,}<\/node_type>/" \
         -e "${lstart},${lend}s/<key>.*<\/key>/<key>${key}<\/key>/" \
         -e "${lstart},${lend}s/<port>.*<\/port>/<port>${port}<\/port>/" \
         -e "${lstart},${lend}s/<bind_addr>.*<\/bind_addr>/<bind_addr>${bind_address}<\/bind_addr>/" \
@@ -55,7 +55,7 @@ function manager_configure(){
     done
 
     if [ "${AIO}" ]; then
-        winame="${server_node_names[0]}"
+        winame="${manager_node_names[0]}"
     fi
     eval "sed -i s/server.pem/${winame}.pem/ /var/ossec/etc/ossec.conf ${debug}"
     eval "sed -i s/server-key.pem/${winame}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
@@ -108,7 +108,7 @@ function manager_copyCertificates() {
     common_logger -d "Copying Manager certificates."
 
     if [ "${AIO}" ]; then
-        winame="${server_node_names[0]}"
+        winame="${manager_node_names[0]}"
     fi
 
     if [ -f "${tar_file}" ]; then
@@ -117,14 +117,14 @@ function manager_copyCertificates() {
             installCommon_rollBack
             exit 1
         fi
-        eval "mkdir -p ${server_cert_path} ${debug}"
-        eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/${winame}.pem --strip-components 1 ${debug}"
-        eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/${winame}-key.pem --strip-components 1 ${debug}"
-        eval "tar -xf ${tar_file} -C ${server_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
-        eval "rm -rf ${server_cert_path}/wazuh-install-files/ ${debug}"
-        eval "chmod 500 ${server_cert_path} ${debug}"
-        eval "chmod 400 ${server_cert_path}/* ${debug}"
-        eval "chown root:root ${server_cert_path}/* ${debug}"
+        eval "mkdir -p ${manager_cert_path} ${debug}"
+        eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}.pem --strip-components 1 ${debug}"
+        eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}-key.pem --strip-components 1 ${debug}"
+        eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
+        eval "rm -rf ${manager_cert_path}/wazuh-install-files/ ${debug}"
+        eval "chmod 500 ${manager_cert_path} ${debug}"
+        eval "chmod 400 ${manager_cert_path}/* ${debug}"
+        eval "chown root:root ${manager_cert_path}/* ${debug}"
     else
         common_logger -e "No certificates found. Could not initialize Wazuh manager"
         installCommon_rollBack

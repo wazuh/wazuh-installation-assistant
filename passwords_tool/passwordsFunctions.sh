@@ -323,11 +323,11 @@ function passwords_runSecurityAdmin() {
 
     if [[ -n "${nuser}" ]] && [[ -n ${autopass} ]]; then
         common_logger -nl "The password for user ${nuser} is ${password}"
-        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh server nodes if necessary, and restart the services."
+        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
     fi
 
     if [[ -n "${nuser}" ]] && [[ -z ${autopass} ]]; then
-        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh server nodes if necessary, and restart the services."
+        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
     fi
 
 }

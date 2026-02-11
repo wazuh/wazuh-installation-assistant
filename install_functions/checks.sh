@@ -25,7 +25,7 @@ function checks_arguments() {
 
     if [ -n "${development}" ]; then
         if [ -z "${AIO}" ] && [ -z "${dashboard}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ] && [ -z "${download}" ]; then
-            common_logger -e "The -d|--development option must be used with -a, -ws, -s, -wi, -wd or -dw."
+            common_logger -e "The -d|--development option must be used with -a, -wm, -s, -wi, -wd or -dw."
             exit 1
         fi
     fi
@@ -34,7 +34,7 @@ function checks_arguments() {
 
     if [ -n "${offline_install}" ]; then
         if [ -z "${AIO}" ] && [ -z "${dashboard}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
-            common_logger -e "The -of|--offline-installation option must be used with -a, -ws, -s, -wi, or -wd."
+            common_logger -e "The -of|--offline-installation option must be used with -a, -wm, -s, -wi, or -wd."
             exit 1
         fi
     fi
@@ -83,14 +83,14 @@ function checks_arguments() {
     fi
 
     if [[ -n "${configurations}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${start_indexer_cluster}" || -n "${uninstall}" ) ]]; then
-        common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -ws|--wazuh-server."
+        common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -wm|--wazuh-manager."
         exit 1
     fi
 
     # -------------- Overwrite --------------------------------------
 
     if [ -n "${overwrite}" ] && [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ]; then
-        common_logger -e "The argument -o|--overwrite must be used in conjunction with -a|--all-in-one, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -ws|--wazuh-server."
+        common_logger -e "The argument -o|--overwrite must be used in conjunction with -a|--all-in-one, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -wm|--wazuh-manager."
         exit 1
     fi
 
@@ -122,7 +122,7 @@ function checks_arguments() {
     if [ -n "${AIO}" ]; then
 
         if [ -n "$indexer" ] || [ -n "$dashboard" ] || [ -n "$wazuh" ]; then
-            common_logger -e "Argument -a|--all-in-one is not compatible with -wi|--wazuh-indexer, -wd|--wazuh-dashboard or -ws|--wazuh-server."
+            common_logger -e "Argument -a|--all-in-one is not compatible with -wi|--wazuh-indexer, -wd|--wazuh-dashboard or -wm|--wazuh-manager."
             exit 1
         fi
 
@@ -183,7 +183,7 @@ function checks_arguments() {
             if [ -n "${overwrite}" ]; then
                 installCommon_rollBack
             else
-                common_logger -e "Wazuh server components (wazuh-manager) are already installed in this node or some of their files have not been removed. Use option -o|--overwrite to overwrite all components."
+                common_logger -e "Wazuh manager components are already installed in this node or some of their files have not been removed. Use option -o|--overwrite to overwrite all components."
                 exit 1
             fi
         fi
@@ -192,14 +192,14 @@ function checks_arguments() {
     # -------------- Cluster start ----------------------------------
 
     if [[ -n "${start_indexer_cluster}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${configurations}" || -n "${uninstall}") ]]; then
-        common_logger -e "The argument -s|--start-cluster can't be used with -a|--all-in-one, -g|--generate-config-files,-o|--overwrite , -u|--uninstall, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -ws|--wazuh-server."
+        common_logger -e "The argument -s|--start-cluster can't be used with -a|--all-in-one, -g|--generate-config-files,-o|--overwrite , -u|--uninstall, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -wm|--wazuh-manager."
         exit 1
     fi
 
     # -------------- Global -----------------------------------------
 
     if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ] && [ -z "${configurations}" ] && [ -z "${uninstall}" ] && [ -z "${download}" ]; then
-        common_logger -e "At least one of these arguments is necessary -a|--all-in-one, -g|--generate-config-files, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -ws|--wazuh-server, -u|--uninstall, -dw|--download-wazuh."
+        common_logger -e "At least one of these arguments is necessary -a|--all-in-one, -g|--generate-config-files, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -wm|--wazuh-manager, -u|--uninstall, -dw|--download-wazuh."
         exit 1
     fi
 
@@ -321,12 +321,12 @@ function checks_names() {
     fi
 
     if [ -n "${winame}" ] && [ -n "${dashname}" ] && [ "${winame}" == "${dashname}" ]; then
-        common_logger -e "The node names for Wazuh server and Wazuh indexer must be different."
+        common_logger -e "The node names for Wazuh manager and Wazuh indexer must be different."
         exit 1
     fi
 
-    if [ -n "${winame}" ] && ! echo "${server_node_names[@]}" | grep -w -q "${winame}"; then
-        common_logger -e "The Wazuh server node name ${winame} does not appear on the configuration file."
+    if [ -n "${winame}" ] && ! echo "${manager_node_names[@]}" | grep -w -q "${winame}"; then
+        common_logger -e "The Wazuh manager node name ${winame} does not appear on the configuration file."
         exit 1
     fi
 
@@ -371,7 +371,7 @@ function checks_previousCertificate() {
 
     if [ -n "${winame}" ]; then
         if ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${winame}".pem || ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${winame}"-key.pem; then
-            common_logger -e "There is no certificate for the wazuh server node ${winame} in ${tar_file}."
+            common_logger -e "There is no certificate for the wazuh manager node ${winame} in ${tar_file}."
             exit 1
         fi
     fi

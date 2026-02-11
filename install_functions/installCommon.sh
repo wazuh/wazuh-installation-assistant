@@ -127,7 +127,7 @@ function installCommon_createCertificates() {
 
         eval "sed -i 's|- name: node-1|- name: wazuh-indexer|' '${config_file}'" ${debug}
         eval "sed -i 's|ip: \"<indexer-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
-        eval "sed -i 's|- name: wazuh-1|- name: wazuh-server|' '${config_file}'" ${debug}
+        eval "sed -i 's|- name: wazuh-1|- name: wazuh-manager|' '${config_file}'" ${debug}
         eval "sed -i 's|ip: \"<wazuh-manager-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
         eval "sed -i 's|- name: dashboard|- name: wazuh-dashboard|' '${config_file}'" ${debug}
         eval "sed -i 's|ip: \"<dashboard-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
@@ -145,7 +145,7 @@ function installCommon_createCertificates() {
     cert_generateRootCAcertificate
     cert_generateAdmincertificate
     cert_generateIndexercertificates
-    cert_generateServercertificates
+    cert_generateManagercertificates
     cert_generateDashboardcertificates
     cert_cleanFiles
     eval "chmod 400 /tmp/wazuh-certificates/* ${debug}"
@@ -173,7 +173,7 @@ function installCommon_createInstallFiles() {
             cert_checkOpenSSL
         fi
         installCommon_createCertificates
-        if [ -n "${server_node_types[*]}" ]; then
+        if [ -n "${manager_node_types[*]}" ]; then
             installCommon_createClusterKey
         fi
         eval "cp '${config_file}' '/tmp/wazuh-install-files/config.yml' ${debug}"
