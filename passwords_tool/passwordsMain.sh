@@ -130,7 +130,6 @@ function main() {
             if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
                 passwords_getApiToken
                 passwords_getApiUsers
-                passwords_getApiIds
             elif [ -n "${indexer_installed}" ]; then
                 passwords_readUsers
             fi
