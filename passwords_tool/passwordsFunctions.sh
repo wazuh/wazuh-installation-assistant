@@ -195,22 +195,10 @@ function passwords_getApiUsers() {
 
 }
 
-function passwords_getApiIds() {
-
-    mapfile -t api_ids < <(common_curl -s -k -X GET -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\"  \"https://localhost:55000/security/users?pretty=true\" --max-time 300 --retry 5 --retry-delay 5 | grep id | awk -F': ' '{print $2}' | sed -e "s/[\'\",]//g")
-
-}
-
 function passwords_getApiUserId() {
+    user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
 
-    user_id="noid"
-    for u in "${!api_users[@]}"; do
-        if [ "${1}" == "${api_users[u]}" ]; then
-            user_id="${api_ids[u]}"
-        fi
-    done
-
-    if [ "${user_id}" == "noid" ]; then
+    if [ -z "${user_id}" ]; then
         common_logger -e "User ${1} is not registered in Wazuh API"
         if [[ $(type -t installCommon_rollBack) == "function" ]]; then
                 installCommon_rollBack
