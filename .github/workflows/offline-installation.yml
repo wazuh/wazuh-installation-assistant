@@ -10,11 +10,11 @@ on:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
-        default: '4.14.4'
+        default: '4.14.5'
       AUTOMATION_REFERENCE:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
-        default: '4.14.4'
+        default: '4.14.5'
       PKG_REPOSITORY:
         description: 'Repository environment'
         required: true
