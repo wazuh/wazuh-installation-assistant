@@ -6,7 +6,7 @@ The Installation Assistant is used by running the previously downloaded `wazuh-i
 
 | Option | Description |
 |--------|-------------|
-| `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
+| `-a`, `--all-in-one` | Install and configure Wazuh manager, Wazuh indexer, Wazuh dashboard. |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install.sh. |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
@@ -15,14 +15,14 @@ The Installation Assistant is used by running the previously downloaded `wazuh-i
 | `-i`, `--ignore-check` | Ignore the check for minimum hardware requirements. |
 | `-id`, `--install-dependencies` | Installs automatically the necessary dependencies for the installation. |
 | `-o`, `--overwrite` | Overwrites previously installed components. This will erase all the existing configuration and data. |
-| `-of`, `--offline-installation` | Perform an offline installation. This option must be used with -a, -ws, -s, -wi, or -wd. |
+| `-of`, `--offline-installation` | Perform an offline installation. This option must be used with -a, -wm, -s, -wi, or -wd. |
 | `-s`, `--start-cluster` | Initialize Wazuh indexer cluster security settings. |
 | `-u`, `--uninstall` | Uninstalls all Wazuh components. This will erase all the existing configuration and data. |
 | `-v`, `--verbose` | Shows the complete installation output. |
 | `-V`, `--version` | Shows the version of the script and Wazuh packages. |
 | `-wd`, `--wazuh-dashboard <dashboard-node-name>` | Install and configure Wazuh dashboard, used for distributed deployments. |
 | `-wi`, `--wazuh-indexer <indexer-node-name>` | Install and configure Wazuh indexer, used for distributed deployments. |
-| `-ws`, `--wazuh-server <server-node-name>` | Install and configure Wazuh manager, used for distributed deployments. |
+| `-wm`, `--wazuh-manager <manager-node-name>` | Install and configure Wazuh manager, used for distributed deployments. |
 
 ## AIO Installation
 
@@ -59,9 +59,9 @@ The steps to perform the installation are as follows:
 
     4.1 To install the Wazuh Manager:
     ``` bash
-    sudo bash wazuh-install.sh --wazuh-server
+    sudo bash wazuh-install.sh --wazuh-manager
     # or use the short form
-    sudo bash wazuh-install.sh -ws
+    sudo bash wazuh-install.sh -wm
     ```
     4.2 To install the Wazuh Indexer:
     ``` bash
@@ -125,9 +125,9 @@ sudo bash wazuh-install.sh -a -of
 If you want to install a specific Wazuh component, the command would be similar to the following (depending on the component you are going to install):
 
 ```bash
-sudo bash wazuh-install.sh --wazuh-server --offline-installation
+sudo bash wazuh-install.sh --wazuh-manager --offline-installation
 # or use the short form
-sudo bash wazuh-install.sh -ws -of
+sudo bash wazuh-install.sh -wm -of
 ```
 
 

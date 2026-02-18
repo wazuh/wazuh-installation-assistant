@@ -10,14 +10,14 @@ function getHelp() {
 
     echo -e ""
     echo -e "NAME"
-    echo -e "        $(basename "$0") - Install and configure Wazuh central components: Wazuh server, Wazuh indexer, and Wazuh dashboard."
+    echo -e "        $(basename "$0") - Install and configure Wazuh central components: Wazuh manager, Wazuh indexer, and Wazuh dashboard."
     echo -e ""
     echo -e "SYNOPSIS"
-    echo -e "        $(basename "$0") [OPTIONS] -a | -s | -wi <indexer-node-name> | -wd <dashboard-node-name> | -ws <server-node-name>"
+    echo -e "        $(basename "$0") [OPTIONS] -a | -s | -wi <indexer-node-name> | -wd <dashboard-node-name> | -wm <manager-node-name>"
     echo -e ""
     echo -e "DESCRIPTION"
     echo -e "        -a,  --all-in-one"
-    echo -e "                Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard."
+    echo -e "                Install and configure Wazuh manager, Wazuh indexer, Wazuh dashboard."
     echo -e ""
     echo -e "        -d [pre-release|local],  --development"
     echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install.sh."
@@ -44,7 +44,7 @@ function getHelp() {
     echo -e "                Overwrites previously installed components. This will erase all the existing configuration and data."
     echo -e ""
     echo -e "        -of,  --offline-installation"
-    echo -e "                Perform an offline installation. This option must be used with -a, -ws, -s, -wi, or -wd."
+    echo -e "                Perform an offline installation. This option must be used with -a, -wm, -s, -wi, or -wd."
     echo -e ""
     echo -e "        -s,  --start-cluster"
     echo -e "                Initialize Wazuh indexer cluster security settings."
@@ -64,7 +64,7 @@ function getHelp() {
     echo -e "        -wi,  --wazuh-indexer <indexer-node-name>"
     echo -e "                Install and configure Wazuh indexer, used for distributed deployments."
     echo -e ""
-    echo -e "        -ws,  --wazuh-server <server-node-name>"
+    echo -e "        -wm,  --wazuh-manager <manager-node-name>"
     echo -e "                Install and configure Wazuh manager, used for distributed deployments."
     exit 1
 
@@ -157,9 +157,9 @@ function main() {
                 indxname="${2}"
                 shift 2
                 ;;
-            "-ws"|"--wazuh-server")
+            "-wm"|"--wazuh-manager")
                 if [ -z "${2}" ]; then
-                    common_logger -e "Error on arguments. Probably missing <node-name> after -ws|--wazuh-server"
+                    common_logger -e "Error on arguments. Probably missing <node-name> after -wm|--wazuh-manager"
                     getHelp
                     exit 1
                 fi
@@ -344,14 +344,14 @@ function main() {
 
     fi
 
-# -------------- Wazuh server case  ---------------------------------------
+# -------------- Wazuh manager case  ---------------------------------------
 
     if [ -n "${wazuh}" ]; then
         common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
         manager_install
         manager_configure
-        if [ -n "${server_node_types[*]}" ]; then
+        if [ -n "${manager_node_types[*]}" ]; then
             manager_startCluster
         fi
         installCommon_startService "wazuh-manager"
