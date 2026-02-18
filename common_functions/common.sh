@@ -93,7 +93,7 @@ function common_checkInstalled() {
         wazuh_installed=$(apt list --installed  2>/dev/null | grep wazuh-manager)
     fi
 
-    if [ -d "/var/ossec" ]; then
+    if [ -d "/var/wazuh-manager" ]; then
         common_logger -d "There are Wazuh remaining files."
         wazuh_remaining_files=1
     fi

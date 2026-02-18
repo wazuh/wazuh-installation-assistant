@@ -22,7 +22,7 @@ readonly artifact_urls_file_name="artifact_urls.yml"
 readonly download_packages_directory="wazuh-install-packages"
 
 readonly dashboard_cert_path="/etc/wazuh-dashboard/certs"
-readonly manager_cert_path="/var/ossec/etc/certs"
+readonly manager_cert_path="/var/wazuh-manager/etc/certs"
 readonly indexer_cert_path="/etc/wazuh-indexer/certs"
 
 readonly logfile="/var/log/wazuh-install.log"

@@ -474,7 +474,7 @@ function installCommon_rollBack() {
     fi
 
     if [[ ( -n "${wazuh_remaining_files}"  || -n "${wazuh_installed}" ) && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
-        eval "rm -rf /var/ossec/ ${debug}"
+        eval "rm -rf /var/wazuh-manager/ ${debug}"
     fi
 
     if [[ -n "${indexer_installed}" && ( -n "${indexer}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then

@@ -26,7 +26,7 @@ function passwords_changePassword() {
 
     if [ "${nuser}" == "admin" ]; then
         if [ -n "${wazuh_installed}" ]; then
-            eval "/var/ossec/bin/wazuh-keystore -f indexer -k password -v ${adminpass}"
+            eval "/var/wazuh-manager/bin/wazuh-keystore -f indexer -k password -v ${adminpass}"
             passwords_restartService "wazuh-manager"
         fi
     fi

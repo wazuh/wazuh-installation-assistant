@@ -147,7 +147,7 @@ function manager_installation() {
     if [ "${sys_type}" == "deb" ]; then
         enable_start_service "wazuh-manager"
     elif [ "${sys_type}" == "rpm" ]; then
-        /var/ossec/bin/wazuh-control start
+        /var/wazuh-manager/bin/wazuh-control start
     fi
 
 }
