@@ -12,16 +12,11 @@
 
 # Reference Manual
 
-- [Introduction](ref/getting-started/getting-started.md)
-  - [Certs Tool Introduction](ref/getting-started/certs-tool/certs-tool-introduction.md)
-  - [Passwords Tool Introduction](ref/getting-started/passwords-tool/passwords-tool-introduction.md)
-  - [Installation Assistant Introduction](ref/getting-started/installation-assistant/ia-introduction.md)
+- [Description](ref/introduction/description.md)
+- [Compatibility](ref/introduction/compatibility.md)
+- [Requirements](ref/getting-started/requirements.md)
+- [Usage](ref/getting-started/usage.md)
 - [Installation](ref/installation/installation.md)
   - [Certs Tool Installation](ref/installation/certs-tool/certs-tool-installation.md)
   - [Passwords Tool Installation](ref/installation/passwords-tool/password-tool-installation.md)
   - [Installation Assistant Installation](ref/installation/installation-assistant/ia-installation.md)
-- [Usage](ref/usage/usage.md)
-  - [Certs Tool Usage](ref/usage/certs-tool/certs-tool-usage.md)
-  - [Passwords Tool Usage](ref/usage/passwords-tool/passwords-tool-usage.md)
-  - [Installation Assistant Usage](ref/usage/installation-assistant/ia-usage.md)
-  
