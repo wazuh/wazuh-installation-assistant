@@ -80,7 +80,7 @@ jobs:
           if [[ "${{ inputs.is_stage }}" == "false" ]]; then
             # non-stage: generate with commit sha and latest
             COMMIT_SHORT_SHA=$(git rev-parse --short ${{ github.sha }})
-            COMMIT_SUFFIX=${WAZUH_VERSION}-${{ inputs.file_revision }}-${COMMIT_SHORT_SHA}
+            COMMIT_SUFFIX=${WAZUH_VERSION}-${{ inputs.file_revision }}_${COMMIT_SHORT_SHA}
             LATEST_SUFFIX=${WAZUH_VERSION}-latest
             SUFFIX='["'$COMMIT_SUFFIX'", "'$LATEST_SUFFIX'"]'
           else

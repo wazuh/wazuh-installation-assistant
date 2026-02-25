@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Tool to create wazuh-install.sh, wazuh-cert-tool.sh
+# Tool to create wazuh-install.sh, wazuh-certs-tool.sh
 # and wazuh-passwords-tool.sh
 # Copyright (C) 2015, Wazuh Inc.
 #
@@ -32,10 +32,10 @@ function getHelp() {
     echo -e "                Builds the unattended installer single file wazuh-install.sh"
     echo -e ""
     echo -e "        -c,  --cert-tool"
-    echo -e "                Builds the certificate creation tool wazuh-cert-tool.sh"
+    echo -e "                Builds the certificate creation tool wazuh-certs-tool.sh"
     echo -e ""
     echo -e "        -p,  --password-tool"
-    echo -e "                Builds the password creation and modification tool wazuh-password-tool.sh"
+    echo -e "                Builds the password creation and modification tool wazuh-passwords-tool.sh"
     echo -e ""
     echo -e "        -h,  --help"
     echo -e "                Shows help."
