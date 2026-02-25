@@ -10,10 +10,10 @@ function getHelp() {
 
     echo -e ""
     echo -e "NAME"
-    echo -e "        wazuh-cert-tool.sh - Manages the creation of certificates of the Wazuh components."
+    echo -e "        wazuh-certs-tool.sh - Manages the creation of certificates of the Wazuh components."
     echo -e ""
     echo -e "SYNOPSIS"
-    echo -e "        wazuh-cert-tool.sh [OPTIONS]"
+    echo -e "        wazuh-certs-tool.sh [OPTIONS]"
     echo -e ""
     echo -e "DESCRIPTION"
     echo -e "        -a,  --admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
@@ -76,7 +76,7 @@ function main() {
                             common_logger -e "You have not entered a root-ca.pem"
                             exit 1
                         else
-                            common_logger -e "You have not entered a root-ca.key" 
+                            common_logger -e "You have not entered a root-ca.key"
                             exit 1
                         fi
                     fi
@@ -166,7 +166,7 @@ function main() {
                 exit 1
             fi
         fi
-        
+
         if [[ ! -d "${cert_tmp_path}" ]]; then
             mkdir -p "${cert_tmp_path}"
             chmod 744 "${cert_tmp_path}"
