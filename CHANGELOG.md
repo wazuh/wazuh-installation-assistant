@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Change naming convention ([#626](https://github.com/wazuh/wazuh-installation-assistant/pull/626))
 - Change ossec references to wazuh-manager ([#612](https://github.com/wazuh/wazuh-installation-assistant/pull/612))
 - Change server references to manager ([#613](https://github.com/wazuh/wazuh-installation-assistant/pull/613))
 - Composite names update ([#562](https://github.com/wazuh/wazuh-installation-assistant/pull/562))
