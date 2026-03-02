@@ -282,7 +282,7 @@ jobs:
         -e "pkg_repository=$PKG_REPOSITORY" \
         "$VERBOSITY"
 
-    - name: Execute server installation playbook
+    - name: Execute manager installation playbook
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_wazuh.yml \
         -i $ALLOCATOR_PATH/inventory \

@@ -36,8 +36,8 @@ test-ASSERT-FAIL-03-checks_names-dashboard-wazuh-equals() {
 test-ASSERT-FAIL-04-checks_names-wazuh-node-name-not-in-config() {
     load-checks_names
     winame="node1"
-    server_node_names=(wazuh node10)
-    @mock echo ${server_node_names[@]} === @out wazuh node10
+    manager_node_names=(wazuh node10)
+    @mock echo ${manager_node_names[@]} === @out wazuh node10
     @mock grep -w $winame === @false
     checks_names
 }
@@ -66,11 +66,11 @@ test-07-checks_names-all-correct-installing-indexer() {
     dashname="dashboard1"
     winame="wazuh1"
     indexer_node_names=(indexer1 node1)
-    server_node_names=(wazuh1 node2)
+    manager_node_names=(wazuh1 node2)
     dashboard_node_names=(dashboard1 node3)
     indexer=1
     @mock echo ${indexer_node_names[@]} === @out indexer1 node1
-    @mock echo ${server_node_names[@]} === @out wazuh1 node2
+    @mock echo ${manager_node_names[@]} === @out wazuh1 node2
     @mock echo ${dashboard_node_names[@]} === @out dashboard1 node3
     @mock grep -w $indxname
     @mock grep -w $winame
@@ -85,11 +85,11 @@ test-08-checks_names-all-correct-installing-wazuh() {
     dashname="dashboard1"
     winame="wazuh1"
     indexer_node_names=(indexer1 node1)
-    server_node_names=(wazuh1 node2)
+    manager_node_names=(wazuh1 node2)
     dashboard_node_names=(dashboard1 node3)
     wazuh=1
     @mock echo ${indexer_node_names[@]} === @out indexer1 node1
-    @mock echo ${server_node_names[@]} === @out wazuh1 node2
+    @mock echo ${manager_node_names[@]} === @out wazuh1 node2
     @mock echo ${dashboard_node_names[@]} === @out dashboard1 node3
     @mock grep -w $indxname
     @mock grep -w $winame
@@ -104,11 +104,11 @@ test-09-checks_names-all-correct-installing-dashboard() {
     dashname="dashboard1"
     winame="wazuh1"
     indexer_node_names=(indexer1 node1)
-    server_node_names=(wazuh1 node2)
+    manager_node_names=(wazuh1 node2)
     dashboard_node_names=(dashboard1 node3)
     dashboard=1
     @mock echo ${indexer_node_names[@]} === @out indexer1 node1
-    @mock echo ${server_node_names[@]} === @out wazuh1 node2
+    @mock echo ${manager_node_names[@]} === @out wazuh1 node2
     @mock echo ${dashboard_node_names[@]} === @out dashboard1 node3
     @mock grep -w $indxname
     @mock grep -w $winame

@@ -3,6 +3,7 @@ name: Test installation assistant
 
 on:
   pull_request:
+    types: [ready_for_review, synchronize]
     paths:
       - 'cert_tool/**'
       - 'common_functions/**'
