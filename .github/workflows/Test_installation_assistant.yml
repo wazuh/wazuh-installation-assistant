@@ -16,11 +16,11 @@ on:
       REPOSITORY:
         description: 'Repository environment'
         required: true
-        default: 'pre-release'
+        default: 'local'
         type: choice
         options:
-          - staging
           - pre-release
+          - local
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: 'Branch or tag of the wazuh-installation-assistant repository'
         required: true

@@ -18,7 +18,6 @@ on:
         default: 'local'
         type: choice
         options:
-          - staging
           - pre-release
           - local
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
