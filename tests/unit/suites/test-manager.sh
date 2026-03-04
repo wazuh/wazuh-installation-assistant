@@ -78,9 +78,9 @@ function load-manager_startCluster() {
 
 test-05-manager_startCluster() {
     load-manager_startCluster
-    server_node_names=("wazuh" "node10")
-    server_node_types=("master" "worker")
-    server_node_ips=("1.1.1.1" "2.2.2.2")
+    manager_node_names=("wazuh" "node10")
+    manager_node_types=("master" "worker")
+    manager_node_ips=("1.1.1.1" "2.2.2.2")
     winame="wazuh"
     tarfile=/tmp/tarfile.tar
     @mock tar -axf "${tar_file}" ./clusterkey -O === @out 68b6975cf186649490e2afbc6230c317

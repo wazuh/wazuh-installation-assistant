@@ -57,12 +57,12 @@ function manager_configure(){
     if [ "${AIO}" ]; then
         winame="${manager_node_names[0]}"
     fi
-    eval "sed -i s/server.pem/${winame}.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
-    eval "sed -i s/server-key.pem/${winame}-key.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
+    eval "sed -i s/manager.pem/${winame}.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
+    eval "sed -i s/manager-key.pem/${winame}-key.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
     manager_copyCertificates "${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
-    eval "/var/wazuh-manager/bin/wazuh-keystore -f indexer -k username -v admin"
-    eval "/var/wazuh-manager/bin/wazuh-keystore -f indexer -k password -v admin"
+    eval "/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin"
+    eval "/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin"
     common_logger "Wazuh manager vulnerability detection configuration finished."
 }
 
@@ -75,7 +75,7 @@ function manager_install() {
     else
         download_dir="${base_path}/${download_packages_directory}"
     fi
-    
+
     # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
         package_file=$(ls "${download_dir}"/wazuh-manager*.rpm 2>/dev/null | head -n 1)

@@ -179,15 +179,15 @@ function load-cert_generateServercertificates() {
 
 test-11-cert_generateServercertificates-no-nodes() {
     load-cert_generateServercertificates
-    server_node_names=()
+    manager_node_names=()
     cert_generateServercertificates
     @assert-success
 }
 
 test-12-cert_generateServercertificates-two-nodes() {
     load-cert_generateServercertificates
-    server_node_names=("wazuh1" "wazuh2")
-    server_node_ips=("1.1.1.1" "1.1.1.2")
+    manager_node_names=("wazuh1" "wazuh2")
+    manager_node_ips=("1.1.1.1" "1.1.1.2")
     cert_generateServercertificates
 }
 
@@ -257,22 +257,17 @@ test-ASSERT-FAIL-17-cert_readConfig-duplicated-elastic-node-names() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1 wazuh2"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1 wazuh2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2 1.1.1.3"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.2"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.3.2"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2 1.1.1.3"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.3.2"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "worker master"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "worker master"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -304,22 +299,17 @@ test-ASSERT-FAIL-18-cert_readConfig-duplicated-elastic-node-ips() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1 wazuh2"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1 wazuh2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.1"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.2"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.3.2"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.1"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.3.2"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "worker master"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "worker master"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -351,22 +341,17 @@ test-ASSERT-FAIL-19-cert_readConfig-duplicated-wazuh-node-names() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1 wazuh2"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1 wazuh2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.2"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.3.2"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.3.2"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "worker master"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "worker master"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -397,22 +382,17 @@ test-ASSERT-FAIL-20-cert_readConfig-duplicated-wazuh-node-ips() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1 wazuh2"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1 wazuh2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.1"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.3.2"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.1"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.3.2"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "worker master"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "worker master"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -444,22 +424,17 @@ test-ASSERT-FAIL-21-cert_readConfig-duplicated-kibana-node-names() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1 wazuh2"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana1"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1 wazuh2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana1"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.1"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.3.2"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.1"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.3.2"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "worker master"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "worker master"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -491,22 +466,17 @@ test-ASSERT-FAIL-22-cert_readConfig-duplicated-kibana-node-ips() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1 wazuh2"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1 wazuh2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.1"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.1.3.1"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.1"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.1.3.1"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "worker master"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "worker master"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -537,22 +507,17 @@ test-ASSERT-FAIL-23-cert_readConfig-different-number-of-wazuh-names-and-ips() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.1"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.3.2"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.1"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.3.2"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "worker master"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "worker master"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -583,22 +548,17 @@ test-ASSERT-FAIL-24-cert_readConfig-incorrect-wazuh-node-type() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1 wazuh2"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1 wazuh2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.1"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.3.2"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.1"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.3.2"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "worker master"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "worker master"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -630,22 +590,17 @@ test-ASSERT-FAIL-25-cert_readConfig-wazuh-node-type-one-node() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.3.2"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.3.2"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "master"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "master"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -676,22 +631,17 @@ test-ASSERT-FAIL-26-cert_readConfig-less-wazuh-node-types-than-nodes() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1 wazuh2"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1 wazuh2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.2"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.3.2"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.3.2"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "master"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "master"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -723,22 +673,17 @@ test-ASSERT-FAIL-27-cert_readConfig-different-number-of-kibana-names-and-ips() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1 wazuh2"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1 wazuh2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.2"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.1.3.2 1.1.3.3"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.1.3.2 1.1.3.3"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "master worker"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "master worker"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -770,22 +715,17 @@ test-28-cert_readConfig-everything-correct() {
     @echo "config_file" > "${config_file}"
     
     @mock cert_parseYaml /tmp/wazuh-cert-tool/config.yml === @out
-    @mock grep nodes_elasticsearch_name === @out "elastic1 elastic2"
-    @mock sed 's/nodes_elasticsearch_name=//'
-    @mock grep nodes_wazuh_servers_name === @out "wazuh1 wazuh2"
-    @mock sed 's/nodes_wazuh_servers_name=//'
-    @mock grep nodes_kibana_name === @out "kibana1 kibana2"
-    @mock sed 's/nodes_kibana_name=//'
+    @mocktrue cert_checkPrivateIp
+    @mock grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+=" === @out "elastic1 elastic2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+=" === @out "wazuh1 wazuh2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+=" === @out "kibana1 kibana2"
 
-    @mock grep nodes_elasticsearch_ip === @out "1.1.1.1 1.1.1.2"
-    @mock sed 's/nodes_elasticsearch_ip=//'
-    @mock grep nodes_wazuh_servers_ip === @out "1.1.2.1 1.1.2.2"
-    @mock sed 's/nodes_wazuh_servers_ip=//'
-    @mock grep nodes_kibana_ip === @out "1.1.3.1 1.1.3.2"
-    @mock sed 's/nodes_kibana_ip=//'
+    @mock grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" === @out "1.1.1.1 1.1.1.2"
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" === @out "1.1.2.1 1.1.2.2"
+    @mock grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" === @out "1.1.3.1 1.1.3.2"
 
-    @mock grep nodes_wazuh_servers_node_type === @out "master worker"
-    @mock sed 's/nodes_wazuh_servers_node_type=//'
+    @mock grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" === @out "master worker"
 
     @mock tr ' ' '\n'
     @mock sort -u
@@ -810,10 +750,10 @@ test-28-cert_readConfig-everything-correct() {
     @rm "${config_file}"
     @echo "${indexer_node_names[@]}"
     @echo "${indexer_node_ips[@]}"
-    @echo "${server_node_names[@]}"
-    @echo "${server_node_ips[@]}"
-    @echo "${kibana_node_names[@]}"
-    @echo "${kibana_node_ips[@]}"
+    @echo "${manager_node_names[@]}"
+    @echo "${manager_node_ips[@]}"
+    @echo "${dashboard_node_names[@]}"
+    @echo "${dashboard_node_ips[@]}"
 }
 
 test-28-cert_readConfig-everything-correct-assert() {
