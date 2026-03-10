@@ -19,3 +19,4 @@ wazuh-offline/
 *.log
 *.key
 docs/book/*
+*venv/
