@@ -211,11 +211,116 @@ function cert_generateRootCAcertificate() {
 
 }
 
+function cert_normalizeYamlFormat() {
+    
+    # Normalize YAML format to ensure list items are properly indented
+    # Handles various YAML indentation styles and normalizes them to standard format:
+    # - List items at same level as parent key -> indent by 2 spaces
+    # - List items with excessive indentation -> normalize to standard indent
+    # - Properties within list items -> ensure proper relative indentation
+    
+    awk '
+    BEGIN {
+        last_was_key = 0
+        last_key_indent = 0
+        in_list = 0
+        list_base_indent = 0
+        expected_list_indent = 0
+    }
+    {
+        # Store current line
+        line = $0
+        
+        # Skip empty lines and comments
+        if (match(line, /^[ \t]*$/) || match(line, /^[ \t]*#/)) {
+            print line
+            next
+        }
+        
+        # Get indentation level (number of leading spaces)
+        match(line, /^[ \t]*/)
+        indent = RLENGTH
+        
+        # Check if line ends with colon (is a key)
+        if (match(line, /:[ \t]*$/)) {
+            # Store this key and its indentation
+            last_key_line = line
+            last_key_indent = indent
+            last_was_key = 1
+            in_list = 0
+            print line
+            next
+        }
+        
+        # Check if this is a list item (starts with -)
+        if (match(line, /^[ \t]*-[ \t]/)) {
+            list_indent = indent
+            
+            # If previous line was a key
+            if (last_was_key == 1) {
+                # Calculate expected indentation (parent indent + 2)
+                expected_list_indent = last_key_indent + 2
+                
+                # Normalize indentation regardless of current indent
+                # (handles both under-indented and over-indented cases)
+                if (list_indent != expected_list_indent) {
+                    sub(/^[ \t]*/, sprintf("%*s", expected_list_indent, ""), line)
+                    indent = expected_list_indent
+                }
+                list_base_indent = indent
+                in_list = 1
+            } else if (in_list == 1) {
+                # If we are already in a list, normalize subsequent items to same level
+                if (list_indent != expected_list_indent) {
+                    sub(/^[ \t]*/, sprintf("%*s", expected_list_indent, ""), line)
+                    indent = expected_list_indent
+                }
+                list_base_indent = indent
+            } else {
+                list_base_indent = indent
+                expected_list_indent = indent
+                in_list = 1
+            }
+            
+            last_was_key = 0
+            print line
+            next
+        }
+        
+        # If we are in a list and this line is not a new list item
+        # Make sure it is properly indented relative to the list item
+        if (in_list == 1) {
+            if (indent > 0) {
+                if (!match(line, /^[ \t]*-[ \t]/)) {
+                    # This line should have exactly 2 more spaces than the list marker
+                    expected_indent = list_base_indent + 2
+                    if (indent != expected_indent) {
+                        sub(/^[ \t]*/, sprintf("%*s", expected_indent, ""), line)
+                    }
+                }
+            }
+        }
+        
+        # If line indent is less than or equal to key indent, we are out of the list
+        if (indent > 0) {
+            if (indent <= last_key_indent) {
+                in_list = 0
+            }
+        }
+        
+        last_was_key = 0
+        print line
+    }
+    '
+}
+
 function cert_parseYaml() {
 
+    local config_file_path=$1
     local prefix=$2
     local separator=${3:-_}
     local indexfix
+    
     # Detect awk flavor
     if awk --version 2>&1 | grep -q "GNU Awk" ; then
     # GNU Awk detected
@@ -226,7 +331,9 @@ function cert_parseYaml() {
     fi
 
     local s='[[:space:]]*' sm='[ \t]*' w='[a-zA-Z0-9_]*' fs=${fs:-$(echo @|tr @ '\034')} i=${i:-  }
-    cat $1 2>/dev/null | \
+    
+    # Normalize YAML format first to handle both valid YAML indentation styles
+    cat $config_file_path 2>/dev/null | cert_normalizeYamlFormat | \
     awk -F$fs "{multi=0; 
         if(match(\$0,/$sm\|$sm$/)){multi=1; sub(/$sm\|$sm$/,\"\");}
         if(match(\$0,/$sm>$sm$/)){multi=2; sub(/$sm>$sm$/,\"\");}
