@@ -18,7 +18,7 @@ The certs-tool is used by running the previously downloaded `wazuh-certs-tool.sh
 ## config.yml configuration
 
 The `config.yml` file is a YAML format configuration file that contains the necessary information to generate certificates for Wazuh nodes.
-It is very important to ensure that the `config.yml` file is correctly configured with both the name of each node and the IP address, as they will be used to generate the corresponding certificate.
+It is very important to ensure that the `config.yml` file is correctly configured with the name of each node and at least one SAN source: `ip` or `dns`. The `dns` field supports both a single value and a list of values.
 
 Here is a basic example of how this file should be structured:
 
@@ -28,10 +28,13 @@ nodes:
   indexer:
     - name: node-1
       ip: "<indexer-node-ip>"
+      # dns: "<indexer-node-dns>"
     #- name: node-2
-    #  ip: "<indexer-node-ip>"
+    #  dns: "<indexer-node-dns>"
     #- name: node-3
     #  ip: "<indexer-node-ip>"
+    #  dns:
+    #    - "<indexer-node-dns>"
 
   # Wazuh manager nodes
   # If there is more than one Wazuh manager
@@ -39,21 +42,27 @@ nodes:
   manager:
     - name: wazuh-1
       ip: "<wazuh-manager-ip>"
+      # dns:
+      #   - "<wazuh-manager-dns1>"
+      #   - "<wazuh-manager-dns2>"
     #  node_type: master
     #- name: wazuh-2
-    #  ip: "<wazuh-manager-ip>"
+    #  dns: "<wazuh-manager-dns>"
     #  node_type: worker
     #- name: wazuh-3
     #  ip: "<wazuh-manager-ip>"
+    #  dns:
+    #    - "<wazuh-manager-dns>"
     #  node_type: worker
 
   # Wazuh dashboard nodes
   dashboard:
     - name: dashboard
       ip: "<dashboard-node-ip>"
+      # dns: "<dashboard-node-dns>"
 ```
 
-Each node must have a unique name and an associated IP address. In the case of Wazuh manager nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.
+Each node must have a unique name and at least one of these fields: `ip` or `dns`. If `dns` contains a single value, you can define it as a string (`dns: "node.example"`). If you need multiple DNS values, use a list. In the case of Wazuh manager nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.
 
 For the certs-tool to detect the file, it must be located in the same path as the `wazuh-certs-tool.sh` script.
 
