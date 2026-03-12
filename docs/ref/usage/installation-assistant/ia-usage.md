@@ -40,7 +40,7 @@ This command will download, install, and configure all Wazuh components on the s
 
 If you want to install a specific Wazuh component, first make sure you have the `config.yml` file downloaded.
 
-The `config.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [certs-tool-usage.md](../certs-tool/certs-tool-usage.md) section.
+The `config.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. You can also include DNS names for each node using the `dns` field. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [certs-tool-usage.md](../certs-tool/certs-tool-usage.md) section.
 
 
 The steps to perform the installation are as follows:
