@@ -3,12 +3,9 @@ nodes:
   indexer:
     - name: node-1
       ip: "<indexer-node-ip>"
-    #  dns:
-    #    - "<indexer-node-dns>"
+    #  dns: "<indexer-node-dns>"
     #- name: node-2
-    #  ip: "<indexer-node-ip>"
-    #  dns:
-    #    - "<indexer-node-dns>"
+    #  dns: "<indexer-node-dns>"
     #- name: node-3
     #  ip: "<indexer-node-ip>"
     #  dns:
@@ -20,13 +17,10 @@ nodes:
   manager:
     - name: wazuh-1
       ip: "<wazuh-manager-ip>"
-    #  dns:
-    #    - "<wazuh-manager-dns>"  
+    #  dns: "<wazuh-manager-dns>"
     #  node_type: master
     #- name: wazuh-2
-    #  ip: "<wazuh-manager-ip>"
-    #  dns:
-    #    - "<wazuh-manager-dns>"
+    #  dns: "<wazuh-manager-dns>"
     #  node_type: worker
     #- name: wazuh-3
     #  ip: "<wazuh-manager-ip>"
@@ -38,5 +32,4 @@ nodes:
   dashboard:
     - name: dashboard
       ip: "<dashboard-node-ip>"
-    #  dns:
-    #    - "<dashboard-node-dns>"
+    #  dns: "<dashboard-node-dns>"
