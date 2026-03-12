@@ -2,14 +2,6 @@ run-name: (Distributed) Test installation assistant - ${{ github.run_id }} - ${{
 name: (Distributed) Test installation assistant
 
 on:
-  pull_request:
-    paths:
-      - 'cert_tool/**'
-      - 'common_functions/**'
-      - 'config/**'
-      - 'install_functions/**'
-      - 'passwords_tool/**'
-      - 'tests/**'
   workflow_dispatch:
     inputs:
       REPOSITORY:
