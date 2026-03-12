@@ -125,13 +125,17 @@ function cert_generateCertificateconfiguration() {
 
     if [ "${#@}" -gt 1 ]; then
         sed -i '/IP.1/d' "${cert_tmp_path}/${1}.conf"
+        local ip_counter=0
+        local dns_counter=0
         for (( i=2; i<=${#@}; i++ )); do
             isIP=$(echo "${!i}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
-            isDNS=$(echo "${!i}" | grep -P "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.([A-Za-z]{2,})$" )            j=$((i-1))
+            isDNS=$(echo "${!i}" | grep -P "^([a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*$")
             if [ "${isIP}" ]; then
-                printf '%s\n' "        IP.${j} = ${!i}" >> "${cert_tmp_path}/${1}.conf"
+                ip_counter=$((ip_counter+1))
+                printf '%s\n' "        IP.${ip_counter} = ${!i}" >> "${cert_tmp_path}/${1}.conf"
             elif [ "${isDNS}" ]; then
-                printf '%s\n' "        DNS.${j} = ${!i}" >> "${cert_tmp_path}/${1}.conf"
+                dns_counter=$((dns_counter+1))
+                printf '%s\n' "        DNS.${dns_counter} = ${!i}" >> "${cert_tmp_path}/${1}.conf"
             else
                 common_logger -e "Invalid IP or DNS ${!i}"
                 exit 1
@@ -152,7 +156,9 @@ function cert_generateIndexercertificates() {
         for i in "${!indexer_node_names[@]}"; do
             indexer_node_name=${indexer_node_names[$i]}
             common_logger -d "Creating the certificates for ${indexer_node_name} indexer node."
-            cert_generateCertificateconfiguration "${indexer_node_name}" "${indexer_node_ips[i]}"
+            j=$((i+1))
+            declare -a idx_dns=(indexer_node_dns_"$j"[@])
+            cert_generateCertificateconfiguration "${indexer_node_name}" "${indexer_node_ips[i]}" "${!idx_dns}"
             common_logger -d "Creating the Wazuh indexer tmp key pair."
             cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${indexer_node_name}-key.pem -out ${cert_tmp_path}/${indexer_node_name}.csr -config ${cert_tmp_path}/${indexer_node_name}.conf"
             common_logger -d "Creating the Wazuh indexer certificates."
@@ -174,7 +180,8 @@ function cert_generateManagercertificates() {
             common_logger -d "Generating the certificates for ${manager_name} manager node."
             j=$((i+1))
             declare -a manager_ips=(manager_node_ip_"$j"[@])
-            cert_generateCertificateconfiguration "${manager_name}" "${!manager_ips}"
+            declare -a mgr_dns=(manager_node_dns_"$j"[@])
+            cert_generateCertificateconfiguration "${manager_name}" "${!manager_ips}" "${!mgr_dns}"
             common_logger -d "Creating the Wazuh manager tmp key pair."
             cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${manager_name}-key.pem -out ${cert_tmp_path}/${manager_name}.csr  -config ${cert_tmp_path}/${manager_name}.conf"
             common_logger -d "Creating the Wazuh manager certificates."
@@ -192,7 +199,9 @@ function cert_generateDashboardcertificates() {
 
         for i in "${!dashboard_node_names[@]}"; do
             dashboard_node_name="${dashboard_node_names[i]}"
-            cert_generateCertificateconfiguration "${dashboard_node_name}" "${dashboard_node_ips[i]}"
+            j=$((i+1))
+            declare -a dash_dns=(dashboard_node_dns_"$j"[@])
+            cert_generateCertificateconfiguration "${dashboard_node_name}" "${dashboard_node_ips[i]}" "${!dash_dns}"
             common_logger -d "Creating the Wazuh dashboard tmp key pair."
             cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${dashboard_node_name}-key.pem -out ${cert_tmp_path}/${dashboard_node_name}.csr -config ${cert_tmp_path}/${dashboard_node_name}.conf"
             common_logger -d "Creating the Wazuh dashboard certificates."
@@ -366,6 +375,18 @@ function cert_readConfig() {
         eval "number_manager_ips=( $(cert_parseYaml "${config_file}" | grep -o -E 'nodes[_]+manager[_]+[0-9]+[_]+ip' | sort -u | wc -l) )"
         all_ips=("${indexer_node_ips[@]}" "${manager_node_ips[@]}" "${dashboard_node_ips[@]}")
 
+        # Parse DNS entries for each indexer node
+        for i in "${!indexer_node_names[@]}"; do
+            j=$((i+1))
+            eval "indexer_node_dns_${j}=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+${j}[_]+dns[_]+[0-9]+=" | cut -d = -f 2) )"
+        done
+
+        # Parse DNS entries for each dashboard node
+        for i in "${!dashboard_node_names[@]}"; do
+            j=$((i+1))
+            eval "dashboard_node_dns_${j}=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+${j}[_]+dns[_]+[0-9]+=" | cut -d = -f 2) )"
+        done
+
         for ip in "${all_ips[@]}"; do
             isIP=$(echo "${ip}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
             if [[ -n "${isIP}" ]]; then
@@ -379,6 +400,7 @@ function cert_readConfig() {
         for i in $(seq 1 "${number_manager_ips}"); do
             nodes_manager="nodes[_]+manager[_]+${i}[_]+ip"
             eval "manager_node_ip_$i=( $( cert_parseYaml "${config_file}" | grep -E "${nodes_manager}" | sed '/\./!d' | cut -d = -f 2 | sed -r 's/\s+//g') )"
+            eval "manager_node_dns_$i=( $( cert_parseYaml "${config_file}" | grep -E "nodes[_]+manager[_]+${i}[_]+dns[_]+[0-9]+=" | cut -d = -f 2) )"
         done
 
         unique_names=($(echo "${indexer_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
