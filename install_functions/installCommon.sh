@@ -271,7 +271,6 @@ function installCommon_changePasswords() {
         if { [ -n "${wazuh}" ] || [ -n "${AIO}" ]; } && { [ "${server_node_types[pos]}" == "master" ] || [ "${#server_node_names[@]}" -eq 1 ]; }; then
             passwords_getApiToken
             passwords_getApiUsers
-            passwords_getApiIds
         else
             api_users=( wazuh wazuh-wui )
         fi
