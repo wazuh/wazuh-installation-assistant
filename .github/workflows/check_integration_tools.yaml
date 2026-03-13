@@ -1,0 +1,480 @@
+run-name: "Test Integration Tools - #${{ github.event.issue.number }} ${{ github.event.issue.title }}"
+name: PR Check - Test Integration Tools
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+env:
+  AUTOMATION_REFERENCE: main
+  ALLOCATOR_PATH: /tmp/allocator_instance
+  REGION: us-east-1
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Job 1: Parse PR info and determine which tool to test
+  #
+  # Available commands:
+  #   /test-install       — test the installation assistant only
+  #   /test-cert-tool     — test the certificates tool only
+  #   /test-password-tool — test the passwords tool only
+  #   /test-assistant     — test all three tools in sequence
+  # -------------------------------------------------------------------------
+  get_pr_info:
+    if: |
+      github.event.issue.pull_request &&
+      github.event.issue.state == 'open' &&
+      !github.event.issue.draft &&
+      (contains(github.event.comment.body, '/test-install') ||
+       contains(github.event.comment.body, '/test-cert-tool') ||
+       contains(github.event.comment.body, '/test-password-tool') ||
+       contains(github.event.comment.body, '/test-assistant'))
+    runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.pr_data.outputs.pr_number }}
+      pr_head_ref: ${{ steps.pr_data.outputs.pr_head_ref }}
+      pr_head_sha: ${{ steps.pr_data.outputs.pr_head_sha }}
+      check_run_id: ${{ steps.create_check.outputs.result }}
+      tool_type: ${{ steps.parse_command.outputs.tool_type }}
+      check_name: ${{ steps.parse_command.outputs.check_name }}
+
+    steps:
+      - name: React to comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+      - name: Extract PR data
+        id: pr_data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.issue.number }}"
+          PR_DATA=$(gh api repos/${{ github.repository }}/pulls/${PR_NUMBER})
+          PR_HEAD_REF=$(echo "$PR_DATA" | jq -r '.head.ref')
+          PR_HEAD_SHA=$(echo "$PR_DATA" | jq -r '.head.sha')
+          echo "pr_number=${PR_NUMBER}" >> $GITHUB_OUTPUT
+          echo "pr_head_ref=${PR_HEAD_REF}" >> $GITHUB_OUTPUT
+          echo "pr_head_sha=${PR_HEAD_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Parse command and set tool metadata
+        id: parse_command
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          if echo "$COMMENT_BODY" | grep -q '/test-assistant'; then
+            echo "tool_type=all"                      >> $GITHUB_OUTPUT
+            echo "check_name=Full Integration Check"  >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -q '/test-install'; then
+            echo "tool_type=installer"                >> $GITHUB_OUTPUT
+            echo "check_name=Installation Assistant Check" >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -q '/test-cert-tool'; then
+            echo "tool_type=cert-tool"                >> $GITHUB_OUTPUT
+            echo "check_name=Certificates Tool Check" >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -q '/test-password-tool'; then
+            echo "tool_type=passwords-tool"           >> $GITHUB_OUTPUT
+            echo "check_name=Passwords Tool Check"    >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create check run
+        id: create_check
+        uses: actions/github-script@v7
+        env:
+          HEAD_SHA: ${{ steps.pr_data.outputs.pr_head_sha }}
+          CHECK_NAME: ${{ steps.parse_command.outputs.check_name }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        with:
+          script: |
+            const { data: check } = await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: process.env.CHECK_NAME,
+              head_sha: process.env.HEAD_SHA,
+              status: 'in_progress',
+              started_at: new Date().toISOString(),
+              details_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              output: {
+                title: `🔨 Running ${process.env.CHECK_NAME}...`,
+                summary: `Triggered by comment: \`${process.env.COMMENT_BODY}\``,
+                text: 'Allocating instances and running tool tests'
+              }
+            });
+            console.log('Check run created:', check.id);
+            return check.id;
+
+  # -------------------------------------------------------------------------
+  # Job 2: Allocate instances, build and deploy the tool, run tests (matrix OS)
+  # -------------------------------------------------------------------------
+  test_tool:
+    needs: get_pr_info
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        system: ["Ubuntu_22", "AmazonLinux_2023"]
+
+    steps:
+      - name: Checkout wazuh-automation
+        uses: actions/checkout@v4
+        with:
+          repository: wazuh/wazuh-automation
+          ref: ${{ env.AUTOMATION_REFERENCE }}
+          token: ${{ secrets.GH_CLONE_TOKEN }}
+          path: wazuh-automation
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install allocator requirements
+        run: pip install -r wazuh-automation/deployability/deps/requirements.txt
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          role-session-name: assistant-integration-check-${{ github.run_id }}
+          aws-region: ${{ env.REGION }}
+
+      - name: Set COMPOSITE_NAME for matrix OS
+        run: |
+          case "${{ matrix.system }}" in
+            "AmazonLinux_2023")  SUBNAME="amazon-2023-amd64" ;;
+            "Ubuntu_22")         SUBNAME="ubuntu-22-amd64"   ;;
+            *)
+              echo "Invalid system: ${{ matrix.system }}" >&2
+              exit 1
+              ;;
+          esac
+          echo "COMPOSITE_NAME=${SUBNAME}" >> $GITHUB_ENV
+
+      - name: Allocate instance
+        id: allocate
+        run: |
+          mkdir -p ${{ env.ALLOCATOR_PATH }}
+          python3 wazuh-automation/deployability/modules/allocation/main.py \
+            --action create \
+            --provider aws \
+            --size large \
+            --composite-name ${{ env.COMPOSITE_NAME }} \
+            --working-dir ${{ env.ALLOCATOR_PATH }} \
+            --track-output ${{ env.ALLOCATOR_PATH }}/track.yml \
+            --inventory-output ${{ env.ALLOCATOR_PATH }}/inventory.yml \
+            --instance-name gha_${{ github.run_id }}_${{ matrix.system }}_tool_check \
+            --label-team devops \
+            --label-termination-date 1d
+
+          # Extract SSH details from inventory
+          sed -n '/hosts:/,/^[^ ]/p' ${{ env.ALLOCATOR_PATH }}/inventory.yml \
+            | grep "ansible_" \
+            | sed 's/^[ ]*//g' \
+            > ${{ env.ALLOCATOR_PATH }}/inventory_vars_raw.yml
+          sed 's/: */=/g' ${{ env.ALLOCATOR_PATH }}/inventory_vars_raw.yml \
+            > ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
+          sed -i 's/-o StrictHostKeyChecking=no/"-o StrictHostKeyChecking=no"/g' \
+            ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
+          source ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
+
+          echo "SSH_HOST=$ansible_host"                             >> $GITHUB_ENV
+          echo "SSH_PORT=$ansible_port"                             >> $GITHUB_ENV
+          echo "SSH_USER=$ansible_user"                             >> $GITHUB_ENV
+          echo "SSH_KEY=$ansible_ssh_private_key_file"              >> $GITHUB_ENV
+
+      # -----------------------------------------------------------------------
+      # Build the tool(s) from the PR branch
+      # For 'all': builds all three tools.
+      # For individual commands: builds only the requested tool.
+      # -----------------------------------------------------------------------
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.get_pr_info.outputs.pr_head_ref }}
+          path: wazuh-installation-assistant
+
+      - name: Build tool(s)
+        working-directory: wazuh-installation-assistant
+        run: |
+          TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
+          # Always build the installer
+          bash builder.sh -i
+          # Build cert-tool if needed
+          if [ "$TOOL_TYPE" = "cert-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
+            bash builder.sh -c
+          fi
+          # Build passwords-tool if needed
+          if [ "$TOOL_TYPE" = "passwords-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
+            bash builder.sh -p
+          fi
+
+      # -----------------------------------------------------------------------
+      # Deploy the built tool(s) to the remote instance
+      # -----------------------------------------------------------------------
+      - name: Copy tool(s) to remote instance
+        run: |
+          TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
+          SCP_OPTS="-o StrictHostKeyChecking=no -P ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}"
+          DEST="${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp"
+          # Always copy the installer
+          scp $SCP_OPTS wazuh-installation-assistant/wazuh-install.sh ${DEST}/wazuh-install.sh
+          # Copy cert-tool if needed
+          if [ "$TOOL_TYPE" = "cert-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
+            scp $SCP_OPTS wazuh-installation-assistant/wazuh-certs-tool.sh ${DEST}/wazuh-certs-tool.sh
+          fi
+          # Copy passwords-tool if needed
+          if [ "$TOOL_TYPE" = "passwords-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
+            scp $SCP_OPTS wazuh-installation-assistant/wazuh-passwords-tool.sh ${DEST}/wazuh-passwords-tool.sh
+          fi
+
+      # -----------------------------------------------------------------------
+      # Tool execution on the remote instance.
+      #
+      # Execution order:
+      #   1. installer  — always (AIO install)
+      #   2. cert-tool  — only for cert-tool / all (after install)
+      #   3. passwords-tool — only for passwords-tool / all (after install)
+      # -----------------------------------------------------------------------
+      - name: Run installer (AIO)
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -p "${{ env.SSH_PORT }}" \
+              -i "${{ env.SSH_KEY }}" \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+              "sudo bash /tmp/wazuh-install.sh -a -d pre-release"
+
+      - name: Run cert-tool
+        if: |
+          needs.get_pr_info.outputs.tool_type == 'cert-tool' ||
+          needs.get_pr_info.outputs.tool_type == 'all'
+        run: |
+          # Create a minimal single-node config.yml for the certificates tool
+          cat > /tmp/config.yml <<'EOF'
+          nodes:
+            indexer:
+              - name: wazuh-indexer
+                ip: 127.0.0.1
+            server:
+              - name: wazuh-manager
+                ip: 127.0.0.1
+            dashboard:
+              - name: wazuh-dashboard
+                ip: 127.0.0.1
+          EOF
+
+          scp -o StrictHostKeyChecking=no \
+              -P "${{ env.SSH_PORT }}" \
+              -i "${{ env.SSH_KEY }}" \
+              /tmp/config.yml \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp/config.yml"
+
+          ssh -o StrictHostKeyChecking=no \
+              -p "${{ env.SSH_PORT }}" \
+              -i "${{ env.SSH_KEY }}" \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+              "sudo bash /tmp/wazuh-certs-tool.sh -A -cc /tmp/config.yml"
+
+      - name: Run passwords-tool
+        if: |
+          needs.get_pr_info.outputs.tool_type == 'passwords-tool' ||
+          needs.get_pr_info.outputs.tool_type == 'all'
+        env:
+          WAZUH_NEW_PASSWORD: "NewPassword1."
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -p "${{ env.SSH_PORT }}" \
+              -i "${{ env.SSH_KEY }}" \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+              "sudo bash /tmp/wazuh-passwords-tool.sh -a -p '${{ env.WAZUH_NEW_PASSWORD }}'"
+
+      # -----------------------------------------------------------------------
+      # Run integration tests via test_runner
+      # For 'all': runs the test suite for each tool in sequence.
+      # -----------------------------------------------------------------------
+      - name: Install integration-test-module
+        run: |
+          pip install -r wazuh-automation/integration-test-module/requirements.txt
+          pip install -e wazuh-automation/integration-test-module/
+
+      - name: Run tests
+        id: run_tests
+        continue-on-error: true
+        env:
+          WAZUH_NEW_PASSWORD: ${{ (needs.get_pr_info.outputs.tool_type == 'passwords-tool' || needs.get_pr_info.outputs.tool_type == 'all') && 'NewPassword1.' || '' }}
+          WAZUH_CERT_TOOL_OUTPUT_DIR: /tmp/wazuh-certificates
+        run: |
+          TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
+          OS="${{ matrix.system }}"
+          if [ "$TOOL_TYPE" = "all" ]; then
+            for t in installer cert-tool passwords-tool; do
+              test_runner \
+                --test-type "$t" \
+                --ssh-host "${{ env.SSH_HOST }}" \
+                --ssh-port "${{ env.SSH_PORT }}" \
+                --ssh-key-path "${{ env.SSH_KEY }}" \
+                --ssh-username "${{ env.SSH_USER }}" \
+                --log-level INFO \
+                --output github \
+                --output-file "test-results-${OS}-${t}.github"
+            done
+            cat test-results-${OS}-*.github > test-results-${OS}.github
+          else
+            test_runner \
+              --test-type "$TOOL_TYPE" \
+              --ssh-host "${{ env.SSH_HOST }}" \
+              --ssh-port "${{ env.SSH_PORT }}" \
+              --ssh-key-path "${{ env.SSH_KEY }}" \
+              --ssh-username "${{ env.SSH_USER }}" \
+              --log-level INFO \
+              --output github \
+              --output-file "test-results-${OS}.github"
+          fi
+
+      - name: Create step summary
+        if: always()
+        run: |
+          TOOL="${{ needs.get_pr_info.outputs.tool_type }}"
+          OS="${{ matrix.system }}"
+          echo "## 🧪 Integration Test Results — ${TOOL} on ${OS}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f "test-results-${OS}.github" ]; then
+            cat "test-results-${OS}.github" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No test results file found." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Post PR comment with results
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          TOOL: ${{ needs.get_pr_info.outputs.tool_type }}
+          OS: ${{ matrix.system }}
+          RUN_OUTCOME: ${{ steps.run_tests.outcome }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const tool = process.env.TOOL;
+            const os = process.env.OS;
+            const outcome = process.env.RUN_OUTCOME;
+            const marker = `<!-- integration-check-${tool}-${os} -->`;
+
+            let body = `${marker}\n## 🧪 Integration Tests — \`${tool}\` on \`${os}\`\n\n`;
+            body += outcome === 'success'
+              ? '✅ **All tests passed!**\n\n'
+              : '❌ **Some tests failed**\n\n';
+
+            const resultsFile = `test-results-${os}.github`;
+            try {
+              if (fs.existsSync(resultsFile)) {
+                body += '### Results\n\n```\n' + fs.readFileSync(resultsFile, 'utf8') + '\n```\n\n';
+              }
+            } catch (e) {
+              console.log('Could not read results file:', e.message);
+            }
+
+            body += `- **Workflow:** [View Details](${context.payload.repository.html_url}/actions/runs/${context.runId})\n`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ needs.get_pr_info.outputs.pr_number }},
+            });
+
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ needs.get_pr_info.outputs.pr_number }},
+                body: body,
+              });
+            }
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ needs.get_pr_info.outputs.tool_type }}-${{ matrix.system }}
+          path: test-results-${{ matrix.system }}.github
+          retention-days: 7
+
+      # -----------------------------------------------------------------------
+      # Cleanup: always deallocate the instance
+      # -----------------------------------------------------------------------
+      - name: Deallocate instance
+        if: always() && steps.allocate.outcome == 'success'
+        run: |
+          python3 wazuh-automation/deployability/modules/allocation/main.py \
+            --action delete \
+            --track-output ${{ env.ALLOCATOR_PATH }}/track.yml
+
+  # -------------------------------------------------------------------------
+  # Job 3/4: Update the GitHub check run
+  # -------------------------------------------------------------------------
+  update_check_success:
+    needs: [get_pr_info, test_tool]
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update check run — success
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.checks.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              check_run_id: ${{ needs.get_pr_info.outputs.check_run_id }},
+              status: 'completed',
+              conclusion: 'success',
+              completed_at: new Date().toISOString(),
+              output: {
+                title: '✅ ${{ needs.get_pr_info.outputs.check_name }} — Success',
+                summary: 'All integration tests passed on all matrix OS.',
+                text: `[View workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+              }
+            });
+
+  update_check_failure:
+    needs: [get_pr_info, test_tool]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update check run — failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.checks.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              check_run_id: ${{ needs.get_pr_info.outputs.check_run_id }},
+              status: 'completed',
+              conclusion: 'failure',
+              completed_at: new Date().toISOString(),
+              output: {
+                title: '❌ ${{ needs.get_pr_info.outputs.check_name }} — Failed',
+                summary: 'One or more integration tests failed.',
+                text: `[View workflow run for details](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+              }
+            });

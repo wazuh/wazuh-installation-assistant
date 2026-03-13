@@ -2,15 +2,6 @@ run-name: Test installation assistant - ${{ github.run_id }} - ${{ inputs.SYSTEM
 name: Test installation assistant
 
 on:
-  pull_request:
-    types: [ready_for_review, synchronize]
-    paths:
-      - 'cert_tool/**'
-      - 'common_functions/**'
-      - 'config/**'
-      - 'install_functions/**'
-      - 'passwords_tool/**'
-      - 'tests/**'
   workflow_dispatch:
     inputs:
       REPOSITORY:
