@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Update artifact generation jobs to use wz-linux dedicated runner group ([#641](https://github.com/wazuh/wazuh-installation-assistant/pull/641))
 - Breaking Changes Summary ([#627](https://github.com/wazuh/wazuh-installation-assistant/pull/627))
 - Change naming convention ([#626](https://github.com/wazuh/wazuh-installation-assistant/pull/626))
 - Change ossec references to wazuh-manager ([#612](https://github.com/wazuh/wazuh-installation-assistant/pull/612))
@@ -27,6 +28,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fix YAML Parser to Accept Multiple Indentation Formats ([#631](https://github.com/wazuh/wazuh-installation-assistant/pull/631))
 - Update Indexer cluster security initialization message ([#563](https://github.com/wazuh/wazuh-installation-assistant/pull/563))
 
 ### Deleted
