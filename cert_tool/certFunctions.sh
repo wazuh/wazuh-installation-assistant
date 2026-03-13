@@ -241,11 +241,152 @@ function cert_generateRootCAcertificate() {
 
 }
 
+function cert_normalizeYamlFormat() {
+
+    # Normalize the certs-tool YAML schema regardless of incoming indentation.
+    # It supports optional node fields (ip, dns, node_type), with dns defined as
+    # either a scalar value or as a list.
+    awk '
+    function ltrim(str) {
+        sub(/^[ \t]+/, "", str)
+        return str
+    }
+    function rtrim(str) {
+        sub(/[ \t]+$/, "", str)
+        return str
+    }
+    function trim(str) {
+        return rtrim(ltrim(str))
+    }
+    BEGIN {
+        in_nodes = 0
+        nodes_indent = 0
+        current_section = ""
+        in_node = 0
+        in_dns_list = 0
+    }
+    {
+        line = $0
+        match(line, /^[ \t]*/)
+        indent = RLENGTH
+
+        if (match(line, /^[ \t]*$/)) {
+            print ""
+            in_dns_list = 0
+            next
+        }
+
+        if (match(line, /^[ \t]*#/)) {
+            print line
+            next
+        }
+
+        stripped = trim(line)
+
+        if (stripped == "nodes:") {
+            print "nodes:"
+            in_nodes = 1
+            nodes_indent = indent
+            current_section = ""
+            in_node = 0
+            in_dns_list = 0
+            next
+        }
+
+        if (in_nodes == 1 && current_section != "" && match(stripped, /^-[ \t]/)) {
+            list_payload = trim(substr(stripped, 2))
+
+            if (match(list_payload, /^name:[ \t]*/)) {
+                name_value = trim(substr(list_payload, 6))
+                print "    - name: " name_value
+                in_node = 1
+                in_dns_list = 0
+                next
+            }
+
+            if (in_node == 1 && in_dns_list == 1) {
+                print "        - " list_payload
+                next
+            }
+
+            print "    - " list_payload
+            in_node = 1
+            in_dns_list = 0
+            next
+        }
+
+        if (in_nodes == 1 && in_node == 1 && in_dns_list == 1 && match(stripped, /^-[ \t]/)) {
+            dns_value = trim(substr(stripped, 2))
+            print "        - " dns_value
+            next
+        }
+
+        if (in_nodes == 1 && match(stripped, /^[a-zA-Z0-9_ ]+:[ \t]*/)) {
+            key_name = trim(substr(stripped, 1, index(stripped, ":") - 1))
+            key_value = trim(substr(stripped, index(stripped, ":") + 1))
+
+            if (key_name == "node type") {
+                key_name = "node_type"
+            }
+
+            if (in_node == 1 && key_name == "name") {
+                print "    - name: " key_value
+                in_dns_list = 0
+                next
+            }
+
+            if (in_node == 1 && (key_name == "ip" || key_name == "node_type")) {
+                print "      " key_name ": " key_value
+                in_dns_list = 0
+                next
+            }
+
+            if (in_node == 1 && key_name == "dns") {
+                if (key_value == "") {
+                    print "      dns:"
+                    in_dns_list = 1
+                } else {
+                    print "      dns: " key_value
+                    in_dns_list = 0
+                }
+                next
+            }
+
+            if (key_value == "" && (in_node == 0 || indent <= nodes_indent + 2)) {
+                print "  " key_name ":"
+                current_section = key_name
+                in_node = 0
+                in_dns_list = 0
+                next
+            }
+
+            if (in_node == 1) {
+                if (key_value == "") {
+                    print "      " key_name ":"
+                } else {
+                    print "      " key_name ": " key_value
+                }
+                in_dns_list = 0
+                next
+            }
+        }
+
+        if (!match(stripped, /^-[ \t]/)) {
+            in_dns_list = 0
+        }
+
+        print line
+    }
+    '
+}
+
 function cert_parseYaml() {
 
+    local config_file_path=$1
     local prefix=$2
     local separator=${3:-_}
     local indexfix
+    
     # Detect awk flavor
     if awk --version 2>&1 | grep -q "GNU Awk" ; then
     # GNU Awk detected
@@ -256,7 +397,9 @@ function cert_parseYaml() {
     fi
 
     local s='[[:space:]]*' sm='[ \t]*' w='[a-zA-Z0-9_]*' fs=${fs:-$(echo @|tr @ '\034')} i=${i:-  }
-    cat $1 2>/dev/null | \
+    
+    # Normalize YAML format first to handle both valid YAML indentation styles
+    cat $config_file_path 2>/dev/null | cert_normalizeYamlFormat | \
     awk -F$fs "{multi=0; 
         if(match(\$0,/$sm\|$sm$/)){multi=1; sub(/$sm\|$sm$/,\"\");}
         if(match(\$0,/$sm>$sm$/)){multi=2; sub(/$sm>$sm$/,\"\");}

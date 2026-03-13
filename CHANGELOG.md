@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fix YAML Parser to Accept Multiple Indentation Formats ([#631](https://github.com/wazuh/wazuh-installation-assistant/pull/631))
 - Update Indexer cluster security initialization message ([#563](https://github.com/wazuh/wazuh-installation-assistant/pull/563))
 
 ### Deleted
