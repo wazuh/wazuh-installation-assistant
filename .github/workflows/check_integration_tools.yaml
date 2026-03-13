@@ -1,9 +1,32 @@
-run-name: "Test Integration Tools - #${{ github.event.issue.number }} ${{ github.event.issue.title }}"
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch'
+    && format('Test Integration Tools - Manual {0} on {1}', inputs.tool_type, inputs.pr_head_ref)
+    || format('Test Integration Tools - #{0} {1}', github.event.issue.number, github.event.issue.title) }}
 name: PR Check - Test Integration Tools
 
 on:
   issue_comment:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      tool_type:
+        description: 'Tool to test'
+        required: true
+        type: choice
+        options:
+          - installer
+          - cert-tool
+          - passwords-tool
+          - all
+      pr_head_ref:
+        description: 'Branch or ref to checkout and build'
+        required: true
+        type: string
+      automation_reference:
+        description: 'Branch of wazuh-automation to use'
+        required: false
+        default: 'enhancement/589-wazuh-passwords-tool-integration-tests'
+        type: string
 
 permissions:
   id-token: write
@@ -13,13 +36,14 @@ permissions:
   checks: write
 
 env:
-  AUTOMATION_REFERENCE: main
+  AUTOMATION_REFERENCE: ${{ inputs.automation_reference || 'enhancement/589-wazuh-passwords-tool-integration-tests' }}
   ALLOCATOR_PATH: /tmp/allocator_instance
   REGION: us-east-1
+  GENERATE_PRESIGNED_URLS_SCRIPT_PATH: wazuh-automation/tools/sign_urls/generate_presigned_dev_urls.py
 
 jobs:
   # -------------------------------------------------------------------------
-  # Job 1: Parse PR info and determine which tool to test
+  # Job 1: Parse PR info and determine which tool to test (issue_comment only)
   #
   # Available commands:
   #   /test-install       — test the installation assistant only
@@ -29,6 +53,7 @@ jobs:
   # -------------------------------------------------------------------------
   get_pr_info:
     if: |
+      github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
       github.event.issue.state == 'open' &&
       !github.event.issue.draft &&
@@ -119,6 +144,9 @@ jobs:
   # -------------------------------------------------------------------------
   test_tool:
     needs: get_pr_info
+    if: |
+      always() &&
+      (needs.get_pr_info.result == 'success' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -126,6 +154,18 @@ jobs:
         system: ["Ubuntu_22", "AmazonLinux_2023"]
 
     steps:
+      # Resolve tool_type and pr_head_ref regardless of trigger source
+      - name: Resolve context
+        id: ctx
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tool_type=${{ inputs.tool_type }}"     >> $GITHUB_OUTPUT
+            echo "pr_head_ref=${{ inputs.pr_head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "tool_type=${{ needs.get_pr_info.outputs.tool_type }}"     >> $GITHUB_OUTPUT
+            echo "pr_head_ref=${{ needs.get_pr_info.outputs.pr_head_ref }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout wazuh-automation
         uses: actions/checkout@v4
         with:
@@ -195,19 +235,24 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Build the tool(s) from the PR branch
-      # For 'all': builds all three tools.
-      # For individual commands: builds only the requested tool.
       # -----------------------------------------------------------------------
       - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.get_pr_info.outputs.pr_head_ref }}
+          ref: ${{ steps.ctx.outputs.pr_head_ref }}
           path: wazuh-installation-assistant
+
+      - name: Get Wazuh version from PR branch
+        run: |
+          WAZUH_VERSION=$(jq -r '.version' wazuh-installation-assistant/VERSION.json)
+          WAZUH_MAJOR=$(echo "$WAZUH_VERSION" | cut -d '.' -f 1)
+          echo "WAZUH_VERSION=$WAZUH_VERSION" >> $GITHUB_ENV
+          echo "WAZUH_MAJOR=$WAZUH_MAJOR"     >> $GITHUB_ENV
 
       - name: Build tool(s)
         working-directory: wazuh-installation-assistant
         run: |
-          TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
+          TOOL_TYPE="${{ steps.ctx.outputs.tool_type }}"
           # Always build the installer
           bash builder.sh -i
           # Build cert-tool if needed
@@ -224,7 +269,7 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Copy tool(s) to remote instance
         run: |
-          TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
+          TOOL_TYPE="${{ steps.ctx.outputs.tool_type }}"
           SCP_OPTS="-o StrictHostKeyChecking=no -P ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}"
           DEST="${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp"
           # Always copy the installer
@@ -239,10 +284,34 @@ jobs:
           fi
 
       # -----------------------------------------------------------------------
+      # Generate presigned artifact URLs using the wazuh-automation script,
+      # then copy the resulting file to the remote instance.
+      # The script handles: download from S3, filter by process, expand vars,
+      # and sign URLs — output is always /tmp/artifact_urls.yml.
+      # -----------------------------------------------------------------------
+      - name: Generate presigned artifact URLs
+        run: |
+          pip install pyyaml --quiet
+          python ${{ env.GENERATE_PRESIGNED_URLS_SCRIPT_PATH }} \
+            --process test_assistant \
+            --wazuh-version "${{ env.WAZUH_VERSION }}" \
+            --aws-s3-bucket-dev "${{ vars.AWS_S3_BUCKET_DEV }}"
+          echo "Generated presigned URLs:"
+          cat /tmp/artifact_urls.yml
+
+      - name: Copy artifact_urls.yml to remote instance
+        run: |
+          scp -o StrictHostKeyChecking=no \
+              -P "${{ env.SSH_PORT }}" \
+              -i "${{ env.SSH_KEY }}" \
+              /tmp/artifact_urls.yml \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp/artifact_urls.yml"
+
+      # -----------------------------------------------------------------------
       # Tool execution on the remote instance.
       #
       # Execution order:
-      #   1. installer  — always (AIO install)
+      #   1. installer  — always (AIO install, using local artifact URLs)
       #   2. cert-tool  — only for cert-tool / all (after install)
       #   3. passwords-tool — only for passwords-tool / all (after install)
       # -----------------------------------------------------------------------
@@ -252,12 +321,12 @@ jobs:
               -p "${{ env.SSH_PORT }}" \
               -i "${{ env.SSH_KEY }}" \
               "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-              "sudo bash /tmp/wazuh-install.sh -a -d pre-release"
+              "sudo bash /tmp/wazuh-install.sh -a -d local -id"
 
       - name: Run cert-tool
         if: |
-          needs.get_pr_info.outputs.tool_type == 'cert-tool' ||
-          needs.get_pr_info.outputs.tool_type == 'all'
+          steps.ctx.outputs.tool_type == 'cert-tool' ||
+          steps.ctx.outputs.tool_type == 'all'
         run: |
           # Create a minimal single-node config.yml for the certificates tool
           cat > /tmp/config.yml <<'EOF'
@@ -287,8 +356,8 @@ jobs:
 
       - name: Run passwords-tool
         if: |
-          needs.get_pr_info.outputs.tool_type == 'passwords-tool' ||
-          needs.get_pr_info.outputs.tool_type == 'all'
+          steps.ctx.outputs.tool_type == 'passwords-tool' ||
+          steps.ctx.outputs.tool_type == 'all'
         env:
           WAZUH_NEW_PASSWORD: "NewPassword1."
         run: |
@@ -311,10 +380,10 @@ jobs:
         id: run_tests
         continue-on-error: true
         env:
-          WAZUH_NEW_PASSWORD: ${{ (needs.get_pr_info.outputs.tool_type == 'passwords-tool' || needs.get_pr_info.outputs.tool_type == 'all') && 'NewPassword1.' || '' }}
+          WAZUH_NEW_PASSWORD: ${{ (steps.ctx.outputs.tool_type == 'passwords-tool' || steps.ctx.outputs.tool_type == 'all') && 'NewPassword1.' || '' }}
           WAZUH_CERT_TOOL_OUTPUT_DIR: /tmp/wazuh-certificates
         run: |
-          TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
+          TOOL_TYPE="${{ steps.ctx.outputs.tool_type }}"
           OS="${{ matrix.system }}"
           if [ "$TOOL_TYPE" = "all" ]; then
             for t in installer cert-tool passwords-tool; do
@@ -328,7 +397,7 @@ jobs:
                 --output github \
                 --output-file "test-results-${OS}-${t}.github"
             done
-            cat test-results-${OS}-*.github > test-results-${OS}.github
+            cat test-results-${OS}-*.github > "test-results-${OS}.github"
           else
             test_runner \
               --test-type "$TOOL_TYPE" \
@@ -344,7 +413,7 @@ jobs:
       - name: Create step summary
         if: always()
         run: |
-          TOOL="${{ needs.get_pr_info.outputs.tool_type }}"
+          TOOL="${{ steps.ctx.outputs.tool_type }}"
           OS="${{ matrix.system }}"
           echo "## 🧪 Integration Test Results — ${TOOL} on ${OS}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -355,10 +424,10 @@ jobs:
           fi
 
       - name: Post PR comment with results
-        if: always()
+        if: always() && github.event_name == 'issue_comment'
         uses: actions/github-script@v7
         env:
-          TOOL: ${{ needs.get_pr_info.outputs.tool_type }}
+          TOOL: ${{ steps.ctx.outputs.tool_type }}
           OS: ${{ matrix.system }}
           RUN_OUTCOME: ${{ steps.run_tests.outcome }}
         with:
@@ -416,7 +485,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ needs.get_pr_info.outputs.tool_type }}-${{ matrix.system }}
+          name: test-results-${{ steps.ctx.outputs.tool_type }}-${{ matrix.system }}
           path: test-results-${{ matrix.system }}.github
           retention-days: 7
 
@@ -431,11 +500,11 @@ jobs:
             --track-output ${{ env.ALLOCATOR_PATH }}/track.yml
 
   # -------------------------------------------------------------------------
-  # Job 3/4: Update the GitHub check run
+  # Job 3/4: Update the GitHub check run (issue_comment trigger only)
   # -------------------------------------------------------------------------
   update_check_success:
     needs: [get_pr_info, test_tool]
-    if: success()
+    if: success() && github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     steps:
       - name: Update check run — success
@@ -458,7 +527,7 @@ jobs:
 
   update_check_failure:
     needs: [get_pr_info, test_tool]
-    if: failure()
+    if: failure() && github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     steps:
       - name: Update check run — failure
