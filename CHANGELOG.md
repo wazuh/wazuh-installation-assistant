@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fix YAML Parser to Accept Multiple Indentation Formats ([#631](https://github.com/wazuh/wazuh-installation-assistant/pull/631))
 - Update Indexer cluster security initialization message ([#563](https://github.com/wazuh/wazuh-installation-assistant/pull/563))
 
 ### Deleted
@@ -67,6 +68,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Remove deprecated passwords_getApiIds function call ([#633](https://github.com/wazuh/wazuh-installation-assistant/pull/633))
 - Fix password change process when using a user file with partial users ([#614](https://github.com/wazuh/wazuh-installation-assistant/pull/614))
 
 ### Deleted
