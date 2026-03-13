@@ -369,6 +369,7 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Run integration tests via test_runner
+      # For 'all': runs the test suite for each tool in sequence.
       # -----------------------------------------------------------------------
       - name: Install integration-test-module
         run: |
