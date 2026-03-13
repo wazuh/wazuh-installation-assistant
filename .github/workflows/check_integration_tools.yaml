@@ -359,13 +359,16 @@ jobs:
           steps.ctx.outputs.tool_type == 'passwords-tool' ||
           steps.ctx.outputs.tool_type == 'all'
         env:
-          WAZUH_NEW_PASSWORD: "NewPassword1."
+          WAZUH_NEW_PASSWORD: "T3sting-Password"
         run: |
-          ssh -o StrictHostKeyChecking=no \
-              -p "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-              "sudo bash /tmp/wazuh-passwords-tool.sh -a -p '${{ env.WAZUH_NEW_PASSWORD }}'"
+          SSH_OPTS="-o StrictHostKeyChecking=no -p ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}"
+          HOST="${{ env.SSH_USER }}@${{ env.SSH_HOST }}"
+          # Change admin password
+          ssh $SSH_OPTS "$HOST" \
+            "sudo bash /tmp/wazuh-passwords-tool.sh -u admin -p '${{ env.WAZUH_NEW_PASSWORD }}'"
+          # Change wazuh-wui (API) password
+          ssh $SSH_OPTS "$HOST" \
+            "sudo bash /tmp/wazuh-passwords-tool.sh -au wazuh -ap wazuh -u wazuh-wui -p '${{ env.WAZUH_NEW_PASSWORD }}' -A"
 
       # -----------------------------------------------------------------------
       # Run integration tests via test_runner
@@ -380,7 +383,7 @@ jobs:
         id: run_tests
         continue-on-error: true
         env:
-          WAZUH_NEW_PASSWORD: ${{ (steps.ctx.outputs.tool_type == 'passwords-tool' || steps.ctx.outputs.tool_type == 'all') && 'NewPassword1.' || '' }}
+          WAZUH_NEW_PASSWORD: ${{ (steps.ctx.outputs.tool_type == 'passwords-tool' || steps.ctx.outputs.tool_type == 'all') && 'T3sting-Password' || '' }}
           WAZUH_CERT_TOOL_OUTPUT_DIR: /tmp/wazuh-certificates
         run: |
           TOOL_TYPE="${{ steps.ctx.outputs.tool_type }}"
