@@ -1,5 +1,5 @@
-run-name: "Check Integration Tools - #${{ github.event.issue.number }} ${{ github.event.issue.title }}"
-name: PR Check - Integration Tools
+run-name: "Test Integration Tools - #${{ github.event.issue.number }} ${{ github.event.issue.title }}"
+name: PR Check - Test Integration Tools
 
 on:
   issue_comment:
@@ -20,15 +20,22 @@ env:
 jobs:
   # -------------------------------------------------------------------------
   # Job 1: Parse PR info and determine which tool to test
+  #
+  # Available commands:
+  #   /test-install       — test the installation assistant only
+  #   /test-cert-tool     — test the certificates tool only
+  #   /test-password-tool — test the passwords tool only
+  #   /test-assistant     — test all three tools in sequence
   # -------------------------------------------------------------------------
   get_pr_info:
     if: |
       github.event.issue.pull_request &&
       github.event.issue.state == 'open' &&
       !github.event.issue.draft &&
-      (contains(github.event.comment.body, '/check-assistant') ||
-       contains(github.event.comment.body, '/check-cert-tool') ||
-       contains(github.event.comment.body, '/check-password-tool'))
+      (contains(github.event.comment.body, '/test-install') ||
+       contains(github.event.comment.body, '/test-cert-tool') ||
+       contains(github.event.comment.body, '/test-password-tool') ||
+       contains(github.event.comment.body, '/test-assistant'))
     runs-on: ubuntu-latest
     outputs:
       pr_number: ${{ steps.pr_data.outputs.pr_number }}
@@ -36,8 +43,6 @@ jobs:
       pr_head_sha: ${{ steps.pr_data.outputs.pr_head_sha }}
       check_run_id: ${{ steps.create_check.outputs.result }}
       tool_type: ${{ steps.parse_command.outputs.tool_type }}
-      builder_flag: ${{ steps.parse_command.outputs.builder_flag }}
-      built_artifact: ${{ steps.parse_command.outputs.built_artifact }}
       check_name: ${{ steps.parse_command.outputs.check_name }}
 
     steps:
@@ -69,21 +74,18 @@ jobs:
         id: parse_command
         run: |
           COMMENT_BODY="${{ github.event.comment.body }}"
-          if echo "$COMMENT_BODY" | grep -q '/check-assistant'; then
-            echo "tool_type=installer"       >> $GITHUB_OUTPUT
-            echo "builder_flag=-i"           >> $GITHUB_OUTPUT
-            echo "built_artifact=wazuh-install.sh" >> $GITHUB_OUTPUT
+          if echo "$COMMENT_BODY" | grep -q '/test-assistant'; then
+            echo "tool_type=all"                      >> $GITHUB_OUTPUT
+            echo "check_name=Full Integration Check"  >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -q '/test-install'; then
+            echo "tool_type=installer"                >> $GITHUB_OUTPUT
             echo "check_name=Installation Assistant Check" >> $GITHUB_OUTPUT
-          elif echo "$COMMENT_BODY" | grep -q '/check-cert-tool'; then
-            echo "tool_type=cert-tool"       >> $GITHUB_OUTPUT
-            echo "builder_flag=-c"           >> $GITHUB_OUTPUT
-            echo "built_artifact=wazuh-certs-tool.sh" >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -q '/test-cert-tool'; then
+            echo "tool_type=cert-tool"                >> $GITHUB_OUTPUT
             echo "check_name=Certificates Tool Check" >> $GITHUB_OUTPUT
-          elif echo "$COMMENT_BODY" | grep -q '/check-password-tool'; then
-            echo "tool_type=passwords-tool"  >> $GITHUB_OUTPUT
-            echo "builder_flag=-p"           >> $GITHUB_OUTPUT
-            echo "built_artifact=wazuh-passwords-tool.sh" >> $GITHUB_OUTPUT
-            echo "check_name=Passwords Tool Check" >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -q '/test-password-tool'; then
+            echo "tool_type=passwords-tool"           >> $GITHUB_OUTPUT
+            echo "check_name=Passwords Tool Check"    >> $GITHUB_OUTPUT
           fi
 
       - name: Create check run
@@ -121,7 +123,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        system: ["Ubuntu_22", "AmazonLinux_2"]
+        system: ["Ubuntu_22", "AmazonLinux_2023"]
 
     steps:
       - name: Checkout wazuh-automation
@@ -132,10 +134,10 @@ jobs:
           token: ${{ secrets.GH_CLONE_TOKEN }}
           path: wazuh-automation
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
       - name: Install allocator requirements
         run: pip install -r wazuh-automation/deployability/deps/requirements.txt
@@ -150,20 +152,14 @@ jobs:
       - name: Set COMPOSITE_NAME for matrix OS
         run: |
           case "${{ matrix.system }}" in
-            "CentOS_7")     SUBNAME="centos-7"    ;;
-            "CentOS_8")     SUBNAME="centos-8"    ;;
-            "AmazonLinux_2") SUBNAME="amazon-2"   ;;
-            "Ubuntu_18")    SUBNAME="ubuntu-18"   ;;
-            "Ubuntu_20")    SUBNAME="ubuntu-20"   ;;
-            "Ubuntu_22")    SUBNAME="ubuntu-22"   ;;
-            "RHEL7")        SUBNAME="redhat-7"    ;;
-            "RHEL8")        SUBNAME="redhat-8"    ;;
+            "AmazonLinux_2023")  SUBNAME="amazon-2023-amd64" ;;
+            "Ubuntu_22")         SUBNAME="ubuntu-22-amd64"   ;;
             *)
               echo "Invalid system: ${{ matrix.system }}" >&2
               exit 1
               ;;
           esac
-          echo "COMPOSITE_NAME=${SUBNAME}-amd64" >> $GITHUB_ENV
+          echo "COMPOSITE_NAME=${SUBNAME}" >> $GITHUB_ENV
 
       - name: Allocate instance
         id: allocate
@@ -198,7 +194,9 @@ jobs:
           echo "SSH_KEY=$ansible_ssh_private_key_file"              >> $GITHUB_ENV
 
       # -----------------------------------------------------------------------
-      # Build the tool from the PR branch
+      # Build the tool(s) from the PR branch
+      # For 'all': builds all three tools.
+      # For individual commands: builds only the requested tool.
       # -----------------------------------------------------------------------
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -206,28 +204,49 @@ jobs:
           ref: ${{ needs.get_pr_info.outputs.pr_head_ref }}
           path: wazuh-installation-assistant
 
-      - name: Build tool
+      - name: Build tool(s)
         working-directory: wazuh-installation-assistant
         run: |
-          bash builder.sh ${{ needs.get_pr_info.outputs.builder_flag }}
+          TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
+          # Always build the installer
+          bash builder.sh -i
+          # Build cert-tool if needed
+          if [ "$TOOL_TYPE" = "cert-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
+            bash builder.sh -c
+          fi
+          # Build passwords-tool if needed
+          if [ "$TOOL_TYPE" = "passwords-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
+            bash builder.sh -p
+          fi
 
       # -----------------------------------------------------------------------
-      # Deploy the built tool to the remote instance
+      # Deploy the built tool(s) to the remote instance
       # -----------------------------------------------------------------------
-      - name: Copy tool to remote instance
+      - name: Copy tool(s) to remote instance
         run: |
-          ARTIFACT="${{ needs.get_pr_info.outputs.built_artifact }}"
-          scp -o StrictHostKeyChecking=no \
-              -P "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              "wazuh-installation-assistant/${ARTIFACT}" \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp/${ARTIFACT}"
+          TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
+          SCP_OPTS="-o StrictHostKeyChecking=no -P ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}"
+          DEST="${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp"
+          # Always copy the installer
+          scp $SCP_OPTS wazuh-installation-assistant/wazuh-install.sh ${DEST}/wazuh-install.sh
+          # Copy cert-tool if needed
+          if [ "$TOOL_TYPE" = "cert-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
+            scp $SCP_OPTS wazuh-installation-assistant/wazuh-certs-tool.sh ${DEST}/wazuh-certs-tool.sh
+          fi
+          # Copy passwords-tool if needed
+          if [ "$TOOL_TYPE" = "passwords-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
+            scp $SCP_OPTS wazuh-installation-assistant/wazuh-passwords-tool.sh ${DEST}/wazuh-passwords-tool.sh
+          fi
 
       # -----------------------------------------------------------------------
-      # Tool-specific execution on the remote instance
+      # Tool execution on the remote instance.
+      #
+      # Execution order:
+      #   1. installer  — always (AIO install)
+      #   2. cert-tool  — only for cert-tool / all (after install)
+      #   3. passwords-tool — only for passwords-tool / all (after install)
       # -----------------------------------------------------------------------
       - name: Run installer (AIO)
-        if: needs.get_pr_info.outputs.tool_type == 'installer'
         run: |
           ssh -o StrictHostKeyChecking=no \
               -p "${{ env.SSH_PORT }}" \
@@ -235,8 +254,10 @@ jobs:
               "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
               "sudo bash /tmp/wazuh-install.sh -a -d pre-release"
 
-      - name: Generate certs config and run cert-tool
-        if: needs.get_pr_info.outputs.tool_type == 'cert-tool'
+      - name: Run cert-tool
+        if: |
+          needs.get_pr_info.outputs.tool_type == 'cert-tool' ||
+          needs.get_pr_info.outputs.tool_type == 'all'
         run: |
           # Create a minimal single-node config.yml for the certificates tool
           cat > /tmp/config.yml <<'EOF'
@@ -264,19 +285,13 @@ jobs:
               "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
               "sudo bash /tmp/wazuh-certs-tool.sh -A -cc /tmp/config.yml"
 
-      - name: Run AIO install then passwords-tool
-        if: needs.get_pr_info.outputs.tool_type == 'passwords-tool'
+      - name: Run passwords-tool
+        if: |
+          needs.get_pr_info.outputs.tool_type == 'passwords-tool' ||
+          needs.get_pr_info.outputs.tool_type == 'all'
         env:
-          WAZUH_NEW_PASSWORD: "NewPassword1!"
+          WAZUH_NEW_PASSWORD: "NewPassword1."
         run: |
-          # First install Wazuh AIO (passwords tool requires a running installation)
-          ssh -o StrictHostKeyChecking=no \
-              -p "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-              "sudo bash /tmp/wazuh-install.sh -a -d pre-release"
-
-          # Change all passwords using the passwords tool
           ssh -o StrictHostKeyChecking=no \
               -p "${{ env.SSH_PORT }}" \
               -i "${{ env.SSH_KEY }}" \
@@ -285,6 +300,7 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Run integration tests via test_runner
+      # For 'all': runs the test suite for each tool in sequence.
       # -----------------------------------------------------------------------
       - name: Install integration-test-module
         run: |
@@ -295,18 +311,35 @@ jobs:
         id: run_tests
         continue-on-error: true
         env:
-          WAZUH_NEW_PASSWORD: ${{ needs.get_pr_info.outputs.tool_type == 'passwords-tool' && 'NewPassword1!' || '' }}
+          WAZUH_NEW_PASSWORD: ${{ (needs.get_pr_info.outputs.tool_type == 'passwords-tool' || needs.get_pr_info.outputs.tool_type == 'all') && 'NewPassword1.' || '' }}
           WAZUH_CERT_TOOL_OUTPUT_DIR: /tmp/wazuh-certificates
         run: |
-          test_runner \
-            --test-type ${{ needs.get_pr_info.outputs.tool_type }} \
-            --ssh-host "${{ env.SSH_HOST }}" \
-            --ssh-port "${{ env.SSH_PORT }}" \
-            --ssh-key "${{ env.SSH_KEY }}" \
-            --ssh-username "${{ env.SSH_USER }}" \
-            --log-level INFO \
-            --output github \
-            --output-file test-results-${{ matrix.system }}.github
+          TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
+          OS="${{ matrix.system }}"
+          if [ "$TOOL_TYPE" = "all" ]; then
+            for t in installer cert-tool passwords-tool; do
+              test_runner \
+                --test-type "$t" \
+                --ssh-host "${{ env.SSH_HOST }}" \
+                --ssh-port "${{ env.SSH_PORT }}" \
+                --ssh-key-path "${{ env.SSH_KEY }}" \
+                --ssh-username "${{ env.SSH_USER }}" \
+                --log-level INFO \
+                --output github \
+                --output-file "test-results-${OS}-${t}.github"
+            done
+            cat test-results-${OS}-*.github > test-results-${OS}.github
+          else
+            test_runner \
+              --test-type "$TOOL_TYPE" \
+              --ssh-host "${{ env.SSH_HOST }}" \
+              --ssh-port "${{ env.SSH_PORT }}" \
+              --ssh-key-path "${{ env.SSH_KEY }}" \
+              --ssh-username "${{ env.SSH_USER }}" \
+              --log-level INFO \
+              --output github \
+              --output-file "test-results-${OS}.github"
+          fi
 
       - name: Create step summary
         if: always()

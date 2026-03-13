@@ -67,6 +67,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Remove deprecated passwords_getApiIds function call ([#633](https://github.com/wazuh/wazuh-installation-assistant/pull/633))
 - Fix password change process when using a user file with partial users ([#614](https://github.com/wazuh/wazuh-installation-assistant/pull/614))
 
 ### Deleted

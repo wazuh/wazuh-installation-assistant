@@ -122,7 +122,7 @@ function installCommon_createCertificates() {
             installCommon_rollBack
             exit 1
         fi
-        
+
         common_logger -d "Configuration file downloaded successfully"
 
         eval "sed -i 's|- name: node-1|- name: wazuh-indexer|' '${config_file}'" ${debug}
@@ -227,7 +227,7 @@ function installCommon_downloadComponent() {
         common_logger -d "Skipping download in offline installation mode. Package already available."
         return 0
     fi
-    
+
     if [ "$#" -ne 1 ]; then
         common_logger -e "installCommon_downloadComponent must be called with one argument (component name)."
         exit 1
