@@ -208,15 +208,14 @@ jobs:
         working-directory: wazuh-installation-assistant
         run: |
           TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
-          if [ "$TOOL_TYPE" = "all" ]; then
-            bash builder.sh -i
+          # Always build the installer
+          bash builder.sh -i
+          # Build cert-tool if needed
+          if [ "$TOOL_TYPE" = "cert-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
             bash builder.sh -c
-            bash builder.sh -p
-          elif [ "$TOOL_TYPE" = "installer" ]; then
-            bash builder.sh -i
-          elif [ "$TOOL_TYPE" = "cert-tool" ]; then
-            bash builder.sh -c
-          elif [ "$TOOL_TYPE" = "passwords-tool" ]; then
+          fi
+          # Build passwords-tool if needed
+          if [ "$TOOL_TYPE" = "passwords-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
             bash builder.sh -p
           fi
 
@@ -226,31 +225,35 @@ jobs:
       - name: Copy tool(s) to remote instance
         run: |
           TOOL_TYPE="${{ needs.get_pr_info.outputs.tool_type }}"
-          if [ "$TOOL_TYPE" = "all" ]; then
-            ARTIFACTS="wazuh-install.sh wazuh-certs-tool.sh wazuh-passwords-tool.sh"
-          elif [ "$TOOL_TYPE" = "installer" ]; then
-            ARTIFACTS="wazuh-install.sh"
-          elif [ "$TOOL_TYPE" = "cert-tool" ]; then
-            ARTIFACTS="wazuh-certs-tool.sh"
-          elif [ "$TOOL_TYPE" = "passwords-tool" ]; then
-            ARTIFACTS="wazuh-install.sh wazuh-passwords-tool.sh"
+          SCP_OPTS="-o StrictHostKeyChecking=no -P ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}"
+          DEST="${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp"
+          # Always copy the installer
+          scp $SCP_OPTS wazuh-installation-assistant/wazuh-install.sh ${DEST}/wazuh-install.sh
+          # Copy cert-tool if needed
+          if [ "$TOOL_TYPE" = "cert-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
+            scp $SCP_OPTS wazuh-installation-assistant/wazuh-certs-tool.sh ${DEST}/wazuh-certs-tool.sh
           fi
-          for artifact in $ARTIFACTS; do
-            scp -o StrictHostKeyChecking=no \
-                -P "${{ env.SSH_PORT }}" \
-                -i "${{ env.SSH_KEY }}" \
-                "wazuh-installation-assistant/${artifact}" \
-                "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp/${artifact}"
-          done
+          # Copy passwords-tool if needed
+          if [ "$TOOL_TYPE" = "passwords-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
+            scp $SCP_OPTS wazuh-installation-assistant/wazuh-passwords-tool.sh ${DEST}/wazuh-passwords-tool.sh
+          fi
 
       # -----------------------------------------------------------------------
-      # Tool-specific execution on the remote instance.
+      # Tool execution on the remote instance.
       #
-      # Execution order for 'all':
-      #   1. cert-tool  (standalone, no prior install needed)
-      #   2. installer  (AIO)
-      #   3. passwords-tool (requires Wazuh already installed)
+      # Execution order:
+      #   1. installer  — always (AIO install)
+      #   2. cert-tool  — only for cert-tool / all (after install)
+      #   3. passwords-tool — only for passwords-tool / all (after install)
       # -----------------------------------------------------------------------
+      - name: Run installer (AIO)
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -p "${{ env.SSH_PORT }}" \
+              -i "${{ env.SSH_KEY }}" \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+              "sudo bash /tmp/wazuh-install.sh -a -d pre-release"
+
       - name: Run cert-tool
         if: |
           needs.get_pr_info.outputs.tool_type == 'cert-tool' ||
@@ -281,18 +284,6 @@ jobs:
               -i "${{ env.SSH_KEY }}" \
               "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
               "sudo bash /tmp/wazuh-certs-tool.sh -A -cc /tmp/config.yml"
-
-      - name: Run installer (AIO)
-        if: |
-          needs.get_pr_info.outputs.tool_type == 'installer' ||
-          needs.get_pr_info.outputs.tool_type == 'passwords-tool' ||
-          needs.get_pr_info.outputs.tool_type == 'all'
-        run: |
-          ssh -o StrictHostKeyChecking=no \
-              -p "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-              "sudo bash /tmp/wazuh-install.sh -a -d pre-release"
 
       - name: Run passwords-tool
         if: |
