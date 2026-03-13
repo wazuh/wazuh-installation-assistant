@@ -64,7 +64,8 @@ permissions:
 
 jobs:
   setup:
-    runs-on: ubuntu-22.04
+    runs-on:
+      group: wz-linux-amd64
     outputs:
       suffix: ${{ steps.set-matrix.outputs.suffix }}
     steps:
@@ -91,7 +92,8 @@ jobs:
           echo "suffix=$SUFFIX" >> $GITHUB_OUTPUT
 
   Build_Installation_Assistant:
-    runs-on: ubuntu-22.04
+    runs-on:
+      group: wz-linux-amd64
     needs: setup
     strategy:
       matrix:
