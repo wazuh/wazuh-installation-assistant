@@ -242,103 +242,139 @@ function cert_generateRootCAcertificate() {
 }
 
 function cert_normalizeYamlFormat() {
-    
-    # Normalize YAML format to ensure list items are properly indented
-    # Handles various YAML indentation styles and normalizes them to standard format:
-    # - List items at same level as parent key -> indent by 2 spaces
-    # - List items with excessive indentation -> normalize to standard indent
-    # - Properties within list items -> ensure proper relative indentation
-    
+
+    # Normalize the certs-tool YAML schema regardless of incoming indentation.
+    # It supports optional node fields (ip, dns, node_type), with dns defined as
+    # either a scalar value or as a list.
     awk '
+    function ltrim(str) {
+        sub(/^[ \t]+/, "", str)
+        return str
+    }
+    function rtrim(str) {
+        sub(/[ \t]+$/, "", str)
+        return str
+    }
+    function trim(str) {
+        return rtrim(ltrim(str))
+    }
     BEGIN {
-        last_was_key = 0
-        last_key_indent = 0
-        in_list = 0
-        list_base_indent = 0
-        expected_list_indent = 0
+        in_nodes = 0
+        nodes_indent = 0
+        current_section = ""
+        in_node = 0
+        in_dns_list = 0
     }
     {
-        # Store current line
         line = $0
-        
-        # Skip empty lines and comments
-        if (match(line, /^[ \t]*$/) || match(line, /^[ \t]*#/)) {
-            print line
-            next
-        }
-        
-        # Get indentation level (number of leading spaces)
         match(line, /^[ \t]*/)
         indent = RLENGTH
-        
-        # Check if line ends with colon (is a key)
-        if (match(line, /:[ \t]*$/)) {
-            # Store this key and its indentation
-            last_key_line = line
-            last_key_indent = indent
-            last_was_key = 1
-            in_list = 0
+
+        if (match(line, /^[ \t]*$/)) {
+            print ""
+            in_dns_list = 0
+            next
+        }
+
+        if (match(line, /^[ \t]*#/)) {
             print line
             next
         }
-        
-        # Check if this is a list item (starts with -)
-        if (match(line, /^[ \t]*-[ \t]/)) {
-            list_indent = indent
-            
-            # If previous line was a key
-            if (last_was_key == 1) {
-                # Calculate expected indentation (parent indent + 2)
-                expected_list_indent = last_key_indent + 2
-                
-                # Normalize indentation regardless of current indent
-                # (handles both under-indented and over-indented cases)
-                if (list_indent != expected_list_indent) {
-                    sub(/^[ \t]*/, sprintf("%*s", expected_list_indent, ""), line)
-                    indent = expected_list_indent
-                }
-                list_base_indent = indent
-                in_list = 1
-            } else if (in_list == 1) {
-                # If we are already in a list, normalize subsequent items to same level
-                if (list_indent != expected_list_indent) {
-                    sub(/^[ \t]*/, sprintf("%*s", expected_list_indent, ""), line)
-                    indent = expected_list_indent
-                }
-                list_base_indent = indent
-            } else {
-                list_base_indent = indent
-                expected_list_indent = indent
-                in_list = 1
-            }
-            
-            last_was_key = 0
-            print line
+
+        stripped = trim(line)
+
+        if (stripped == "nodes:") {
+            print "nodes:"
+            in_nodes = 1
+            nodes_indent = indent
+            current_section = ""
+            in_node = 0
+            in_dns_list = 0
             next
         }
-        
-        # If we are in a list and this line is not a new list item
-        # Make sure it is properly indented relative to the list item
-        if (in_list == 1) {
-            if (indent > 0) {
-                if (!match(line, /^[ \t]*-[ \t]/)) {
-                    # This line should have exactly 2 more spaces than the list marker
-                    expected_indent = list_base_indent + 2
-                    if (indent != expected_indent) {
-                        sub(/^[ \t]*/, sprintf("%*s", expected_indent, ""), line)
-                    }
+
+        if (in_nodes == 1 && current_section != "" && match(stripped, /^-[ \t]/)) {
+            list_payload = trim(substr(stripped, 2))
+
+            if (match(list_payload, /^name:[ \t]*/)) {
+                name_value = trim(substr(list_payload, 6))
+                print "    - name: " name_value
+                in_node = 1
+                in_dns_list = 0
+                next
+            }
+
+            if (in_node == 1 && in_dns_list == 1) {
+                print "        - " list_payload
+                next
+            }
+
+            print "    - " list_payload
+            in_node = 1
+            in_dns_list = 0
+            next
+        }
+
+        if (in_nodes == 1 && in_node == 1 && in_dns_list == 1 && match(stripped, /^-[ \t]/)) {
+            dns_value = trim(substr(stripped, 2))
+            print "        - " dns_value
+            next
+        }
+
+        if (in_nodes == 1 && match(stripped, /^[a-zA-Z0-9_ ]+:[ \t]*/)) {
+            key_name = trim(substr(stripped, 1, index(stripped, ":") - 1))
+            key_value = trim(substr(stripped, index(stripped, ":") + 1))
+
+            if (key_name == "node type") {
+                key_name = "node_type"
+            }
+
+            if (in_node == 1 && key_name == "name") {
+                print "    - name: " key_value
+                in_dns_list = 0
+                next
+            }
+
+            if (in_node == 1 && (key_name == "ip" || key_name == "node_type")) {
+                print "      " key_name ": " key_value
+                in_dns_list = 0
+                next
+            }
+
+            if (in_node == 1 && key_name == "dns") {
+                if (key_value == "") {
+                    print "      dns:"
+                    in_dns_list = 1
+                } else {
+                    print "      dns: " key_value
+                    in_dns_list = 0
                 }
+                next
+            }
+
+            if (key_value == "" && (in_node == 0 || indent <= nodes_indent + 2)) {
+                print "  " key_name ":"
+                current_section = key_name
+                in_node = 0
+                in_dns_list = 0
+                next
+            }
+
+            if (in_node == 1) {
+                if (key_value == "") {
+                    print "      " key_name ":"
+                } else {
+                    print "      " key_name ": " key_value
+                }
+                in_dns_list = 0
+                next
             }
         }
-        
-        # If line indent is less than or equal to key indent, we are out of the list
-        if (indent > 0) {
-            if (indent <= last_key_indent) {
-                in_list = 0
-            }
+
+        if (!match(stripped, /^-[ \t]/)) {
+            in_dns_list = 0
         }
-        
-        last_was_key = 0
+
         print line
     }
     '
