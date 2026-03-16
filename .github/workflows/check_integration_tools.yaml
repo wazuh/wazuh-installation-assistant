@@ -389,6 +389,51 @@ jobs:
           ssh $SSH_OPTS "$HOST" \
             "sudo systemctl restart wazuh-indexer wazuh-dashboard wazuh-manager"
 
+      - name: Wait for services to be ready after password changes
+        env:
+          WAZUH_NEW_PASSWORD: "T3sting-Password"
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=10 \
+              -p "${{ env.SSH_PORT }}" \
+              -i "${{ env.SSH_KEY }}" \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+              "
+              NEW_PW='${{ env.WAZUH_NEW_PASSWORD }}'
+              RETRIES=36
+
+              echo 'Waiting for wazuh-indexer to accept new admin credentials...'
+              for i in \$(seq 1 \$RETRIES); do
+                code=\$(curl -sk -u \"admin:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:9200/_cluster/health?pretty')
+                [ \"\$code\" = '200' ] && break
+                echo \"  attempt \$i: HTTP \$code, retrying in 5s...\"
+                sleep 5
+              done
+              [ \"\$code\" = '200' ] || { echo 'ERROR: indexer not accepting new credentials after 3 minutes'; exit 1; }
+              echo 'wazuh-indexer is ready'
+
+              echo 'Waiting for wazuh-dashboard to respond...'
+              for i in \$(seq 1 \$RETRIES); do
+                code=\$(curl -sk -o /dev/null -w '%{http_code}' 'https://localhost/status')
+                [ \"\$code\" = '200' ] || [ \"\$code\" = '302' ] && break
+                echo \"  attempt \$i: HTTP \$code, retrying in 5s...\"
+                sleep 5
+              done
+              [ \"\$code\" = '200' ] || [ \"\$code\" = '302' ] || { echo 'ERROR: dashboard not responding after 3 minutes'; exit 1; }
+              echo 'wazuh-dashboard is ready'
+
+              echo 'Waiting for wazuh-manager API to accept wazuh-wui credentials...'
+              for i in \$(seq 1 \$RETRIES); do
+                code=\$(curl -sk -u \"wazuh-wui:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate')
+                [ \"\$code\" = '200' ] && break
+                echo \"  attempt \$i: HTTP \$code, retrying in 5s...\"
+                sleep 5
+              done
+              [ \"\$code\" = '200' ] || { echo 'ERROR: manager API not accepting wazuh-wui credentials after 3 minutes'; exit 1; }
+              echo 'wazuh-manager API is ready'
+              "
+
       # -----------------------------------------------------------------------
       # Run integration tests and report results
       # -----------------------------------------------------------------------
