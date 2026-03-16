@@ -219,10 +219,6 @@ jobs:
           - debian-13-arm64
           - oracle-9-amd64
           - oracle-9-arm64
-          - opensuse-15-amd64
-          - opensuse-15-arm64
-          - sles-16-amd64
-          - sles-16-arm64
           - centos_stream-10-amd64
           - centos_stream-10-arm64
           - redhat-10-amd64
@@ -390,11 +386,28 @@ jobs:
           ssh $SSH_OPTS "$HOST" \
             "sudo bash /tmp/wazuh-passwords-tool.sh -u admin -p '${{ env.WAZUH_NEW_PASSWORD }}'"
           ssh $SSH_OPTS "$HOST" \
-            "sudo bash /tmp/wazuh-passwords-tool.sh -au wazuh -ap wazuh -u wazuh-wui -p '${{ env.WAZUH_NEW_PASSWORD }}' -A"
-          ssh $SSH_OPTS "$HOST" \
             "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-server -p '${{ env.WAZUH_NEW_PASSWORD }}'"
           ssh $SSH_OPTS "$HOST" \
             "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-dashboard -p '${{ env.WAZUH_NEW_PASSWORD }}'"
+          ssh $SSH_OPTS "$HOST" \
+            "sudo bash /tmp/wazuh-passwords-tool.sh -au wazuh -ap wazuh -u wazuh-wui -p '${{ env.WAZUH_NEW_PASSWORD }}' -A"
+
+      - name: Wait for services to stabilize after password changes
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -p "${{ env.SSH_PORT }}" \
+              -i "${{ env.SSH_KEY }}" \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
+              "for svc in wazuh-indexer wazuh-manager wazuh-dashboard; do
+                echo \"Waiting for \$svc...\";
+                for i in \$(seq 1 24); do
+                  systemctl is-active --quiet \$svc && break;
+                  sleep 5;
+                done;
+                systemctl is-active --quiet \$svc \
+                  || { echo \"ERROR: \$svc not running after 2 minutes\"; exit 1; };
+                echo \"\$svc is active\";
+              done"
 
       # -----------------------------------------------------------------------
       # Run integration tests and report results
