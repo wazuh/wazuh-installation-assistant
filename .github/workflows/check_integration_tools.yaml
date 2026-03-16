@@ -387,7 +387,7 @@ jobs:
           ssh $SSH_OPTS "$HOST" \
             "sudo bash /tmp/wazuh-passwords-tool.sh -au wazuh -ap wazuh -u wazuh-wui -p '${{ env.WAZUH_NEW_PASSWORD }}' -A"
           ssh $SSH_OPTS "$HOST" \
-            "sudo bash systemctl restart wazuh-indexer wazuh-dashboard wazuh-manager"
+            "sudo systemctl restart wazuh-indexer wazuh-dashboard wazuh-manager"
       - name: Wait for services to stabilize after password changes
         run: |
           ssh -o StrictHostKeyChecking=no \
