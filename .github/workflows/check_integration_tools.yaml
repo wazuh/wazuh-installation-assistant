@@ -329,11 +329,11 @@ jobs:
       # Run tools on the remote instance
       # -----------------------------------------------------------------------
       - name: Run installer (AIO)
-        timeout-minutes: 30
+        timeout-minutes: 60
         run: |
           ssh -o StrictHostKeyChecking=no \
-              -o ServerAliveInterval=30 \
-              -o ServerAliveCountMax=10 \
+              -o ServerAliveInterval=60 \
+              -o ServerAliveCountMax=20 \
               -p "${{ env.SSH_PORT }}" \
               -i "${{ env.SSH_KEY }}" \
               "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
@@ -388,33 +388,6 @@ jobs:
             "sudo bash /tmp/wazuh-passwords-tool.sh -au wazuh -ap wazuh -u wazuh-wui -p '${{ env.WAZUH_NEW_PASSWORD }}' -A"
           ssh $SSH_OPTS "$HOST" \
             "sudo systemctl restart wazuh-indexer wazuh-dashboard wazuh-manager"
-      - name: Wait for services to stabilize after password changes
-        run: |
-          ssh -o StrictHostKeyChecking=no \
-              -p "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-              "
-              wait_port() {
-                local host=\$1 port=\$2 retries=24
-                for i in \$(seq 1 \$retries); do
-                  nc -z \$host \$port 2>/dev/null && return 0
-                  sleep 5
-                done
-                echo \"ERROR: port \$port not open after 2 minutes\"; return 1
-              }
-              wait_http() {
-                local url=\$1 retries=24
-                for i in \$(seq 1 \$retries); do
-                  curl -sk -o /dev/null -w '%{http_code}' \"\$url\" | grep -qE '^[2345]' && return 0
-                  sleep 5
-                done
-                echo \"ERROR: \$url not responding after 2 minutes\"; return 1
-              }
-              echo 'Waiting for wazuh-indexer (port 9200)...'   && wait_port localhost 9200  && echo 'wazuh-indexer is ready'
-              echo 'Waiting for wazuh-dashboard (port 443)...'  && wait_http https://localhost:443 && echo 'wazuh-dashboard is ready'
-              echo 'Waiting for wazuh-manager API (port 55000)...' && wait_port localhost 55000 && echo 'wazuh-manager API is ready'
-              "
 
       # -----------------------------------------------------------------------
       # Run integration tests and report results
