@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   unit_tests:
+    # This `if` statement is necessary because if the pull request is in draft and someone commits, the `sync` function will run the workbench test. Without the `sync` function, the test would only run when the pull request is moved to the "ready for review" stage.
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
 
