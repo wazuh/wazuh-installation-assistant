@@ -19,13 +19,13 @@ on:
           - passwords-tool
           - all
       pr_head_ref:
-        description: 'Branch or ref to checkout and build'
+        description: 'Branch of wazuh installation assistant'
         required: true
         type: string
       automation_reference:
         description: 'Branch of wazuh-automation to use'
         required: false
-        default: 'enhancement/589-wazuh-passwords-tool-integration-tests'
+        default: 'main'
         type: string
 
 permissions:
@@ -36,14 +36,14 @@ permissions:
   checks: write
 
 env:
-  AUTOMATION_REFERENCE: ${{ inputs.automation_reference || 'enhancement/589-wazuh-passwords-tool-integration-tests' }}
+  AUTOMATION_REFERENCE: ${{ inputs.automation_reference || 'main' }}
   ALLOCATOR_PATH: /tmp/allocator_instance
   REGION: us-east-1
   GENERATE_PRESIGNED_URLS_SCRIPT_PATH: wazuh-automation/tools/sign_urls/generate_presigned_dev_urls.py
 
 jobs:
   # -------------------------------------------------------------------------
-  # Job 1: Parse PR info and determine which tool to test (issue_comment only)
+  # Job 1: Parse PR info and determine which tool to test
   #
   # Available commands:
   #   /test-install       — test the installation assistant only
@@ -141,7 +141,6 @@ jobs:
 
   # -------------------------------------------------------------------------
   # Job 2: Build the tool(s) from the PR branch and upload as artifacts.
-  #        Runs once — artifacts are shared across the OS matrix in Job 3.
   # -------------------------------------------------------------------------
   build_tools:
     needs: get_pr_info
@@ -203,7 +202,6 @@ jobs:
 
   # -------------------------------------------------------------------------
   # Job 3: For each OS — allocate instance, deploy, run tools, run tests.
-  #        Downloads artifacts built in Job 2 instead of rebuilding.
   # -------------------------------------------------------------------------
   test_on_system:
     needs: [get_pr_info, build_tools]
@@ -286,7 +284,7 @@ jobs:
           echo "SSH_KEY=$ansible_ssh_private_key_file" >> $GITHUB_ENV
 
       # -----------------------------------------------------------------------
-      # Deploy: download artifacts built in Job 2 and copy to remote instance
+      # Deploy: copy artifacts to remote instance
       # -----------------------------------------------------------------------
       - name: Download built tools
         uses: actions/download-artifact@v4
@@ -566,7 +564,7 @@ jobs:
             --track-output ${{ env.ALLOCATOR_PATH }}/track.yml
 
   # -------------------------------------------------------------------------
-  # Job 4/5: Update the GitHub check run (issue_comment trigger only)
+  # Job 4: Update the GitHub check run (issue_comment trigger only)
   # -------------------------------------------------------------------------
   update_check_success:
     needs: [get_pr_info, test_on_system]

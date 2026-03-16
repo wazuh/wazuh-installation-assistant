@@ -29,7 +29,7 @@ tests/unit/
 ### With Hatch (recommended — mirrors CI)
 
 ```bash
-# Run all unit tests (verbose, parallel)
+# Run all unit tests
 hatch run dev:test
 
 # Run with coverage report
@@ -71,7 +71,6 @@ Take this test as an example:
 
 ```python
 def test_fail_no_uppercase(self):
-    # Has lowercase, digit, valid symbol — only missing uppercase
     result = self._run("invalidpass1.")
     assert_failure(result)
 ```
@@ -271,7 +270,7 @@ Each test should change **exactly one thing** from the valid/happy-path baseline
 
 ```python
 def test_fail_no_uppercase(self):
-    result = self._run("invalidpass1!")  # BAD: no uppercase AND '!' is not a valid symbol
+    result = self._run("invalidpass1!")
     assert_failure(result)
 ```
 
@@ -281,7 +280,6 @@ This passes, but not necessarily because of the missing uppercase. `!` is also n
 
 ```python
 def test_fail_no_uppercase(self):
-    # Has lowercase, digit, valid symbol '.' — only missing uppercase
     result = self._run("invalidpass1.")
     assert_failure(result)
 ```
@@ -314,8 +312,8 @@ result = run_bash_function(
     "passwords_checkUser",
     mock_funcs={"common_logger": "true"},
     env_vars={
-        "users": "(wazuh admin kibanaserver)",  # bash array
-        "nuser": "admin",                        # plain string
+        "users": "(wazuh admin kibanaserver)",
+        "nuser": "admin",
     },
 )
 ```
@@ -325,8 +323,8 @@ result = run_bash_function(
 Internally, `conftest.py` generates:
 
 ```bash
-declare -a users=(wazuh admin kibanaserver)   # array — searchable with "${users[@]}"
-export nuser="admin"                           # plain string
+declare -a users=(wazuh admin kibanaserver)
+export nuser="admin"
 ```
 
 ---

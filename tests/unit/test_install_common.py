@@ -34,8 +34,6 @@ class TestInstallCommonGetConfig:
 
     def test_success_two_arguments(self, tmp_path):
         config_out = tmp_path / "config.yml"
-        # Variable name is derived from the path: certificate/config_aio.yml
-        # → config_file_certificate_config_aio
         result = run_bash_function(
             BASE_SOURCES,
             f'installCommon_getConfig "certificate/config_aio.yml" "{config_out}"',
@@ -47,7 +45,6 @@ class TestInstallCommonGetConfig:
 
     def test_fail_unknown_config_name(self, tmp_path):
         config_out = tmp_path / "config.yml"
-        # Variable is not set → function exits 1
         result = run_bash_function(
             BASE_SOURCES,
             f'installCommon_getConfig "unknown/config.yml" "{config_out}"',

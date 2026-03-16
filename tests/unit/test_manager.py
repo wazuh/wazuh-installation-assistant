@@ -120,11 +120,8 @@ class TestManagerStartCluster:
     def _run(self, extra_mocks=None):
         mocks = {
             **IGNORE_LOGGER,
-            # tar extracts cluster key
             "tar": "echo myclusterkey",
-            # grep returns fake line numbers for sed range
             "grep": "echo 10",
-            # sed on the config file is a no-op in tests
             "sed": "true",
             **(extra_mocks or {}),
         }

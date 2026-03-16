@@ -35,7 +35,5 @@ dependencies = [
 ]
 
 [tool.hatch.envs.dev.scripts]
-# Note: --cov measures Python test infrastructure only (source code is bash).
-# Useful to detect dead code in conftest.py, not bash script coverage.
 test-cov = "FORCE_COLOR=1 pytest -n auto --cov=tests/unit --cov-report term-missing tests/unit/ --cov-report=xml"
 test = "pytest tests/unit/ -v -n auto"

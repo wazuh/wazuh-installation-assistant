@@ -15,7 +15,6 @@ COMMON_VARS = "common_functions/commonVariables.sh"
 
 BASE_SOURCES = [COMMON_VARS, COMMON, CHECKS]
 
-# Suppress logger output in all tests
 IGNORE_LOGGER = {"common_logger": "true"}
 
 

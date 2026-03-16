@@ -33,7 +33,6 @@ class TestCertCleanFiles:
             {**IGNORE_LOGGER, "rm": "true"},
             {"base_path": str(tmp_path), "debug_cert": ""},
         )
-        # Function iterates and calls rm — exit code depends on whether files exist
         assert result.returncode in (0, 1)
 
 

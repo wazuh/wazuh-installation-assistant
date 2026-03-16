@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pytest
 
-# Root of the repository (two levels up from tests/unit/)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 
@@ -53,7 +52,6 @@ def run_bash_function(
         for k, v in env_vars.items():
             stripped = v.strip()
             if stripped.startswith("(") and stripped.endswith(")"):
-                # Bash array syntax — use declare -a (arrays cannot be exported)
                 env_exports += f"declare -a {k}={stripped}\n"
             else:
                 env_exports += f'export {k}={shlex.quote(v)}\n'
