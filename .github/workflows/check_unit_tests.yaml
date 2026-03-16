@@ -53,7 +53,7 @@ jobs:
           fi
           echo "summary=${SUMMARY}" >> $GITHUB_OUTPUT
 
-          COVERAGE=$(grep -A1 "^TOTAL" test_output.txt | tail -1 | awk '{print $NF}' || echo "N/A")
+          COVERAGE=$(grep "^TOTAL" test_output.txt | awk '{print $NF}' || echo "N/A")
           echo "coverage=${COVERAGE}" >> $GITHUB_OUTPUT
 
           FAILED=$(echo "$SUMMARY" | grep -oP '^\d+(?= failed)' || echo "0")

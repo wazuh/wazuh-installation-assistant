@@ -5,6 +5,7 @@ Pattern: each test calls bash functions via subprocess, injecting mock
 functions through bash function overriding to avoid real system calls.
 """
 
+import shlex
 import subprocess
 import textwrap
 from pathlib import Path
@@ -55,7 +56,7 @@ def run_bash_function(
                 # Bash array syntax — use declare -a (arrays cannot be exported)
                 env_exports += f"declare -a {k}={stripped}\n"
             else:
-                env_exports += f'export {k}="{v}"\n'
+                env_exports += f'export {k}={shlex.quote(v)}\n'
 
     script = f"""
 set +e

@@ -127,7 +127,7 @@ class TestCertGenerateIndexercertificates:
             mocks,
             {
                 "indexer_node_names": "(indexer1)",
-                "indexer_node_ips": "(1.1.1.1)",
+                "indexer_node_ip_1": "1.1.1.1",
                 "cert_tmp_path": str(tmp_path),
                 "debug_cert": "",
             },
@@ -147,7 +147,8 @@ class TestCertGenerateIndexercertificates:
             mocks,
             {
                 "indexer_node_names": "(indexer1 indexer2)",
-                "indexer_node_ips": "(1.1.1.1 2.2.2.2)",
+                "indexer_node_ip_1": "1.1.1.1",
+                "indexer_node_ip_2": "2.2.2.2",
                 "cert_tmp_path": str(tmp_path),
                 "debug_cert": "",
             },
@@ -219,7 +220,7 @@ class TestCertGenerateDashboardcertificates:
             mocks,
             {
                 "dashboard_node_names": "(dashboard1)",
-                "dashboard_node_ips": "(1.1.1.1)",
+                "dashboard_node_ip_1": "1.1.1.1",
                 "cert_tmp_path": str(tmp_path),
                 "debug_cert": "",
             },
