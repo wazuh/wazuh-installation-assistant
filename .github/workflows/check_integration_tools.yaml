@@ -215,22 +215,14 @@ jobs:
         system:
           - ubuntu-24-amd64
           - ubuntu-24-arm64
-          - debian-13-amd64
-          - debian-13-arm64
-          - oracle-9-amd64
-          - oracle-9-arm64
-          - centos_stream-10-amd64
-          - centos_stream-10-arm64
+          - ubuntu-22-amd64
+          - ubuntu-22-arm64
+          - redhat-9-amd64
+          - redhat-9-arm64
           - redhat-10-amd64
           - redhat-10-arm64
           - amazon-2023-amd64
           - amazon-2023-arm64
-          - fedora-43-amd64
-          - fedora-43-arm64
-          - rocky-10-amd64
-          - rocky-10-arm64
-          - alma-10-amd64
-          - alma-10-arm64
 
     steps:
       # -----------------------------------------------------------------------
