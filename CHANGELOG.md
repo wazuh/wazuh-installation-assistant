@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add unit and integration test ([#630](https://github.com/wazuh/wazuh-installation-assistant/pull/630))
 - Add DNS support to the certs-tool ([#634](https://github.com/wazuh/wazuh-installation-assistant/pull/634))
 - Add documentation for Installation Assistant Tools in 5.0 ([#583](https://github.com/wazuh/wazuh-installation-assistant/pull/583))
 - Add version and revision suffix to built files ([#578](https://github.com/wazuh/wazuh-installation-assistant/pull/578))

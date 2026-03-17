@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wazuh-installation-assistant"
+dynamic = ["version"]
+description = "Wazuh Installation Assistant - bash tools for deploying Wazuh components"
+license = {file = "LICENSE"}
+requires-python = ">= 3.10"
+
+[tool.hatch.version]
+path = "VERSION.json"
+pattern = '"version": "(?P<version>[^"]+)"'
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+pythonpath = ["."]
+
+[tool.hatch.env]
+requires = [
+    "virtualenv>=20.0",
+]
+
+[tool.hatch.envs.dev]
+description = "Environment for running unit tests"
+python = "3.11"
+dependencies = [
+    "pytest~=8.0",
+    "pytest-cov~=6.0",
+    "pytest-xdist~=3.0",
+]
+
+[tool.hatch.envs.dev.scripts]
+test-cov = "FORCE_COLOR=1 pytest -n auto --cov=tests/unit --cov-report term-missing tests/unit/ --cov-report=xml"
+test = "pytest tests/unit/ -v -n auto"
