@@ -21,7 +21,31 @@ function offline_checkPrerequisites(){
 
     for dep in "${dependencies[@]}"; do
         if [ "${sys_type}" == "yum" ]; then
-            eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
+            if [ "${dep}" == "yum-utils" ]; then
+                yum_utils_installed=1
+                dnf_utils_installed=1
+                yum_config_manager_installed=1
+
+                eval "yum list installed 2>/dev/null | grep -q -E ^yum-utils\\."
+                yum_utils_installed="${PIPESTATUS[0]}"
+
+                if [ "${yum_utils_installed}" != 0 ]; then
+                    eval "yum list installed 2>/dev/null | grep -q -E ^dnf-utils\\."
+                    dnf_utils_installed="${PIPESTATUS[0]}"
+
+                    if [ "${dnf_utils_installed}" != 0 ]; then
+                        command -v yum-config-manager >/dev/null 2>&1
+                        yum_config_manager_installed="$?"
+                    fi
+                fi
+
+                if [ "${yum_utils_installed}" == 0 ] || [ "${dnf_utils_installed}" == 0 ] || [ "${yum_config_manager_installed}" == 0 ]; then
+                    continue
+                fi
+                dep="yum-utils or dnf-utils"
+            else
+                eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
+            fi
         elif [ "${sys_type}" == "apt-get" ]; then
             eval "apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/"
         fi
