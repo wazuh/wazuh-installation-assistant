@@ -89,13 +89,13 @@ function main() {
                 development=1
                 if [ "${2}" = "pre-release" ] || [ "${2}" = "local" ]; then
                     devrepo="${2}"
-                    bucket="packages-dev.wazuh.com"
+                    bucket="packages-staging.wazuh.info"
                 else
                     common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'local'."
                     getHelp
                     exit 1
                 fi
-                shift 2        
+                shift 2
                 ;;
             "-g"|"--generate-config-files")
                 configurations=1

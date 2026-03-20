@@ -7,10 +7,11 @@
 # Foundation.
 
 ## Package vars
-readonly wazuh_major="5.0"
+readonly wazuh_major="5"
 readonly wazuh_version="5.0.0"
 readonly wazuh_install_vesion="0.1"
 bucket="packages.wazuh.com"
+staging_url_stage=""
 
 ## Links and paths to resources
 base_path="$(dirname "$(readlink -f "$0")")"
@@ -18,7 +19,7 @@ readonly base_path
 config_file="${base_path}/config.yml"
 readonly tar_file_name="wazuh-install-files.tar"
 tar_file="${base_path}/${tar_file_name}"
-readonly artifact_urls_file_name="artifact_urls.yml"
+artifact_urls_file_name="artifact_urls_${wazuh_version}.yaml"
 readonly download_packages_directory="wazuh-install-packages"
 
 readonly dashboard_cert_path="/etc/wazuh-dashboard/certs"

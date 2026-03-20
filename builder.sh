@@ -64,6 +64,11 @@ function buildInstaller() {
 
     grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
     grep -Ev '^#|^\s*$' ${resources_installer}/installVariables.sh >> "${output_script_path}"
+
+    ## Update staging_url_stage from VERSION.json
+    stage_value=$(grep '"stage"' "${base_path_builder}/VERSION.json" | sed 's/.*"stage": *"\([^"]*\)".*/\1/')
+    sed -i "s/staging_url_stage=\"\"/staging_url_stage=\"${stage_value}\"/" "${output_script_path}"
+
     echo >> "${output_script_path}"
 
     ## Sigint trap
@@ -82,6 +87,7 @@ function buildInstaller() {
             echo >> "${output_script_path}"
         fi
     done
+
 
     ## dist-detect.sh
     checkDistDetectURL
