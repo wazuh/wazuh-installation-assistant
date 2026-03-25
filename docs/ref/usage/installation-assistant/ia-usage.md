@@ -7,7 +7,7 @@ The Installation Assistant is used by running the previously downloaded `wazuh-i
 | Option | Description |
 |--------|-------------|
 | `-a`, `--all-in-one` | Install and configure Wazuh manager, Wazuh indexer, Wazuh dashboard. |
-| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install.sh. |
+| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yaml file located in the same path as the wazuh-install.sh. |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
 | `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
@@ -146,7 +146,7 @@ sudo bash wazuh-install.sh -a -d pre-release
 
 ### Use development packages
 
-To use packages that are in development, it is necessary to have an `artifact_urls.yml` file located in the same path as the `wazuh-install.sh` script. This file must contain the URLs of the development packages that will be used in the installation. It must have the following format:
+To use packages that are in development, it is necessary to have an `artifact_urls.yaml` file located in the same path as the `wazuh-install.sh` script. This file must contain the URLs of the development packages that will be used in the installation. It must have the following format:
 
 ``` yaml
 wazuh_manager_amd64_deb: "http://example.com/wazuh-manager-amd64.deb"
@@ -172,4 +172,4 @@ sudo bash wazuh-install.sh --all-in-one --development local
 sudo bash wazuh-install.sh -a -d local
 ```
 
-This command will automatically detect the `artifact_urls.yml` file in the same path as the `wazuh-install.sh` script and will use the URLs specified in it to download the necessary packages for the installation.
+This command will automatically detect the `artifact_urls.yaml` file in the same path as the `wazuh-install.sh` script and will use the URLs specified in it to download the necessary packages for the installation.

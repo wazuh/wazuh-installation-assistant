@@ -20,7 +20,7 @@ function getHelp() {
     echo -e "                Install and configure Wazuh manager, Wazuh indexer, Wazuh dashboard."
     echo -e ""
     echo -e "        -d [pre-release|local],  --development"
-    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install.sh."
+    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yaml file located in the same path as the wazuh-install.sh."
     echo -e ""
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
@@ -89,13 +89,13 @@ function main() {
                 development=1
                 if [ "${2}" = "pre-release" ] || [ "${2}" = "local" ]; then
                     devrepo="${2}"
-                    bucket="packages-dev.wazuh.com"
+                    bucket="packages-staging.xdrsiem.wazuh.info"
                 else
                     common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'local'."
                     getHelp
                     exit 1
                 fi
-                shift 2        
+                shift 2
                 ;;
             "-g"|"--generate-config-files")
                 configurations=1

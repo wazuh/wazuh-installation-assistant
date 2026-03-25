@@ -313,15 +313,15 @@ jobs:
             --wazuh-version "${{ needs.build_tools.outputs.wazuh_version }}" \
             --aws-s3-bucket-dev "${{ vars.AWS_S3_BUCKET_DEV }}"
           echo "Generated presigned URLs:"
-          cat /tmp/artifact_urls.yml
+          cat /tmp/artifact_urls.yaml
 
-      - name: Copy artifact_urls.yml to remote instance
+      - name: Copy artifact_urls.yaml to remote instance
         run: |
           scp -o StrictHostKeyChecking=no \
               -P "${{ env.SSH_PORT }}" \
               -i "${{ env.SSH_KEY }}" \
-              /tmp/artifact_urls.yml \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp/artifact_urls.yml"
+              /tmp/artifact_urls.yaml \
+              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp/artifact_urls.yaml"
 
       # -----------------------------------------------------------------------
       # Run tools on the remote instance
