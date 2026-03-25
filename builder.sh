@@ -35,7 +35,7 @@ function getHelp() {
     echo -e "                Builds the certificate creation tool wazuh-certs-tool.sh"
     echo -e ""
     echo -e "        -p,  --passwords-tool"
-    echo -e "                Builds the passwords creation and modification tool wazuh-passwords-tool.sh"
+    echo -e "                Builds the password creation and modification tool wazuh-passwords-tool.sh"
     echo -e ""
     echo -e "        -h,  --help"
     echo -e "                Shows help."

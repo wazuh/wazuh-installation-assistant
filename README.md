@@ -37,7 +37,7 @@ The Wazuh installation Assistant is a tool designed to simplify the deployment o
 
 The Wazuh installation assistant uses the following tools to enhance security during the installation process:
 
-- **Wazuh s tool**: Securely generate and manage passwords. [Learn more](https://documentation.wazuh.com/current/user-manual/user-administration/passwords-management.html).
+- **Wazuh passwords tool**: Securely generate and manage passwords. [Learn more](https://documentation.wazuh.com/current/user-manual/user-administration/passwords-management.html).
 - **Wazuh cert tool**: Manage SSL/TLS certificates for secure communications. [Learn more](https://documentation.wazuh.com/current/user-manual/wazuh-dashboard/certificates.html).
 
 

@@ -387,7 +387,7 @@ jobs:
           ssh $SSH_OPTS "$HOST" \
             "sudo systemctl restart wazuh-indexer wazuh-dashboard wazuh-manager"
 
-      - name: Wait for services to be ready after passwords changes
+      - name: Wait for services to be ready after password changes
         env:
           WAZUH_NEW_PASSWORD: "T3sting-Password"
         run: |
