@@ -206,10 +206,11 @@ function installCommon_determinePorts {
 function installCommon_downloadArtifactURLs() {
 
     common_logger -d "Downloading artifact URLs file."
-    if [ -n "${development}" ]; then
+    if [ -n "${development}" ] && [ "${development}" == "pre-release" ]; then
         artifact_urls_file_name="artifact_urls_${wazuh_version}-${staging_url_stage}.yaml"
         artifact_url="https://${bucket}/pre-release/${wazuh_major}.x/${artifact_urls_file_name}"
     else
+        artifact_urls_file_name="artifact_urls_${wazuh_version}.yaml"
         artifact_url="https://${bucket}/production/${wazuh_major}.x/${artifact_urls_file_name}"
     fi
     eval "common_curl -sSo ${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"

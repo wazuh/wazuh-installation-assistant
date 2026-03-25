@@ -89,7 +89,7 @@ function main() {
                 development=1
                 if [ "${2}" = "pre-release" ] || [ "${2}" = "local" ]; then
                     devrepo="${2}"
-                    bucket="packages-staging.wazuh.info"
+                    bucket="packages-staging.xdrsiem.wazuh.info"
                 else
                     common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'local'."
                     getHelp
