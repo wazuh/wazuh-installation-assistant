@@ -18,10 +18,9 @@
   - [Installation Assistant Introduction](ref/getting-started/installation-assistant/ia-introduction.md)
 - [Installation](ref/installation/installation.md)
   - [Certs Tool Installation](ref/installation/certs-tool/certs-tool-installation.md)
-  - [Passwords Tool Installation](ref/installation/passwords-tool/password-tool-installation.md)
+  - [Passwords Tool Installation](ref/installation/passwords-tool/passwords-tool-installation.md)
   - [Installation Assistant Installation](ref/installation/installation-assistant/ia-installation.md)
 - [Usage](ref/usage/usage.md)
   - [Certs Tool Usage](ref/usage/certs-tool/certs-tool-usage.md)
   - [Passwords Tool Usage](ref/usage/passwords-tool/passwords-tool-usage.md)
   - [Installation Assistant Usage](ref/usage/installation-assistant/ia-usage.md)
-  

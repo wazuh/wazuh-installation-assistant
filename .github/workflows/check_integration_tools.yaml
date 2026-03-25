@@ -48,7 +48,7 @@ jobs:
   # Available commands:
   #   /test-install       — test the installation assistant only
   #   /test-cert-tool     — test the certificates tool only
-  #   /test-password-tool — test the passwords tool only
+  #   /test-passwords-tool — test the passwords tool only
   #   /test-assistant     — test all three tools in sequence
   # -------------------------------------------------------------------------
   get_pr_info:
@@ -59,7 +59,7 @@ jobs:
       !github.event.issue.draft &&
       (contains(github.event.comment.body, '/test-install') ||
        contains(github.event.comment.body, '/test-cert-tool') ||
-       contains(github.event.comment.body, '/test-password-tool') ||
+       contains(github.event.comment.body, '/test-passwords-tool') ||
        contains(github.event.comment.body, '/test-assistant'))
     runs-on: ubuntu-latest
     outputs:
@@ -108,7 +108,7 @@ jobs:
           elif echo "$COMMENT_BODY" | grep -q '/test-cert-tool'; then
             echo "tool_type=cert-tool"                >> $GITHUB_OUTPUT
             echo "check_name=Certificates Tool Check" >> $GITHUB_OUTPUT
-          elif echo "$COMMENT_BODY" | grep -q '/test-password-tool'; then
+          elif echo "$COMMENT_BODY" | grep -q '/test-passwords-tool'; then
             echo "tool_type=passwords-tool"           >> $GITHUB_OUTPUT
             echo "check_name=Passwords Tool Check"    >> $GITHUB_OUTPUT
           fi
@@ -387,7 +387,7 @@ jobs:
           ssh $SSH_OPTS "$HOST" \
             "sudo systemctl restart wazuh-indexer wazuh-dashboard wazuh-manager"
 
-      - name: Wait for services to be ready after password changes
+      - name: Wait for services to be ready after passwords changes
         env:
           WAZUH_NEW_PASSWORD: "T3sting-Password"
         run: |

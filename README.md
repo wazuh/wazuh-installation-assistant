@@ -37,7 +37,7 @@ The Wazuh installation Assistant is a tool designed to simplify the deployment o
 
 The Wazuh installation assistant uses the following tools to enhance security during the installation process:
 
-- **Wazuh password tool**: Securely generate and manage passwords. [Learn more](https://documentation.wazuh.com/current/user-manual/user-administration/password-management.html).
+- **Wazuh s tool**: Securely generate and manage passwords. [Learn more](https://documentation.wazuh.com/current/user-manual/user-administration/passwords-management.html).
 - **Wazuh cert tool**: Manage SSL/TLS certificates for secure communications. [Learn more](https://documentation.wazuh.com/current/user-manual/wazuh-dashboard/certificates.html).
 
 
@@ -46,7 +46,7 @@ The Wazuh installation assistant uses the following tools to enhance security du
 
 ### Downloads
 - [Download the Wazuh installation assistant.](https://packages.wazuh.com/5.0/wazuh-install.sh)
-- [Download the Wazuh password tool.](https://packages.wazuh.com/5.0/wazuh-passwords-tool.sh)
+- [Download the Wazuh passwords tool.](https://packages.wazuh.com/5.0/wazuh-passwords-tool.sh)
 - [Download the Wazuh cert tool.](https://packages.wazuh.com/5.0/wazuh-certs-tool.sh)
 
 ### Build the scripts
@@ -58,7 +58,7 @@ As an alternative to downloading, use the `builder.sh` script to build the Wazuh
    bash builder.sh -i
    ```
 
-2. Build the Wazuh password tool - `wazuh-passwords-tool.sh`:
+2. Build the Wazuh passwords tool - `wazuh-passwords-tool.sh`:
    ```bash
    bash builder.sh -p
    ```
@@ -73,7 +73,7 @@ As an alternative to downloading, use the `builder.sh` script to build the Wazuh
 Start by downloading the [configuration file](https://packages.wazuh.com/5.0/config.yml) and replace the node names and IP values with the corresponding ones.
 
 > [!NOTE]
-> It is not necessary to download the Wazuh password tool and the Wazuh cert tool to use the Wazuh installation assistant. The Wazuh installation assistant has embedded the previous tools.
+> It is not necessary to download the Wazuh passwords tool and the Wazuh cert tool to use the Wazuh installation assistant. The Wazuh installation assistant has embedded the previous tools.
 
 ### Common commands
 

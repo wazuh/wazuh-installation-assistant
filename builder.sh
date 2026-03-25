@@ -34,8 +34,8 @@ function getHelp() {
     echo -e "        -c,  --cert-tool"
     echo -e "                Builds the certificate creation tool wazuh-certs-tool.sh"
     echo -e ""
-    echo -e "        -p,  --password-tool"
-    echo -e "                Builds the password creation and modification tool wazuh-passwords-tool.sh"
+    echo -e "        -p,  --passwords-tool"
+    echo -e "                Builds the passwords creation and modification tool wazuh-passwords-tool.sh"
     echo -e ""
     echo -e "        -h,  --help"
     echo -e "                Shows help."
@@ -128,7 +128,7 @@ function buildPasswordsTool() {
     grep -Ev '^#|^\s*$' "${resources_passwords}/passwordsVariables.sh" >> "${output_script_path}"
     echo >> "${output_script_path}"
 
-    ## Functions for all password function modules
+    ## Functions for all passwords tool function modules
     passwords_modules=($(find "${resources_passwords}" -type f))
     passwords_modules_names=($(eval "echo "${passwords_modules[@]}" | sed 's,${resources_passwords}/,,g'"))
     for i in "${!passwords_modules[@]}"; do
@@ -204,7 +204,7 @@ function builder_main() {
                 certTool=1
                 shift 1
                 ;;
-            "-p"|"--password-tool")
+            "-p"|"--passwords-tool")
                 passwordsTool=1
                 shift 1
                 ;;
