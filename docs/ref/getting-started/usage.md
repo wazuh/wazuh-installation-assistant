@@ -7,7 +7,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 ### Option list
 
 | Option | Description |
-|--------|-------------|
+| -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0-1.sh. |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
@@ -44,7 +44,6 @@ If you want to install a specific Wazuh component, first make sure you have the 
 
 The `config-5.0.0-1.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [certs-tool-usage.md](../certs-tool/certs-tool-usage.md) section.
 
-
 The steps to perform the installation are as follows:
 > **note**: If you have already configured the `config-5.0.0-1.yml` and generated the `wazuh-install-files.tar` in the installation of another Wazuh component, you can skip directly to step 4.
 
@@ -56,22 +55,28 @@ The steps to perform the installation are as follows:
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -g
     ```
+
 3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config-5.0.0-1.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
 4. Once you have the `wazuh-install-files.tar` file on the machine where you will install the component, you just need to run the installation command for the desired component:
 
     4.1 To install the Wazuh Manager:
+
     ``` bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-server
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -ws
     ```
+
     4.2 To install the Wazuh Indexer:
+
     ``` bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-indexer
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -wi
     ```
+
     4.3 To install the Wazuh Dashboard:
+
     ``` bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-dashboard
     # or use the short form
@@ -79,7 +84,6 @@ The steps to perform the installation are as follows:
     ```
 
 > **note**: The installation assistant is designed to facilitate the initial installation of Wazuh, so the passwords for each Wazuh internal user are set to default. Therefore, it is highly recommended to change them to more secure ones using this tool. You can see how to use this tool in the [Passwords Tool Usage](../../usage/passwords-tool/passwords-tool-usage.md) section.
-
 
 ### Offline Installation
 
@@ -109,6 +113,7 @@ See the [Installation Assistant Installation](../../installation/installation-as
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -g
     ```
+
     This command will generate the `wazuh-install-files.tar` file which contains the necessary certificates for offline installation.
 
 3. Transfer all files (`wazuh-offline.tar.gz`, `wazuh-install-files.tar` and `wazuh-install-5.0.0-1.sh`) to the offline system where you want to install Wazuh using your preferred method (USB, SCP, etc).
@@ -132,7 +137,6 @@ sudo bash wazuh-install-5.0.0-1.sh --wazuh-server --offline-installation
 sudo bash wazuh-install-5.0.0-1.sh -ws -of
 ```
 
-
 ### Use development packages in the installation
 
 When you use the installation assistant to install Wazuh, the official Wazuh packages are downloaded by default. However, if you are developing or testing new features or want to try the `pre-release` version instead of the official ones, you can do so by specifying the `-d [pre-release|local], --development` option to the installation command.
@@ -140,6 +144,7 @@ When you use the installation assistant to install Wazuh, the official Wazuh pac
 #### Use pre-release packages
 
 If you want to use Wazuh `pre-release` packages instead of the official ones, simply add the `-d pre-release, --development pre-release` option to the installation command. For example, to perform an AIO installation using `pre-release` packages, the command would be:
+
 ```bash
 sudo bash wazuh-install-5.0.0-1.sh --all-in-one --development pre-release
 # or use the short form
@@ -183,7 +188,7 @@ The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.
 ### Options list
 
 | Option | Description |
-|--------|-------------|
+| -------- | ------------- |
 | `-a`, `--admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the admin certificates, add root-ca.pem and root-ca.key. |
 | `-A`, `--all </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates certificates specified in config-5.0.0-1.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created. |
 | `-ca`, `--root-ca-certificates` | Creates the root-ca certificates. |
@@ -206,29 +211,36 @@ nodes:
   indexer:
     - name: node-1
       ip: "<indexer-node-ip>"
+    #  dns: "<indexer-node-dns>"
     #- name: node-2
-    #  ip: "<indexer-node-ip>"
+    #  dns: "<indexer-node-dns>"
     #- name: node-3
     #  ip: "<indexer-node-ip>"
+    #  dns:
+    #    - "<indexer-node-dns>"
 
-  # Wazuh server nodes
-  # If there is more than one Wazuh server
+  # Wazuh manager nodes
+  # If there is more than one Wazuh manager
   # node, each one must have a node_type
-  server:
+  manager:
     - name: wazuh-1
       ip: "<wazuh-manager-ip>"
+    #  dns: "<wazuh-manager-dns>"
     #  node_type: master
     #- name: wazuh-2
-    #  ip: "<wazuh-manager-ip>"
+    #  dns: "<wazuh-manager-dns>"
     #  node_type: worker
     #- name: wazuh-3
     #  ip: "<wazuh-manager-ip>"
+    #  dns:
+    #    - "<wazuh-manager-dns>"
     #  node_type: worker
 
   # Wazuh dashboard nodes
   dashboard:
     - name: dashboard
       ip: "<dashboard-node-ip>"
+    #  dns: "<dashboard-node-dns>"
 ```
 
 Each node must have a unique name and an associated IP address. In the case of Wazuh server nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.
@@ -258,37 +270,46 @@ sudo bash wazuh-certs-tool-5.0.0-1.sh -A </path/to/root-ca.pem> </path/to/root-c
 #### Create specific certificates
 
 You can create only the certificates for a component as well as the CA or admin certificates (used in the indexer) using the following options:
+
 - Create root CA:
+
     ```bash
     sudo bash wazuh-certs-tool-5.0.0-1.sh --root-ca-certificates
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0-1.sh -ca
     ```
+
 - Create Wazuh indexer certificates:
+
     ```bash
     sudo bash wazuh-certs-tool-5.0.0-1.sh --wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0-1.sh -wi </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
+
 - Create Wazuh server certificates:
+
     ```bash
     sudo bash wazuh-certs-tool-5.0.0-1.sh --wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0-1.sh -ws </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
+
 - Create Wazuh dashboard certificates:
+
     ```bash
     sudo bash wazuh-certs-tool-5.0.0-1.sh --wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0-1.sh -wd </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
+
 - Create admin certificates:
+
     ```bash
     sudo bash wazuh-certs-tool-5.0.0-1.sh --admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0-1.sh -a </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
-
 
 All these certificates will be generated in the `wazuh-certificates` directory within the current directory where the script is executed.
 
@@ -299,7 +320,7 @@ All these certificates will be generated in the `wazuh-certificates` directory w
 The `wazuh-passwords-tool-5.0.0-1.sh` script provides the following options for managing Wazuh internal user passwords:
 
 | Options | Purpose |
-|---------|---------|
+| --------- | --------- |
 | `-A\|--api` | Change the Wazuh server API password given the current password. Requires `-u\|--user <USER>`, `-p\|--password <PASSWORD>`, `-au\|--admin-user <ADMIN_USER>`, and `-ap\|--admin-password <ADMIN_PASSWORD>`. |
 | `-au\|--admin-user <ADMIN_USER>` | Admin user for the Wazuh server API. Required for changing the Wazuh server API passwords. Requires `-A\|--api`. |
 | `-ap\|--admin-password <ADMIN_PASSWORD>` | Password for the Wazuh server API admin user. Required for changing the Wazuh server API passwords. Requires `-A\|--api`. |
@@ -319,6 +340,7 @@ Wazuh Indexer users are defined in `/etc/wazuh-indexer/opensearch-security/inter
 ```bash
 sudo ./wazuh-passwords-tool-5.0.0-1.sh -u <USER> [-p <PASSWORD>]
 ```
+
 Where `<USER>` is the name of the user whose password you want to change and `<PASSWORD>` is the new password. If `<PASSWORD>` is not specified, the tool will generate a random password.
 
 For example, to change the password of the `admin` user to `Secr3tP4ssw*rd`, run the following command:

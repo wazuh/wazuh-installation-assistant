@@ -2,12 +2,11 @@
 
 ## Wazuh installation assistant
 
-El asistente de instalación necesita los ceritificados y el archivo `config-5.0.0-1.yml` para realizar intalaciones distribuidas:
+The installation assistant needs the certificates and the `config-5.0.0-1.yml` to perform distributed installations:
 
 If you want to install a specific Wazuh component, first make sure you have the `config-5.0.0-1.yml` file downloaded.
 
 The `config-5.0.0-1.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [certs-tool-usage](../getting-started/usage.md#wazuh-certs-tool) section.
-
 
 The steps to perform the installation are as follows:
 > **note**: If you have already configured the `config-5.0.0-1.yml` and generated the `wazuh-install-files.tar` in the installation of another Wazuh component, you can skip directly to step 4.
@@ -20,22 +19,28 @@ The steps to perform the installation are as follows:
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -g
     ```
+
 3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config-5.0.0-1.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
 4. Once you have the `wazuh-install-files.tar` file on the machine where you will install the component, you just need to run the installation command for the desired component:
 
     4.1 To install the Wazuh Manager:
+
     ``` bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-server
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -ws
     ```
+
     4.2 To install the Wazuh Indexer:
+
     ``` bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-indexer
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -wi
     ```
+
     4.3 To install the Wazuh Dashboard:
+
     ``` bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-dashboard
     # or use the short form
@@ -57,29 +62,36 @@ nodes:
   indexer:
     - name: node-1
       ip: "<indexer-node-ip>"
+    #  dns: "<indexer-node-dns>"
     #- name: node-2
-    #  ip: "<indexer-node-ip>"
+    #  dns: "<indexer-node-dns>"
     #- name: node-3
     #  ip: "<indexer-node-ip>"
+    #  dns:
+    #    - "<indexer-node-dns>"
 
-  # Wazuh server nodes
-  # If there is more than one Wazuh server
+  # Wazuh manager nodes
+  # If there is more than one Wazuh manager
   # node, each one must have a node_type
-  server:
+  manager:
     - name: wazuh-1
       ip: "<wazuh-manager-ip>"
+    #  dns: "<wazuh-manager-dns>"
     #  node_type: master
     #- name: wazuh-2
-    #  ip: "<wazuh-manager-ip>"
+    #  dns: "<wazuh-manager-dns>"
     #  node_type: worker
     #- name: wazuh-3
     #  ip: "<wazuh-manager-ip>"
+    #  dns:
+    #    - "<wazuh-manager-dns>"
     #  node_type: worker
 
   # Wazuh dashboard nodes
   dashboard:
     - name: dashboard
       ip: "<dashboard-node-ip>"
+    #  dns: "<dashboard-node-dns>"
 ```
 
 Each node must have a unique name and an associated IP address. In the case of Wazuh server nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.

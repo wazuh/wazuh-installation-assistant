@@ -7,7 +7,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 ### Option list
 
 | Option | Description |
-|--------|-------------|
+| -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0-1.sh. |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
@@ -33,7 +33,7 @@ The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.
 ### Options list
 
 | Option | Description |
-|--------|-------------|
+| -------- | ------------- |
 | `-a`, `--admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the admin certificates, add root-ca.pem and root-ca.key. |
 | `-A`, `--all </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates certificates specified in config-5.0.0-1.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created. |
 | `-ca`, `--root-ca-certificates` | Creates the root-ca certificates. |
@@ -50,7 +50,7 @@ The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.
 The `wazuh-passwords-tool-5.0.0-1.sh` script provides the following options for managing Wazuh internal user passwords:
 
 | Options | Purpose |
-|---------|---------|
+| --------- | --------- |
 | `-A\|--api` | Change the Wazuh server API password given the current password. Requires `-u\|--user <USER>`, `-p\|--password <PASSWORD>`, `-au\|--admin-user <ADMIN_USER>`, and `-ap\|--admin-password <ADMIN_PASSWORD>`. |
 | `-au\|--admin-user <ADMIN_USER>` | Admin user for the Wazuh server API. Required for changing the Wazuh server API passwords. Requires `-A\|--api`. |
 | `-ap\|--admin-password <ADMIN_PASSWORD>` | Password for the Wazuh server API admin user. Required for changing the Wazuh server API passwords. Requires `-A\|--api`. |

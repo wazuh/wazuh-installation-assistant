@@ -20,6 +20,7 @@ To generate the Wazuh Certs Tool artifact, follow these steps:
     # you can also use the short version
     sudo bash ./builder.sh -c
     ```
+
 3. The file related to the Certs Tool will be generated in the same path where the `builder.sh` script is located. This file will be named `wazuh-certs-tool-5.0.0-1.sh`.
 
 This file will contain all the files from the `cert_tool/` and `common_functions/` directories packaged into a single executable script.
@@ -27,13 +28,16 @@ This file will contain all the files from the `cert_tool/` and `common_functions
 ## Wazuh Passwords Tool
 
 To generate the Wazuh Passwords Tool artifact, follow these steps:
+
 1. Navigate to the root directory of the Installation Assistant project.
 2. Run the following command:
+
     ```bash
     sudo bash ./builder.sh --password-tool
     # you can also use the short version
     sudo bash ./builder.sh -p
     ```
+
 3. The file related to the Passwords Tool will be generated in the same path where the `builder.sh` script is located. This file will be named `wazuh-passwords-tool-5.0.0-1.sh`.
 
 This file will contain all the files from the `passwords_tool/` and `common_functions/` directories packaged into a single executable script.
@@ -41,8 +45,10 @@ This file will contain all the files from the `passwords_tool/` and `common_func
 ## Wazuh Installation Assistant
 
 To generate the Wazuh Installation Assistant artifact, follow these steps:
+
 1. Navigate to the root directory of the Installation Assistant project.
 2. Run the following command:
+
     ```bash
     sudo bash ./builder.sh --installer
     # you can also use the short version
