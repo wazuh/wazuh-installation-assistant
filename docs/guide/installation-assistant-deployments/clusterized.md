@@ -23,10 +23,10 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
 
    ```BASH
     curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
-    curl -sO https://packages.wazuh.com/5.0/config-5.0.0-1.yml
+    curl -s -o config.yml https://packages.wazuh.com/5.0/config-5.0.0-1.yml
    ```
 
-  2. Edit `./config-5.0.0-1.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
+  2. Edit `./config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
 
 ```yaml
 nodes:
@@ -84,7 +84,7 @@ Follow these steps to install and configure a multi-node Wazuh indexer.
     curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
   ```
 
-  2. Run the Wazuh installation assistant with the option `--wazuh-indexer` and the node name to install and configure the Wazuh indexer. The node name must be the same one used in `config-5.0.0-1.yml` for the initial configuration, for example, `node-1`.
+  2. Run the Wazuh installation assistant with the option `--wazuh-indexer` and the node name to install and configure the Wazuh indexer. The node name must be the same one used in `config.yml` for the initial configuration, for example, `node-1`.
 
   > [!NOTE]
   > Make sure that a copy of `wazuh-install-files.tar`, created during the initial configuration step, is placed in your working directory.
@@ -165,7 +165,7 @@ Install the Wazuh manager as a multi-node cluster on a 64-bit (x86_64/AMD64 or A
         curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
   ```
 
-  2. Run the Wazuh installation assistant with the option `--wazuh-manager` followed by the node name to install the Wazuh manager. The node name must be the same one used in `config-5.0.0-1.yml` for the initial configuration, for example, `wazuh-1`:
+  2. Run the Wazuh installation assistant with the option `--wazuh-manager` followed by the node name to install the Wazuh manager. The node name must be the same one used in `config.yml` for the initial configuration, for example, `wazuh-1`:
 
   > [!NOTE]
   > Make sure that a copy of `wazuh-install-files.tar`, created during the initial configuration step, is placed in your working directory.
@@ -188,7 +188,7 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
         curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
   ```
 
-  2. Run the Wazuh installation assistant with the option `--wazuh-dashboard` and the node name to install and configure the Wazuh dashboard. The node name must be the same one used in `config-5.0.0-1.yml` for the initial configuration, for example, `dashboard`:
+  2. Run the Wazuh installation assistant with the option `--wazuh-dashboard` and the node name to install and configure the Wazuh dashboard. The node name must be the same one used in `config.yml` for the initial configuration, for example, `dashboard`:
 
   > [!NOTE]
   > Make sure that a copy of `wazuh-install-files.tar` created during the Wazuh indexer installation is placed in your working directory.

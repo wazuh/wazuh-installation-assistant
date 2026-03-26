@@ -14,10 +14,10 @@ Wazuh uses certificates to establish confidentiality and encrypt communications 
 
   ```BASH
       curl -sO https://packages.wazuh.com/5.0/wazuh-certs-tool-5.0.0-1.sh
-      curl -sO https://packages.wazuh.com/5.0/config-5.0.0-1.yml
+      curl -s -o config.yml https://packages.wazuh.com/5.0/config-5.0.0-1.yml
    ```
 
-  2. Edit `config-5.0.0-1.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
+  2. Edit `config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
 
   ```
 nodes:
@@ -119,11 +119,11 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
   1. `network.host`: Sets the address of this node for both HTTP and transport traffic. The node will bind to this address and use it as its publish address. Accepts an IP address or a hostname.
 
-        Use the same node address set in `config-5.0.0-1.yml` to create the SSL certificates.
+        Use the same node address set in `config.yml` to create the SSL certificates.
 
-  2. `node.name`: Name of the Wazuh indexer node as defined in the `config-5.0.0-1.yml` file. For example, `node-1`.
+  2. `node.name`: Name of the Wazuh indexer node as defined in the `config.yml` file. For example, `node-1`.
 
-  3. `cluster.initial_master_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config-5.0.0-1.yml` file. Uncomment the `node-2` and `node-3` lines, change the names, or add more lines, according to your `config-5.0.0-1.yml` definitions.
+  3. `cluster.initial_master_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file. Uncomment the `node-2` and `node-3` lines, change the names, or add more lines, according to your `config.yml` definitions.
 
   ```
     cluster.initial_master_nodes:
@@ -141,7 +141,7 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
       - "10.0.0.3"
   ```
 
-  4. `plugins.security.nodes_dn`: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for `node-2` and `node-3` and change the common names (CN) and values according to your settings and your `config-5.0.0-1.yml` definitions.
+  4. `plugins.security.nodes_dn`: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for `node-2` and `node-3` and change the common names (CN) and values according to your settings and your `config.yml` definitions.
 
   ```
     plugins.security.nodes_dn:
@@ -155,7 +155,7 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
 ### Deploying certificates
 
-1. Run the following commands, replacing `<INDEXER_NODE_NAME>` with the name of the Wazuh indexer node you are configuring as defined in `config-5.0.0-1.yml`. For example, `node-1`. This deploys the SSL certificates to encrypt communications between the Wazuh central components.
+1. Run the following commands, replacing `<INDEXER_NODE_NAME>` with the name of the Wazuh indexer node you are configuring as defined in `config.yml`. For example, `node-1`. This deploys the SSL certificates to encrypt communications between the Wazuh central components.
 
 ```BASH
 NODE_NAME=<INDEXER_NODE_NAME>
