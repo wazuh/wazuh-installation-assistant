@@ -10,12 +10,12 @@
     check_port: 55000
 
   tasks:
-    - name: Install Wazuh server on master
+    - name: Install Wazuh manager on master
       command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v -d {{ pkg_repository }}"
       register: wazuh
       when: hostvars[inventory_hostname].manager_type == 'master'
 
-    - name: Install Wazuh server on worker nodes
+    - name: Install Wazuh manager on worker nodes
       block:
         - name: Wait for Wazuh master to be ready on port {{ check_port }}
           wait_for:
@@ -27,9 +27,9 @@
           async: 500
           poll: 5
 
-        - name: Install Wazuh server (Workers)
+        - name: Install Wazuh manager (Workers)
           command: "bash {{ tmp_path }}/wazuh-install.sh -ws {{ inventory_hostname }} -v -d {{ pkg_repository }}"
           register: wazuh
       when: hostvars[inventory_hostname].manager_type == 'worker'
-    
-    
+
+

@@ -18,7 +18,7 @@ warnings.filterwarnings('ignore', message='Unverified HTTPS request')
 
 def read_services():
     services = None
-    p = Popen(['/var/ossec/bin/wazuh-control', 'status'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    p = Popen(['/var/wazuh-manager/bin/wazuh-manager-control', 'status'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
     if sys.version_info[0] < 3:
         services = p.stdout.read()
     else:
@@ -47,7 +47,7 @@ def get_password(username):
 
 def get_wazuh_version():
     wazuh_version = None
-    wazuh_version = subprocess.getoutput('/var/ossec/bin/wazuh-control info | grep VERSION | cut -d "=" -f2 | sed s/\\"//g')
+    wazuh_version = subprocess.getoutput('/var/wazuh-manager/bin/wazuh-manager-control info | grep VERSION | cut -d "=" -f2 | sed s/\\"//g')
     return wazuh_version
 
 def get_indexer_ip():
@@ -64,7 +64,7 @@ def get_dashboard_ip():
 
 def get_api_ip():
 
-    with open("/var/ossec/api/configuration/api.yaml", 'r') as stream:
+    with open("/var/wazuh-manager/api/configuration/api.yaml", 'r') as stream:
         dictionary = yaml.safe_load(stream)
     try:
       ip = dictionary.get('host')
@@ -135,47 +135,35 @@ def get_wazuh_api_status():
 
 @pytest.mark.wazuh
 def test_check_wazuh_manager_authd():
-    assert check_call("ps -xa | grep wazuh-authd | grep -v grep", shell=True) != ""
+    assert check_call("ps -xa | grep wazuh-manager-authd | grep -v grep", shell=True) != ""
 
 @pytest.mark.wazuh
 def test_check_wazuh_manager_db():
-    assert check_call("ps -xa | grep wazuh-db | grep -v grep", shell=True) != ""
-
-@pytest.mark.wazuh
-def test_check_wazuh_manager_execd():
-    assert check_call("ps -xa | grep wazuh-execd | grep -v grep", shell=True) != ""
+    assert check_call("ps -xa | grep wazuh-manager-db | grep -v grep", shell=True) != ""
 
 @pytest.mark.wazuh
 def test_check_wazuh_manager_analysisd():
-    assert check_call("ps -xa | grep wazuh-analysisd | grep -v grep", shell=True) != ""
-
-@pytest.mark.wazuh
-def test_check_wazuh_manager_syscheckd():
-    assert check_call("ps -xa | grep wazuh-syscheckd | grep -v grep", shell=True) != ""
+    assert check_call("ps -xa | grep wazuh-manager-analysisd | grep -v grep", shell=True) != ""
 
 @pytest.mark.wazuh
 def test_check_wazuh_manager_remoted():
-    assert check_call("ps -xa | grep wazuh-remoted | grep -v grep", shell=True) != ""
-
-@pytest.mark.wazuh
-def test_check_wazuh_manager_logcollec():
-    assert check_call("ps -xa | grep wazuh-logcollec | grep -v grep", shell=True) != ""
+    assert check_call("ps -xa | grep wazuh-manager-remoted | grep -v grep", shell=True) != ""
 
 @pytest.mark.wazuh
 def test_check_wazuh_manager_monitord():
-    assert check_call("ps -xa | grep wazuh-monitord | grep -v grep", shell=True) != ""
+    assert check_call("ps -xa | grep wazuh-manager-monitord | grep -v grep", shell=True) != ""
 
 @pytest.mark.wazuh
 def test_check_wazuh_manager_modulesd():
-    assert check_call("ps -xa | grep wazuh-modulesd | grep -v grep", shell=True) != ""
+    assert check_call("ps -xa | grep wazuh-manager-modulesd | grep -v grep", shell=True) != ""
 
 @pytest.mark.wazuh
 def test_check_wazuh_manager_apid():
-    assert check_call("ps -xa | grep wazuh_apid | grep -v grep", shell=True) != ""
+    assert check_call("ps -xa | grep wazuh_manager_apid | grep -v grep", shell=True) != ""
 
 @pytest.mark.wazuh_cluster
 def test_check_wazuh_manager_clusterd():
-    assert check_call("ps -xa | grep clusterd.py | grep -v grep", shell=True) != ""
+    assert check_call("ps -xa | grep wazuh_manager_clusterd.py | grep -v grep", shell=True) != ""
 
 @pytest.mark.indexer
 def test_check_indexer_process():
@@ -211,7 +199,7 @@ def test_check_log_errors():
 
     ]
 
-    with open('/var/ossec/logs/ossec.log', 'r') as f:
+    with open('/var/wazuh-manager/logs/wazuh-manager.log', 'r') as f:
         for line in f.readlines():
             if 'ERROR' in line:
                 if not any(exception in line for exception in exceptions):
@@ -222,7 +210,7 @@ def test_check_log_errors():
 @pytest.mark.wazuh_cluster
 def test_check_cluster_log_errors():
     found_error = False
-    with open('/var/ossec/logs/cluster.log', 'r') as f:
+    with open('/var/wazuh-manager/logs/cluster.log', 'r') as f:
         for line in f.readlines():
             if 'ERROR' in line:
                 found_error = True
@@ -232,7 +220,7 @@ def test_check_cluster_log_errors():
 @pytest.mark.wazuh_worker
 def test_check_cluster_log_errors():
     found_error = False
-    with open('/var/ossec/logs/cluster.log', 'r') as f:
+    with open('/var/wazuh-manager/logs/cluster.log', 'r') as f:
         for line in f.readlines():
             if 'ERROR' in line:
                 if 'Could not connect to master' not in line and 'Worker node is not connected to master' not in line and 'Connection reset by peer' not in line and "Error sending sendsync response to local client: Error 3020 - Timeout sending" not in line:
@@ -243,7 +231,7 @@ def test_check_cluster_log_errors():
 @pytest.mark.wazuh_cluster
 def test_check_api_log_errors():
     found_error = False
-    with open('/var/ossec/logs/api.log', 'r') as f:
+    with open('/var/wazuh-manager/logs/api.log', 'r') as f:
         for line in f.readlines():
             if 'ERROR' in line:
                 found_error = True

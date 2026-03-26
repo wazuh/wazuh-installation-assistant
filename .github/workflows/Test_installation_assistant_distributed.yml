@@ -2,14 +2,6 @@ run-name: (Distributed) Test installation assistant - ${{ github.run_id }} - ${{
 name: (Distributed) Test installation assistant
 
 on:
-  pull_request:
-    paths:
-      - 'cert_tool/**'
-      - 'common_functions/**'
-      - 'config/**'
-      - 'install_functions/**'
-      - 'passwords_tool/**'
-      - 'tests/**'
   workflow_dispatch:
     inputs:
       REPOSITORY:
@@ -18,8 +10,8 @@ on:
         default: 'pre-release'
         type: choice
         options:
-          - staging
           - pre-release
+          - local
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: 'Branch or tag of the wazuh-installation-assistant repository'
         required: true
@@ -27,7 +19,7 @@ on:
       AUTOMATION_REFERENCE:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
-        default: '5.0.0'
+        default: 'main'
       SYSTEMS:
         description: 'Operating Systems (list of comma-separated quoted strings enclosed in square brackets)'
         required: true
@@ -51,7 +43,7 @@ on:
 
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
-  AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && '5.0.0' || inputs.AUTOMATION_REFERENCE }}
+  AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && 'main' || inputs.AUTOMATION_REFERENCE }}
   VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
   COMPOSITE_NAME: "SUBNAME-amd64"
   SESSION_NAME: "Installation-Assistant-Test"
@@ -282,7 +274,7 @@ jobs:
         -e "pkg_repository=$PKG_REPOSITORY" \
         "$VERBOSITY"
 
-    - name: Execute server installation playbook
+    - name: Execute manager installation playbook
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_install_wazuh.yml \
         -i $ALLOCATOR_PATH/inventory \

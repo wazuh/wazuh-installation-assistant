@@ -155,8 +155,8 @@ test-10-dashboard_initialize-distributed-one-kibana-node-one-wazuh-node-curl-cor
     dashboard_node_ips=("1.1.1.1")
     u_pass="user_password"
     @mock curl -XGET https://1.1.1.1/status -uadmin:user_password -k -w %{http_code} -s -o /dev/null === @out "200"
-    server_node_names=("wazuh1")
-    server_node_ips=("2.2.2.2")
+    manager_node_names=("wazuh1")
+    manager_node_ips=("2.2.2.2")
     dashboard_initialize
 }
 
@@ -171,8 +171,8 @@ test-ASSERT-FAIL-11-dashboard_initialize-distributed-one-kibana-node-one-wazuh-n
     dashboard_node_ips=("1.1.1.1")
     u_pass="user_password"
     @mock curl -XGET https://1.1.1.1/status -uadmin:user_password -k -w %{http_code} -s -o /dev/null === @out "0"
-    server_node_names=("wazuh1")
-    server_node_ips=("2.2.2.2")
+    manager_node_names=("wazuh1")
+    manager_node_ips=("2.2.2.2")
     dashboard_initialize
 }
 
@@ -182,9 +182,9 @@ test-12-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-nodes-curl-c
     dashboard_node_ips=("1.1.1.1" "1.1.1.2")
     u_pass="user_password"
     @mock curl -XGET https://1.1.1.1/status -uadmin:user_password -k -w %{http_code} -s -o /dev/null === @out "200"
-    server_node_names=("wazuh1" "wazuh2")
-    server_node_types=("worker" "master")
-    server_node_ips=("1.1.2.1" "1.1.2.2")
+    manager_node_names=("wazuh1" "wazuh2")
+    manager_node_types=("worker" "master")
+    manager_node_ips=("1.1.2.1" "1.1.2.2")
     dashboard_initialize
 }
 
@@ -200,9 +200,9 @@ test-ASSERT-FAIL-13-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-
     u_pass="user_password"
     force=
     @mock curl -XGET https://1.1.1.1/status -uadmin:user_password -k -w %{http_code} -s -o /dev/null === @out "0"
-    server_node_names=("wazuh1" "wazuh2")
-    server_node_types=("worker" "master")
-    server_node_ips=("1.1.2.1" "1.1.2.2")
+    manager_node_names=("wazuh1" "wazuh2")
+    manager_node_types=("worker" "master")
+    manager_node_ips=("1.1.2.1" "1.1.2.2")
     dashboard_initialize
 }
 
@@ -213,9 +213,9 @@ test-14-dashboard_initialize-distributed-two-kibana-nodes-two-wazuh-nodes-curl-e
     u_pass="user_password"
     force=1
     @mock curl -XGET https://1.1.1.1/status -uadmin:user_password -k -w %{http_code} -s -o /dev/null === @out "0"
-    server_node_names=("wazuh1" "wazuh2")
-    server_node_types=("worker" "master")
-    server_node_ips=("1.1.2.1" "1.1.2.2")
+    manager_node_names=("wazuh1" "wazuh2")
+    manager_node_types=("worker" "master")
+    manager_node_ips=("1.1.2.1" "1.1.2.2")
     dashboard_initialize
 }
 

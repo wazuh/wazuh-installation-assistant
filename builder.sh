@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Tool to create wazuh-install.sh, wazuh-cert-tool.sh
+# Tool to create wazuh-install.sh, wazuh-certs-tool.sh
 # and wazuh-passwords-tool.sh
 # Copyright (C) 2015, Wazuh Inc.
 #
@@ -32,10 +32,10 @@ function getHelp() {
     echo -e "                Builds the unattended installer single file wazuh-install.sh"
     echo -e ""
     echo -e "        -c,  --cert-tool"
-    echo -e "                Builds the certificate creation tool wazuh-cert-tool.sh"
+    echo -e "                Builds the certificate creation tool wazuh-certs-tool.sh"
     echo -e ""
-    echo -e "        -p,  --password-tool"
-    echo -e "                Builds the password creation and modification tool wazuh-password-tool.sh"
+    echo -e "        -p,  --passwords-tool"
+    echo -e "                Builds the password creation and modification tool wazuh-passwords-tool.sh"
     echo -e ""
     echo -e "        -h,  --help"
     echo -e "                Shows help."
@@ -64,6 +64,11 @@ function buildInstaller() {
 
     grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
     grep -Ev '^#|^\s*$' ${resources_installer}/installVariables.sh >> "${output_script_path}"
+
+    ## Update staging_url_stage from VERSION.json
+    stage_value=$(grep '"stage"' "${base_path_builder}/VERSION.json" | sed 's/.*"stage": *"\([^"]*\)".*/\1/')
+    sed -i "s/staging_url_stage=\"\"/staging_url_stage=\"${stage_value}\"/" "${output_script_path}"
+
     echo >> "${output_script_path}"
 
     ## Sigint trap
@@ -82,6 +87,7 @@ function buildInstaller() {
             echo >> "${output_script_path}"
         fi
     done
+
 
     ## dist-detect.sh
     checkDistDetectURL
@@ -122,7 +128,7 @@ function buildPasswordsTool() {
     grep -Ev '^#|^\s*$' "${resources_passwords}/passwordsVariables.sh" >> "${output_script_path}"
     echo >> "${output_script_path}"
 
-    ## Functions for all password function modules
+    ## Functions for all passwords tool function modules
     passwords_modules=($(find "${resources_passwords}" -type f))
     passwords_modules_names=($(eval "echo "${passwords_modules[@]}" | sed 's,${resources_passwords}/,,g'"))
     for i in "${!passwords_modules[@]}"; do
@@ -198,7 +204,7 @@ function builder_main() {
                 certTool=1
                 shift 1
                 ;;
-            "-p"|"--password-tool")
+            "-p"|"--passwords-tool")
                 passwordsTool=1
                 shift 1
                 ;;

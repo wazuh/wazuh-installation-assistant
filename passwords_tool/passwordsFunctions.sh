@@ -13,7 +13,7 @@ function passwords_changePassword() {
         eval "cp /etc/wazuh-indexer/opensearch-security/* /etc/wazuh-indexer/backup/ ${debug}"
         passwords_createBackUp
     fi
-    
+
     if [ -n "${indexer_installed}" ] && [ -f "/etc/wazuh-indexer/backup/internal_users.yml" ]; then
         awk -v new='"'"${hash}"'"' 'prev=="'${nuser}':"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /etc/wazuh-indexer/backup/internal_users.yml > internal_users.yml_tmp && mv -f internal_users.yml_tmp /etc/wazuh-indexer/backup/internal_users.yml
     fi
@@ -26,7 +26,7 @@ function passwords_changePassword() {
 
     if [ "${nuser}" == "admin" ]; then
         if [ -n "${wazuh_installed}" ]; then
-            eval "/var/ossec/bin/wazuh-keystore -f indexer -k password -v ${adminpass}"
+            eval "/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v ${adminpass}"
             passwords_restartService "wazuh-manager"
         fi
     fi
@@ -114,7 +114,7 @@ function passwords_createBackUp() {
         fi
     fi
 
-    common_logger -d "Creating password backup."
+    common_logger -d "Creating passwords backup."
     if [ ! -d "/etc/wazuh-indexer/backup" ]; then
         eval "mkdir /etc/wazuh-indexer/backup ${debug}"
     fi
@@ -126,7 +126,7 @@ function passwords_createBackUp() {
         fi
         exit 1;
     fi
-    common_logger -d "Password backup created in /etc/wazuh-indexer/backup."
+    common_logger -d "Passwords backup created in /etc/wazuh-indexer/backup."
 
 }
 
@@ -195,22 +195,10 @@ function passwords_getApiUsers() {
 
 }
 
-function passwords_getApiIds() {
-
-    mapfile -t api_ids < <(common_curl -s -k -X GET -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\"  \"https://localhost:55000/security/users?pretty=true\" --max-time 300 --retry 5 --retry-delay 5 | grep id | awk -F': ' '{print $2}' | sed -e "s/[\'\",]//g")
-
-}
-
 function passwords_getApiUserId() {
+    user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
 
-    user_id="noid"
-    for u in "${!api_users[@]}"; do
-        if [ "${1}" == "${api_users[u]}" ]; then
-            user_id="${api_ids[u]}"
-        fi
-    done
-
-    if [ "${user_id}" == "noid" ]; then
+    if [ -z "${user_id}" ]; then
         common_logger -e "User ${1} is not registered in Wazuh API"
         if [[ $(type -t installCommon_rollBack) == "function" ]]; then
                 installCommon_rollBack
@@ -335,11 +323,11 @@ function passwords_runSecurityAdmin() {
 
     if [[ -n "${nuser}" ]] && [[ -n ${autopass} ]]; then
         common_logger -nl "The password for user ${nuser} is ${password}"
-        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh server nodes if necessary, and restart the services."
+        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
     fi
 
     if [[ -n "${nuser}" ]] && [[ -z ${autopass} ]]; then
-        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh server nodes if necessary, and restart the services."
+        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
     fi
 
 }

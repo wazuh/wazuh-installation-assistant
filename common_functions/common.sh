@@ -1,5 +1,5 @@
 # Common functions for Wazuh installation assistant,
-# wazuh-passwords-tool and wazuh-cert-tool
+# wazuh-passwords-tool and wazuh-certs-tool
 # Copyright (C) 2015, Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
@@ -93,7 +93,7 @@ function common_checkInstalled() {
         wazuh_installed=$(apt list --installed  2>/dev/null | grep wazuh-manager)
     fi
 
-    if [ -d "/var/ossec" ]; then
+    if [ -d "/var/wazuh-manager" ]; then
         common_logger -d "There are Wazuh remaining files."
         wazuh_remaining_files=1
     fi
@@ -143,7 +143,7 @@ function common_checkSystem() {
 function common_checkWazuhConfigYaml() {
 
     common_logger -d "Checking Wazuh YAML configuration file."
-    filecorrect=$(cert_parseYaml "${config_file}" | grep -Ev '^#|^\s*$' | grep -Pzc "\A(\s*(nodes_indexer__name|nodes_indexer__ip|nodes_server__name|nodes_server__ip|nodes_server__node_type|nodes_dashboard__name|nodes_dashboard__ip)=.*?)+\Z")
+    filecorrect=$(cert_parseYaml "${config_file}" | grep -Ev '^#|^\s*$' | grep -Pzc "\A(\s*(nodes_indexer__name|nodes_indexer__ip|nodes_manager__name|nodes_manager__ip|nodes_manager__node_type|nodes_dashboard__name|nodes_dashboard__ip)=.*?)+\Z")
     if [[ "${filecorrect}" -ne 1 ]]; then
         common_logger -e "The configuration file ${config_file} does not have a correct format."
         exit 1

@@ -44,11 +44,11 @@ function dashboard_configure() {
 
     # dashboard configuration to connect to the wazuh api
     if [ -n "${AIO}" ]; then
-        wazuh_api_address=${server_node_ips[0]}
+        wazuh_api_address=${manager_node_ips[0]}
     else
-        for i in "${!server_node_types[@]}"; do
-            if [[ "${server_node_types[i]}" == "master" ]]; then
-                wazuh_api_address=${server_node_ips[i]}
+        for i in "${!manager_node_types[@]}"; do
+            if [[ "${manager_node_types[i]}" == "master" ]]; then
+                wazuh_api_address=${manager_node_ips[i]}
             fi
         done
     fi

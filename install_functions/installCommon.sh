@@ -122,12 +122,12 @@ function installCommon_createCertificates() {
             installCommon_rollBack
             exit 1
         fi
-        
+
         common_logger -d "Configuration file downloaded successfully"
 
         eval "sed -i 's|- name: node-1|- name: wazuh-indexer|' '${config_file}'" ${debug}
         eval "sed -i 's|ip: \"<indexer-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
-        eval "sed -i 's|- name: wazuh-1|- name: wazuh-server|' '${config_file}'" ${debug}
+        eval "sed -i 's|- name: wazuh-1|- name: wazuh-manager|' '${config_file}'" ${debug}
         eval "sed -i 's|ip: \"<wazuh-manager-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
         eval "sed -i 's|- name: dashboard|- name: wazuh-dashboard|' '${config_file}'" ${debug}
         eval "sed -i 's|ip: \"<dashboard-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
@@ -145,7 +145,7 @@ function installCommon_createCertificates() {
     cert_generateRootCAcertificate
     cert_generateAdmincertificate
     cert_generateIndexercertificates
-    cert_generateServercertificates
+    cert_generateManagercertificates
     cert_generateDashboardcertificates
     cert_cleanFiles
     eval "chmod 400 /tmp/wazuh-certificates/* ${debug}"
@@ -173,7 +173,7 @@ function installCommon_createInstallFiles() {
             cert_checkOpenSSL
         fi
         installCommon_createCertificates
-        if [ -n "${server_node_types[*]}" ]; then
+        if [ -n "${manager_node_types[*]}" ]; then
             installCommon_createClusterKey
         fi
         eval "cp '${config_file}' '/tmp/wazuh-install-files/config.yml' ${debug}"
@@ -206,8 +206,14 @@ function installCommon_determinePorts {
 function installCommon_downloadArtifactURLs() {
 
     common_logger -d "Downloading artifact URLs file."
-    artifact_url="https://${bucket}/${wazuh_major}/${artifact_urls_file_name}"
-    eval "common_curl -sSo ${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
+    if [ -n "${devrepo}" ] && [ "${devrepo}" == "pre-release" ]; then
+        artifact_urls_file_name="artifact_urls_${wazuh_version}-${staging_url_stage}.yaml"
+        artifact_url="https://${bucket}/pre-release/${wazuh_major}.x/${artifact_urls_file_name}"
+    else
+        artifact_urls_file_name="artifact_urls_${wazuh_version}.yaml"
+        artifact_url="https://${bucket}/production/${wazuh_major}.x/${artifact_urls_file_name}"
+    fi
+    eval "common_curl -sSo ${base_path}/${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
 
     curl_exit_code="${PIPESTATUS[0]}"
     if [ "${curl_exit_code}" -ne 0 ]; then
@@ -227,7 +233,7 @@ function installCommon_downloadComponent() {
         common_logger -d "Skipping download in offline installation mode. Package already available."
         return 0
     fi
-    
+
     if [ "$#" -ne 1 ]; then
         common_logger -e "installCommon_downloadComponent must be called with one argument (component name)."
         exit 1
@@ -474,7 +480,7 @@ function installCommon_rollBack() {
     fi
 
     if [[ ( -n "${wazuh_remaining_files}"  || -n "${wazuh_installed}" ) && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
-        eval "rm -rf /var/ossec/ ${debug}"
+        eval "rm -rf /var/wazuh-manager/ ${debug}"
     fi
 
     if [[ -n "${indexer_installed}" && ( -n "${indexer}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then

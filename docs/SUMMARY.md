@@ -18,5 +18,5 @@
 - [Usage](ref/getting-started/usage.md)
 - [Installation](ref/installation/installation.md)
   - [Certs Tool Installation](ref/installation/certs-tool/certs-tool-installation.md)
-  - [Passwords Tool Installation](ref/installation/passwords-tool/password-tool-installation.md)
+  - [Passwords Tool Installation](ref/installation/passwords-tool/passwords-tool-installation.md)
   - [Installation Assistant Installation](ref/installation/installation-assistant/ia-installation.md)

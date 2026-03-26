@@ -33,7 +33,7 @@ To generate the Wazuh Passwords Tool artifact, follow these steps:
 2. Run the following command:
 
     ```bash
-    sudo bash ./builder.sh --password-tool
+    sudo bash ./builder.sh --passwords-tool
     # you can also use the short version
     sudo bash ./builder.sh -p
     ```
