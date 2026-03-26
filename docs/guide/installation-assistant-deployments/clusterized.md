@@ -7,6 +7,7 @@ Install and configure the Wazuh indexer as a multi-node cluster on a 64-bit (x86
 ### Wazuh indexer cluster installation
 
 The installation process is divided into three stages.
+
   1. Initial configuration
   2. Wazuh indexer nodes installation
   3. Cluster initialization
@@ -27,16 +28,19 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
 
   2. Edit `./config-5.0.0-1.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
 
-  ```
-  nodes:
+  ```yaml
+nodes:
   # Wazuh indexer nodes
   indexer:
     - name: node-1
       ip: "<indexer-node-ip>"
+    #  dns: "<indexer-node-dns>"
     #- name: node-2
-    #  ip: "<indexer-node-ip>"
+    #  dns: "<indexer-node-dns>"
     #- name: node-3
     #  ip: "<indexer-node-ip>"
+    #  dns:
+    #    - "<indexer-node-dns>"
 
   # Wazuh manager nodes
   # If there is more than one Wazuh manager
@@ -44,17 +48,22 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
   manager:
     - name: wazuh-1
       ip: "<wazuh-manager-ip>"
+    #  dns: "<wazuh-manager-dns>"
     #  node_type: master
     #- name: wazuh-2
-    #  ip: "<wazuh-manager-ip>"
+    #  dns: "<wazuh-manager-dns>"
     #  node_type: worker
     #- name: wazuh-3
     #  ip: "<wazuh-manager-ip>"
+    #  dns:
+    #    - "<wazuh-manager-dns>"
     #  node_type: worker
 
   # Wazuh dashboard nodes
   dashboard:
     - name: dashboard
+      ip: "<dashboard-node-ip>"
+    #  dns: "<dashboard-node-dns>"
   ```
 
   3. Run the Wazuh installation assistant with the option `--generate-config-files` to generate the Wazuh cluster key, certificates, and passwords necessary for installation. You can find these files in `./wazuh-install-files.tar`.
@@ -80,9 +89,9 @@ Follow these steps to install and configure a multi-node Wazuh indexer.
   > [!NOTE]
   > Make sure that a copy of `wazuh-install-files.tar`, created during the initial configuration step, is placed in your working directory.
 
-    ```BASH
-        bash wazuh-install-5.0.0-1.sh --wazuh-indexer node-1
-    ```
+  ```bash
+      bash wazuh-install-5.0.0-1.sh --wazuh-indexer node-1
+  ```
 
 Repeat this stage of the installation process for every Wazuh indexer node in your cluster. Then proceed with initializing your multi-node cluster in the next stage.
 
@@ -114,7 +123,7 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
         curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
   ```
 
-  ```
+  ```json
   {
     "name" : "node-1",
     "cluster_name" : "wazuh-cluster",
@@ -139,7 +148,7 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
         curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
   ```
 
-  ```
+  ```bash
         ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
         192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               node-1
   ```
@@ -188,23 +197,22 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
         bash wazuh-install-5.0.0-1.sh --wazuh-dashboard dashboard
   ```
 
-    Once the Wazuh installation is completed, the output shows the access credentials and a message that confirms that the installation was successful.
+  Once the Wazuh installation is completed, the output shows the access credentials and a message that confirms that the installation was successful.
 
-    ```
-    INFO: --- Summary ---
-    INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>
-    User: admin
-    Password: admin
+  ```bash
+  INFO: --- Summary ---
+  INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>
+  User: admin
+  Password: admin
 
-    INFO: Installation finished.
+  INFO: Installation finished.
 
-    ```
+  ```
 
   3. Access the Wazuh web interface with your `admin` user credentials. This is the default administrator account for the Wazuh indexer and it allows you to access the Wazuh dashboard.
 
-  - URL: `https://<WAZUH_DASHBOARD_IP_ADDRESS>`
-  - Username: `admin`
-  - Password: `admin`
+- URL: `https://<WAZUH_DASHBOARD_IP_ADDRESS>`
+- Username: `admin`
+- Password: `admin`
 
-  When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, the `root-ca.pem` file previously generated can be imported to the certificate manager of the browser instead. Alternatively, you can configure a certificate from a trusted authority.
-
+When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, the `root-ca.pem` file previously generated can be imported to the certificate manager of the browser instead. Alternatively, you can configure a certificate from a trusted authority.
