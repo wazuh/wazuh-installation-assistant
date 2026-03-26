@@ -114,7 +114,7 @@ function passwords_createBackUp() {
         fi
     fi
 
-    common_logger -d "Creating password backup."
+    common_logger -d "Creating passwords backup."
     if [ ! -d "/etc/wazuh-indexer/backup" ]; then
         eval "mkdir /etc/wazuh-indexer/backup ${debug}"
     fi
@@ -126,7 +126,7 @@ function passwords_createBackUp() {
         fi
         exit 1;
     fi
-    common_logger -d "Password backup created in /etc/wazuh-indexer/backup."
+    common_logger -d "Passwords backup created in /etc/wazuh-indexer/backup."
 
 }
 
