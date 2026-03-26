@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Updated installation assistant documentation ([#661](https://github.com/wazuh/wazuh-installation-assistant/pull/661))
 - Updated passwords tool convention naming. ([#658](https://github.com/wazuh/wazuh-installation-assistant/pull/658))
 - Installation assistant update pre release and prod artifact urls file paths bucket and naming. ([#655](https://github.com/wazuh/wazuh-installation-assistant/pull/655))
 - Updated wazuh-installation-assistant documentation config and tooling versions to meet new standards. ([#650](https://github.com/wazuh/wazuh-installation-assistant/pull/650))
