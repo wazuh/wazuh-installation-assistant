@@ -28,7 +28,7 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
 
   2. Edit `./config-5.0.0-1.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
 
-  ```yaml
+```yaml
 nodes:
   # Wazuh indexer nodes
   indexer:
@@ -64,7 +64,7 @@ nodes:
     - name: dashboard
       ip: "<dashboard-node-ip>"
     #  dns: "<dashboard-node-dns>"
-  ```
+```
 
   3. Run the Wazuh installation assistant with the option `--generate-config-files` to generate the Wazuh cluster key, certificates, and passwords necessary for installation. You can find these files in `./wazuh-install-files.tar`.
 
