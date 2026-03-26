@@ -6,8 +6,8 @@ The Installation Assistant can be installed by downloading the `wazuh-install-5.
 curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
 ```
 
-If you want to perform an installation of a specific component, you must also download the config-5.0.0-1.yml file with:
+If you want to perform an installation of a specific component, you must also download the config-.yml file with:
 
 ```bash
-curl -sO https://packages.wazuh.com/5.0/config-5.0.0-1.yml
+curl -s -o config.yml https://packages.wazuh.com/5.0/config-5.0.0-1.yml
 ```

@@ -12,7 +12,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0-1.sh. |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
-| `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config-5.0.0-1.yml. In distributed deployments you will need to copy this file to all hosts. |
+| `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
 | `-h`, `--help` | Display this help and exit. |
 | `-i`, `--ignore-check` | Ignore the check for minimum hardware requirements. |
 | `-id`, `--install-dependencies` | Installs automatically the necessary dependencies for the installation. |
@@ -28,14 +28,14 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 
 ## Wazuh certs tool
 
-The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.0.0-1.sh` script along with the `config-5.0.0-1.yml` configuration file. The certs tool generates the necessary certificates for the nodes specified in the configuration file.
+The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.0.0-1.sh` script along with the `config.yml` configuration file. The certs tool generates the necessary certificates for the nodes specified in the configuration file.
 
 ### Options list
 
 | Option | Description |
 | -------- | ------------- |
 | `-a`, `--admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the admin certificates, add root-ca.pem and root-ca.key. |
-| `-A`, `--all </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates certificates specified in config-5.0.0-1.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created. |
+| `-A`, `--all </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates certificates specified in config.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created. |
 | `-ca`, `--root-ca-certificates` | Creates the root-ca certificates. |
 | `-v`, `--verbose` | Enables verbose mode. |
 | `-wd`, `--wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh dashboard certificates, add root-ca.pem and root-ca.key. |

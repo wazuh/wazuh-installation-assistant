@@ -12,7 +12,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0-1.sh. |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
-| `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config-5.0.0-1.yml. In distributed deployments you will need to copy this file to all hosts. |
+| `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
 | `-h`, `--help` | Display this help and exit. |
 | `-i`, `--ignore-check` | Ignore the check for minimum hardware requirements. |
 | `-id`, `--install-dependencies` | Installs automatically the necessary dependencies for the installation. |
@@ -40,14 +40,14 @@ This command will download, install, and configure all Wazuh components on the s
 
 ### Specific Component Installation
 
-If you want to install a specific Wazuh component, first make sure you have the `config-5.0.0-1.yml` file downloaded.
+If you want to install a specific Wazuh component, first make sure you have the `config.yml` file downloaded.
 
-The `config-5.0.0-1.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [certs-tool-usage.md](../certs-tool/certs-tool-usage.md) section.
+The `config.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [certs-tool-usage.md](../certs-tool/certs-tool-usage.md) section.
 
 The steps to perform the installation are as follows:
-> **note**: If you have already configured the `config-5.0.0-1.yml` and generated the `wazuh-install-files.tar` in the installation of another Wazuh component, you can skip directly to step 4.
+> **note**: If you have already configured the `config.yml` and generated the `wazuh-install-files.tar` in the installation of another Wazuh component, you can skip directly to step 4.
 
-1. Edit the `config-5.0.0-1.yml` file with the desired configuration for each of the Wazuh components.
+1. Edit the `config.yml` file with the desired configuration for each of the Wazuh components.
 2. Create the necessary files for installation that will be stored in `wazuh-install-files.tar` with the following command:
 
     ```bash
@@ -56,7 +56,7 @@ The steps to perform the installation are as follows:
     sudo bash wazuh-install-5.0.0-1.sh -g
     ```
 
-3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config-5.0.0-1.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
+3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
 4. Once you have the `wazuh-install-files.tar` file on the machine where you will install the component, you just need to run the installation command for the desired component:
 
     4.1 To install the Wazuh Manager:
@@ -106,7 +106,7 @@ See the [Installation Assistant Installation](../../installation/installation-as
 
     This command will generate the `wazuh-offline.tar.gz` file which contains all the packages necessary to install Wazuh on the offline system.
 
-2. Next, create the necessary certificates that will be used in the offline installation. To do this, modify the `config-5.0.0-1.yml` file with the desired configuration for each of the Wazuh components and run the following command:
+2. Next, create the necessary certificates that will be used in the offline installation. To do this, modify the `config.yml` file with the desired configuration for each of the Wazuh components and run the following command:
 
     ```bash
     sudo bash wazuh-install-5.0.0-1.sh --generate-config-files
@@ -183,14 +183,14 @@ This command will automatically detect the `artifact_urls.yml` file in the same 
 
 ## Wazuh certs tool
 
-The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.0.0-1.sh` script along with the `config-5.0.0-1.yml` configuration file. The certs tool generates the necessary certificates for the nodes specified in the configuration file.
+The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.0.0-1.sh` script along with the `config.yml` configuration file. The certs tool generates the necessary certificates for the nodes specified in the configuration file.
 
 ### Options list
 
 | Option | Description |
 | -------- | ------------- |
 | `-a`, `--admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the admin certificates, add root-ca.pem and root-ca.key. |
-| `-A`, `--all </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates certificates specified in config-5.0.0-1.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created. |
+| `-A`, `--all </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates certificates specified in config.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created. |
 | `-ca`, `--root-ca-certificates` | Creates the root-ca certificates. |
 | `-v`, `--verbose` | Enables verbose mode. |
 | `-wd`, `--wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh dashboard certificates, add root-ca.pem and root-ca.key. |
@@ -198,10 +198,10 @@ The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.
 | `-ws`, `--wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh server certificates, add root-ca.pem and root-ca.key. |
 | `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws |
 
-### config-5.0.0-1.yml configuration
+### config.yml configuration
 
-The `config-5.0.0-1.yml` file is a YAML format configuration file that contains the necessary information to generate certificates for Wazuh nodes.
-It is very important to ensure that the `config-5.0.0-1.yml` file is correctly configured with both the name of each node and the IP address, as they will be used to generate the corresponding certificate.
+The `config.yml` file is a YAML format configuration file that contains the necessary information to generate certificates for Wazuh nodes.
+It is very important to ensure that the `config.yml` file is correctly configured with both the name of each node and the IP address, as they will be used to generate the corresponding certificate.
 
 Here is a basic example of how this file should be structured:
 
@@ -251,7 +251,7 @@ For the certs-tool to detect the file, it must be located in the same path as th
 
 #### Create all certificates
 
-To create all the certificates specified in the `config-5.0.0-1.yml` file, run the following command:
+To create all the certificates specified in the `config.yml` file, run the following command:
 
 ```bash
 sudo bash wazuh-certs-tool-5.0.0-1.sh --all

@@ -2,16 +2,16 @@
 
 ## Wazuh installation assistant
 
-The installation assistant needs the certificates and the `config-5.0.0-1.yml` to perform distributed installations:
+The installation assistant needs the certificates and the `config.yml` to perform distributed installations:
 
-If you want to install a specific Wazuh component, first make sure you have the `config-5.0.0-1.yml` file downloaded.
+If you want to install a specific Wazuh component, first make sure you have the `config.yml` file downloaded.
 
-The `config-5.0.0-1.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [certs-tool-usage](../getting-started/usage.md#wazuh-certs-tool) section.
+The `config.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [certs-tool-usage](../getting-started/usage.md#wazuh-certs-tool) section.
 
 The steps to perform the installation are as follows:
-> **note**: If you have already configured the `config-5.0.0-1.yml` and generated the `wazuh-install-files.tar` in the installation of another Wazuh component, you can skip directly to step 4.
+> **note**: If you have already configured the `config.yml` and generated the `wazuh-install-files.tar` in the installation of another Wazuh component, you can skip directly to step 4.
 
-1. Edit the `config-5.0.0-1.yml` file with the desired configuration for each of the Wazuh components.
+1. Edit the `config.yml` file with the desired configuration for each of the Wazuh components.
 2. Create the necessary files for installation that will be stored in `wazuh-install-files.tar` with the following command:
 
     ```bash
@@ -20,7 +20,7 @@ The steps to perform the installation are as follows:
     sudo bash wazuh-install-5.0.0-1.sh -g
     ```
 
-3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config-5.0.0-1.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
+3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
 4. Once you have the `wazuh-install-files.tar` file on the machine where you will install the component, you just need to run the installation command for the desired component:
 
     4.1 To install the Wazuh Manager:
@@ -51,8 +51,8 @@ The steps to perform the installation are as follows:
 
 ## Wazuh certs tool
 
-The `config-5.0.0-1.yml` file is a YAML format configuration file that contains the necessary information to generate certificates for Wazuh nodes.
-It is very important to ensure that the `config-5.0.0-1.yml` file is correctly configured with both the name of each node and the IP address, as they will be used to generate the corresponding certificate.
+The `config.yml` file is a YAML format configuration file that contains the necessary information to generate certificates for Wazuh nodes.
+It is very important to ensure that the `config.yml` file is correctly configured with both the name of each node and the IP address, as they will be used to generate the corresponding certificate.
 
 Here is a basic example of how this file should be structured:
 

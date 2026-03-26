@@ -14,6 +14,6 @@ The script is written in bash and creates secure passwords for different users, 
 
 ## Wazuh certs tool
 
-The `wazuh-certs-tool-5.0.0-1.sh` script simplifies certificate generation for Wazuh central components and creates all the certificates required for installation.You need to create or edit the configuration file config-5.0.0-1.yml. This file references the node details like node types and IP addresses or DNS names which are used to generate certificates for each of the nodes specified in it.
+The `wazuh-certs-tool-5.0.0-1.sh` script simplifies certificate generation for Wazuh central components and creates all the certificates required for installation.You need to create or edit the configuration file config.yml. This file references the node details like node types and IP addresses or DNS names which are used to generate certificates for each of the nodes specified in it.
 
 The script is written in bash and creates all certificates needed for deploy Wazuh central components. Use openssl to create 2048-bit and sha256 certificates.

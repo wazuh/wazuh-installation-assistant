@@ -12,7 +12,7 @@ The main tool (`wazuh-install-5.0.0-1.sh`) that automates the deployment and con
 
 ### Wazuh Certs Tool
 
-A utility script (`wazuh-certs-tool-5.0.0-1.sh`) for generating and managing SSL/TLS certificates required for secure communication between Wazuh components. It uses OpenSSL to create 2048-bit SHA-256 certificates for each node specified in the `config-5.0.0-1.yml` file. The tool can generate root CA certificates, admin certificates, Wazuh Indexer certificates, Wazuh Manager certificates, and Wazuh Dashboard certificates.
+A utility script (`wazuh-certs-tool-5.0.0-1.sh`) for generating and managing SSL/TLS certificates required for secure communication between Wazuh components. It uses OpenSSL to create 2048-bit SHA-256 certificates for each node specified in the `config.yml` file. The tool can generate root CA certificates, admin certificates, Wazuh Indexer certificates, Wazuh Manager certificates, and Wazuh Dashboard certificates.
 
 ### Wazuh Password Tool
 
@@ -64,7 +64,7 @@ A group of nodes (Wazuh Indexers or Wazuh Managers) working together to provide 
 
 ### Node
 
-A single machine or instance in a Wazuh deployment. Each node has a unique name and is identified in the `config-5.0.0-1.yml` file. Nodes can be of different types depending on their role.
+A single machine or instance in a Wazuh deployment. Each node has a unique name and is identified in the `config.yml` file. Nodes can be of different types depending on their role.
 
 ### Master Node
 
@@ -82,7 +82,7 @@ A shared secret key used to authenticate and secure communication between nodes 
 
 ## Configuration
 
-### config-5.0.0-1.yml
+### config.yml
 
 The main configuration file that defines the deployment architecture, including node names, IP addresses or DNS names, and node types for each component. Required for generating certificates and for distributed deployments. Should be customized before installation.
 
@@ -180,15 +180,15 @@ The process of starting and configuring the Wazuh Indexer cluster security setti
 
 ### --wazuh-indexer <NODE_NAME>
 
-Command-line option to install only the Wazuh Indexer component on the current machine, using the node name specified in `config-5.0.0-1.yml`.
+Command-line option to install only the Wazuh Indexer component on the current machine, using the node name specified in `config.yml`.
 
 ### --wazuh-dashboard <NODE_NAME>
 
-Command-line option to install only the Wazuh Dashboard component on the current machine, using the node name specified in `config-5.0.0-1.yml`.
+Command-line option to install only the Wazuh Dashboard component on the current machine, using the node name specified in `config.yml`.
 
 ### --wazuh-server <NODE_NAME>
 
-Command-line option to install only the Wazuh Manager (server) component on the current machine, using the node name specified in `config-5.0.0-1.yml`.
+Command-line option to install only the Wazuh Manager (server) component on the current machine, using the node name specified in `config.yml`.
 
 ### -a, --all
 
@@ -196,7 +196,7 @@ Option to install all Wazuh central components (Indexer, Manager, and Dashboard)
 
 ### -g, --generate
 
-Option to generate certificates and passwords for all nodes defined in `config-5.0.0-1.yml`. Creates the `wazuh-install-files.tar` archive.
+Option to generate certificates and passwords for all nodes defined in `config.yml`. Creates the `wazuh-install-files.tar` archive.
 
 ### -u, --uninstall
 

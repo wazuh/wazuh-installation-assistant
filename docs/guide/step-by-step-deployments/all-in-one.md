@@ -9,7 +9,7 @@ Install and configure the Wazuh indexer as a single-node cluster following step-
 
 Wazuh uses certificates to establish confidentiality and encrypt communications between its central components. Follow these steps to create certificates for the Wazuh central components.
 
-  1. Download the `wazuh-certs-tool-5.0.0-1.sh` script and the `config-5.0.0-1.yml` configuration file. This creates the certificates that encrypt communications between the Wazuh central components.
+  1. Download the `wazuh-certs-tool-5.0.0-1.sh` script and the `config.yml` configuration file. This creates the certificates that encrypt communications between the Wazuh central components.
 
   ```BASH
       curl -sO https://packages.wazuh.com/5.0/wazuh-certs-tool-5.0.0-1.sh
