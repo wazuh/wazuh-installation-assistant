@@ -32,12 +32,12 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
 nodes:
   # Wazuh indexer nodes
   indexer:
-    - name: node-1
+    - name: indexer
       ip: "<indexer-node-ip>"
     #  dns: "<indexer-node-dns>"
-    #- name: node-2
+    #- name: indexer-2
     #  dns: "<indexer-node-dns>"
-    #- name: node-3
+    #- name: indexer-3
     #  ip: "<indexer-node-ip>"
     #  dns:
     #    - "<indexer-node-dns>"
@@ -46,14 +46,14 @@ nodes:
   # If there is more than one Wazuh manager
   # node, each one must have a node_type
   manager:
-    - name: wazuh-1
+    - name: manager
       ip: "<wazuh-manager-ip>"
     #  dns: "<wazuh-manager-dns>"
     #  node_type: master
-    #- name: wazuh-2
+    #- name: manager-2
     #  dns: "<wazuh-manager-dns>"
     #  node_type: worker
-    #- name: wazuh-3
+    #- name: manager-3
     #  ip: "<wazuh-manager-ip>"
     #  dns:
     #    - "<wazuh-manager-dns>"
@@ -84,13 +84,13 @@ Follow these steps to install and configure a multi-node Wazuh indexer.
     curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
   ```
 
-  2. Run the Wazuh installation assistant with the option `--wazuh-indexer` and the node name to install and configure the Wazuh indexer. The node name must be the same one used in `config.yml` for the initial configuration, for example, `node-1`.
+  2. Run the Wazuh installation assistant with the option `--wazuh-indexer` and the node name to install and configure the Wazuh indexer. The node name must be the same one used in `config.yml` for the initial configuration, for example, `indexer`.
 
   > [!NOTE]
   > Make sure that a copy of `wazuh-install-files.tar`, created during the initial configuration step, is placed in your working directory.
 
   ```bash
-      bash wazuh-install-5.0.0-1.sh --wazuh-indexer node-1
+      bash wazuh-install-5.0.0-1.sh --wazuh-indexer indexer
   ```
 
 Repeat this stage of the installation process for every Wazuh indexer node in your cluster. Then proceed with initializing your multi-node cluster in the next stage.
@@ -125,7 +125,7 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
 
   ```json
   {
-    "name" : "node-1",
+    "name" : "indexer",
     "cluster_name" : "wazuh-cluster",
     "cluster_uuid" : "095jEW-oRJSFKLz5wmo5PA",
     "version" : {
@@ -150,7 +150,7 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
 
   ```bash
         ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
-        192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               node-1
+        192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
   ```
 
 ## Wazuh manager
@@ -165,13 +165,13 @@ Install the Wazuh manager as a multi-node cluster on a 64-bit (x86_64/AMD64 or A
         curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
   ```
 
-  2. Run the Wazuh installation assistant with the option `--wazuh-manager` followed by the node name to install the Wazuh manager. The node name must be the same one used in `config.yml` for the initial configuration, for example, `wazuh-1`:
+  2. Run the Wazuh installation assistant with the option `--wazuh-manager` followed by the node name to install the Wazuh manager. The node name must be the same one used in `config.yml` for the initial configuration, for example, `manager`:
 
   > [!NOTE]
   > Make sure that a copy of `wazuh-install-files.tar`, created during the initial configuration step, is placed in your working directory.
 
   ```BASH
-        bash wazuh-install-5.0.0-1.sh --wazuh-manager wazuh-1
+        bash wazuh-install-5.0.0-1.sh --wazuh-manager manager
   ```
 
 Your Wazuh manager is now successfully installed, repeat this process on every Wazuh manager node.
