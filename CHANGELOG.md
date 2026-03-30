@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Removed sudo command validation for installation assistant. ([#664](https://github.com/wazuh/wazuh-installation-assistant/pull/664))
 - Fix bumper script early exit ([#648](https://github.com/wazuh/wazuh-installation-assistant/pull/648))
 
 ### Deleted
