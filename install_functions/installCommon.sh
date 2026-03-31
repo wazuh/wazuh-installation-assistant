@@ -453,9 +453,7 @@ function installCommon_removeCentOSrepositories() {
 
 function installCommon_rollBack() {
 
-    if [ -z "${uninstall}" ]; then
-        common_logger "--- Removing existing Wazuh installation ---"
-    fi
+    common_logger "--- Removing existing Wazuh installation ---"
 
     if [[ -n "${wazuh_installed}" && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]];then
         common_logger "Removing Wazuh manager."
