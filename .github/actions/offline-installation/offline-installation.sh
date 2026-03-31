@@ -99,7 +99,7 @@ function indexer_installation() {
     check_package "wazuh-indexer"
 
     echo "INFO: Generating certificates of the Wazuh indexer..."
-    NODE_NAME=node-1
+    NODE_NAME=indexer
     mkdir /etc/wazuh-indexer/certs
     mv -n wazuh-certificates/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
     mv -n wazuh-certificates/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
