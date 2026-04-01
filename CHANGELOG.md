@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Updated user ownership for wazuh manager certificates. ([#674](https://github.com/wazuh/wazuh-installation-assistant/pull/674))
 - Removed sudo command from Wazuh installation assistant 5.0.0. ([#667](https://github.com/wazuh/wazuh-installation-assistant/pull/667))
 - Updated installation assistant documentation ([#661](https://github.com/wazuh/wazuh-installation-assistant/pull/661))
 - Updated passwords tool convention naming. ([#658](https://github.com/wazuh/wazuh-installation-assistant/pull/658))
