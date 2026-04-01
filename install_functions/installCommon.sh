@@ -255,15 +255,20 @@ function installCommon_downloadComponent() {
     # Determine package type based on system
     if [ "${sys_type}" == "yum" ]; then
         pkg_type="rpm"
+        # Determine architecture suffix for artifact keys
+        if [ "${architecture}" == "x86_64" ]; then
+            arch_suffix="x86_64"
+        elif [ "${architecture}" == "aarch64" ]; then
+            arch_suffix="aarch64"
+        fi
     elif [ "${sys_type}" == "apt-get" ]; then
         pkg_type="deb"
-    fi
-
-    # Determine architecture suffix for artifact keys
-    if [ "${architecture}" == "x86_64" ]; then
-        arch_suffix="amd64"
-    elif [ "${architecture}" == "aarch64" ]; then
-        arch_suffix="arm64"
+        # Determine architecture suffix for artifact keys
+        if [ "${architecture}" == "x86_64" ]; then
+            arch_suffix="amd64"
+        elif [ "${architecture}" == "aarch64" ]; then
+            arch_suffix="arm64"
+        fi
     fi
 
     # Build the artifact key
