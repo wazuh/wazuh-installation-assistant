@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Change wazuh-manager certs folder ownership to wazuh-manager ([#676](https://github.com/wazuh/wazuh-installation-assistant/pull/676))
 - Updated Wazuh installation assistant to use packages archichecture key names. ([#675](https://github.com/wazuh/wazuh-installation-assistant/pull/675))
 - Updated user ownership for wazuh manager certificates. ([#674](https://github.com/wazuh/wazuh-installation-assistant/pull/674))
 - Removed sudo command from Wazuh installation assistant 5.0.0. ([#667](https://github.com/wazuh/wazuh-installation-assistant/pull/667))

@@ -122,9 +122,9 @@ function manager_copyCertificates() {
         eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}-key.pem --strip-components 1 ${debug}"
         eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
         eval "rm -rf ${manager_cert_path}/wazuh-install-files/ ${debug}"
+        eval "chown -R wazuh-manager:wazuh-manager ${manager_cert_path} ${debug}"
         eval "chmod 500 ${manager_cert_path} ${debug}"
         eval "chmod 400 ${manager_cert_path}/* ${debug}"
-        eval "chown wazuh-manager:wazuh-manager ${manager_cert_path}/* ${debug}"
     else
         common_logger -e "No certificates found. Could not initialize Wazuh manager"
         installCommon_rollBack
