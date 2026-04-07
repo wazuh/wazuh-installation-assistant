@@ -70,7 +70,7 @@ jobs:
       suffix: ${{ steps.set-matrix.outputs.suffix }}
     steps:
       - name: Checkout wazuh-installation-assistant repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.wazuh_installation_assistant_reference }}
 
