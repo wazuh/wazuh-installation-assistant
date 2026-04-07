@@ -55,7 +55,8 @@ env:
   TMP_PATH: "/tmp/test"
   REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
   ALLOCATOR_PATH: "/tmp/allocator_instance"
-  ANSIBLE_CALLBACK: "yaml"
+  ANSIBLE_CALLBACK: "default"
+  ANSIBLE_CALLBACK_RESULT_FORMAT: "yaml"
 
 permissions:
   id-token: write
@@ -163,10 +164,6 @@ jobs:
 
     - name: Install Ansible
       run: pip install ansible-core==2.16
-
-    - name: Configure ansible
-      run: |
-        ansible-galaxy collection install community.general
 
     - name: Execute provision playbook
       run: |
