@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Updated GitHub actions version for wazuh-installation-assistant workflows. ([#677](https://github.com/wazuh/wazuh-installation-assistant/pull/677))
 
 ### Fixed
 
