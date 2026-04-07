@@ -18,3 +18,11 @@ wazuh-offline/
 *.msi
 *.log
 *.key
+docs/book/*
+*venv/
+*coverage*
+
+# Byte-compiled / optimized / DLL files
+__pycache__
+*.py[cod]
+*$py.class

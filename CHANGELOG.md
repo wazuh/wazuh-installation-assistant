@@ -1,6 +1,53 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [5.0.0]
+
+### Added
+
+- Add unit and integration test ([#630](https://github.com/wazuh/wazuh-installation-assistant/pull/630))
+- Add DNS support to the certs-tool ([#634](https://github.com/wazuh/wazuh-installation-assistant/pull/634))
+- Add documentation for Installation Assistant Tools in 5.0 ([#583](https://github.com/wazuh/wazuh-installation-assistant/pull/583))
+- Add version and revision suffix to built files ([#578](https://github.com/wazuh/wazuh-installation-assistant/pull/578))
+- Back port install-dependencies option ([#557](https://github.com/wazuh/wazuh-installation-assistant/pull/557))
+- Add new internal users to the password generation process in the Password tool ([#540](https://github.com/wazuh/wazuh-installation-assistant/pull/540))
+- Remove filebeat references and replace wazuh.yml to opensearch_dashboards.yml in the password tool ([#539](https://github.com/wazuh/wazuh-installation-assistant/pull/539))
+- Remove all the custom option from the installation assistant ([#534](https://github.com/wazuh/wazuh-installation-assistant/pull/534))
+- Update the build workflow to upload config.yml ([#526](https://github.com/wazuh/wazuh-installation-assistant/pull/526))
+
+### Changed
+
+- Change wazuh-manager certs folder ownership to wazuh-manager ([#676](https://github.com/wazuh/wazuh-installation-assistant/pull/676))
+- Updated Wazuh installation assistant to use packages archichecture key names. ([#675](https://github.com/wazuh/wazuh-installation-assistant/pull/675))
+- Updated user ownership for wazuh manager certificates. ([#674](https://github.com/wazuh/wazuh-installation-assistant/pull/674))
+- Removed sudo command from Wazuh installation assistant 5.0.0. ([#667](https://github.com/wazuh/wazuh-installation-assistant/pull/667))
+- Updated installation assistant documentation ([#661](https://github.com/wazuh/wazuh-installation-assistant/pull/661))
+- Updated passwords tool convention naming. ([#658](https://github.com/wazuh/wazuh-installation-assistant/pull/658))
+- Installation assistant update pre release and prod artifact urls file paths bucket and naming. ([#655](https://github.com/wazuh/wazuh-installation-assistant/pull/655))
+- Updated wazuh-installation-assistant documentation config and tooling versions to meet new standards. ([#650](https://github.com/wazuh/wazuh-installation-assistant/pull/650))
+- Update artifact generation jobs to use wz-linux dedicated runner group ([#641](https://github.com/wazuh/wazuh-installation-assistant/pull/641))
+- Breaking Changes Summary ([#627](https://github.com/wazuh/wazuh-installation-assistant/pull/627))
+- Change naming convention ([#626](https://github.com/wazuh/wazuh-installation-assistant/pull/626))
+- Change ossec references to wazuh-manager ([#612](https://github.com/wazuh/wazuh-installation-assistant/pull/612))
+- Change server references to manager ([#613](https://github.com/wazuh/wazuh-installation-assistant/pull/613))
+- Composite names update ([#562](https://github.com/wazuh/wazuh-installation-assistant/pull/562))
+- Change offline assistant install from repositories to packages ([#550](https://github.com/wazuh/wazuh-installation-assistant/pull/550))
+- Replace wazuh.yml references to opensearch_dashboards.yml in the installation assistant ([#545](https://github.com/wazuh/wazuh-installation-assistant/pull/545))
+- Change Filebeat references to server in the certs tool ([#528](https://github.com/wazuh/wazuh-installation-assistant/pull/528))
+
+### Fixed
+
+- Fix YAML Parser to Accept Multiple Indentation Formats ([#631](https://github.com/wazuh/wazuh-installation-assistant/pull/631))
+- Update Indexer cluster security initialization message ([#563](https://github.com/wazuh/wazuh-installation-assistant/pull/563))
+
+### Deleted
+
+- Remove last_stage and other deprecated variables and functions in the installation Assistant ([#593](https://github.com/wazuh/wazuh-installation-assistant/pull/593))
+- Remove admin key custom paths options from the Password Tool ([#586](https://github.com/wazuh/wazuh-installation-assistant/pull/586))
+- Remove hardcoded config files and use component defaults ([#572](https://github.com/wazuh/wazuh-installation-assistant/pull/572))
+- Delete all passwords change option and passwords file support ([#567](https://github.com/wazuh/wazuh-installation-assistant/pull/567))
+- Remove the Password Tool from the Installation Assistant files ([#560](https://github.com/wazuh/wazuh-installation-assistant/pull/560))
+
 ## [4.14.5]
 
 ### Added

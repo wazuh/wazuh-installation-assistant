@@ -1,5 +1,5 @@
 # Common functions for Wazuh installation assistant,
-# wazuh-passwords-tool and wazuh-cert-tool
+# wazuh-passwords-tool and wazuh-certs-tool
 # Copyright (C) 2015, Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
@@ -80,7 +80,6 @@ function common_checkInstalled() {
     common_logger -d "Checking Wazuh installation."
     wazuh_installed=""
     indexer_installed=""
-    filebeat_installed=""
     dashboard_installed=""
 
     if [ "${sys_type}" == "yum" ]; then
@@ -89,7 +88,7 @@ function common_checkInstalled() {
         wazuh_installed=$(apt list --installed  2>/dev/null | grep wazuh-manager)
     fi
 
-    if [ -d "/var/ossec" ]; then
+    if [ -d "/var/wazuh-manager" ]; then
         common_logger -d "There are Wazuh remaining files."
         wazuh_remaining_files=1
     fi
@@ -104,17 +103,6 @@ function common_checkInstalled() {
     if [ -d "/var/lib/wazuh-indexer/" ] || [ -d "/usr/share/wazuh-indexer" ] || [ -d "/etc/wazuh-indexer" ] || [ -f "${base_path}/search-guard-tlstool*" ]; then
         common_logger -d "There are Wazuh indexer remaining files."
         indexer_remaining_files=1
-    fi
-
-    if [ "${sys_type}" == "yum" ]; then
-        eval "rpm -q filebeat --quiet && filebeat_installed=1"
-    elif [ "${sys_type}" == "apt-get" ]; then
-        filebeat_installed=$(apt list --installed  2>/dev/null | grep filebeat)
-    fi
-
-    if [ -d "/var/lib/filebeat/" ] || [ -d "/usr/share/filebeat" ] || [ -d "/etc/filebeat" ]; then
-        common_logger -d "There are Filebeat remaining files."
-        filebeat_remaining_files=1
     fi
 
     if [ "${sys_type}" == "yum" ]; then
@@ -150,7 +138,7 @@ function common_checkSystem() {
 function common_checkWazuhConfigYaml() {
 
     common_logger -d "Checking Wazuh YAML configuration file."
-    filecorrect=$(cert_parseYaml "${config_file}" | grep -Ev '^#|^\s*$' | grep -Pzc "\A(\s*(nodes_indexer__name|nodes_indexer__ip|nodes_server__name|nodes_server__ip|nodes_server__node_type|nodes_dashboard__name|nodes_dashboard__ip)=.*?)+\Z")
+    filecorrect=$(cert_parseYaml "${config_file}" | grep -Ev '^#|^\s*$' | grep -Pzc "\A(\s*(nodes_indexer__name|nodes_indexer__ip|nodes_manager__name|nodes_manager__ip|nodes_manager__node_type|nodes_dashboard__name|nodes_dashboard__ip)=.*?)+\Z")
     if [[ "${filecorrect}" -ne 1 ]]; then
         common_logger -e "The configuration file ${config_file} does not have a correct format."
         exit 1
@@ -162,7 +150,7 @@ function common_checkWazuhConfigYaml() {
 function common_curl() {
 
     if [ -n "${curl_has_connrefused}" ]; then
-        eval "curl $@ --retry-connrefused"
+        eval "curl --retry-connrefused $@"
         e_code="${PIPESTATUS[0]}"
     else
         retries=0
@@ -176,28 +164,6 @@ function common_curl() {
         done
     fi
     return "${e_code}"
-
-}
-
-function common_remove_gpg_key() {
-
-    common_logger -d "Removing GPG key from system."
-    if [ "${sys_type}" == "yum" ]; then
-        if { rpm -q gpg-pubkey --qf '%{NAME}-%{VERSION}-%{RELEASE}\t%{SUMMARY}\n' | grep "Wazuh"; } >/dev/null ; then
-            key=$(rpm -q gpg-pubkey --qf '%{NAME}-%{VERSION}-%{RELEASE}\t%{SUMMARY}\n' | grep "Wazuh Signing Key" | awk '{print $1}' )
-            rpm -e "${key}"
-        else
-            common_logger "Wazuh GPG key not found in the system"
-            return 1
-        fi
-    elif [ "${sys_type}" == "apt-get" ]; then
-        if [ -f "/usr/share/keyrings/wazuh.gpg" ]; then
-            rm -rf "/usr/share/keyrings/wazuh.gpg" "${debug}"
-        else
-            common_logger "Wazuh GPG key not found in the system"
-            return 1
-        fi
-    fi
 
 }
 

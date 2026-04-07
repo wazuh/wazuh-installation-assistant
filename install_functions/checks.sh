@@ -25,16 +25,7 @@ function checks_arguments() {
 
     if [ -n "${development}" ]; then
         if [ -z "${AIO}" ] && [ -z "${dashboard}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ] && [ -z "${download}" ]; then
-            common_logger -e "The -d|--development option must be used with -a, -ws, -s, -wi, -wd or -dw."
-            exit 1
-        fi
-    fi
-
-    # -------------- Port option validation ---------------------
-
-    if [ -n "${port_specified}" ]; then
-        if [ -z "${AIO}" ] && [ -z "${dashboard}" ]; then
-            common_logger -e "The argument -p|--port can only be used with -a|--all-in-one or -wd|--wazuh-dashboard."
+            common_logger -e "The -d|--development option must be used with -a, -wm, -s, -wi, -wd or -dw."
             exit 1
         fi
     fi
@@ -43,7 +34,7 @@ function checks_arguments() {
 
     if [ -n "${offline_install}" ]; then
         if [ -z "${AIO}" ] && [ -z "${dashboard}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
-            common_logger -e "The -of|--offline-installation option must be used with -a, -ws, -s, -wi, or -wd."
+            common_logger -e "The -of|--offline-installation option must be used with -a, -wm, -s, -wi, or -wd."
             exit 1
         fi
     fi
@@ -91,15 +82,15 @@ function checks_arguments() {
         fi
     fi
 
-    if [[ -n "${configurations}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${start_indexer_cluster}" || -n "${tar_conf}" || -n "${uninstall}" ) ]]; then
-        common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -t|--tar, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -ws|--wazuh-server."
+    if [[ -n "${configurations}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${start_indexer_cluster}" || -n "${uninstall}" ) ]]; then
+        common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -wm|--wazuh-manager."
         exit 1
     fi
 
     # -------------- Overwrite --------------------------------------
 
     if [ -n "${overwrite}" ] && [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ]; then
-        common_logger -e "The argument -o|--overwrite must be used in conjunction with -a|--all-in-one, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -ws|--wazuh-server."
+        common_logger -e "The argument -o|--overwrite must be used in conjunction with -a|--all-in-one, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -wm|--wazuh-manager."
         exit 1
     fi
 
@@ -114,10 +105,6 @@ function checks_arguments() {
 
         if [ -z "${wazuh_installed}" ] && [ -z "${wazuh_remaining_files}" ]; then
             common_logger "Wazuh manager not found in the system so it was not uninstalled."
-        fi
-
-        if [ -z "${filebeat_installed}" ] && [ -z "${filebeat_remaining_files}" ]; then
-            common_logger "Filebeat not found in the system so it was not uninstalled."
         fi
 
         if [ -z "${indexer_installed}" ] && [ -z "${indexer_remaining_files}" ]; then
@@ -135,7 +122,7 @@ function checks_arguments() {
     if [ -n "${AIO}" ]; then
 
         if [ -n "$indexer" ] || [ -n "$dashboard" ] || [ -n "$wazuh" ]; then
-            common_logger -e "Argument -a|--all-in-one is not compatible with -wi|--wazuh-indexer, -wd|--wazuh-dashboard or -ws|--wazuh-server."
+            common_logger -e "Argument -a|--all-in-one is not compatible with -wi|--wazuh-indexer, -wd|--wazuh-dashboard or -wm|--wazuh-manager."
             exit 1
         fi
 
@@ -153,10 +140,6 @@ function checks_arguments() {
         fi
         if [ -z "${overwrite}" ] && { [ -n "${dashboard_installed}" ] || [ -n "${dashboard_remaining_files}" ]; }; then
             common_logger -e "Wazuh dashboard already installed."
-            installedComponent=1
-        fi
-        if [ -z "${overwrite}" ] && { [ -n "${filebeat_installed}" ] || [ -n "${filebeat_remaining_files}" ]; }; then
-            common_logger -e "Filebeat already installed."
             installedComponent=1
         fi
         if [ -n "${installedComponent}" ]; then
@@ -196,11 +179,11 @@ function checks_arguments() {
     # -------------- Wazuh ------------------------------------------
 
     if [ -n "${wazuh}" ]; then
-        if [ -n "${wazuh_installed}" ] || [ -n "${wazuh_remaining_files}" ] || [ -n "${filebeat_installed}" ] || [ -n "${filebeat_remaining_files}" ]; then
+        if [ -n "${wazuh_installed}" ] || [ -n "${wazuh_remaining_files}" ]; then
             if [ -n "${overwrite}" ]; then
                 installCommon_rollBack
             else
-                common_logger -e "Wazuh server components (wazuh-manager and filebeat) are already installed in this node or some of their files have not been removed. Use option -o|--overwrite to overwrite all components."
+                common_logger -e "Wazuh manager components are already installed in this node or some of their files have not been removed. Use option -o|--overwrite to overwrite all components."
                 exit 1
             fi
         fi
@@ -208,20 +191,15 @@ function checks_arguments() {
 
     # -------------- Cluster start ----------------------------------
 
-    if [[ -n "${start_indexer_cluster}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${configurations}" || -n "${tar_conf}" || -n "${uninstall}") ]]; then
-        common_logger -e "The argument -s|--start-cluster can't be used with -a|--all-in-one, -g|--generate-config-files,-o|--overwrite , -u|--uninstall, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -ws|--wazuh-server."
+    if [[ -n "${start_indexer_cluster}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${configurations}" || -n "${uninstall}") ]]; then
+        common_logger -e "The argument -s|--start-cluster can't be used with -a|--all-in-one, -g|--generate-config-files,-o|--overwrite , -u|--uninstall, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -wm|--wazuh-manager."
         exit 1
     fi
 
     # -------------- Global -----------------------------------------
 
     if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ] && [ -z "${configurations}" ] && [ -z "${uninstall}" ] && [ -z "${download}" ]; then
-        common_logger -e "At least one of these arguments is necessary -a|--all-in-one, -g|--generate-config-files, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -ws|--wazuh-server, -u|--uninstall, -dw|--download-wazuh."
-        exit 1
-    fi
-
-    if [ -n "${force}" ] && [ -z  "${dashboard}" ]; then
-        common_logger -e "The -fd|--force-install-dashboard argument needs to be used alongside -wd|--wazuh-dashboard."
+        common_logger -e "At least one of these arguments is necessary -a|--all-in-one, -g|--generate-config-files, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -wm|--wazuh-manager, -u|--uninstall, -dw|--download-wazuh."
         exit 1
     fi
 
@@ -343,12 +321,12 @@ function checks_names() {
     fi
 
     if [ -n "${winame}" ] && [ -n "${dashname}" ] && [ "${winame}" == "${dashname}" ]; then
-        common_logger -e "The node names for Wazuh server and Wazuh indexer must be different."
+        common_logger -e "The node names for Wazuh manager and Wazuh indexer must be different."
         exit 1
     fi
 
-    if [ -n "${winame}" ] && ! echo "${server_node_names[@]}" | grep -w -q "${winame}"; then
-        common_logger -e "The Wazuh server node name ${winame} does not appear on the configuration file."
+    if [ -n "${winame}" ] && ! echo "${manager_node_names[@]}" | grep -w -q "${winame}"; then
+        common_logger -e "The Wazuh manager node name ${winame} does not appear on the configuration file."
         exit 1
     fi
 
@@ -393,7 +371,7 @@ function checks_previousCertificate() {
 
     if [ -n "${winame}" ]; then
         if ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${winame}".pem || ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${winame}"-key.pem; then
-            common_logger -e "There is no certificate for the wazuh server node ${winame} in ${tar_file}."
+            common_logger -e "There is no certificate for the wazuh manager node ${winame} in ${tar_file}."
             exit 1
         fi
     fi
@@ -404,10 +382,12 @@ function checks_specialDepsAL2023() {
 
     # Change curl for curl-minimal
     wia_yum_dependencies=( "${wia_yum_dependencies[@]/curl/curl-minimal}" )
+    assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/curl/curl-minimal}" )
 
     # In containers, coreutils is replaced for coreutils-single
     if [ -f "/.dockerenv" ]; then
         wia_yum_dependencies=( "${wia_yum_dependencies[@]/coreutils/coreutils-single}" )
+        assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/coreutils/coreutils-single}" )
     fi
 }
 
@@ -419,19 +399,6 @@ function checks_specifications() {
 }
 
 function checks_ports() {
-
-    if [ -z "${offline_install}" ]; then
-        dep="lsof"
-        if [ "${sys_type}" == "yum" ]; then
-            installCommon_yumInstallList "${dep}"
-        elif [ "${sys_type}" == "apt-get" ]; then
-            installCommon_aptInstallList "${dep}"
-        fi
-
-        if [ "${#not_installed[@]}" -gt 0 ]; then
-                wia_dependencies_installed+=("${dep}")
-        fi
-    fi
 
     common_logger -d "Checking ports availability."
     used_port=0
@@ -471,69 +438,78 @@ function check_versions() {
     fi
 }
 
-function checks_available_port() {
-    chosen_port="$1"
-    shift
-    ports_list=("$@")
-
-    if [ "$chosen_port" -ne "${http_port}" ]; then
-        for port in "${ports_list[@]}"; do
-            if [ "$chosen_port" -eq "$port" ]; then
-                common_logger -e "Port ${chosen_port} is reserved by Wazuh. Please, choose another port."
-                exit 1
-            fi
-        done
+function checks_localArtifactURLs_exists() {
+    common_logger -d "Checking if ${artifact_urls_file_name} exists locally."
+    if [ ! -f "${base_path}/${artifact_urls_file_name}" ]; then
+        common_logger -e "Cannot find ${artifact_urls_file_name} in ${base_path}."
+        exit 1
     fi
 }
 
-function checks_filebeatURL() {
-    # URL uses branch when the source_branch is not a stage branch
-    if [[ ! $last_stage ]]; then
-        source_branch="${source_branch#v}"
-        filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
-    fi
+function checks_ArtifactURLs_format() {
+    common_logger -d "Checking ${artifact_urls_file_name} file format."
+    artifact_file="${base_path}/${artifact_urls_file_name}"
+    # Check that all values are valid URLs
+    while IFS=': ' read -r key value; do
+        # Skip empty lines and comments
+        [[ -z "$key" || "$key" =~ ^#.*$ ]] && continue
 
-    # URL using master branch
-    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/${wazuh_version}}"
+        # Remove quotes and whitespace from value
+        value=$(echo "$value" | tr -d '"' | xargs)
 
-    response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
-    if [ "${response}" != "200" ]; then
-        response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)
+        # Validate URL format (must start with http:// or https://)
+        if [[ ! "$value" =~ ^https?:// ]]; then
+            common_logger -e "Invalid URL format for key '${key}': ${value}"
+            common_logger -e "All values in ${artifact_urls_file_name} must be valid URLs starting with http:// or https://"
+            exit 1
+        fi
+    done < "$artifact_file"
+}
 
-        # Display error if both URLs do not get the resource
-        if [ "${response}" != "200" ]; then
-            common_logger -e "Could not get the Filebeat Wazuh template."
-        else
-            common_logger "Using Filebeat template from ${wazuh_version} branch."
-            filebeat_wazuh_template="${new_filebeat_url}"
+function checks_ArtifactURLs_component_present() {
+    common_logger -d "Checking required component is present in ${artifact_urls_file_name} file."
+    artifact_file="${base_path}/${artifact_urls_file_name}"
+    # Determine package type based on system
+    if [ "${sys_type}" == "yum" ]; then
+        pkg_type="rpm"
+        # Determine architecture suffix for artifact keys
+        if [ "${architecture}" == "x86_64" ]; then
+            arch_suffix="x86_64"
+        elif [ "${architecture}" == "aarch64" ]; then
+            arch_suffix="aarch64"
+        fi
+    elif [ "${sys_type}" == "apt-get" ]; then
+        pkg_type="deb"
+        # Determine architecture suffix for artifact keys
+        if [ "${architecture}" == "x86_64" ]; then
+            arch_suffix="amd64"
+        elif [ "${architecture}" == "aarch64" ]; then
+            arch_suffix="arm64"
         fi
     fi
-}
 
-function checks_development_source_tag() {
-    source_branch="${source_branch}-${last_stage}"
+    indexer_key="wazuh_indexer_${arch_suffix}_${pkg_type}"
+    dashboard_key="wazuh_dashboard_${arch_suffix}_${pkg_type}"
+    manager_key="wazuh_manager_${arch_suffix}_${pkg_type}"
 
-    # Check if the stage tag exists
-    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
-        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/git/refs/tags/$source_branch")
-
-    if [ "$status_code" -ne 200 ]; then
-        common_logger -w "Tag '$source_branch' does not exist. Using the source branch related to the Wazuh version ($wazuh_version)."
-        source_branch="${wazuh_version}"
-
-        # Check if the source branch exists
-        checks_source_branch
+    # Check component-specific artifacts exist
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ]; then
+        if ! grep -q "^${indexer_key}:" "$artifact_file"; then
+            common_logger -e "Missing required artifact key: ${indexer_key}"
+            exit 1
+        fi
     fi
-}
-
-function checks_source_branch() {
-    # Check if the source branch exists
-    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
-        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/branches/$source_branch")
-
-    if [ "$status_code" -ne 200 ]; then
-        common_logger -w "Branch '$source_branch' does not exist. Using the ${wazuh_version} branch."
-        source_branch="${wazuh_version}"
+    if [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
+        if ! grep -q "^${dashboard_key}:" "$artifact_file"; then
+            common_logger -e "Missing required artifact key: ${dashboard_key}"
+            exit 1
+        fi
+    fi
+    if [ -n "${AIO}" ] || [ -n "${wazuh}" ]; then
+        if ! grep -q "^${manager_key}:" "$artifact_file"; then
+            common_logger -e "Missing required artifact key: ${manager_key}"
+            exit 1
+        fi
     fi
 }
 
