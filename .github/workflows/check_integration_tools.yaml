@@ -344,7 +344,6 @@ jobs:
           fi
 
       - name: Generate presigned artifact URLs
-        if: needs.build_tools.outputs.package_type == 'staging'
         run: |
           pip install pyyaml --quiet
           python ${{ env.GENERATE_PRESIGNED_URLS_SCRIPT_PATH }} \
@@ -355,7 +354,6 @@ jobs:
           cat /tmp/artifact_urls.yaml
 
       - name: Copy artifact_urls.yaml to remote instance
-        if: needs.build_tools.outputs.package_type == 'staging'
         run: |
           scp -o StrictHostKeyChecking=no \
               -P "${{ env.SSH_PORT }}" \
@@ -434,10 +432,17 @@ jobs:
             ubuntu-*) PKG_TYPE="deb" ;;
             *)        PKG_TYPE="rpm" ;;
           esac
-          case "$SYSTEM" in
-            *-arm64) ARCH="arm64" ;;
-            *)       ARCH="amd64" ;;
-          esac
+          if [ "$PKG_TYPE" = "rpm" ]; then
+            case "$SYSTEM" in
+              *-arm64) ARCH="aarch64" ;;
+              *)       ARCH="x86_64"  ;;
+            esac
+          else
+            case "$SYSTEM" in
+              *-arm64) ARCH="arm64" ;;
+              *)       ARCH="amd64" ;;
+            esac
+          fi
           echo "PKG_TYPE=$PKG_TYPE" >> $GITHUB_ENV
           echo "ARCH=$ARCH"         >> $GITHUB_ENV
 
@@ -447,7 +452,6 @@ jobs:
           cp /tmp/artifact_urls.yaml /tmp/built-tools/artifact_urls.yaml
           cd /tmp/built-tools
           sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
-          tar czf wazuh-offline.tar.gz wazuh-offline/
 
       - name: Copy offline tarball to remote instance
         if: needs.build_tools.outputs.install_mode == 'offline'
