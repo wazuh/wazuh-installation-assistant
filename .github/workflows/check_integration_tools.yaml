@@ -18,6 +18,23 @@ on:
           - cert-tool
           - passwords-tool
           - all
+      install_mode:
+        description: 'Installation mode (installer tool only)'
+        required: false
+        default: 'aio'
+        type: choice
+        options:
+          - aio
+          - distributed
+          - offline
+      package_type:
+        description: 'Package source'
+        required: false
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
       pr_head_ref:
         description: 'Branch of wazuh installation assistant'
         required: true
@@ -46,10 +63,12 @@ jobs:
   # Job 1: Parse PR info and determine which tool to test
   #
   # Available commands:
-  #   /test-install       — test the installation assistant only
-  #   /test-cert-tool     — test the certificates tool only
-  #   /test-passwords-tool — test the passwords tool only
-  #   /test-assistant     — test all three tools in sequence
+  #   /test-install              — test the installation assistant (AIO)
+  #   /test-install-distributed  — test the installation assistant (Distributed)
+  #   /test-install-offline      — test the installation assistant (Offline)
+  #   /test-cert-tool            — test the certificates tool only
+  #   /test-passwords-tool       — test the passwords tool only
+  #   /test-assistant            — test all three tools in sequence (AIO, cert-tool, passwords-tool)
   # -------------------------------------------------------------------------
   get_pr_info:
     if: |
@@ -68,6 +87,7 @@ jobs:
       pr_head_sha: ${{ steps.pr_data.outputs.pr_head_sha }}
       check_run_id: ${{ steps.create_check.outputs.result }}
       tool_type: ${{ steps.parse_command.outputs.tool_type }}
+      install_mode: ${{ steps.parse_command.outputs.install_mode }}
       check_name: ${{ steps.parse_command.outputs.check_name }}
 
     steps:
@@ -100,17 +120,29 @@ jobs:
         run: |
           COMMENT_BODY="${{ github.event.comment.body }}"
           if echo "$COMMENT_BODY" | grep -q '/test-assistant'; then
-            echo "tool_type=all"                      >> $GITHUB_OUTPUT
-            echo "check_name=Full Integration Check"  >> $GITHUB_OUTPUT
+            echo "tool_type=all"                       >> $GITHUB_OUTPUT
+            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
+            echo "check_name=Full Integration Check"   >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -q '/test-install-distributed'; then
+            echo "tool_type=installer"                 >> $GITHUB_OUTPUT
+            echo "install_mode=distributed"            >> $GITHUB_OUTPUT
+            echo "check_name=Installation Assistant Check (Distributed)" >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -q '/test-install-offline'; then
+            echo "tool_type=installer"                 >> $GITHUB_OUTPUT
+            echo "install_mode=offline"                >> $GITHUB_OUTPUT
+            echo "check_name=Installation Assistant Check (Offline)" >> $GITHUB_OUTPUT
           elif echo "$COMMENT_BODY" | grep -q '/test-install'; then
-            echo "tool_type=installer"                >> $GITHUB_OUTPUT
+            echo "tool_type=installer"                 >> $GITHUB_OUTPUT
+            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
             echo "check_name=Installation Assistant Check" >> $GITHUB_OUTPUT
           elif echo "$COMMENT_BODY" | grep -q '/test-cert-tool'; then
-            echo "tool_type=cert-tool"                >> $GITHUB_OUTPUT
-            echo "check_name=Certificates Tool Check" >> $GITHUB_OUTPUT
+            echo "tool_type=cert-tool"                 >> $GITHUB_OUTPUT
+            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
+            echo "check_name=Certificates Tool Check"  >> $GITHUB_OUTPUT
           elif echo "$COMMENT_BODY" | grep -q '/test-passwords-tool'; then
-            echo "tool_type=passwords-tool"           >> $GITHUB_OUTPUT
-            echo "check_name=Passwords Tool Check"    >> $GITHUB_OUTPUT
+            echo "tool_type=passwords-tool"            >> $GITHUB_OUTPUT
+            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
+            echo "check_name=Passwords Tool Check"     >> $GITHUB_OUTPUT
           fi
 
       - name: Create check run
@@ -150,6 +182,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tool_type: ${{ steps.ctx.outputs.tool_type }}
+      install_mode: ${{ steps.ctx.outputs.install_mode }}
+      package_type: ${{ steps.ctx.outputs.package_type }}
       pr_head_ref: ${{ steps.ctx.outputs.pr_head_ref }}
       wazuh_version: ${{ steps.version.outputs.wazuh_version }}
 
@@ -158,11 +192,15 @@ jobs:
         id: ctx
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tool_type=${{ inputs.tool_type }}"     >> $GITHUB_OUTPUT
-            echo "pr_head_ref=${{ inputs.pr_head_ref }}" >> $GITHUB_OUTPUT
+            echo "tool_type=${{ inputs.tool_type }}"         >> $GITHUB_OUTPUT
+            echo "install_mode=${{ inputs.install_mode }}"   >> $GITHUB_OUTPUT
+            echo "package_type=${{ inputs.package_type }}"   >> $GITHUB_OUTPUT
+            echo "pr_head_ref=${{ inputs.pr_head_ref }}"     >> $GITHUB_OUTPUT
           else
-            echo "tool_type=${{ needs.get_pr_info.outputs.tool_type }}"     >> $GITHUB_OUTPUT
-            echo "pr_head_ref=${{ needs.get_pr_info.outputs.pr_head_ref }}" >> $GITHUB_OUTPUT
+            echo "tool_type=${{ needs.get_pr_info.outputs.tool_type }}"         >> $GITHUB_OUTPUT
+            echo "install_mode=${{ needs.get_pr_info.outputs.install_mode }}"   >> $GITHUB_OUTPUT
+            echo "package_type=staging"                                          >> $GITHUB_OUTPUT
+            echo "pr_head_ref=${{ needs.get_pr_info.outputs.pr_head_ref }}"     >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout PR branch
@@ -204,7 +242,7 @@ jobs:
   # Job 3: For each OS — allocate instance, deploy, run tools, run tests.
   # -------------------------------------------------------------------------
   test_on_system:
-    needs: [get_pr_info, build_tools]
+    needs: [build_tools]
     if: always() && needs.build_tools.result == 'success'
     runs-on: ubuntu-latest
     strategy:
@@ -306,6 +344,7 @@ jobs:
           fi
 
       - name: Generate presigned artifact URLs
+        if: needs.build_tools.outputs.package_type == 'staging'
         run: |
           pip install pyyaml --quiet
           python ${{ env.GENERATE_PRESIGNED_URLS_SCRIPT_PATH }} \
@@ -316,6 +355,7 @@ jobs:
           cat /tmp/artifact_urls.yaml
 
       - name: Copy artifact_urls.yaml to remote instance
+        if: needs.build_tools.outputs.package_type == 'staging'
         run: |
           scp -o StrictHostKeyChecking=no \
               -P "${{ env.SSH_PORT }}" \
@@ -326,16 +366,102 @@ jobs:
       # -----------------------------------------------------------------------
       # Run tools on the remote instance
       # -----------------------------------------------------------------------
+
+      # Helper variables for SSH/SCP reuse
+      - name: Set SSH/SCP helper env vars
+        run: |
+          echo "SSH_OPTS=-o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=20 -p ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}" >> $GITHUB_ENV
+          echo "SCP_OPTS=-o StrictHostKeyChecking=no -P ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}" >> $GITHUB_ENV
+          echo "REMOTE=${{ env.SSH_USER }}@${{ env.SSH_HOST }}" >> $GITHUB_ENV
+          # Determine -d flag: staging uses local artifact URLs, production uses public repos
+          if [ "${{ needs.build_tools.outputs.package_type }}" = "staging" ]; then
+            echo "DEV_FLAG=-d local" >> $GITHUB_ENV
+          else
+            echo "DEV_FLAG=" >> $GITHUB_ENV
+          fi
+
       - name: Run installer (AIO)
+        if: |
+          needs.build_tools.outputs.install_mode == 'aio' ||
+          needs.build_tools.outputs.tool_type != 'installer'
         timeout-minutes: 60
         run: |
-          ssh -o StrictHostKeyChecking=no \
-              -o ServerAliveInterval=60 \
-              -o ServerAliveCountMax=20 \
-              -p "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-              "sudo bash /tmp/wazuh-install.sh -a -d local -id"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo bash /tmp/wazuh-install.sh -a ${{ env.DEV_FLAG }} -id"
+
+      - name: Create config.yml for distributed installation
+        if: needs.build_tools.outputs.install_mode == 'distributed'
+        run: |
+          cat > /tmp/config.yml <<'EOF'
+          nodes:
+            indexer:
+              - name: wazuh-indexer
+                ip: 127.0.0.1
+            manager:
+              - name: wazuh-manager
+                ip: 127.0.0.1
+            dashboard:
+              - name: wazuh-dashboard
+                ip: 127.0.0.1
+          EOF
+          scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
+
+      - name: Run installer (Distributed)
+        if: needs.build_tools.outputs.install_mode == 'distributed'
+        timeout-minutes: 60
+        run: |
+          # Generate install files (certificates + config) from config.yml
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo bash /tmp/wazuh-install.sh -g ${{ env.DEV_FLAG }} -id"
+          # Install indexer
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo bash /tmp/wazuh-install.sh -wi wazuh-indexer ${{ env.DEV_FLAG }} -id"
+          # Initialize indexer cluster security settings
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo bash /tmp/wazuh-install.sh -s"
+          # Install manager
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo bash /tmp/wazuh-install.sh -wm wazuh-manager ${{ env.DEV_FLAG }} -id"
+          # Install dashboard
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo bash /tmp/wazuh-install.sh -wd wazuh-dashboard ${{ env.DEV_FLAG }} -id"
+
+      - name: Detect package type and arch for offline download
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          SYSTEM="${{ matrix.system }}"
+          case "$SYSTEM" in
+            ubuntu-*) PKG_TYPE="deb" ;;
+            *)        PKG_TYPE="rpm" ;;
+          esac
+          case "$SYSTEM" in
+            *-arm64) ARCH="arm64" ;;
+            *)       ARCH="amd64" ;;
+          esac
+          echo "PKG_TYPE=$PKG_TYPE" >> $GITHUB_ENV
+          echo "ARCH=$ARCH"         >> $GITHUB_ENV
+
+      - name: Download offline packages on runner
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          cp /tmp/artifact_urls.yaml /tmp/built-tools/artifact_urls.yaml
+          cd /tmp/built-tools
+          sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
+          tar czf wazuh-offline.tar.gz wazuh-offline/
+
+      - name: Copy offline tarball to remote instance
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          scp ${{ env.SCP_OPTS }} \
+            /tmp/built-tools/wazuh-offline.tar.gz \
+            "${{ env.REMOTE }}:/tmp/wazuh-offline.tar.gz"
+
+      - name: Run installer (Offline)
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        timeout-minutes: 60
+        run: |
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id"
 
       - name: Run cert-tool
         if: |
@@ -448,11 +574,30 @@ jobs:
           WAZUH_CERT_TOOL_OUTPUT_DIR: /tmp/wazuh-certificates
         run: |
           TOOL_TYPE="${{ needs.build_tools.outputs.tool_type }}"
+          INSTALL_MODE="${{ needs.build_tools.outputs.install_mode }}"
           OS="${{ matrix.system }}"
+
+          # Resolve test type from tool type and install mode
+          resolve_test_type() {
+            local tool="$1"
+            local mode="$2"
+            case "$tool" in
+              installer)
+                case "$mode" in
+                  distributed) echo "installer-distributed" ;;
+                  offline)     echo "installer-offline" ;;
+                  *)           echo "installer" ;;
+                esac
+                ;;
+              *) echo "$tool" ;;
+            esac
+          }
+
           if [ "$TOOL_TYPE" = "all" ]; then
             for t in installer cert-tool passwords-tool; do
+              resolved_type=$(resolve_test_type "$t" "$INSTALL_MODE")
               test_runner \
-                --test-type "$t" \
+                --test-type "$resolved_type" \
                 --ssh-host "${{ env.SSH_HOST }}" \
                 --ssh-port "${{ env.SSH_PORT }}" \
                 --ssh-key-path "${{ env.SSH_KEY }}" \
@@ -463,8 +608,9 @@ jobs:
             done
             cat test-results-${OS}-*.github > "test-results-${OS}.github"
           else
+            resolved_type=$(resolve_test_type "$TOOL_TYPE" "$INSTALL_MODE")
             test_runner \
-              --test-type "$TOOL_TYPE" \
+              --test-type "$resolved_type" \
               --ssh-host "${{ env.SSH_HOST }}" \
               --ssh-port "${{ env.SSH_PORT }}" \
               --ssh-key-path "${{ env.SSH_KEY }}" \
@@ -522,7 +668,7 @@ jobs:
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: ${{ needs.get_pr_info.outputs.pr_number }},
+              issue_number: context.issue.number,
             });
 
             const existing = comments.find(c =>
@@ -540,7 +686,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: ${{ needs.get_pr_info.outputs.pr_number }},
+                issue_number: context.issue.number,
                 body: body,
               });
             }
