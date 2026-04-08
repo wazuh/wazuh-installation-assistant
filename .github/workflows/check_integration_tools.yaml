@@ -1,6 +1,6 @@
 run-name: >-
   ${{ github.event_name == 'workflow_dispatch'
-    && format('Test Integration Tools - Manual {0} on {1}', inputs.tool_type, inputs.pr_head_ref)
+    && format('Test Integration Tools - Manual {0} [{1}] on {2}', inputs.tool_type, inputs.install_mode, inputs.pr_head_ref)
     || format('Test Integration Tools - #{0} {1}', github.event.issue.number, github.event.issue.title) }}
 name: PR Check - Test Integration Tools
 
@@ -410,7 +410,7 @@ jobs:
         run: |
           # Generate install files (certificates + config) from config.yml
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-install.sh -g ${{ env.DEV_FLAG }} -id"
+            "sudo bash /tmp/wazuh-install.sh -g -id"
           # Install indexer
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo bash /tmp/wazuh-install.sh -wi wazuh-indexer ${{ env.DEV_FLAG }} -id"
@@ -452,6 +452,7 @@ jobs:
           cp /tmp/artifact_urls.yaml /tmp/built-tools/artifact_urls.yaml
           cd /tmp/built-tools
           sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
+          sudo chmod 644 wazuh-offline.tar.gz
 
       - name: Copy offline tarball to remote instance
         if: needs.build_tools.outputs.install_mode == 'offline'
@@ -628,8 +629,9 @@ jobs:
         if: always()
         run: |
           TOOL="${{ needs.build_tools.outputs.tool_type }}"
+          MODE="${{ needs.build_tools.outputs.install_mode }}"
           OS="${{ matrix.system }}"
-          echo "## 🧪 Integration Test Results — ${TOOL} on ${OS}" >> $GITHUB_STEP_SUMMARY
+          echo "## 🧪 Integration Test Results — ${TOOL} [${MODE}] on ${OS}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -f "test-results-${OS}.github" ]; then
             cat "test-results-${OS}.github" >> $GITHUB_STEP_SUMMARY
@@ -642,6 +644,7 @@ jobs:
         uses: actions/github-script@v8
         env:
           TOOL: ${{ needs.build_tools.outputs.tool_type }}
+          INSTALL_MODE: ${{ needs.build_tools.outputs.install_mode }}
           OS: ${{ matrix.system }}
           RUN_OUTCOME: ${{ steps.run_tests.outcome }}
         with:
@@ -649,11 +652,12 @@ jobs:
           script: |
             const fs = require('fs');
             const tool = process.env.TOOL;
+            const mode = process.env.INSTALL_MODE;
             const os = process.env.OS;
             const outcome = process.env.RUN_OUTCOME;
-            const marker = `<!-- integration-check-${tool}-${os} -->`;
+            const marker = `<!-- integration-check-${tool}-${mode}-${os} -->`;
 
-            let body = `${marker}\n## 🧪 Integration Tests — \`${tool}\` on \`${os}\`\n\n`;
+            let body = `${marker}\n## 🧪 Integration Tests — \`${tool}\` [\`${mode}\`] on \`${os}\`\n\n`;
             body += outcome === 'success'
               ? '✅ **All tests passed!**\n\n'
               : '❌ **Some tests failed**\n\n';
@@ -699,7 +703,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-results-${{ needs.build_tools.outputs.tool_type }}-${{ matrix.system }}
+          name: test-results-${{ needs.build_tools.outputs.tool_type }}-${{ needs.build_tools.outputs.install_mode }}-${{ matrix.system }}
           path: test-results-${{ matrix.system }}.github
           retention-days: 7
 
