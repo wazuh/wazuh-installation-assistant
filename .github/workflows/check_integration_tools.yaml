@@ -353,7 +353,7 @@ jobs:
   # -------------------------------------------------------------------------
   install_and_test:
     needs: [build_tools, provision]
-    if: always() && needs.provision.result == 'success'
+    if: always() && needs.build_tools.result == 'success' && needs.provision.result != 'cancelled'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -411,7 +411,7 @@ jobs:
 
       - name: Restore SSH credentials from allocator state
         run: |
-          chmod 600 ${{ env.ALLOCATOR_PATH }}/*-key-*
+          find ${{ env.ALLOCATOR_PATH }} -name '*-key-*' -exec chmod 600 {} \;
           source ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
           echo "SSH_HOST=$ansible_host"                >> $GITHUB_ENV
           echo "SSH_PORT=$ansible_port"                >> $GITHUB_ENV
