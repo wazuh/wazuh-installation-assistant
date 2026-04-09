@@ -573,7 +573,7 @@ jobs:
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"; sleep 30; done } &
             HB=\$!
-            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-offline.log
+            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} 2>&1 | tee /tmp/install-offline.log
             RESULT=\${PIPESTATUS[0]}
             kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-offline.log; }
