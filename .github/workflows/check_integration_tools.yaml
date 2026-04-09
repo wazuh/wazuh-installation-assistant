@@ -57,6 +57,7 @@ env:
   ALLOCATOR_PATH: /tmp/allocator_instance
   REGION: us-east-1
   GENERATE_PRESIGNED_URLS_SCRIPT_PATH: wazuh-automation/tools/sign_urls/generate_presigned_dev_urls.py
+  SG_NO_INTERNET: ${{ vars.AWS_SG_OFFLINE }}
 
 jobs:
   # -------------------------------------------------------------------------
@@ -277,89 +278,12 @@ jobs:
           retention-days: 1
 
   # -------------------------------------------------------------------------
-  # Job 3: For each OS — allocate EC2 instance and upload state as artifact.
+  # Job 3: For each OS — provision VM, deploy tools, install, test, cleanup.
+  #        Each matrix entry owns its full lifecycle end-to-end.
   # -------------------------------------------------------------------------
-  provision:
+  vm_test:
     needs: [build_tools]
     if: always() && needs.build_tools.result == 'success'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        system:
-          - ubuntu-24-amd64
-          - ubuntu-24-arm64
-          - ubuntu-22-amd64
-          - ubuntu-22-arm64
-          - redhat-9-amd64
-          - redhat-9-arm64
-          - redhat-10-amd64
-          - redhat-10-arm64
-          - amazon-2023-amd64
-          - amazon-2023-arm64
-
-    steps:
-      - name: Checkout wazuh-automation
-        uses: actions/checkout@v6
-        with:
-          repository: wazuh/wazuh-automation
-          ref: ${{ env.AUTOMATION_REFERENCE }}
-          token: ${{ secrets.GH_CLONE_TOKEN }}
-          path: wazuh-automation
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-
-      - name: Install allocator requirements
-        run: pip install -r wazuh-automation/deployability/deps/requirements.txt
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
-          role-session-name: assistant-provision-${{ github.run_id }}
-          aws-region: ${{ env.REGION }}
-
-      - name: Allocate instance
-        id: allocate
-        run: |
-          mkdir -p ${{ env.ALLOCATOR_PATH }}
-          python3 wazuh-automation/deployability/modules/allocation/main.py \
-            --action create \
-            --provider aws \
-            --size large \
-            --composite-name ${{ matrix.system }} \
-            --working-dir ${{ env.ALLOCATOR_PATH }} \
-            --track-output ${{ env.ALLOCATOR_PATH }}/track.yml \
-            --inventory-output ${{ env.ALLOCATOR_PATH }}/inventory.yml \
-            --instance-name gha_${{ github.run_id }}_${{ matrix.system }}_tool_check \
-            --label-team devops \
-            --label-termination-date 1d
-
-          sed -n '/hosts:/,/^[^ ]/p' ${{ env.ALLOCATOR_PATH }}/inventory.yml \
-            | grep "ansible_" \
-            | sed 's/^[ ]*//g' \
-            > ${{ env.ALLOCATOR_PATH }}/inventory_vars_raw.yml
-          sed 's/: */=/g' ${{ env.ALLOCATOR_PATH }}/inventory_vars_raw.yml \
-            > ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
-          sed -i 's/-o StrictHostKeyChecking=no/"-o StrictHostKeyChecking=no"/g' \
-            ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
-
-      - name: Upload allocator state
-        uses: actions/upload-artifact@v7
-        with:
-          name: allocator-state-${{ matrix.system }}
-          path: ${{ env.ALLOCATOR_PATH }}
-          retention-days: 1
-
-  # -------------------------------------------------------------------------
-  # Job 4: For each OS — deploy tools, run installation, run tests, report.
-  # -------------------------------------------------------------------------
-  install_and_test:
-    needs: [build_tools, provision]
-    if: always() && needs.build_tools.result == 'success' && needs.provision.result != 'cancelled'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -403,19 +327,38 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
-          role-session-name: assistant-install-test-${{ github.run_id }}
+          role-session-name: assistant-vm-test-${{ github.run_id }}
           aws-region: ${{ env.REGION }}
 
       # -----------------------------------------------------------------------
-      # Restore instance state from provision job
+      # Provision: allocate EC2 instance and extract SSH credentials
       # -----------------------------------------------------------------------
-      - name: Download allocator state
-        uses: actions/download-artifact@v8
-        with:
-          name: allocator-state-${{ matrix.system }}
-          path: ${{ env.ALLOCATOR_PATH }}
+      - name: Allocate instance
+        id: allocate
+        run: |
+          mkdir -p ${{ env.ALLOCATOR_PATH }}
+          python3 wazuh-automation/deployability/modules/allocation/main.py \
+            --action create \
+            --provider aws \
+            --size large \
+            --composite-name ${{ matrix.system }} \
+            --working-dir ${{ env.ALLOCATOR_PATH }} \
+            --track-output ${{ env.ALLOCATOR_PATH }}/track.yml \
+            --inventory-output ${{ env.ALLOCATOR_PATH }}/inventory.yml \
+            --instance-name gha_${{ github.run_id }}_${{ matrix.system }}_tool_check \
+            --label-team devops \
+            --label-termination-date 1d
 
-      - name: Restore SSH credentials from allocator state
+          sed -n '/hosts:/,/^[^ ]/p' ${{ env.ALLOCATOR_PATH }}/inventory.yml \
+            | grep "ansible_" \
+            | sed 's/^[ ]*//g' \
+            > ${{ env.ALLOCATOR_PATH }}/inventory_vars_raw.yml
+          sed 's/: */=/g' ${{ env.ALLOCATOR_PATH }}/inventory_vars_raw.yml \
+            > ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
+          sed -i 's/-o StrictHostKeyChecking=no/"-o StrictHostKeyChecking=no"/g' \
+            ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
+
+      - name: Set SSH credentials from inventory
         run: |
           find ${{ env.ALLOCATOR_PATH }} -name '*-key-*' -exec chmod 600 {} \;
           source ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
@@ -527,6 +470,37 @@ jobs:
           fi
           echo "PKG_TYPE=$PKG_TYPE" >> $GITHUB_ENV
           echo "ARCH=$ARCH"         >> $GITHUB_ENV
+
+      - name: Install offline prerequisites on remote instance
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          if [ "${{ env.PKG_TYPE }}" = "deb" ]; then
+            ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+              "sudo apt-get install -y debconf adduser procps gnupg apt-transport-https debhelper tar curl libcap2-bin"
+          else
+            SYSTEM="${{ matrix.system }}"
+            case "$SYSTEM" in
+              amazon-*) PKG_MGR="yum" ;;
+              *)        PKG_MGR="dnf" ;;
+            esac
+            ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+              "sudo $PKG_MGR install -y coreutils libcap"
+          fi
+
+      - name: Remove internet access from instance
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters \
+              "Name=tag:Name,Values=gha_${{ github.run_id }}_${{ matrix.system }}_tool_check" \
+              "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text --region ${{ env.REGION }})
+          echo "Switching instance $INSTANCE_ID to no-internet SG (${{ env.SG_NO_INTERNET }})"
+          aws ec2 modify-instance-attribute \
+            --instance-id "$INSTANCE_ID" \
+            --groups "${{ env.SG_NO_INTERNET }}" \
+            --region ${{ env.REGION }}
 
       - name: Download offline packages on runner
         if: needs.build_tools.outputs.install_mode == 'offline'
@@ -644,29 +618,12 @@ jobs:
           WAZUH_CERT_TOOL_OUTPUT_DIR: /tmp/wazuh-certificates
         run: |
           TOOL_TYPE="${{ needs.build_tools.outputs.tool_type }}"
-          INSTALL_MODE="${{ needs.build_tools.outputs.install_mode }}"
           OS="${{ matrix.system }}"
-
-          resolve_test_type() {
-            local tool="$1"
-            local mode="$2"
-            case "$tool" in
-              installer)
-                case "$mode" in
-                  distributed) echo "installer-distributed" ;;
-                  offline)     echo "installer-offline" ;;
-                  *)           echo "installer" ;;
-                esac
-                ;;
-              *) echo "$tool" ;;
-            esac
-          }
 
           if [ "$TOOL_TYPE" = "all" ]; then
             for t in installer cert-tool passwords-tool; do
-              resolved_type=$(resolve_test_type "$t" "$INSTALL_MODE")
               test_runner \
-                --test-type "$resolved_type" \
+                --test-type "$t" \
                 --ssh-host "${{ env.SSH_HOST }}" \
                 --ssh-port "${{ env.SSH_PORT }}" \
                 --ssh-key-path "${{ env.SSH_KEY }}" \
@@ -677,9 +634,8 @@ jobs:
             done
             cat test-results-${OS}-*.github > "test-results-${OS}.github"
           else
-            resolved_type=$(resolve_test_type "$TOOL_TYPE" "$INSTALL_MODE")
             test_runner \
-              --test-type "$resolved_type" \
+              --test-type "$TOOL_TYPE" \
               --ssh-host "${{ env.SSH_HOST }}" \
               --ssh-port "${{ env.SSH_PORT }}" \
               --ssh-key-path "${{ env.SSH_KEY }}" \
@@ -785,7 +741,7 @@ jobs:
   # Job 4: Update the GitHub check run (issue_comment trigger only)
   # -------------------------------------------------------------------------
   update_check_success:
-    needs: [get_pr_info, install_and_test]
+    needs: [get_pr_info, vm_test]
     if: success() && github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     steps:
@@ -808,7 +764,7 @@ jobs:
             });
 
   update_check_failure:
-    needs: [get_pr_info, install_and_test]
+    needs: [get_pr_info, vm_test]
     if: failure() && github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     steps:
