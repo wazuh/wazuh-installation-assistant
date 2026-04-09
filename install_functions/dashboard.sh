@@ -11,7 +11,7 @@ function dashboard_obtainNodeIp() {
     if [ -z "${dashboard_ip}" ]; then
         if [ "${AIO}" ]; then
             dashboard_ip="${dashboard_node_ips[0]}"
-        else 
+        else
             for i in "${!dashboard_node_names[@]}"; do
                 if [[ "${dashboard_node_names[i]}" == "${dashname}" ]]; then
                     dashboard_ip=${dashboard_node_ips[i]};
@@ -46,11 +46,15 @@ function dashboard_configure() {
     if [ -n "${AIO}" ]; then
         wazuh_api_address=${manager_node_ips[0]}
     else
-        for i in "${!manager_node_types[@]}"; do
-            if [[ "${manager_node_types[i]}" == "master" ]]; then
-                wazuh_api_address=${manager_node_ips[i]}
-            fi
-        done
+        if [ -n "${manager_node_types[*]}" ]; then
+            for i in "${!manager_node_types[@]}"; do
+                if [[ "${manager_node_types[i]}" == "master" ]]; then
+                    wazuh_api_address=${manager_node_ips[i]}
+                fi
+            done
+        else
+            wazuh_api_address=${manager_node_ips[0]}
+        fi
     fi
     eval "sed -i 's|url:.*|url: https://${wazuh_api_address}|' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
 
@@ -129,7 +133,7 @@ function dashboard_install() {
         fi
         installCommon_aptInstall "${package_file}"
     fi
-    
+
     common_checkInstalled
     if [  "$install_result" != 0  ] || [ -z "${dashboard_installed}" ]; then
         common_logger -e "Wazuh dashboard installation failed."
