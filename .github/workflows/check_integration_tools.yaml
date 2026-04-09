@@ -496,7 +496,7 @@ jobs:
             exit \$RESULT
           "
 
-      - name: Detect package type and arch for offline download
+      - name: Detect package type and arch for offline download (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           SYSTEM="${{ matrix.system }}"
@@ -518,7 +518,7 @@ jobs:
           echo "PKG_TYPE=$PKG_TYPE" >> $GITHUB_ENV
           echo "ARCH=$ARCH"         >> $GITHUB_ENV
 
-      - name: Install offline prerequisites on remote instance
+      - name: Install offline prerequisites on remote instance (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           if [ "${{ env.PKG_TYPE }}" = "deb" ]; then
@@ -544,14 +544,14 @@ jobs:
             esac
           fi
 
-      - name: Download offline packages on runner
+      - name: Download offline packages on runner (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           cd /tmp/built-tools
           sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
           sudo chmod 644 wazuh-offline.tar.gz
 
-      - name: Generate install files on remote instance
+      - name: Generate install files on remote instance (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
@@ -563,14 +563,14 @@ jobs:
             exit \$RESULT
           "
 
-      - name: Copy offline packages to remote instance
+      - name: Copy offline packages to remote instance (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           scp ${{ env.SCP_OPTS }} \
             /tmp/built-tools/wazuh-offline.tar.gz \
             "${{ env.REMOTE }}:/tmp/wazuh-offline.tar.gz"
 
-      - name: Remove internet access from instance
+      - name: Remove internet access from instance (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           INSTANCE_ID=$(aws ec2 describe-instances \
@@ -585,14 +585,31 @@ jobs:
             --groups "${{ env.SG_NO_INTERNET }}" \
             --region ${{ env.REGION }}
 
-      - name: Run installer (Offline)
+      - name: "[DEBUG] Validate offline files on remote instance"
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            echo '=== /tmp contents ==='
+            ls -lh /tmp/
+            echo ''
+            echo '=== wazuh-install-files.tar contents (if exists) ==='
+            [ -f /tmp/wazuh-install-files.tar ] && tar -tvf /tmp/wazuh-install-files.tar || echo 'NOT FOUND: wazuh-install-files.tar'
+            echo ''
+            echo '=== wazuh-offline.tar.gz first 30 entries (if exists) ==='
+            [ -f /tmp/wazuh-offline.tar.gz ] && tar -tzvf /tmp/wazuh-offline.tar.gz | head -30 || echo 'NOT FOUND: wazuh-offline.tar.gz'
+            echo ''
+            echo '=== config.yml (if exists) ==='
+            [ -f /tmp/config.yml ] && cat /tmp/config.yml || echo 'NOT FOUND: config.yml'
+          "
+
+      - name: Run installer (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         timeout-minutes: 120
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"; sleep 30; done } &
             HB=\$!
-            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-offline.log
+            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} 2>&1 | tee /tmp/install-offline.log
             RESULT=\${PIPESTATUS[0]}
             kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-offline.log; }
