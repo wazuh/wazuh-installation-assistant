@@ -209,12 +209,12 @@ Here is a basic example of how this file should be structured:
 nodes:
   # Wazuh indexer nodes
   indexer:
-    - name: node-1
+    - name: indexer
       ip: "<indexer-node-ip>"
     #  dns: "<indexer-node-dns>"
-    #- name: node-2
+    #- name: indexer-2
     #  dns: "<indexer-node-dns>"
-    #- name: node-3
+    #- name: indexer-3
     #  ip: "<indexer-node-ip>"
     #  dns:
     #    - "<indexer-node-dns>"
@@ -223,14 +223,14 @@ nodes:
   # If there is more than one Wazuh manager
   # node, each one must have a node_type
   manager:
-    - name: wazuh-1
+    - name: manager
       ip: "<wazuh-manager-ip>"
     #  dns: "<wazuh-manager-dns>"
     #  node_type: master
-    #- name: wazuh-2
+    #- name: manager-2
     #  dns: "<wazuh-manager-dns>"
     #  node_type: worker
-    #- name: wazuh-3
+    #- name: manager-3
     #  ip: "<wazuh-manager-ip>"
     #  dns:
     #    - "<wazuh-manager-dns>"

@@ -26,7 +26,7 @@ function indexer_configure() {
         # This variables are used to not overwrite the indexer_node* arrays
         indexer_configuration_ips=("${indexer_node_ips[0]}") # I'll take only the first ip
         indexer_configuration_names=("${indexer_node_names[0]}") # I'll take only the first name
-    else 
+    else
         for i in "${!indexer_node_names[@]}"; do
             if [[ "${indexer_node_names[i]}" == "${indxname}" ]]; then
                 indexer_ip=${indexer_node_ips[i]};
@@ -54,7 +54,7 @@ function indexer_configure() {
         indexer_seed_hosts+="  - \"${ip}\"\n"
     done
     eval "sed -i 's|#discovery.seed_hosts:.*|${indexer_seed_hosts}|' /etc/wazuh-indexer/opensearch.yml ${debug}"
-    
+
     # CN configuration
     eval "sed -i '/.*- \"CN=node-.*/d' /etc/wazuh-indexer/opensearch.yml ${debug}"
     indexer_cn_nodes="plugins.security.nodes_dn:\n"
@@ -159,7 +159,7 @@ function indexer_startCluster() {
     common_logger -d "Starting Wazuh indexer cluster."
 
     eval "wazuh_indexer_ip=( $(cat /etc/wazuh-indexer/opensearch.yml | grep network.host | sed 's/network.host:\s//') )"
-    eval "sudo -u wazuh-indexer JAVA_HOME=/usr/share/wazuh-indexer/jdk/ OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -cd /etc/wazuh-indexer/opensearch-security -icl -p 9200 -nhnv -cacert ${indexer_cert_path}/root-ca.pem -cert ${indexer_cert_path}/admin.pem -key ${indexer_cert_path}/admin-key.pem -h ${wazuh_indexer_ip} ${debug}"
+    eval "JAVA_HOME=/usr/share/wazuh-indexer/jdk/ OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -cd /etc/wazuh-indexer/opensearch-security -icl -p 9200 -nhnv -cacert ${indexer_cert_path}/root-ca.pem -cert ${indexer_cert_path}/admin.pem -key ${indexer_cert_path}/admin-key.pem -h ${wazuh_indexer_ip} ${debug}"
     if [  "${PIPESTATUS[0]}" != 0  ]; then
         common_logger -e "The Wazuh indexer cluster security configuration could not be initialized."
         installCommon_rollBack

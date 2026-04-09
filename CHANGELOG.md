@@ -17,6 +17,12 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Adapted the config.yml component names to match the default certificate names. ([#679](https://github.com/wazuh/wazuh-installation-assistant/pull/679))
+- Updated GitHub actions version for wazuh-installation-assistant main workflows. ([#678](https://github.com/wazuh/wazuh-installation-assistant/pull/678))
+- Change wazuh-manager certs folder ownership to wazuh-manager ([#676](https://github.com/wazuh/wazuh-installation-assistant/pull/676))
+- Updated Wazuh installation assistant to use packages archichecture key names. ([#675](https://github.com/wazuh/wazuh-installation-assistant/pull/675))
+- Updated user ownership for wazuh manager certificates. ([#674](https://github.com/wazuh/wazuh-installation-assistant/pull/674))
+- Removed sudo command from Wazuh installation assistant 5.0.0. ([#667](https://github.com/wazuh/wazuh-installation-assistant/pull/667))
 - Updated installation assistant documentation ([#661](https://github.com/wazuh/wazuh-installation-assistant/pull/661))
 - Updated passwords tool convention naming. ([#658](https://github.com/wazuh/wazuh-installation-assistant/pull/658))
 - Installation assistant update pre release and prod artifact urls file paths bucket and naming. ([#655](https://github.com/wazuh/wazuh-installation-assistant/pull/655))
@@ -52,11 +58,12 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Updated GitHub actions version for wazuh-installation-assistant workflows. ([#677](https://github.com/wazuh/wazuh-installation-assistant/pull/677))
 
 ### Fixed
 
-- None
+- Removed sudo command validation for installation assistant. ([#664](https://github.com/wazuh/wazuh-installation-assistant/pull/664))
+- Fix bumper script early exit ([#648](https://github.com/wazuh/wazuh-installation-assistant/pull/648))
 
 ### Deleted
 

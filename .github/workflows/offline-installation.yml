@@ -55,7 +55,8 @@ env:
   TMP_PATH: "/tmp/test"
   REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
   ALLOCATOR_PATH: "/tmp/allocator_instance"
-  ANSIBLE_CALLBACK: "yaml"
+  ANSIBLE_CALLBACK: "default"
+  ANSIBLE_CALLBACK_RESULT_FORMAT: "yaml"
 
 permissions:
   id-token: write
@@ -74,12 +75,12 @@ jobs:
       run: echo "${{ toJson(inputs) }}"
 
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ env.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
     - name: Checkout wazuh/wazuh-automation repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         repository: wazuh/wazuh-automation
         ref: ${{ env.AUTOMATION_REFERENCE }}
@@ -134,7 +135,7 @@ jobs:
       run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
 
     - name: Set up AWS credentials
-      uses: aws-actions/configure-aws-credentials@v3
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
         aws-region: ${{ env.REGION }}
@@ -160,10 +161,6 @@ jobs:
 
     - name: Install Ansible
       run: pip install ansible-core==2.16
-
-    - name: Configure ansible
-      run: |
-        ansible-galaxy collection install community.general
 
     - name: Execute provision playbook
       run: |

@@ -125,9 +125,9 @@ function installCommon_createCertificates() {
 
         common_logger -d "Configuration file downloaded successfully"
 
-        eval "sed -i 's|- name: node-1|- name: wazuh-indexer|' '${config_file}'" ${debug}
+        eval "sed -i 's|- name: indexer|- name: wazuh-indexer|' '${config_file}'" ${debug}
         eval "sed -i 's|ip: \"<indexer-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
-        eval "sed -i 's|- name: wazuh-1|- name: wazuh-manager|' '${config_file}'" ${debug}
+        eval "sed -i 's|- name: manager|- name: wazuh-manager|' '${config_file}'" ${debug}
         eval "sed -i 's|ip: \"<wazuh-manager-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
         eval "sed -i 's|- name: dashboard|- name: wazuh-dashboard|' '${config_file}'" ${debug}
         eval "sed -i 's|ip: \"<dashboard-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
@@ -255,15 +255,20 @@ function installCommon_downloadComponent() {
     # Determine package type based on system
     if [ "${sys_type}" == "yum" ]; then
         pkg_type="rpm"
+        # Determine architecture suffix for artifact keys
+        if [ "${architecture}" == "x86_64" ]; then
+            arch_suffix="x86_64"
+        elif [ "${architecture}" == "aarch64" ]; then
+            arch_suffix="aarch64"
+        fi
     elif [ "${sys_type}" == "apt-get" ]; then
         pkg_type="deb"
-    fi
-
-    # Determine architecture suffix for artifact keys
-    if [ "${architecture}" == "x86_64" ]; then
-        arch_suffix="amd64"
-    elif [ "${architecture}" == "aarch64" ]; then
-        arch_suffix="arm64"
+        # Determine architecture suffix for artifact keys
+        if [ "${architecture}" == "x86_64" ]; then
+            arch_suffix="amd64"
+        elif [ "${architecture}" == "aarch64" ]; then
+            arch_suffix="arm64"
+        fi
     fi
 
     # Build the artifact key
@@ -453,9 +458,7 @@ function installCommon_removeCentOSrepositories() {
 
 function installCommon_rollBack() {
 
-    if [ -z "${uninstall}" ]; then
-        common_logger "--- Removing existing Wazuh installation ---"
-    fi
+    common_logger "--- Removing existing Wazuh installation ---"
 
     if [[ -n "${wazuh_installed}" && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]];then
         common_logger "Removing Wazuh manager."
