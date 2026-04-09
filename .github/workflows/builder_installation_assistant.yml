@@ -70,7 +70,7 @@ jobs:
       suffix: ${{ steps.set-matrix.outputs.suffix }}
     steps:
       - name: Checkout wazuh-installation-assistant repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.wazuh_installation_assistant_reference }}
 
@@ -104,12 +104,12 @@ jobs:
         run: echo "${{ toJson(inputs) }}"
 
       - name: Checkout wazuh-installation-assistant repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.wazuh_installation_assistant_reference }}
 
       - name: Configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v3
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
           aws-region: us-east-1

@@ -72,7 +72,7 @@ jobs:
 
     steps:
       - name: React to comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.reactions.createForIssueComment({
@@ -115,7 +115,7 @@ jobs:
 
       - name: Create check run
         id: create_check
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           HEAD_SHA: ${{ steps.pr_data.outputs.pr_head_sha }}
           CHECK_NAME: ${{ steps.parse_command.outputs.check_name }}
@@ -166,7 +166,7 @@ jobs:
           fi
 
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ steps.ctx.outputs.pr_head_ref }}
           path: wazuh-installation-assistant
@@ -190,7 +190,7 @@ jobs:
           fi
 
       - name: Upload built tools as artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: built-tools
           path: |
@@ -227,7 +227,7 @@ jobs:
       # Setup: automation repo, Python, AWS credentials, instance name
       # -----------------------------------------------------------------------
       - name: Checkout wazuh-automation
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: wazuh/wazuh-automation
           ref: ${{ env.AUTOMATION_REFERENCE }}
@@ -235,7 +235,7 @@ jobs:
           path: wazuh-automation
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -243,7 +243,7 @@ jobs:
         run: pip install -r wazuh-automation/deployability/deps/requirements.txt
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
           role-session-name: assistant-integration-check-${{ github.run_id }}
@@ -287,7 +287,7 @@ jobs:
       # Deploy: copy artifacts to remote instance
       # -----------------------------------------------------------------------
       - name: Download built tools
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: built-tools
           path: /tmp/built-tools
@@ -489,7 +489,7 @@ jobs:
 
       - name: Post PR comment with results
         if: always() && github.event_name == 'issue_comment'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           TOOL: ${{ needs.build_tools.outputs.tool_type }}
           OS: ${{ matrix.system }}
@@ -547,7 +547,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ needs.build_tools.outputs.tool_type }}-${{ matrix.system }}
           path: test-results-${{ matrix.system }}.github
@@ -572,7 +572,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update check run — success
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.checks.update({
@@ -595,7 +595,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update check run — failure
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.checks.update({
