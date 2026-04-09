@@ -428,6 +428,7 @@ jobs:
       - name: Create config.yml
         if: |
           needs.build_tools.outputs.install_mode == 'distributed' ||
+          needs.build_tools.outputs.install_mode == 'offline' ||
           needs.build_tools.outputs.tool_type == 'cert-tool' ||
           needs.build_tools.outputs.tool_type == 'all'
         run: |
@@ -526,6 +527,12 @@ jobs:
           else
             SYSTEM="${{ matrix.system }}"
             case "$SYSTEM" in
+              amazon-2023-*)
+                # AL2023 does not ship yum-utils; dnf-utils provides the equivalent
+                # and registers as yum-utils in the RPM database for installer checks.
+                ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+                  "sudo dnf install -y coreutils libcap dnf-utils lsof"
+                ;;
               amazon-*)
                 ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
                   "sudo yum install -y coreutils libcap yum-utils lsof"
@@ -536,6 +543,32 @@ jobs:
                 ;;
             esac
           fi
+
+      - name: Download offline packages on runner
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          cd /tmp/built-tools
+          sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
+          sudo chmod 644 wazuh-offline.tar.gz
+
+      - name: Generate install files on remote instance
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Generating install files...\"; sleep 30; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -g -id 2>&1 | tee /tmp/install-g.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; }
+            exit \$RESULT
+          "
+
+      - name: Copy offline packages to remote instance
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          scp ${{ env.SCP_OPTS }} \
+            /tmp/built-tools/wazuh-offline.tar.gz \
+            "${{ env.REMOTE }}:/tmp/wazuh-offline.tar.gz"
 
       - name: Remove internet access from instance
         if: needs.build_tools.outputs.install_mode == 'offline'
@@ -552,20 +585,6 @@ jobs:
             --groups "${{ env.SG_NO_INTERNET }}" \
             --region ${{ env.REGION }}
 
-      - name: Download offline packages on runner
-        if: needs.build_tools.outputs.install_mode == 'offline'
-        run: |
-          cd /tmp/built-tools
-          sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
-          sudo chmod 644 wazuh-offline.tar.gz
-
-      - name: Copy offline tarball to remote instance
-        if: needs.build_tools.outputs.install_mode == 'offline'
-        run: |
-          scp ${{ env.SCP_OPTS }} \
-            /tmp/built-tools/wazuh-offline.tar.gz \
-            "${{ env.REMOTE }}:/tmp/wazuh-offline.tar.gz"
-
       - name: Run installer (Offline)
         if: needs.build_tools.outputs.install_mode == 'offline'
         timeout-minutes: 120
@@ -573,7 +592,7 @@ jobs:
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"; sleep 30; done } &
             HB=\$!
-            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} 2>&1 | tee /tmp/install-offline.log
+            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-offline.log
             RESULT=\${PIPESTATUS[0]}
             kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-offline.log; }
