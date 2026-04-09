@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Adapted the config.yml component names to match the default certificate names. ([#679](https://github.com/wazuh/wazuh-installation-assistant/pull/679))
 - Updated GitHub actions version for wazuh-installation-assistant main workflows. ([#678](https://github.com/wazuh/wazuh-installation-assistant/pull/678))
 - Change wazuh-manager certs folder ownership to wazuh-manager ([#676](https://github.com/wazuh/wazuh-installation-assistant/pull/676))
 - Updated Wazuh installation assistant to use packages archichecture key names. ([#675](https://github.com/wazuh/wazuh-installation-assistant/pull/675))
