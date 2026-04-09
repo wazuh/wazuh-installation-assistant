@@ -63,7 +63,7 @@ env:
   REGION: us-east-1
   GENERATE_PRESIGNED_URLS_SCRIPT_PATH: wazuh-automation/tools/sign_urls/generate_presigned_dev_urls.py
   SG_NO_INTERNET: ${{ vars.AWS_SG_OFFLINE }}
-  ALL_SYSTEMS: '["ubuntu-24-amd64","ubuntu-24-arm64","ubuntu-22-amd64","ubuntu-22-arm64","redhat-9-amd64","redhat-9-arm64","redhat-10-amd64","redhat-10-arm64","amazon-2023-amd64","amazon-2023-arm64"]'
+  ALL_SYSTEMS: '["ubuntu-24-amd64","ubuntu-24-arm64","ubuntu-22-amd64","ubuntu-22-arm64","redhat-9-amd64","redhat-9-arm64","redhat-10-amd64","redhat-10-arm64","alma-9-amd64","alma-9-arm64"]'
 
 jobs:
   # -------------------------------------------------------------------------
@@ -585,26 +585,6 @@ jobs:
             --groups "${{ env.SG_NO_INTERNET }}" \
             --region ${{ env.REGION }}
 
-      - name: "[DEBUG] Validate offline files on remote instance"
-        if: needs.build_tools.outputs.install_mode == 'offline'
-        run: |
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
-            echo '=== /tmp contents ==='
-            ls -lh /tmp/
-            echo ''
-            echo '=== wazuh-install-files.tar contents (if exists) ==='
-            [ -f /tmp/wazuh-install-files.tar ] && sudo tar -tvf /tmp/wazuh-install-files.tar || echo 'NOT FOUND: wazuh-install-files.tar'
-            echo ''
-            echo '=== wazuh-offline.tar.gz first 30 entries (if exists) ==='
-            [ -f /tmp/wazuh-offline.tar.gz ] && sudo tar -tzvf /tmp/wazuh-offline.tar.gz | head -30 || echo 'NOT FOUND: wazuh-offline.tar.gz'
-            echo ''
-            echo '=== config.yml (if exists) ==='
-            [ -f /tmp/config.yml ] && cat /tmp/config.yml || echo 'NOT FOUND: config.yml'
-            echo ''
-            echo '=== artifact_urls.yaml (if exists) ==='
-            [ -f /tmp/artifact_urls.yaml ] && echo 'FOUND: artifact_urls.yaml' || echo 'NOT FOUND: artifact_urls.yaml'
-          "
-
       - name: Run installer (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         timeout-minutes: 120
@@ -612,7 +592,7 @@ jobs:
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"; sleep 30; done } &
             HB=\$!
-            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-offline.log
+            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of -id 2>&1 | tee /tmp/install-offline.log
             RESULT=\${PIPESTATUS[0]}
             kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-offline.log; }
