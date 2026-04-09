@@ -23,24 +23,24 @@ Wazuh uses certificates to establish confidentiality and encrypt communications 
 nodes:
   # Wazuh indexer nodes
   indexer:
-    - name: node-1
+    - name: indexer
       ip: "<indexer-node-ip>"
-    #- name: node-2
+    #- name: indexer-2
     #  ip: "<indexer-node-ip>"
-    #- name: node-3
+    #- name: indexer-3
     #  ip: "<indexer-node-ip>"
 
   # Wazuh manager nodes
   # If there is more than one Wazuh manager
   # node, each one must have a node_type
   manager:
-    - name: wazuh-1
+    - name: manager
       ip: "<wazuh-manager-ip>"
     #  node_type: master
-    #- name: wazuh-2
+    #- name: manager-2
     #  ip: "<wazuh-manager-ip>"
     #  node_type: worker
-    #- name: wazuh-3
+    #- name: manager-3
     #  ip: "<wazuh-manager-ip>"
     #  node_type: worker
 
@@ -121,15 +121,15 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
         Use the same node address set in `config.yml` to create the SSL certificates.
 
-  2. `node.name`: Name of the Wazuh indexer node as defined in the `config.yml` file. For example, `node-1`.
+  2. `node.name`: Name of the Wazuh indexer node as defined in the `config.yml` file. For example, `indexer`.
 
-  3. `cluster.initial_master_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file. Uncomment the `node-2` and `node-3` lines, change the names, or add more lines, according to your `config.yml` definitions.
+  3. `cluster.initial_master_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file. Uncomment the `indexer-2` and `indexer-3` lines, change the names, or add more lines, according to your `config.yml` definitions.
 
   ```
     cluster.initial_master_nodes:
-    - "node-1"
-    - "node-2"
-    - "node-3"
+    - "indexer"
+    - "indexer-2"
+    - "indexer-3"
   ```
 
   3. `discovery.seed_hosts`: List of the addresses of the master-eligible nodes. Each element can be either an IP address or a hostname. For multi-node configurations, uncomment this setting and set the IP addresses of each master-eligible node.
@@ -141,13 +141,13 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
       - "10.0.0.3"
   ```
 
-  4. `plugins.security.nodes_dn`: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for `node-2` and `node-3` and change the common names (CN) and values according to your settings and your `config.yml` definitions.
+  4. `plugins.security.nodes_dn`: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for `indexer-2` and `indexer-3` and change the common names (CN) and values according to your settings and your `config.yml` definitions.
 
   ```
     plugins.security.nodes_dn:
-    - "CN=node-1,OU=Wazuh,O=Wazuh,L=California,C=US"
-    - "CN=node-2,OU=Wazuh,O=Wazuh,L=California,C=US"
-    - "CN=node-3,OU=Wazuh,O=Wazuh,L=California,C=US"
+    - "CN=indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
+    - "CN=indexer-2,OU=Wazuh,O=Wazuh,L=California,C=US"
+    - "CN=indexer-3,OU=Wazuh,O=Wazuh,L=California,C=US"
   ```
 
 > [!NOTE]
@@ -155,7 +155,7 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
 ### Deploying certificates
 
-1. Run the following commands, replacing `<INDEXER_NODE_NAME>` with the name of the Wazuh indexer node you are configuring as defined in `config.yml`. For example, `node-1`. This deploys the SSL certificates to encrypt communications between the Wazuh central components.
+1. Run the following commands, replacing `<INDEXER_NODE_NAME>` with the name of the Wazuh indexer node you are configuring as defined in `config.yml`. For example, `indexer`. This deploys the SSL certificates to encrypt communications between the Wazuh central components.
 
 ```BASH
 NODE_NAME=<INDEXER_NODE_NAME>
@@ -234,7 +234,7 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
 
   ```
   {
-    "name" : "node-1",
+    "name" : "indexer",
     "cluster_name" : "wazuh-cluster",
     "cluster_uuid" : "095jEW-oRJSFKLz5wmo5PA",
     "version" : {
@@ -259,7 +259,7 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
 
   ```
     ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
-    192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               node-1
+    192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
   ```
 
 ## Wazuh manager
