@@ -44,6 +44,11 @@ on:
         required: false
         default: 'main'
         type: string
+      systems:
+        description: 'Systems to test — comma-separated (e.g. ubuntu-24-amd64,redhat-9-arm64) or "all".'
+        required: false
+        default: 'all'
+        type: string
 
 permissions:
   id-token: write
@@ -188,21 +193,31 @@ jobs:
       package_type: ${{ steps.ctx.outputs.package_type }}
       pr_head_ref: ${{ steps.ctx.outputs.pr_head_ref }}
       wazuh_version: ${{ steps.version.outputs.wazuh_version }}
+      matrix: ${{ steps.ctx.outputs.matrix }}
 
     steps:
       - name: Resolve context
         id: ctx
         run: |
+          ALL_SYSTEMS='["ubuntu-24-amd64","ubuntu-24-arm64","ubuntu-22-amd64","ubuntu-22-arm64","redhat-9-amd64","redhat-9-arm64","redhat-10-amd64","redhat-10-arm64","amazon-2023-amd64","amazon-2023-arm64"]'
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "tool_type=${{ inputs.tool_type }}"         >> $GITHUB_OUTPUT
             echo "install_mode=${{ inputs.install_mode }}"   >> $GITHUB_OUTPUT
             echo "package_type=${{ inputs.package_type }}"   >> $GITHUB_OUTPUT
             echo "pr_head_ref=${{ inputs.pr_head_ref }}"     >> $GITHUB_OUTPUT
+            SYSTEMS_INPUT="${{ inputs.systems }}"
+            if [ -z "$SYSTEMS_INPUT" ] || [ "$SYSTEMS_INPUT" = "all" ]; then
+              echo "matrix=${ALL_SYSTEMS}" >> $GITHUB_OUTPUT
+            else
+              MATRIX=$(echo "$SYSTEMS_INPUT" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R . | jq -sc .)
+              echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+            fi
           else
             echo "tool_type=${{ needs.get_pr_info.outputs.tool_type }}"         >> $GITHUB_OUTPUT
             echo "install_mode=${{ needs.get_pr_info.outputs.install_mode }}"   >> $GITHUB_OUTPUT
             echo "package_type=staging"                                          >> $GITHUB_OUTPUT
             echo "pr_head_ref=${{ needs.get_pr_info.outputs.pr_head_ref }}"     >> $GITHUB_OUTPUT
+            echo "matrix=${ALL_SYSTEMS}"                                         >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout PR branch
@@ -288,17 +303,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        system:
-          - ubuntu-24-amd64
-          - ubuntu-24-arm64
-          - ubuntu-22-amd64
-          - ubuntu-22-arm64
-          - redhat-9-amd64
-          - redhat-9-arm64
-          - redhat-10-amd64
-          - redhat-10-arm64
-          - amazon-2023-amd64
-          - amazon-2023-arm64
+        system: ${{ fromJSON(needs.build_tools.outputs.matrix) }}
 
     steps:
       # -----------------------------------------------------------------------
@@ -409,8 +414,19 @@ jobs:
           needs.build_tools.outputs.tool_type != 'installer'
         timeout-minutes: 60
         run: |
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-install.sh -a ${{ env.DEV_FLAG }} -id"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            sudo bash /tmp/wazuh-install.sh -a ${{ env.DEV_FLAG }} -id > /tmp/install-aio.log 2>&1 &
+            INSTALL_PID=\$!
+            while kill -0 \$INSTALL_PID 2>/dev/null; do
+              echo \"\$(date '+%H:%M:%S') [heartbeat] AIO installation in progress...\"
+              tail -1 /tmp/install-aio.log 2>/dev/null || true
+              sleep 30
+            done
+            wait \$INSTALL_PID
+            RESULT=\$?
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-aio.log; }
+            exit \$RESULT
+          "
 
       - name: Create config.yml for distributed installation
         if: needs.build_tools.outputs.install_mode == 'distributed'
@@ -433,20 +449,38 @@ jobs:
         if: needs.build_tools.outputs.install_mode == 'distributed'
         timeout-minutes: 60
         run: |
+          run_with_heartbeat() {
+            local label="$1"
+            local logfile="$2"
+            shift 2
+            ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+              $@ > ${logfile} 2>&1 &
+              INSTALL_PID=\$!
+              while kill -0 \$INSTALL_PID 2>/dev/null; do
+                echo \"\$(date '+%H:%M:%S') [heartbeat] ${label}...\"
+                tail -1 ${logfile} 2>/dev/null || true
+                sleep 30
+              done
+              wait \$INSTALL_PID
+              RESULT=\$?
+              [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of ${label} log ---'; tail -50 ${logfile}; }
+              exit \$RESULT
+            "
+          }
           # Generate install files (certificates + config) from config.yml
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+          run_with_heartbeat "Generating certificates and config" /tmp/install-g.log \
             "sudo bash /tmp/wazuh-install.sh -g -id"
           # Install indexer
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+          run_with_heartbeat "Installing wazuh-indexer" /tmp/install-wi.log \
             "sudo bash /tmp/wazuh-install.sh -wi wazuh-indexer ${{ env.DEV_FLAG }} -id"
           # Initialize indexer cluster security settings
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+          run_with_heartbeat "Initializing indexer security" /tmp/install-s.log \
             "sudo bash /tmp/wazuh-install.sh -s"
           # Install manager
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+          run_with_heartbeat "Installing wazuh-manager" /tmp/install-wm.log \
             "sudo bash /tmp/wazuh-install.sh -wm wazuh-manager ${{ env.DEV_FLAG }} -id"
           # Install dashboard
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+          run_with_heartbeat "Installing wazuh-dashboard" /tmp/install-wd.log \
             "sudo bash /tmp/wazuh-install.sh -wd wazuh-dashboard ${{ env.DEV_FLAG }} -id"
 
       - name: Detect package type and arch for offline download
@@ -476,7 +510,7 @@ jobs:
         run: |
           if [ "${{ env.PKG_TYPE }}" = "deb" ]; then
             ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-              "sudo apt-get install -y debconf adduser procps gnupg apt-transport-https debhelper tar curl libcap2-bin"
+              "sudo apt-get update -q && sudo apt-get install -y debconf adduser procps gnupg apt-transport-https debhelper tar curl libcap2-bin"
           else
             SYSTEM="${{ matrix.system }}"
             case "$SYSTEM" in
@@ -520,8 +554,19 @@ jobs:
         if: needs.build_tools.outputs.install_mode == 'offline'
         timeout-minutes: 60
         run: |
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id > /tmp/install-offline.log 2>&1 &
+            INSTALL_PID=\$!
+            while kill -0 \$INSTALL_PID 2>/dev/null; do
+              echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"
+              tail -1 /tmp/install-offline.log 2>/dev/null || true
+              sleep 30
+            done
+            wait \$INSTALL_PID
+            RESULT=\$?
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-offline.log; }
+            exit \$RESULT
+          "
 
       # -----------------------------------------------------------------------
       # Run additional tools (cert-tool, passwords-tool)
@@ -730,6 +775,14 @@ jobs:
       # -----------------------------------------------------------------------
       # Cleanup: always deallocate the instance
       # -----------------------------------------------------------------------
+      - name: Configure AWS credentials for cleanup
+        if: always()
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          role-session-name: assistant-cleanup-${{ github.run_id }}
+          aws-region: ${{ env.REGION }}
+
       - name: Deallocate instance
         if: always()
         run: |
