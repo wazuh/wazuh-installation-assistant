@@ -258,16 +258,22 @@ jobs:
           echo "Generated presigned URLs:"
           cat /tmp/artifact_urls.yaml
 
+      - name: Stage built tools for artifact upload
+        run: |
+          mkdir -p /tmp/built-tools
+          cp wazuh-installation-assistant/wazuh-install.sh /tmp/built-tools/
+          cp /tmp/artifact_urls.yaml /tmp/built-tools/
+          [ -f wazuh-installation-assistant/wazuh-certs-tool.sh ] && \
+            cp wazuh-installation-assistant/wazuh-certs-tool.sh /tmp/built-tools/ || true
+          [ -f wazuh-installation-assistant/wazuh-passwords-tool.sh ] && \
+            cp wazuh-installation-assistant/wazuh-passwords-tool.sh /tmp/built-tools/ || true
+
       - name: Upload built tools and artifact URLs
         uses: actions/upload-artifact@v7
         with:
           name: built-tools
-          path: |
-            wazuh-installation-assistant/wazuh-install.sh
-            wazuh-installation-assistant/wazuh-certs-tool.sh
-            wazuh-installation-assistant/wazuh-passwords-tool.sh
-            /tmp/artifact_urls.yaml
-          if-no-files-found: ignore
+          path: /tmp/built-tools/
+          if-no-files-found: error
           retention-days: 1
 
   # -------------------------------------------------------------------------
@@ -525,7 +531,6 @@ jobs:
       - name: Download offline packages on runner
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
-          cp /tmp/built-tools/artifact_urls.yaml /tmp/built-tools/artifact_urls.yaml
           cd /tmp/built-tools
           sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
           sudo chmod 644 wazuh-offline.tar.gz
