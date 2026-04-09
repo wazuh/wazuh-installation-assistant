@@ -514,11 +514,15 @@ jobs:
           else
             SYSTEM="${{ matrix.system }}"
             case "$SYSTEM" in
-              amazon-*) PKG_MGR="yum" ;;
-              *)        PKG_MGR="dnf" ;;
+              amazon-*)
+                ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+                  "sudo yum install -y coreutils libcap yum-utils lsof"
+                ;;
+              *)
+                ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+                  "sudo dnf install -y coreutils libcap lsof"
+                ;;
             esac
-            ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-              "sudo $PKG_MGR install -y coreutils libcap"
           fi
 
       - name: Remove internet access from instance
@@ -555,7 +559,7 @@ jobs:
         timeout-minutes: 60
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
-            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id > /tmp/install-offline.log 2>&1 &
+            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of > /tmp/install-offline.log 2>&1 &
             INSTALL_PID=\$!
             while kill -0 \$INSTALL_PID 2>/dev/null; do
               echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"
