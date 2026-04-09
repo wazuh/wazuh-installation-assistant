@@ -63,6 +63,7 @@ env:
   REGION: us-east-1
   GENERATE_PRESIGNED_URLS_SCRIPT_PATH: wazuh-automation/tools/sign_urls/generate_presigned_dev_urls.py
   SG_NO_INTERNET: ${{ vars.AWS_SG_OFFLINE }}
+  ALL_SYSTEMS: '["ubuntu-24-amd64","ubuntu-24-arm64","ubuntu-22-amd64","ubuntu-22-arm64","redhat-9-amd64","redhat-9-arm64","redhat-10-amd64","redhat-10-arm64","amazon-2023-amd64","amazon-2023-arm64"]'
 
 jobs:
   # -------------------------------------------------------------------------
@@ -199,7 +200,7 @@ jobs:
       - name: Resolve context
         id: ctx
         run: |
-          ALL_SYSTEMS='["ubuntu-24-amd64","ubuntu-24-arm64","ubuntu-22-amd64","ubuntu-22-arm64","redhat-9-amd64","redhat-9-arm64","redhat-10-amd64","redhat-10-arm64","amazon-2023-amd64","amazon-2023-arm64"]'
+          ALL_SYSTEMS='${{ env.ALL_SYSTEMS }}'
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "tool_type=${{ inputs.tool_type }}"         >> $GITHUB_OUTPUT
             echo "install_mode=${{ inputs.install_mode }}"   >> $GITHUB_OUTPUT
@@ -412,24 +413,23 @@ jobs:
         if: |
           needs.build_tools.outputs.install_mode == 'aio' ||
           needs.build_tools.outputs.tool_type != 'installer'
-        timeout-minutes: 60
+        timeout-minutes: 90
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
-            sudo bash /tmp/wazuh-install.sh -a ${{ env.DEV_FLAG }} -id > /tmp/install-aio.log 2>&1 &
-            INSTALL_PID=\$!
-            while kill -0 \$INSTALL_PID 2>/dev/null; do
-              echo \"\$(date '+%H:%M:%S') [heartbeat] AIO installation in progress...\"
-              tail -1 /tmp/install-aio.log 2>/dev/null || true
-              sleep 30
-            done
-            wait \$INSTALL_PID
-            RESULT=\$?
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] AIO installation in progress...\"; sleep 30; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -a ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-aio.log
+            RESULT=\${PIPESTATUS[0]}
+            kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-aio.log; }
             exit \$RESULT
           "
 
-      - name: Create config.yml for distributed installation
-        if: needs.build_tools.outputs.install_mode == 'distributed'
+      - name: Create config.yml
+        if: |
+          needs.build_tools.outputs.install_mode == 'distributed' ||
+          needs.build_tools.outputs.tool_type == 'cert-tool' ||
+          needs.build_tools.outputs.tool_type == 'all'
         run: |
           cat > /tmp/config.yml <<'EOF'
           nodes:
@@ -447,41 +447,53 @@ jobs:
 
       - name: Run installer (Distributed)
         if: needs.build_tools.outputs.install_mode == 'distributed'
-        timeout-minutes: 60
+        timeout-minutes: 120
         run: |
-          run_with_heartbeat() {
-            local label="$1"
-            local logfile="$2"
-            shift 2
-            ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
-              $@ > ${logfile} 2>&1 &
-              INSTALL_PID=\$!
-              while kill -0 \$INSTALL_PID 2>/dev/null; do
-                echo \"\$(date '+%H:%M:%S') [heartbeat] ${label}...\"
-                tail -1 ${logfile} 2>/dev/null || true
-                sleep 30
-              done
-              wait \$INSTALL_PID
-              RESULT=\$?
-              [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of ${label} log ---'; tail -50 ${logfile}; }
-              exit \$RESULT
-            "
-          }
           # Generate install files (certificates + config) from config.yml
-          run_with_heartbeat "Generating certificates and config" /tmp/install-g.log \
-            "sudo bash /tmp/wazuh-install.sh -g -id"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Generating certificates and config...\"; sleep 30; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -g -id 2>&1 | tee /tmp/install-g.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; }
+            exit \$RESULT
+          "
           # Install indexer
-          run_with_heartbeat "Installing wazuh-indexer" /tmp/install-wi.log \
-            "sudo bash /tmp/wazuh-install.sh -wi wazuh-indexer ${{ env.DEV_FLAG }} -id"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-indexer...\"; sleep 30; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -wi wazuh-indexer ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wi.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-wi.log; }
+            exit \$RESULT
+          "
           # Initialize indexer cluster security settings
-          run_with_heartbeat "Initializing indexer security" /tmp/install-s.log \
-            "sudo bash /tmp/wazuh-install.sh -s"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Initializing indexer security...\"; sleep 30; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -s 2>&1 | tee /tmp/install-s.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-s.log; }
+            exit \$RESULT
+          "
           # Install manager
-          run_with_heartbeat "Installing wazuh-manager" /tmp/install-wm.log \
-            "sudo bash /tmp/wazuh-install.sh -wm wazuh-manager ${{ env.DEV_FLAG }} -id"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-manager...\"; sleep 30; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -wm wazuh-manager ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wm.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-wm.log; }
+            exit \$RESULT
+          "
           # Install dashboard
-          run_with_heartbeat "Installing wazuh-dashboard" /tmp/install-wd.log \
-            "sudo bash /tmp/wazuh-install.sh -wd wazuh-dashboard ${{ env.DEV_FLAG }} -id"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-dashboard...\"; sleep 30; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -wd wazuh-dashboard ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wd.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-wd.log; }
+            exit \$RESULT
+          "
 
       - name: Detect package type and arch for offline download
         if: needs.build_tools.outputs.install_mode == 'offline'
@@ -556,18 +568,14 @@ jobs:
 
       - name: Run installer (Offline)
         if: needs.build_tools.outputs.install_mode == 'offline'
-        timeout-minutes: 60
+        timeout-minutes: 120
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
-            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of > /tmp/install-offline.log 2>&1 &
-            INSTALL_PID=\$!
-            while kill -0 \$INSTALL_PID 2>/dev/null; do
-              echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"
-              tail -1 /tmp/install-offline.log 2>/dev/null || true
-              sleep 30
-            done
-            wait \$INSTALL_PID
-            RESULT=\$?
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"; sleep 30; done } &
+            HB=\$!
+            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-offline.log
+            RESULT=\${PIPESTATUS[0]}
+            kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-offline.log; }
             exit \$RESULT
           "
@@ -580,19 +588,6 @@ jobs:
           needs.build_tools.outputs.tool_type == 'cert-tool' ||
           needs.build_tools.outputs.tool_type == 'all'
         run: |
-          cat > /tmp/config.yml <<'EOF'
-          nodes:
-            indexer:
-              - name: wazuh-indexer
-                ip: 127.0.0.1
-            manager:
-              - name: wazuh-manager
-                ip: 127.0.0.1
-            dashboard:
-              - name: wazuh-dashboard
-                ip: 127.0.0.1
-          EOF
-          scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo bash /tmp/wazuh-certs-tool.sh -A -cc /tmp/config.yml"
 
@@ -796,49 +791,39 @@ jobs:
 
   # -------------------------------------------------------------------------
   # Job 4: Update the GitHub check run (issue_comment trigger only)
+  # Handles success, failure, and cancelled outcomes in a single job.
   # -------------------------------------------------------------------------
-  update_check_success:
+  update_check:
     needs: [get_pr_info, vm_test]
-    if: success() && github.event_name == 'issue_comment'
+    if: always() && github.event_name == 'issue_comment' && needs.get_pr_info.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Update check run — success
+      - name: Update check run
         uses: actions/github-script@v8
+        env:
+          VM_RESULT: ${{ needs.vm_test.result }}
+          CHECK_NAME: ${{ needs.get_pr_info.outputs.check_name }}
+          CHECK_RUN_ID: ${{ needs.get_pr_info.outputs.check_run_id }}
         with:
           script: |
+            const result = process.env.VM_RESULT;
+            const conclusionMap = {
+              success:   { conclusion: 'success',   icon: '✅', summary: 'All integration tests passed on all matrix OS.' },
+              failure:   { conclusion: 'failure',   icon: '❌', summary: 'One or more integration tests failed.' },
+              cancelled: { conclusion: 'cancelled', icon: '⏹️', summary: 'Workflow was cancelled.' },
+            };
+            const { conclusion, icon, summary } = conclusionMap[result] ?? conclusionMap.failure;
+            const label = conclusion.charAt(0).toUpperCase() + conclusion.slice(1);
             await github.rest.checks.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              check_run_id: ${{ needs.get_pr_info.outputs.check_run_id }},
+              check_run_id: parseInt(process.env.CHECK_RUN_ID),
               status: 'completed',
-              conclusion: 'success',
+              conclusion,
               completed_at: new Date().toISOString(),
               output: {
-                title: '✅ ${{ needs.get_pr_info.outputs.check_name }} — Success',
-                summary: 'All integration tests passed on all matrix OS.',
+                title: `${icon} ${process.env.CHECK_NAME} — ${label}`,
+                summary,
                 text: `[View workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
-              }
-            });
-
-  update_check_failure:
-    needs: [get_pr_info, vm_test]
-    if: failure() && github.event_name == 'issue_comment'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Update check run — failure
-        uses: actions/github-script@v8
-        with:
-          script: |
-            await github.rest.checks.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              check_run_id: ${{ needs.get_pr_info.outputs.check_run_id }},
-              status: 'completed',
-              conclusion: 'failure',
-              completed_at: new Date().toISOString(),
-              output: {
-                title: '❌ ${{ needs.get_pr_info.outputs.check_name }} — Failed',
-                summary: 'One or more integration tests failed.',
-                text: `[View workflow run for details](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
               }
             });
