@@ -63,7 +63,7 @@ env:
   REGION: us-east-1
   GENERATE_PRESIGNED_URLS_SCRIPT_PATH: wazuh-automation/tools/sign_urls/generate_presigned_dev_urls.py
   SG_NO_INTERNET: ${{ vars.AWS_SG_OFFLINE }}
-  ALL_SYSTEMS: '["ubuntu-24-amd64","ubuntu-24-arm64","ubuntu-22-amd64","ubuntu-22-arm64","redhat-9-amd64","redhat-9-arm64","redhat-10-amd64","redhat-10-arm64","alma-9-amd64","alma-9-arm64"]'
+  ALL_SYSTEMS: '["ubuntu-24-amd64","ubuntu-24-arm64","ubuntu-22-amd64","ubuntu-22-arm64","redhat-9-amd64","redhat-9-arm64","redhat-10-amd64","redhat-10-arm64"]'
 
 jobs:
   # -------------------------------------------------------------------------
@@ -444,7 +444,12 @@ jobs:
               - name: wazuh-dashboard
                 ip: 127.0.0.1
           EOF
-          scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
+          # For offline: -g runs on the runner, so config.yml must be alongside wazuh-install.sh
+          if [ "${{ needs.build_tools.outputs.install_mode }}" = "offline" ]; then
+            cp /tmp/config.yml /tmp/built-tools/config.yml
+          else
+            scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
+          fi
 
       - name: Run installer (Distributed)
         if: needs.build_tools.outputs.install_mode == 'distributed'
@@ -551,24 +556,22 @@ jobs:
           sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
           sudo chmod 644 wazuh-offline.tar.gz
 
-      - name: Generate install files on remote instance (Offline installation)
+      - name: Generate install files on runner (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
-            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Generating install files...\"; sleep 30; done } &
-            HB=\$!
-            sudo bash /tmp/wazuh-install.sh -g -id 2>&1 | tee /tmp/install-g.log
-            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
-            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; }
-            exit \$RESULT
-          "
+          cd /tmp/built-tools
+          sudo bash wazuh-install.sh -g 2>&1 | tee /tmp/install-g.log
+          [ ${PIPESTATUS[0]} -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; exit 1; }
+          sudo chmod 644 wazuh-install-files.tar
 
-      - name: Copy offline packages to remote instance (Offline installation)
+      - name: Copy all offline files to remote instance (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           scp ${{ env.SCP_OPTS }} \
             /tmp/built-tools/wazuh-offline.tar.gz \
-            "${{ env.REMOTE }}:/tmp/wazuh-offline.tar.gz"
+            /tmp/built-tools/wazuh-install-files.tar \
+            /tmp/built-tools/artifact_urls.yaml \
+            "${{ env.REMOTE }}:/tmp/"
 
       - name: Remove internet access from instance (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
@@ -592,7 +595,7 @@ jobs:
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"; sleep 30; done } &
             HB=\$!
-            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of -id 2>&1 | tee /tmp/install-offline.log
+            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-offline.log
             RESULT=\${PIPESTATUS[0]}
             kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-offline.log; }
