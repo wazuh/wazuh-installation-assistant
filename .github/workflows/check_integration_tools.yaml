@@ -555,7 +555,7 @@ jobs:
         timeout-minutes: 60
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
-            sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id > /tmp/install-offline.log 2>&1 &
+            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id > /tmp/install-offline.log 2>&1 &
             INSTALL_PID=\$!
             while kill -0 \$INSTALL_PID 2>/dev/null; do
               echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"
