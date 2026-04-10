@@ -689,35 +689,20 @@ jobs:
         continue-on-error: true
         env:
           WAZUH_NEW_PASSWORD: ${{ (needs.build_tools.outputs.tool_type == 'passwords-tool' || needs.build_tools.outputs.tool_type == 'all') && 'T3sting-Password' || '' }}
+          WAZUH_SERVICE_PASSWORD: ${{ (needs.build_tools.outputs.tool_type == 'passwords-tool' || needs.build_tools.outputs.tool_type == 'all') && 'T3sting-Password' || '' }}
           WAZUH_CERT_TOOL_OUTPUT_DIR: /tmp/wazuh-certificates
         run: |
           TOOL_TYPE="${{ needs.build_tools.outputs.tool_type }}"
           OS="${{ matrix.system }}"
-
-          if [ "$TOOL_TYPE" = "all" ]; then
-            for t in installer cert-tool passwords-tool; do
-              test_runner \
-                --test-type "$t" \
-                --ssh-host "${{ env.SSH_HOST }}" \
-                --ssh-port "${{ env.SSH_PORT }}" \
-                --ssh-key-path "${{ env.SSH_KEY }}" \
-                --ssh-username "${{ env.SSH_USER }}" \
-                --log-level INFO \
-                --output github \
-                --output-file "test-results-${OS}-${t}.github"
-            done
-            cat test-results-${OS}-*.github > "test-results-${OS}.github"
-          else
-            test_runner \
-              --test-type "$TOOL_TYPE" \
-              --ssh-host "${{ env.SSH_HOST }}" \
-              --ssh-port "${{ env.SSH_PORT }}" \
-              --ssh-key-path "${{ env.SSH_KEY }}" \
-              --ssh-username "${{ env.SSH_USER }}" \
-              --log-level INFO \
-              --output github \
-              --output-file "test-results-${OS}.github"
-          fi
+          test_runner \
+            --test-type "$TOOL_TYPE" \
+            --ssh-host "${{ env.SSH_HOST }}" \
+            --ssh-port "${{ env.SSH_PORT }}" \
+            --ssh-key-path "${{ env.SSH_KEY }}" \
+            --ssh-username "${{ env.SSH_USER }}" \
+            --log-level INFO \
+            --output github \
+            --output-file "test-results-${OS}.github"
 
       - name: Uninstall Wazuh
         if: |
