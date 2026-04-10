@@ -345,8 +345,8 @@ The following dependencies must be installed on the Wazuh dashboard node:
 
 5. Access the Wazuh web interface.
 
-- URL: `https://<WAZUH_DASHBOARD_IP_ADDRESS>:443`
-- Username: `admin`
-- Password: `admin`
+   - URL: `https://<WAZUH_DASHBOARD_IP_ADDRESS>:443`
+   - Username: `admin`
+   - Password: `admin`
 
 Upon first access, the browser may show a certificate warning. You can add an exception in the browser advanced options, import `root-ca.pem` into the browser certificate manager, or configure a certificate signed by a trusted authority.
