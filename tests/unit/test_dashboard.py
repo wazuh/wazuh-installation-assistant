@@ -147,6 +147,15 @@ class TestDashboardConfigure:
         result = self._run(extra_env={"AIO": "1"})
         assert_success(result)
 
+    def test_success_single_manager_no_node_type(self):
+        """When there is a single manager without node_type, wazuh_api_address should default to manager_node_ips[0]."""
+        result = self._run(
+            extra_env={
+                "manager_node_types": "",
+            }
+        )
+        assert_success(result)
+
     def test_success_multi_indexer_nodes(self):
         result = self._run(
             extra_env={

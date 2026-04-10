@@ -248,7 +248,9 @@ function main() {
     fi
 
     if [ -n "${AIO}" ]; then
-        rm -f "${tar_file}"
+        if [ -z "${offline_install}" ]; then
+            rm -f "${tar_file}"
+        fi
         checks_ports "${wazuh_aio_ports[@]}"
         installCommon_installPrerequisites "AIO"
     fi
@@ -275,9 +277,7 @@ function main() {
     if [ -n "${offline_install}" ]; then
         offline_checkPreinstallation
         offline_extractFiles
-    fi
-
-    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+    elif [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
         check_curlVersion
         if [ -n "${development}" ] && [ "${devrepo}" = "local" ]; then
             checks_localArtifactURLs_exists
@@ -291,7 +291,7 @@ function main() {
 # -------------- Configuration creation case  -----------------------
 
     # Creation certificate case: Only AIO and -g option can create certificates.
-    if [ -n "${configurations}" ] || [ -n "${AIO}" ]; then
+    if [ -z "${offline_install}" ] && { [ -n "${configurations}" ] || [ -n "${AIO}" ]; }; then
         common_logger "--- Configuration files ---"
         installCommon_createInstallFiles
     fi
