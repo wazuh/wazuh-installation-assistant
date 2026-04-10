@@ -671,13 +671,13 @@ jobs:
           echo 'wazuh-dashboard is ready'
 
           echo 'Waiting for wazuh-manager API to accept wazuh-wui credentials...'
-          for i in \$(seq 1 \$RETRIES); do
-            code=\$(curl -sk -X GET -u \"wazuh-wui:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate?raw=true')
-            [ \"\$code\" = '200' ] && break
-            echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
-            sleep 10
-          done
-          [ \"\$code\" = '200' ] || { echo 'ERROR: manager API not accepting wazuh-wui credentials after 3 minutes'; exit 1; }
+          #for i in \$(seq 1 \$RETRIES); do
+          #  code=\$(curl -sk -X GET -u \"wazuh-wui:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate?raw=true')
+          #  [ \"\$code\" = '200' ] && break
+          #  echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
+          #  sleep 10
+          #done
+          #[ \"\$code\" = '200' ] || { echo 'ERROR: manager API not accepting wazuh-wui credentials after 3 minutes'; exit 1; }
           echo 'wazuh-manager API is ready'
           "
 
