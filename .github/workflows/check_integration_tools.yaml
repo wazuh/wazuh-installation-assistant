@@ -648,14 +648,14 @@ jobs:
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
           NEW_PW='${{ env.WAZUH_NEW_PASSWORD }}'
-          RETRIES=36
+          RETRIES=30
 
           echo 'Waiting for wazuh-indexer to accept new admin credentials...'
           for i in \$(seq 1 \$RETRIES); do
             code=\$(curl -sk -u \"admin:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:9200/_cluster/health?pretty')
             [ \"\$code\" = '200' ] && break
-            echo \"  attempt \$i: HTTP \$code, retrying in 5s...\"
-            sleep 5
+            echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
+            sleep 10
           done
           [ \"\$code\" = '200' ] || { echo 'ERROR: indexer not accepting new credentials after 3 minutes'; exit 1; }
           echo 'wazuh-indexer is ready'
@@ -664,18 +664,18 @@ jobs:
           for i in \$(seq 1 \$RETRIES); do
             code=\$(curl -sk -u \"admin:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost/status')
             [ \"\$code\" = '200' ] && break
-            echo \"  attempt \$i: HTTP \$code, retrying in 5s...\"
-            sleep 5
+            echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
+            sleep 10
           done
           [ \"\$code\" = '200' ] || { echo 'ERROR: dashboard not accepting new credentials after 3 minutes'; exit 1; }
           echo 'wazuh-dashboard is ready'
 
           echo 'Waiting for wazuh-manager API to accept wazuh-wui credentials...'
           for i in \$(seq 1 \$RETRIES); do
-            code=\$(curl -sk -u \"wazuh-wui:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate')
+            code=\$(curl -sk -X GET -u \"wazuh-wui:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate?raw=true')
             [ \"\$code\" = '200' ] && break
-            echo \"  attempt \$i: HTTP \$code, retrying in 5s...\"
-            sleep 5
+            echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
+            sleep 10
           done
           [ \"\$code\" = '200' ] || { echo 'ERROR: manager API not accepting wazuh-wui credentials after 3 minutes'; exit 1; }
           echo 'wazuh-manager API is ready'
