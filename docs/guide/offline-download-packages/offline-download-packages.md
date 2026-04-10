@@ -9,6 +9,8 @@ There are some packages that need to be installed in the target system where the
 - `setcap`
 - `gnupg` (for some Debian-based systems)
 
+---
+
 ## Download the packages
 
 ### 1. Download the Wazuh Installation Assistant
@@ -76,9 +78,11 @@ You can use `scp` to complete this task.
 - `wazuh-offline.tar.gz`
 - `wazuh-install-files.tar`
 
-### Next steps
+---
+
+## Next steps
 
 Now, you can continue with the installation of the Wazuh components:
 
-- Installing using the [installation assistant](/docs/guide/offline-installation-assistant-deployments/offline-all-in-one.md).
+- Installing using the [installation assistant](/docs/guide/offline-installation-assistant-deployments/offline-assisted-install.md).
 - Installing [step-by-step](/docs/guide/offline-step-by-step-deployments/offline-step-by-step.md).
