@@ -32,7 +32,7 @@ For the single-node offline installation, you need to have the following files i
 
 ### Installation
 
-To perform the offline installation with the `--offline-installation` flag of Wazuh server on a single-node using the assisted method, run:
+To perform the offline installation with the `--offline-installation` flag of Wazuh manager on a single-node using the assisted method, run:
 
 ```bash
 bash wazuh-install.sh --offline-installation -a
@@ -153,7 +153,7 @@ Run the assisted method with `--offline-installation` to perform an offline inst
 bash wazuh-install.sh --offline-installation --wazuh-manager manager
 ```
 
-Your Wazuh server is now successfully installed. Repeat this step on every Wazuh server node.
+Your Wazuh manager is now successfully installed. Repeat this step on every Wazuh manager node.
 
 ### Installing the Wazuh dashboard
 
