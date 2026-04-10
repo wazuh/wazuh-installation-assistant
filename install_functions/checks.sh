@@ -73,7 +73,7 @@ function checks_arguments() {
     # -------------- Configurations ---------------------------------
 
     if [ -f "${tar_file}" ]; then
-        if [ -n "${AIO}" ]; then
+        if [ -n "${AIO}" ] && [ -z "${offline_install}" ]; then
             rm -f "${tar_file}"
         fi
         if [ -n "${configurations}" ]; then
