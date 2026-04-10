@@ -63,7 +63,7 @@ env:
   REGION: us-east-1
   GENERATE_PRESIGNED_URLS_SCRIPT_PATH: wazuh-automation/tools/sign_urls/generate_presigned_dev_urls.py
   SG_NO_INTERNET: ${{ vars.AWS_SG_OFFLINE }}
-  ALL_SYSTEMS: '["ubuntu-24-amd64","ubuntu-24-arm64","ubuntu-22-amd64","ubuntu-22-arm64","redhat-9-amd64","redhat-9-arm64","redhat-10-amd64","redhat-10-arm64"]'
+  ALL_SYSTEMS: '["ubuntu-24-amd64","ubuntu-24-arm64","ubuntu-22-amd64","ubuntu-22-arm64","redhat-9-amd64","redhat-9-arm64","redhat-10-amd64","redhat-10-arm64"]' # Commented unti fix allocator "amazon-2023-amd64","amazon-2023-arm64"
 
 jobs:
   # -------------------------------------------------------------------------
@@ -544,10 +544,6 @@ jobs:
                 ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
                   "sudo dnf install -y coreutils libcap dnf-utils lsof"
                 ;;
-              amazon-*)
-                ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-                  "sudo yum install -y coreutils libcap yum-utils lsof"
-                ;;
               *)
                 ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
                   "sudo dnf install -y coreutils libcap lsof"
@@ -603,7 +599,7 @@ jobs:
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"; sleep 60; done } &
             HB=\$!
-            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-offline.log
+            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of 2>&1 | tee /tmp/install-offline.log
             RESULT=\${PIPESTATUS[0]}
             kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-offline.log; }
@@ -722,6 +718,44 @@ jobs:
               --output-file "test-results-${OS}.github"
           fi
 
+      - name: Uninstall Wazuh
+        if: |
+          always() && (
+            needs.build_tools.outputs.tool_type == 'installer' ||
+            needs.build_tools.outputs.tool_type == 'all'
+          )
+        timeout-minutes: 30
+        run: |
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Uninstall in progress...\"; sleep 30; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh --uninstall 2>&1 | tee /tmp/install-uninstall.log
+            RESULT=\${PIPESTATUS[0]}
+            kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-uninstall.log; }
+            exit \$RESULT
+          "
+
+      - name: Run tests (uninstall)
+        id: run_tests_uninstall
+        if: |
+          always() && (
+            needs.build_tools.outputs.tool_type == 'installer' ||
+            needs.build_tools.outputs.tool_type == 'all'
+          )
+        continue-on-error: true
+        run: |
+          OS="${{ matrix.system }}"
+          test_runner \
+            --test-type uninstall \
+            --ssh-host "${{ env.SSH_HOST }}" \
+            --ssh-port "${{ env.SSH_PORT }}" \
+            --ssh-key-path "${{ env.SSH_KEY }}" \
+            --ssh-username "${{ env.SSH_USER }}" \
+            --log-level INFO \
+            --output github \
+            --output-file "test-results-${OS}-uninstall.github"
+
       - name: Create step summary
         if: always()
         run: |
@@ -734,6 +768,11 @@ jobs:
             cat "test-results-${OS}.github" >> $GITHUB_STEP_SUMMARY
           else
             echo "No test results file found." >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f "test-results-${OS}-uninstall.github" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Uninstall" >> $GITHUB_STEP_SUMMARY
+            cat "test-results-${OS}-uninstall.github" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Post PR comment with results
@@ -766,6 +805,14 @@ jobs:
               }
             } catch (e) {
               console.log('Could not read results file:', e.message);
+            }
+            const uninstallFile = `test-results-${os}-uninstall.github`;
+            try {
+              if (fs.existsSync(uninstallFile)) {
+                body += '### Uninstall\n\n' + fs.readFileSync(uninstallFile, 'utf8') + '\n\n';
+              }
+            } catch (e) {
+              console.log('Could not read uninstall results file:', e.message);
             }
 
             body += `- **Workflow:** [View Details](${context.payload.repository.html_url}/actions/runs/${context.runId})\n`;
@@ -801,7 +848,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ needs.build_tools.outputs.tool_type }}-${{ needs.build_tools.outputs.install_mode }}-${{ matrix.system }}
-          path: test-results-${{ matrix.system }}.github
+          path: test-results-${{ matrix.system }}*.github
           retention-days: 7
 
       # -----------------------------------------------------------------------
