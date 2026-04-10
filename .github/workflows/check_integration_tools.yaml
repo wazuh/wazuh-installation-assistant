@@ -567,10 +567,14 @@ jobs:
       - name: Copy all offline files to remote instance (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
+          # config.yml must be at /tmp/config.yml (= base_path when running from /tmp)
+          # so the installer skips the S3 download and reads it directly (wazuh-install.sh:3401).
           scp ${{ env.SCP_OPTS }} \
+            /tmp/built-tools/wazuh-install.sh \
             /tmp/built-tools/wazuh-offline.tar.gz \
             /tmp/built-tools/wazuh-install-files.tar \
             /tmp/built-tools/artifact_urls.yaml \
+            /tmp/built-tools/config.yml \
             "${{ env.REMOTE }}:/tmp/"
 
       - name: Remove internet access from instance (Offline installation)
