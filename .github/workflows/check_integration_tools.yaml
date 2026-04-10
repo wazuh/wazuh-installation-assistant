@@ -614,6 +614,7 @@ jobs:
           needs.build_tools.outputs.tool_type == 'cert-tool' ||
           needs.build_tools.outputs.tool_type == 'all'
         run: |
+          scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo bash /tmp/wazuh-certs-tool.sh -A"
 
