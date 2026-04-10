@@ -1,6 +1,8 @@
 # Offline install step by step
 
-1. In the working directory where you placed `wazuh-offline.tar.gz` and `wazuh-install-files.tar`, execute the following command to decompress the installation files:
+## Decompress necessary installation files
+
+In the working directory where you placed `wazuh-offline.tar.gz` and `wazuh-install-files.tar`, execute the following command to decompress the installation files:
 
 ```bash
 tar xf wazuh-offline.tar.gz
@@ -120,7 +122,7 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
 ## Installing the Wazuh manager
 
-On systems with apt as package manager, the following dependencies must be installed on the Wazuh server nodes:
+On systems with apt as package manager, the following dependencies must be installed on the Wazuh manager nodes:
 
 - **gnupg**
 - **apt-transport-https**
@@ -200,9 +202,9 @@ On systems with apt as package manager, the following dependencies must be insta
 
 ### Wazuh cluster configuration for multi-node deployment
 
-After completing the installation of the Wazuh server on every node, configure one server node as master and the rest as workers.
+After completing the installation of the Wazuh manager on every node, configure one manager node as master and the rest as workers.
 
-#### Configuring the Wazuh server master node
+#### Configuring the Wazuh manager master node
 
 1. Edit the following settings in `/var/ossec/etc/ossec.conf`:
 
@@ -255,9 +257,9 @@ After completing the installation of the Wazuh server on every node, configure o
     /var/wazuh-manager/bin/cluster_control -l
     ```
 
-Repeat these configuration steps for every Wazuh server worker node in your cluster.
+Repeat these configuration steps for every Wazuh manager worker node in your cluster.
 
-#### Testing Wazuh server cluster
+#### Testing Wazuh manager cluster
 
 To verify that the Wazuh cluster is enabled and all the nodes are connected, run:
 
