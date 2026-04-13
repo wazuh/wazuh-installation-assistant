@@ -1,4 +1,4 @@
-name: Repository bumper
+name: Repository bumper 5.x
 run-name: Bump ${{ github.ref_name }} (${{ inputs.id }})
 
 on:
