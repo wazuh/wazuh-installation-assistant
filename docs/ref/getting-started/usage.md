@@ -2,14 +2,14 @@
 
 ## Wazuh installation assistant
 
-The Wazuh Installation Assistant is used by running the previously downloaded `wazuh-install-5.0.0-1.sh` script. Depending on the type of installation you want to perform (AIO or a specific component), the steps vary.
+The Wazuh Installation Assistant is used by running the previously downloaded `wazuh-install-5.1.0-1.sh` script. Depending on the type of installation you want to perform (AIO or a specific component), the steps vary.
 
 ### Option list
 
 | Option | Description |
 | -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
-| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0-1.sh. |
+| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.1.0-1.sh. |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
 | `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
@@ -31,9 +31,9 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 To perform an AIO (All In One) installation, simply run the following command:
 
 ```bash
-sudo bash wazuh-install-5.0.0-1.sh --all-in-one
+sudo bash wazuh-install-5.1.0-1.sh --all-in-one
 # or use the short form
-sudo bash wazuh-install-5.0.0-1.sh -a
+sudo bash wazuh-install-5.1.0-1.sh -a
 ```
 
 This command will download, install, and configure all Wazuh components on the same machine automatically without the need to configure anything else.
@@ -51,9 +51,9 @@ The steps to perform the installation are as follows:
 2. Create the necessary files for installation that will be stored in `wazuh-install-files.tar` with the following command:
 
     ```bash
-    sudo bash wazuh-install-5.0.0-1.sh --generate-config-files
+    sudo bash wazuh-install-5.1.0-1.sh --generate-config-files
     # or use the short form
-    sudo bash wazuh-install-5.0.0-1.sh -g
+    sudo bash wazuh-install-5.1.0-1.sh -g
     ```
 
 3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
@@ -62,25 +62,25 @@ The steps to perform the installation are as follows:
     4.1 To install the Wazuh Manager:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0-1.sh --wazuh-server
+    sudo bash wazuh-install-5.1.0-1.sh --wazuh-server
     # or use the short form
-    sudo bash wazuh-install-5.0.0-1.sh -ws
+    sudo bash wazuh-install-5.1.0-1.sh -ws
     ```
 
     4.2 To install the Wazuh Indexer:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0-1.sh --wazuh-indexer
+    sudo bash wazuh-install-5.1.0-1.sh --wazuh-indexer
     # or use the short form
-    sudo bash wazuh-install-5.0.0-1.sh -wi
+    sudo bash wazuh-install-5.1.0-1.sh -wi
     ```
 
     4.3 To install the Wazuh Dashboard:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0-1.sh --wazuh-dashboard
+    sudo bash wazuh-install-5.1.0-1.sh --wazuh-dashboard
     # or use the short form
-    sudo bash wazuh-install-5.0.0-1.sh -wd
+    sudo bash wazuh-install-5.1.0-1.sh -wd
     ```
 
 > **note**: The installation assistant is designed to facilitate the initial installation of Wazuh, so the passwords for each Wazuh internal user are set to default. Therefore, it is highly recommended to change them to more secure ones using this tool. You can see how to use this tool in the [Passwords Tool Usage](../../usage/passwords-tool/passwords-tool-usage.md) section.
@@ -91,15 +91,15 @@ You can install Wazuh even without an Internet connection. Installing the soluti
 
 #### Download packages necessary for offline installation
 
-1. On a system with Internet access, download the packages of the central components you want to install on the offline system. Note that you also need to have the wazuh-install-5.0.0-1.sh on the system with Internet access.
-See the [Installation Assistant Installation](../../installation/installation-assistant/ia-installation.md) section to learn how to download `wazuh-install-5.0.0-1.sh`.
+1. On a system with Internet access, download the packages of the central components you want to install on the offline system. Note that you also need to have the wazuh-install-5.1.0-1.sh on the system with Internet access.
+See the [Installation Assistant Installation](../../installation/installation-assistant/ia-installation.md) section to learn how to download `wazuh-install-5.1.0-1.sh`.
 
     To download the packages necessary for offline installation, run the following command:
 
     ```bash
-    sudo bash wazuh-install-5.0.0-1.sh --download-wazuh <TYPE> --download-arch <ARCH>
+    sudo bash wazuh-install-5.1.0-1.sh --download-wazuh <TYPE> --download-arch <ARCH>
     # or use the short form
-    sudo bash wazuh-install-5.0.0-1.sh -dw <TYPE> -da <ARCH>
+    sudo bash wazuh-install-5.1.0-1.sh -dw <TYPE> -da <ARCH>
     ```
 
     Where `<TYPE>` is the Linux distribution of the offline system (`deb` or `rpm`) and `<ARCH>` is the architecture of the offline system (`x86_64` or `arm64`).
@@ -109,32 +109,32 @@ See the [Installation Assistant Installation](../../installation/installation-as
 2. Next, create the necessary certificates that will be used in the offline installation. To do this, modify the `config.yml` file with the desired configuration for each of the Wazuh components and run the following command:
 
     ```bash
-    sudo bash wazuh-install-5.0.0-1.sh --generate-config-files
+    sudo bash wazuh-install-5.1.0-1.sh --generate-config-files
     # or use the short form
-    sudo bash wazuh-install-5.0.0-1.sh -g
+    sudo bash wazuh-install-5.1.0-1.sh -g
     ```
 
     This command will generate the `wazuh-install-files.tar` file which contains the necessary certificates for offline installation.
 
-3. Transfer all files (`wazuh-offline.tar.gz`, `wazuh-install-files.tar` and `wazuh-install-5.0.0-1.sh`) to the offline system where you want to install Wazuh using your preferred method (USB, SCP, etc).
+3. Transfer all files (`wazuh-offline.tar.gz`, `wazuh-install-files.tar` and `wazuh-install-5.1.0-1.sh`) to the offline system where you want to install Wazuh using your preferred method (USB, SCP, etc).
 
 #### Perform the offline installation
 
-Once you have the `wazuh-offline.tar.gz`, `wazuh-install-files.tar` and `wazuh-install-5.0.0-1.sh` files on the offline system, the installation is done the same way as a normal Wazuh installation (you can see how it's done in the `AIO Installation` and `Specific Component Installation` sections found above in this document), but by specifying the `-of, --offline-installation` option to the installation command.
+Once you have the `wazuh-offline.tar.gz`, `wazuh-install-files.tar` and `wazuh-install-5.1.0-1.sh` files on the offline system, the installation is done the same way as a normal Wazuh installation (you can see how it's done in the `AIO Installation` and `Specific Component Installation` sections found above in this document), but by specifying the `-of, --offline-installation` option to the installation command.
 For example, to perform an offline AIO installation, the command would be:
 
 ```bash
-sudo bash wazuh-install-5.0.0-1.sh --all-in-one --offline-installation
+sudo bash wazuh-install-5.1.0-1.sh --all-in-one --offline-installation
 # or use the short form
-sudo bash wazuh-install-5.0.0-1.sh -a -of
+sudo bash wazuh-install-5.1.0-1.sh -a -of
 ```
 
 If you want to install a specific Wazuh component, the command would be similar to the following (depending on the component you are going to install):
 
 ```bash
-sudo bash wazuh-install-5.0.0-1.sh --wazuh-server --offline-installation
+sudo bash wazuh-install-5.1.0-1.sh --wazuh-server --offline-installation
 # or use the short form
-sudo bash wazuh-install-5.0.0-1.sh -ws -of
+sudo bash wazuh-install-5.1.0-1.sh -ws -of
 ```
 
 ### Use development packages in the installation
@@ -146,14 +146,14 @@ When you use the installation assistant to install Wazuh, the official Wazuh pac
 If you want to use Wazuh `pre-release` packages instead of the official ones, simply add the `-d pre-release, --development pre-release` option to the installation command. For example, to perform an AIO installation using `pre-release` packages, the command would be:
 
 ```bash
-sudo bash wazuh-install-5.0.0-1.sh --all-in-one --development pre-release
+sudo bash wazuh-install-5.1.0-1.sh --all-in-one --development pre-release
 # or use the short form
-sudo bash wazuh-install-5.0.0-1.sh -a -d pre-release
+sudo bash wazuh-install-5.1.0-1.sh -a -d pre-release
 ```
 
 #### Use development packages
 
-To use packages that are in development, it is necessary to have an `artifact_urls.yml` file located in the same path as the `wazuh-install-5.0.0-1.sh` script. This file must contain the URLs of the development packages that will be used in the installation. It must have the following format:
+To use packages that are in development, it is necessary to have an `artifact_urls.yml` file located in the same path as the `wazuh-install-5.1.0-1.sh` script. This file must contain the URLs of the development packages that will be used in the installation. It must have the following format:
 
 ``` yaml
 wazuh_manager_amd64_deb: "http://example.com/wazuh-manager-amd64.deb"
@@ -174,16 +174,16 @@ wazuh_dashboard_arm64_rpm: "http://example.com/wazuh-dashboard-arm.rpm"
 Then, to use these development packages in the installation, simply add the `-d local, --development local` option to the installation command. For example, to perform an AIO installation using development packages, the command would be:
 
 ```bash
-sudo bash wazuh-install-5.0.0-1.sh --all-in-one --development local
+sudo bash wazuh-install-5.1.0-1.sh --all-in-one --development local
 # or use the short form
-sudo bash wazuh-install-5.0.0-1.sh -a -d local
+sudo bash wazuh-install-5.1.0-1.sh -a -d local
 ```
 
-This command will automatically detect the `artifact_urls.yml` file in the same path as the `wazuh-install-5.0.0-1.sh` script and will use the URLs specified in it to download the necessary packages for the installation.
+This command will automatically detect the `artifact_urls.yml` file in the same path as the `wazuh-install-5.1.0-1.sh` script and will use the URLs specified in it to download the necessary packages for the installation.
 
 ## Wazuh certs tool
 
-The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.0.0-1.sh` script along with the `config.yml` configuration file. The certs tool generates the necessary certificates for the nodes specified in the configuration file.
+The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.1.0-1.sh` script along with the `config.yml` configuration file. The certs tool generates the necessary certificates for the nodes specified in the configuration file.
 
 ### Options list
 
@@ -245,7 +245,7 @@ nodes:
 
 Each node must have a unique name and an associated IP address. In the case of Wazuh server nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.
 
-For the certs-tool to detect the file, it must be located in the same path as the `wazuh-certs-tool-5.0.0-1.sh` script.
+For the certs-tool to detect the file, it must be located in the same path as the `wazuh-certs-tool-5.1.0-1.sh` script.
 
 ### Create certificates
 
@@ -254,9 +254,9 @@ For the certs-tool to detect the file, it must be located in the same path as th
 To create all the certificates specified in the `config.yml` file, run the following command:
 
 ```bash
-sudo bash wazuh-certs-tool-5.0.0-1.sh --all
+sudo bash wazuh-certs-tool-5.1.0-1.sh --all
 # or use the short version
-sudo bash wazuh-certs-tool-5.0.0-1.sh -A
+sudo bash wazuh-certs-tool-5.1.0-1.sh -A
 ```
 
 This will generate all the necessary certificates for the nodes defined in the configuration file, as well as the CA.
@@ -264,7 +264,7 @@ This will generate all the necessary certificates for the nodes defined in the c
 If you already had a CA created previously, you can use it to generate the certificates by running the following command:
 
 ```bash
-sudo bash wazuh-certs-tool-5.0.0-1.sh -A </path/to/root-ca.pem> </path/to/root-ca.key>
+sudo bash wazuh-certs-tool-5.1.0-1.sh -A </path/to/root-ca.pem> </path/to/root-ca.key>
 ```
 
 #### Create specific certificates
@@ -274,41 +274,41 @@ You can create only the certificates for a component as well as the CA or admin 
 - Create root CA:
 
     ```bash
-    sudo bash wazuh-certs-tool-5.0.0-1.sh --root-ca-certificates
+    sudo bash wazuh-certs-tool-5.1.0-1.sh --root-ca-certificates
     # or use the short version
-    sudo bash wazuh-certs-tool-5.0.0-1.sh -ca
+    sudo bash wazuh-certs-tool-5.1.0-1.sh -ca
     ```
 
 - Create Wazuh indexer certificates:
 
     ```bash
-    sudo bash wazuh-certs-tool-5.0.0-1.sh --wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
+    sudo bash wazuh-certs-tool-5.1.0-1.sh --wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
-    sudo bash wazuh-certs-tool-5.0.0-1.sh -wi </path/to/root-ca.pem> </path/to/root-ca.key>
+    sudo bash wazuh-certs-tool-5.1.0-1.sh -wi </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
 
 - Create Wazuh server certificates:
 
     ```bash
-    sudo bash wazuh-certs-tool-5.0.0-1.sh --wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
+    sudo bash wazuh-certs-tool-5.1.0-1.sh --wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
-    sudo bash wazuh-certs-tool-5.0.0-1.sh -ws </path/to/root-ca.pem> </path/to/root-ca.key>
+    sudo bash wazuh-certs-tool-5.1.0-1.sh -ws </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
 
 - Create Wazuh dashboard certificates:
 
     ```bash
-    sudo bash wazuh-certs-tool-5.0.0-1.sh --wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
+    sudo bash wazuh-certs-tool-5.1.0-1.sh --wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
-    sudo bash wazuh-certs-tool-5.0.0-1.sh -wd </path/to/root-ca.pem> </path/to/root-ca.key>
+    sudo bash wazuh-certs-tool-5.1.0-1.sh -wd </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
 
 - Create admin certificates:
 
     ```bash
-    sudo bash wazuh-certs-tool-5.0.0-1.sh --admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
+    sudo bash wazuh-certs-tool-5.1.0-1.sh --admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
-    sudo bash wazuh-certs-tool-5.0.0-1.sh -a </path/to/root-ca.pem> </path/to/root-ca.key>
+    sudo bash wazuh-certs-tool-5.1.0-1.sh -a </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
 
 All these certificates will be generated in the `wazuh-certificates` directory within the current directory where the script is executed.
@@ -317,7 +317,7 @@ All these certificates will be generated in the `wazuh-certificates` directory w
 
 ### Options
 
-The `wazuh-passwords-tool-5.0.0-1.sh` script provides the following options for managing Wazuh internal user passwords:
+The `wazuh-passwords-tool-5.1.0-1.sh` script provides the following options for managing Wazuh internal user passwords:
 
 | Options | Purpose |
 | --------- | --------- |
@@ -338,7 +338,7 @@ There are two types of users whose passwords can be changed with this tool: Wazu
 Wazuh Indexer users are defined in `/etc/wazuh-indexer/opensearch-security/internal_users.yml`. To change the password of a Wazuh indexer user, use the following syntax:
 
 ```bash
-sudo ./wazuh-passwords-tool-5.0.0-1.sh -u <USER> [-p <PASSWORD>]
+sudo ./wazuh-passwords-tool-5.1.0-1.sh -u <USER> [-p <PASSWORD>]
 ```
 
 Where `<USER>` is the name of the user whose password you want to change and `<PASSWORD>` is the new password. If `<PASSWORD>` is not specified, the tool will generate a random password.
@@ -346,7 +346,7 @@ Where `<USER>` is the name of the user whose password you want to change and `<P
 For example, to change the password of the `admin` user to `Secr3tP4ssw*rd`, run the following command:
 
 ```bash
-sudo ./wazuh-passwords-tool-5.0.0-1.sh -u admin -p Secr3tP4ssw*rd
+sudo ./wazuh-passwords-tool-5.1.0-1.sh -u admin -p Secr3tP4ssw*rd
 ```
 
 El output del comando será similar al siguiente:
@@ -361,14 +361,14 @@ WARNING: Password changed. Remember to update the password in the Wazuh dashboar
 To change the password of a Wazuh server API user, use the following syntax:
 
 ```bash
-sudo ./wazuh-passwords-tool-5.0.0-1.sh -A -au <ADMIN_USER> -ap <ADMIN_PASSWORD> -u <USER> [-p <PASSWORD>]
+sudo ./wazuh-passwords-tool-5.1.0-1.sh -A -au <ADMIN_USER> -ap <ADMIN_PASSWORD> -u <USER> [-p <PASSWORD>]
 ```
 
 Where `<ADMIN_USER>` is the Wazuh server API administrator user, `<ADMIN_PASSWORD>` is the administrator user's password, `<USER>` is the name of the user whose password you want to change, and `<PASSWORD>` is the new password. If `<PASSWORD>` is not specified, the tool will generate a random password.
 For example, to change the password of the `wazuh` user to `N3wS3cr3tP4ss*`, run the following command:
 
 ```bash
-sudo ./wazuh-passwords-tool-5.0.0-1.sh -A -au wazuh -ap wazuh -u wazuh -p N3wS3cr3tP4ss*
+sudo ./wazuh-passwords-tool-5.1.0-1.sh -A -au wazuh -ap wazuh -u wazuh -p N3wS3cr3tP4ss*
 ```
 
 The command output will be similar to the following:
