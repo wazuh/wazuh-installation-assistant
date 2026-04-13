@@ -20,7 +20,7 @@ function getHelp() {
     echo -e "                Install and configure Wazuh manager, Wazuh indexer, Wazuh dashboard."
     echo -e ""
     echo -e "        -d [pre-release|local],  --development"
-    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0-1.sh."
+    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.1.0-1.sh."
     echo -e ""
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
