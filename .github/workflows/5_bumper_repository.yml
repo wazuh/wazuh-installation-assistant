@@ -93,7 +93,7 @@ jobs:
             script_params="--stage ${stage}"
           fi
 
-          script_params+="--set-as-main ${{ inputs.set_as_main }}"
+          script_params+=" --set-as-main ${{ inputs.set_as_main }}"
 
           issue_number=$(echo "${{ inputs.issue-link }}" | awk -F'/' '{print $NF}')
           BRANCH_NAME="enhancement/wqa${issue_number}-bump-${{ github.ref_name }}"
