@@ -633,7 +633,7 @@ jobs:
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             for i in \$(seq 1 30); do
-              code=\$(curl -sk -o /dev/null -w '%{http_code}' 'https://localhost/status')
+              code=\$(curl -sk -u 'admin:admin' -o /dev/null -w '%{http_code}' 'https://localhost/status')
               [ \"\$code\" = '200' ] && { echo 'wazuh-dashboard is ready'; exit 0; }
               echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
               sleep 10
