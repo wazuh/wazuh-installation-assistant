@@ -1,13 +1,13 @@
 # Certs Tool installation
 
-The Certs Tool can be installed by downloading the `wazuh-certs-tool-5.1.0-1.sh` script from the Wazuh packages repository. You can do this by running the following command:
+The Certs Tool can be installed by downloading the `wazuh-certs-tool-5.2.0-1.sh` script from the Wazuh packages repository. You can do this by running the following command:
 
 ```bash
-curl -sO https://packages.wazuh.com/5.1/wazuh-certs-tool-5.1.0-1.sh
+curl -sO https://packages.wazuh.com/5.2/wazuh-certs-tool-5.2.0-1.sh
 ```
 
 For the certs-tool, the `config.yml` configuration file is also necessary, which can be downloaded with the following command:
 
 ```bash
-curl -s -o config.yml https://packages.wazuh.com/5.1/config-5.1.0-1.yml
+curl -s -o config.yml https://packages.wazuh.com/5.2/config-5.2.0-1.yml
 ```
