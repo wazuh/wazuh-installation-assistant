@@ -86,14 +86,18 @@ jobs:
           version=${{ env.VERSION }}
           stage=${{ env.STAGE }}
 
-          # Both version and stage provided
-          if [[ -n "$version" && -n "$stage" ]]; then
-            script_params="--version ${version} --stage ${stage}"
-          elif [[ -z "$version" && -n "$stage" ]]; then
-            script_params="--stage ${stage}"
+          set_as_main=${{ inputs.set_as_main }}
+
+          if [[ "$set_as_main" == "true" ]]; then
+            script_params="${script_params} --set_as_main"
           fi
 
-          script_params+=" --set-as-main ${{ inputs.set_as_main }}"
+          # Both version and stage provided
+          if [[ -n "$version" && -n "$stage" ]]; then
+            script_params=" --version ${version} --stage ${stage}"
+          elif [[ -z "$version" && -n "$stage" ]]; then
+            script_params=" --stage ${stage}"
+          fi
 
           issue_number=$(echo "${{ inputs.issue-link }}" | awk -F'/' '{print $NF}')
           BRANCH_NAME="enhancement/wqa${issue_number}-bump-${{ github.ref_name }}"
