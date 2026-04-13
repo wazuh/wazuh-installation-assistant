@@ -30,7 +30,7 @@ on:
 
 jobs:
   bump:
-    name: Repository bumper
+    name: Repository bumper 5.x
     runs-on: ubuntu-22.04
     permissions:
       contents: write
