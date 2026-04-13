@@ -623,6 +623,26 @@ jobs:
           esac
 
       # -----------------------------------------------------------------------
+      # Wait for wazuh-dashboard to be ready
+      # -----------------------------------------------------------------------
+      - name: Wait for wazuh-dashboard
+        if: |
+          needs.build_tools.outputs.tool_type == 'installer' ||
+          needs.build_tools.outputs.tool_type == 'all'
+        timeout-minutes: 5
+        run: |
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            for i in \$(seq 1 30); do
+              code=\$(curl -sk -o /dev/null -w '%{http_code}' 'https://localhost/status')
+              [ \"\$code\" = '200' ] && { echo 'wazuh-dashboard is ready'; exit 0; }
+              echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
+              sleep 10
+            done
+            echo 'ERROR: wazuh-dashboard not ready after 5 minutes'
+            exit 1
+          "
+
+      # -----------------------------------------------------------------------
       # Run cert-tool
       # -----------------------------------------------------------------------
       - name: Run cert-tool
