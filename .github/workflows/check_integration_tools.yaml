@@ -607,6 +607,22 @@ jobs:
           "
 
       # -----------------------------------------------------------------------
+      # Disable host firewall (ubuntu-*, redhat-*)
+      # -----------------------------------------------------------------------
+      - name: Disable firewall on remote instance
+        run: |
+          case "${{ matrix.system }}" in
+            ubuntu-*)
+              ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+                "sudo ufw disable || true"
+              ;;
+            redhat-*)
+              ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+                "sudo systemctl stop firewalld || true"
+              ;;
+          esac
+
+      # -----------------------------------------------------------------------
       # Run cert-tool
       # -----------------------------------------------------------------------
       - name: Run cert-tool
