@@ -25,7 +25,7 @@ on:
       automation_reference:
         description: 'Branch of wazuh-automation to use'
         required: false
-        default: 'main'
+        default: '5.1.0'
         type: string
 
 permissions:
