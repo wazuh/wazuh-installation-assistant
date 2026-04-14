@@ -415,13 +415,13 @@ jobs:
           cat > /tmp/config.yml <<'EOF'
           nodes:
             indexer:
-              - name: wazuh-indexer
+              - name: indexer
                 ip: 127.0.0.1
             manager:
-              - name: wazuh-manager
+              - name: manager
                 ip: 127.0.0.1
             dashboard:
-              - name: wazuh-dashboard
+              - name: dashboard
                 ip: 127.0.0.1
           EOF
           if [ "${{ needs.build_tools.outputs.install_mode }}" = "offline" ]; then
