@@ -212,9 +212,7 @@ function main() {
 
     common_checkSystem
 
-    if [ -z "${download}" ]; then
-        check_dist
-    fi
+    check_dist
 
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
         installCommon_scanDependencies

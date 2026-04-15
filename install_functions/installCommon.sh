@@ -848,6 +848,11 @@ function installCommon_aptRemoveWIADependencies(){
 
 function installCommon_removeDownloadPackagesDirectory() {
 
+    if [ -n "${offline_install}" ]; then
+        common_logger -d "Skipping removal of download packages directory in offline installation mode."
+        return 0
+    fi
+
     download_dir="${base_path}/${download_packages_directory}"
     if [ -d "${download_dir}" ]; then
         eval "rm -rf ${download_dir} ${debug}"
