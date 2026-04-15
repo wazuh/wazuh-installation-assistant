@@ -124,7 +124,8 @@ function installCommon_createCertificates() {
         fi
 
         common_logger -d "Configuration file downloaded successfully"
-
+        common_logger "Config file"
+        cat "${config_file}"
     fi
 
     cert_readConfig
