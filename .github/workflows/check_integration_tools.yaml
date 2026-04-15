@@ -25,7 +25,7 @@ on:
       automation_reference:
         description: 'Branch of wazuh-automation to use'
         required: false
-        default: 'v5.0.0-beta1'
+        default: 'main'
         type: string
 
 permissions:
@@ -36,7 +36,7 @@ permissions:
   checks: write
 
 env:
-  AUTOMATION_REFERENCE: ${{ inputs.automation_reference || 'v5.0.0-beta1' }}
+  AUTOMATION_REFERENCE: ${{ inputs.automation_reference || 'main' }}
   ALLOCATOR_PATH: /tmp/allocator_instance
   REGION: us-east-1
   GENERATE_PRESIGNED_URLS_SCRIPT_PATH: wazuh-automation/tools/sign_urls/generate_presigned_dev_urls.py
