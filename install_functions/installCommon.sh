@@ -124,8 +124,10 @@ function installCommon_createCertificates() {
         fi
 
         common_logger -d "Configuration file downloaded successfully"
-        common_logger "Config file"
-        cat "${config_file}"
+
+        eval "sed -i 's|ip: \"<indexer-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
+        eval "sed -i 's|ip: \"<wazuh-manager-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
+        eval "sed -i 's|ip: \"<dashboard-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
     fi
 
     cert_readConfig
