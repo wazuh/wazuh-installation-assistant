@@ -470,7 +470,7 @@ jobs:
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-indexer...\"; sleep 60; done } &
             HB=\$!
-            sudo bash /tmp/wazuh-install.sh -wi wazuh-indexer ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wi.log
+            sudo bash /tmp/wazuh-install.sh -wi indexer ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wi.log
             RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-wi.log; }
             exit \$RESULT
@@ -488,7 +488,7 @@ jobs:
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-manager...\"; sleep 60; done } &
             HB=\$!
-            sudo bash /tmp/wazuh-install.sh -wm wazuh-manager ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wm.log
+            sudo bash /tmp/wazuh-install.sh -wm manager ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wm.log
             RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-wm.log; }
             exit \$RESULT
@@ -497,7 +497,7 @@ jobs:
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-dashboard...\"; sleep 60; done } &
             HB=\$!
-            sudo bash /tmp/wazuh-install.sh -wd wazuh-dashboard ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wd.log
+            sudo bash /tmp/wazuh-install.sh -wd dashboard ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wd.log
             RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-wd.log; }
             exit \$RESULT
