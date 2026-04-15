@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add distributed, AIO and Offline test into the integration test checks ([#684](https://github.com/wazuh/wazuh-installation-assistant/pull/684))
+- Updated bumper script with --set-as-main parameter. ([#686](https://github.com/wazuh/wazuh-installation-assistant/pull/686))
 - Added offline installation documentation ([#683](https://github.com/wazuh/wazuh-installation-assistant/pull/683))
 - Add unit and integration test ([#630](https://github.com/wazuh/wazuh-installation-assistant/pull/630))
 - Add DNS support to the certs-tool ([#634](https://github.com/wazuh/wazuh-installation-assistant/pull/634))
@@ -48,6 +49,7 @@ All notable changes to this project will be documented in this file.
 
 ### Deleted
 
+- Deleted yum-utils and lsof dependencies ([#692](https://github.com/wazuh/wazuh-installation-assistant/pull/692))
 - Remove last_stage and other deprecated variables and functions in the installation Assistant ([#593](https://github.com/wazuh/wazuh-installation-assistant/pull/593))
 - Remove admin key custom paths options from the Password Tool ([#586](https://github.com/wazuh/wazuh-installation-assistant/pull/586))
 - Remove hardcoded config files and use component defaults ([#572](https://github.com/wazuh/wazuh-installation-assistant/pull/572))
