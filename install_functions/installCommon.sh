@@ -125,12 +125,6 @@ function installCommon_createCertificates() {
 
         common_logger -d "Configuration file downloaded successfully"
 
-        eval "sed -i 's|- name: indexer|- name: wazuh-indexer|' '${config_file}'" ${debug}
-        eval "sed -i 's|ip: \"<indexer-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
-        eval "sed -i 's|- name: manager|- name: wazuh-manager|' '${config_file}'" ${debug}
-        eval "sed -i 's|ip: \"<wazuh-manager-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
-        eval "sed -i 's|- name: dashboard|- name: wazuh-dashboard|' '${config_file}'" ${debug}
-        eval "sed -i 's|ip: \"<dashboard-node-ip>\"|ip: \"127.0.0.1\"|' '${config_file}'" ${debug}
     fi
 
     cert_readConfig
