@@ -43,7 +43,7 @@ on:
 
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
-  AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && 'main' || inputs.AUTOMATION_REFERENCE }}
+  AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && 'v5.0.0-beta1' || inputs.AUTOMATION_REFERENCE }}
   VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
   COMPOSITE_NAME: "SUBNAME-amd64"
   SESSION_NAME: "Installation-Assistant-Test"
