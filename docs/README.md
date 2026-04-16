@@ -13,16 +13,16 @@ To work with this documentation, you need **mdBook** installed. For installation
 
 - To build the documentation, run:
 
-```bash
+  ```bash
   ./build.sh
-```
+  ```
 
   The output will be generated in the `book` directory.
 
 - To serve the documentation locally for preview, run:
 
-```bash
+  ```bash
   ./server.sh
-```
+  ```
 
   The documentation will be available at [http://127.0.0.1:3000](http://127.0.0.1:3000).

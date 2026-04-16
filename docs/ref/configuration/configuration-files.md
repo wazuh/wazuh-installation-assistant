@@ -14,38 +14,38 @@ The steps to perform the installation are as follows:
 1. Edit the `config.yml` file with the desired configuration for each of the Wazuh components.
 2. Create the necessary files for installation that will be stored in `wazuh-install-files.tar` with the following command:
 
-```bash
+  ```bash
     sudo bash wazuh-install-5.0.0-1.sh --generate-config-files
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -g
-```
+  ```
 
 3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
 4. Once you have the `wazuh-install-files.tar` file on the machine where you will install the component, you just need to run the installation command for the desired component:
 
     4.1 To install the Wazuh Manager:
 
-```bash
+  ```bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-server
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -ws
-```
+  ```
 
     4.2 To install the Wazuh Indexer:
 
-```bash
+  ```bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-indexer
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -wi
-```
+  ```
 
     4.3 To install the Wazuh Dashboard:
 
-```bash
+  ```bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-dashboard
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -wd
-```
+  ```
 
 > **note**: The installation assistant is designed to facilitate the initial installation of Wazuh, so the passwords for each Wazuh internal user are set to default. Therefore, it is highly recommended to change them to more secure ones using this tool. You can see how to use this tool in the [Passwords Tool Usage](../getting-started/usage.md#wazuh-password-tool) section.
 

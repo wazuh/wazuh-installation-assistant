@@ -83,17 +83,17 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
 1. Run the multi-node assisted method with the `--offline-installation` flag to perform an offline installation. Use the option `--wazuh-indexer` and the node name to install and configure the Wazuh indexer. The node name must be the same one used in `config.yml` for the initial configuration, for example, `indexer`.
 
-```bash
+    ```bash
     bash wazuh-install-5.0.0-1.sh --offline-installation --wazuh-indexer indexer
-```
+    ```
 
     Repeat this step for every Wazuh indexer node in your cluster. Then proceed with initializing your multi-node cluster in the next step.
 
 2. Run the Wazuh assisted installation option `--start-cluster` on any Wazuh indexer node to load the new certificates information and start the cluster.
 
-```bash
+    ```bash
     bash wazuh-install-5.0.0-1.sh --offline-installation --start-cluster
-```
+    ```
 
     > **Note:** You only have to initialize the cluster once. There is no need to run this command on every node.
 
@@ -101,9 +101,9 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
 1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the configured Wazuh indexer IP address:
 
-```bash
+    ```bash
     curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
-```
+    ```
 
     **Output example:**
 
@@ -129,9 +129,9 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
 2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command, then execute it:
 
-```bash
+    ```bash
     curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
-```
+    ```
 
 ### Installing the Wazuh manager
 
@@ -173,9 +173,9 @@ The following dependencies must be installed on the Wazuh dashboard node:
 
 1. Run the assisted method with `--offline-installation` to perform an offline installation. Use the option `--wazuh-dashboard` and the node name to install and configure the Wazuh dashboard. The node name must be the same one used in `config.yml` for the initial configuration, for example, `dashboard`.
 
-```bash
+    ```bash
     bash wazuh-install-5.0.0-1.sh --offline-installation --wazuh-dashboard dashboard
-```
+    ```
 
 The TCP port for the Wazuh web user interface (dashboard) is 443.
 

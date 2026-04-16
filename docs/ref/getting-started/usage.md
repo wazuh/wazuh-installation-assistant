@@ -50,38 +50,38 @@ The steps to perform the installation are as follows:
 1. Edit the `config.yml` file with the desired configuration for each of the Wazuh components.
 2. Create the necessary files for installation that will be stored in `wazuh-install-files.tar` with the following command:
 
-```bash
+    ```bash
     sudo bash wazuh-install-5.0.0-1.sh --generate-config-files
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -g
-```
+    ```
 
 3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
 4. Once you have the `wazuh-install-files.tar` file on the machine where you will install the component, you just need to run the installation command for the desired component:
 
     4.1 To install the Wazuh Manager:
 
-``` bash
+    ``` bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-server
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -ws
-```
+    ```
 
     4.2 To install the Wazuh Indexer:
 
-``` bash
+    ```bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-indexer
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -wi
-```
+    ```
 
     4.3 To install the Wazuh Dashboard:
 
-``` bash
+    ```bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-dashboard
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -wd
-```
+    ```
 
 > **note**: The installation assistant is designed to facilitate the initial installation of Wazuh, so the passwords for each Wazuh internal user are set to default. Therefore, it is highly recommended to change them to more secure ones using this tool. You can see how to use this tool in the [Passwords Tool Usage](../../usage/passwords-tool/passwords-tool-usage.md) section.
 
@@ -96,11 +96,11 @@ See the [Installation Assistant Installation](../../installation/installation-as
 
     To download the packages necessary for offline installation, run the following command:
 
-```bash
+    ```bash
     sudo bash wazuh-install-5.0.0-1.sh --download-wazuh <TYPE> --download-arch <ARCH>
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -dw <TYPE> -da <ARCH>
-```
+    ```
 
     Where `<TYPE>` is the Linux distribution of the offline system (`deb` or `rpm`) and `<ARCH>` is the architecture of the offline system (`x86_64` or `arm64`).
 
@@ -108,11 +108,11 @@ See the [Installation Assistant Installation](../../installation/installation-as
 
 2. Next, create the necessary certificates that will be used in the offline installation. To do this, modify the `config.yml` file with the desired configuration for each of the Wazuh components and run the following command:
 
-```bash
+    ```bash
     sudo bash wazuh-install-5.0.0-1.sh --generate-config-files
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -g
-```
+    ```
 
     This command will generate the `wazuh-install-files.tar` file which contains the necessary certificates for offline installation.
 
@@ -273,43 +273,43 @@ You can create only the certificates for a component as well as the CA or admin 
 
 - Create root CA:
 
-```bash
+    ```bash
     sudo bash wazuh-certs-tool-5.0.0-1.sh --root-ca-certificates
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0-1.sh -ca
-```
+    ```
 
 - Create Wazuh indexer certificates:
 
-```bash
+    ```bash
     sudo bash wazuh-certs-tool-5.0.0-1.sh --wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0-1.sh -wi </path/to/root-ca.pem> </path/to/root-ca.key>
-```
+    ```
 
 - Create Wazuh server certificates:
 
-```bash
+    ```bash
     sudo bash wazuh-certs-tool-5.0.0-1.sh --wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0-1.sh -ws </path/to/root-ca.pem> </path/to/root-ca.key>
-```
+    ```
 
 - Create Wazuh dashboard certificates:
 
-```bash
+    ```bash
     sudo bash wazuh-certs-tool-5.0.0-1.sh --wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0-1.sh -wd </path/to/root-ca.pem> </path/to/root-ca.key>
-```
+    ```
 
 - Create admin certificates:
 
-```bash
+    ```bash
     sudo bash wazuh-certs-tool-5.0.0-1.sh --admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0-1.sh -a </path/to/root-ca.pem> </path/to/root-ca.key>
-```
+    ```
 
 All these certificates will be generated in the `wazuh-certificates` directory within the current directory where the script is executed.
 
