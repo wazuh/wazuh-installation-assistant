@@ -82,7 +82,7 @@ function checks_arguments() {
         fi
     fi
 
-    if [[ -n "${configurations}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${start_indexer_cluster}" || -n "${uninstall}" ) ]]; then
+    if [[ -n "${configurations}" && (-n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${start_indexer_cluster}" || -n "${uninstall}") ]]; then
         common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -wm|--wazuh-manager."
         exit 1
     fi
@@ -130,11 +130,11 @@ function checks_arguments() {
             installCommon_rollBack
         fi
 
-        if  [ -z "${overwrite}" ] && { [ -n "${wazuh_installed}" ] || [ -n "${wazuh_remaining_files}" ]; }; then
+        if [ -z "${overwrite}" ] && { [ -n "${wazuh_installed}" ] || [ -n "${wazuh_remaining_files}" ]; }; then
             common_logger -e "Wazuh manager already installed."
             installedComponent=1
         fi
-        if [ -z "${overwrite}" ] && { [ -n "${indexer_installed}" ] || [ -n "${indexer_remaining_files}" ]; };then
+        if [ -z "${overwrite}" ] && { [ -n "${indexer_installed}" ] || [ -n "${indexer_remaining_files}" ]; }; then
             common_logger -e "Wazuh indexer already installed."
             installedComponent=1
         fi
@@ -191,7 +191,7 @@ function checks_arguments() {
 
     # -------------- Cluster start ----------------------------------
 
-    if [[ -n "${start_indexer_cluster}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${configurations}" || -n "${uninstall}") ]]; then
+    if [[ -n "${start_indexer_cluster}" && (-n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${configurations}" || -n "${uninstall}") ]]; then
         common_logger -e "The argument -s|--start-cluster can't be used with -a|--all-in-one, -g|--generate-config-files,-o|--overwrite , -u|--uninstall, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -wm|--wazuh-manager."
         exit 1
     fi
@@ -220,8 +220,9 @@ function check_curlVersion() {
 function check_dist() {
     common_logger -d "Checking system distribution."
     dist_detect
-    if  [ "${DIST_NAME}" != "centos" ] && [ "${DIST_NAME}" != "rhel" ] &&
-        [ "${DIST_NAME}" != "amzn" ]   && [ "${DIST_NAME}" != "ubuntu" ] && [ "${DIST_NAME}" != "rocky" ]; then
+    if [ "${DIST_NAME}" != "centos" ] && [ "${DIST_NAME}" != "rhel" ] &&
+        [ "${DIST_NAME}" != "amzn" ] && [ "${DIST_NAME}" != "ubuntu" ] && [ "${DIST_NAME}" != "rocky" ] &&
+        [ "${DIST_NAME}" != "opensuse-leap" ] && [ "${DIST_NAME}" != "sles" ]; then
         notsupported=1
     fi
     if [ "${DIST_NAME}" == "centos" ] && { [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ]; }; then
@@ -232,7 +233,7 @@ function check_dist() {
     fi
 
     if [ "${DIST_NAME}" == "amzn" ]; then
-        if  [ "${DIST_VER}" != "2" ] &&
+        if [ "${DIST_VER}" != "2" ] &&
             [ "${DIST_VER}" != "2023" ] &&
             [ "${DIST_VER}" != "2018.03" ]; then
             notsupported=1
@@ -243,7 +244,7 @@ function check_dist() {
     fi
 
     if [ "${DIST_NAME}" == "ubuntu" ]; then
-        if  [ "${DIST_VER}" == "16" ] || [ "${DIST_VER}" == "18" ] ||
+        if [ "${DIST_VER}" == "16" ] || [ "${DIST_VER}" == "18" ] ||
             [ "${DIST_VER}" == "20" ] || [ "${DIST_VER}" == "22" ] ||
             [ "${DIST_VER}" == "24" ]; then
             if [ "${DIST_SUBVER}" != "04" ]; then
@@ -261,7 +262,7 @@ function check_dist() {
     fi
 
     if [ -n "${notsupported}" ]; then
-        common_logger "The recommended systems are: Red Hat Enterprise Linux 7, 8, 9; CentOS 7, 8; Amazon Linux 2; Amazon Linux 2023; Ubuntu 16.04, 18.04, 20.04, 22.04; Rocky Linux 9.4."
+        common_logger "The recommended systems are: Red Hat Enterprise Linux 7, 8, 9; CentOS 7, 8; Amazon Linux 2; Amazon Linux 2023; Ubuntu 16.04, 18.04, 20.04, 22.04; Rocky Linux 9.4; openSUSE Leap; SLES."
         common_logger -w "The current system does not match with the list of recommended systems. The installation may not work properly."
     fi
     common_logger -d "Detected distribution name: ${DIST_NAME}"
@@ -356,7 +357,7 @@ function checks_previousCertificate() {
     fi
 
     if [ -n "${indxname}" ]; then
-        if ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${indxname}".pem  || ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${indxname}"-key.pem; then
+        if ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${indxname}".pem || ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${indxname}"-key.pem; then
             common_logger -e "There is no certificate for the indexer node ${indxname} in ${tar_file}."
             exit 1
         fi
@@ -381,13 +382,13 @@ function checks_previousCertificate() {
 function checks_specialDepsAL2023() {
 
     # Change curl for curl-minimal
-    wia_yum_dependencies=( "${wia_yum_dependencies[@]/curl/curl-minimal}" )
-    assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/curl/curl-minimal}" )
+    wia_yum_dependencies=("${wia_yum_dependencies[@]/curl/curl-minimal}")
+    assistant_yum_dependencies=("${assistant_yum_dependencies[@]/curl/curl-minimal}")
 
     # In containers, coreutils is replaced for coreutils-single
     if [ -f "/.dockerenv" ]; then
-        wia_yum_dependencies=( "${wia_yum_dependencies[@]/coreutils/coreutils-single}" )
-        assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/coreutils/coreutils-single}" )
+        wia_yum_dependencies=("${wia_yum_dependencies[@]/coreutils/coreutils-single}")
+        assistant_yum_dependencies=("${assistant_yum_dependencies[@]/coreutils/coreutils-single}")
     fi
 }
 
@@ -406,7 +407,7 @@ function checks_ports() {
 
     checks_firewall "${ports[@]}"
 
-    if command -v lsof > /dev/null; then
+    if command -v lsof >/dev/null; then
         port_command="lsof -sTCP:LISTEN  -i:"
     else
         common_logger -w "Cannot find lsof. Port checking will be skipped."
@@ -414,7 +415,7 @@ function checks_ports() {
     fi
 
     for i in "${!ports[@]}"; do
-        if eval "${port_command}""${ports[i]}" > /dev/null; then
+        if eval "${port_command}""${ports[i]}" >/dev/null; then
             used_port=1
             common_logger -e "Port ${ports[i]} is being used by another process. Please, check it before installing Wazuh."
         fi
@@ -463,7 +464,7 @@ function checks_ArtifactURLs_format() {
             common_logger -e "All values in ${artifact_urls_file_name} must be valid URLs starting with http:// or https://"
             exit 1
         fi
-    done < "$artifact_file"
+    done <"$artifact_file"
 }
 
 function checks_ArtifactURLs_component_present() {
@@ -513,13 +514,12 @@ function checks_ArtifactURLs_component_present() {
     fi
 }
 
-function checks_firewall(){
+function checks_firewall() {
     ports_list=("$@")
     f_ports=""
     f_message="The system has firewall enabled. Please ensure that traffic is allowed on "
     firewalld_installed=0
     ufw_installed=0
-
 
     # Record of the ports that must be exposed according to the installation
     if [ -n "${AIO}" ]; then

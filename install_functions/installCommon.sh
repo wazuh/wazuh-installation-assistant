@@ -62,7 +62,7 @@ function installCommon_aptInstall() {
 
 }
 
-function installCommon_aptInstallList(){
+function installCommon_aptInstallList() {
 
     dependencies=("$@")
     not_installed=()
@@ -156,7 +156,7 @@ function installCommon_createCertificates() {
 
 function installCommon_createClusterKey() {
 
-    openssl rand -hex 16 >> "/tmp/wazuh-install-files/clusterkey"
+    openssl rand -hex 16 >>"/tmp/wazuh-install-files/clusterkey"
 
 }
 
@@ -180,7 +180,7 @@ function installCommon_createInstallFiles() {
         eval "chown root:root /tmp/wazuh-install-files/* ${debug}"
         eval "tar -zcf '${tar_file}' -C '/tmp/' wazuh-install-files/ ${debug}"
         eval "rm -rf '/tmp/wazuh-install-files' ${debug}"
-	    eval "rm -rf ${config_file} ${debug}"
+        eval "rm -rf ${config_file} ${debug}"
         common_logger "Created ${tar_file_name}. It contains the Wazuh cluster key and the certificates necessary for installation."
     else
         common_logger -e "Unable to create /tmp/wazuh-install-files"
@@ -193,13 +193,13 @@ function installCommon_determinePorts {
     used_ports=()
 
     if [ -n "${AIO}" ]; then
-        used_ports+=( "${wazuh_aio_ports[@]}" )
+        used_ports+=("${wazuh_aio_ports[@]}")
     elif [ -n "${wazuh}" ]; then
-        used_ports+=( "${wazuh_manager_ports[@]}" )
+        used_ports+=("${wazuh_manager_ports[@]}")
     elif [ -n "${indexer}" ]; then
-        used_ports+=( "${wazuh_indexer_ports[@]}" )
+        used_ports+=("${wazuh_indexer_ports[@]}")
     elif [ -n "${dashboard}" ]; then
-        used_ports+=( "${wazuh_dashboard_port[@]}" )
+        used_ports+=("${wazuh_dashboard_port[@]}")
     fi
 }
 
@@ -253,7 +253,7 @@ function installCommon_downloadComponent() {
     fi
 
     # Determine package type based on system
-    if [ "${sys_type}" == "yum" ]; then
+    if [ "${sys_type}" == "yum" ] || [ "${sys_type}" == "zypper" ]; then
         pkg_type="rpm"
         # Determine architecture suffix for artifact keys
         if [ "${architecture}" == "x86_64" ]; then
@@ -331,7 +331,7 @@ function installCommon_getConfig() {
         installCommon_rollBack
         exit 1
     fi
-    eval "echo \"\${${config_name}}\"" > "${2}"
+    eval "echo \"\${${config_name}}\"" >"${2}"
 }
 
 function installCommon_installCheckDependencies() {
@@ -346,7 +346,7 @@ function installCommon_installCheckDependencies() {
     fi
 }
 
-function installCommon_installList(){
+function installCommon_installList() {
 
     dependencies=("$@")
     if [ "${#dependencies[@]}" -gt 0 ]; then
@@ -360,6 +360,8 @@ function installCommon_installList(){
             common_logger "Installing $dep."
             if [ "${sys_type}" = "apt-get" ]; then
                 installCommon_aptInstall "${dep}"
+            elif [ "${sys_type}" = "zypper" ]; then
+                installCommon_zypperInstall "${dep}"
             else
                 installCommon_yumInstall "${dep}"
             fi
@@ -403,6 +405,32 @@ function installCommon_installPrerequisites() {
                 installCommon_yumInstallList "${dashboard_yum_dependencies[@]}"
             else
                 offline_checkPrerequisites "${dashboard_yum_dependencies[@]}"
+            fi
+        fi
+    elif [ "${sys_type}" == "zypper" ]; then
+        if [ "${1}" == "AIO" ]; then
+            deps=($(echo "${indexer_zypper_dependencies[@]}" "${dashboard_zypper_dependencies[@]}" | tr ' ' '\n' | sort -u))
+            if [ -z "${offline_install}" ]; then
+                common_logger -d "${message}"
+                installCommon_zypperInstallList "${deps[@]}"
+            else
+                offline_checkPrerequisites "${deps[@]}"
+            fi
+        fi
+        if [ "${1}" == "indexer" ]; then
+            if [ -z "${offline_install}" ]; then
+                common_logger -d "${message}"
+                installCommon_zypperInstallList "${indexer_zypper_dependencies[@]}"
+            else
+                offline_checkPrerequisites "${indexer_zypper_dependencies[@]}"
+            fi
+        fi
+        if [ "${1}" == "dashboard" ]; then
+            if [ -z "${offline_install}" ]; then
+                common_logger -d "${message}"
+                installCommon_zypperInstallList "${dashboard_zypper_dependencies[@]}"
+            else
+                offline_checkPrerequisites "${dashboard_zypper_dependencies[@]}"
             fi
         fi
     elif [ "${sys_type}" == "apt-get" ]; then
@@ -460,12 +488,18 @@ function installCommon_rollBack() {
 
     common_logger "--- Removing existing Wazuh installation ---"
 
-    if [[ -n "${wazuh_installed}" && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]];then
+    if [[ -n "${wazuh_installed}" && (-n "${wazuh}" || -n "${AIO}" || -n "${uninstall}") ]]; then
         common_logger "Removing Wazuh manager."
         if [ "${sys_type}" == "yum" ]; then
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-manager -y ${debug}"
+                eval "rpm -q wazuh-manager --quiet && wazuh_failed_uninstall=1"
+            fi
+        elif [ "${sys_type}" == "zypper" ]; then
+            common_checkZypperLock
+            if [ "${attempt}" -ne "${max_attempts}" ]; then
+                eval "zypper remove -y wazuh-manager ${debug}"
                 eval "rpm -q wazuh-manager --quiet && wazuh_failed_uninstall=1"
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
@@ -482,16 +516,22 @@ function installCommon_rollBack() {
 
     fi
 
-    if [[ ( -n "${wazuh_remaining_files}"  || -n "${wazuh_installed}" ) && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
+    if [[ (-n "${wazuh_remaining_files}" || -n "${wazuh_installed}") && (-n "${wazuh}" || -n "${AIO}" || -n "${uninstall}") ]]; then
         eval "rm -rf /var/wazuh-manager/ ${debug}"
     fi
 
-    if [[ -n "${indexer_installed}" && ( -n "${indexer}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
+    if [[ -n "${indexer_installed}" && (-n "${indexer}" || -n "${AIO}" || -n "${uninstall}") ]]; then
         common_logger "Removing Wazuh indexer."
         if [ "${sys_type}" == "yum" ]; then
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-indexer -y ${debug}"
+                eval "rpm -q wazuh-indexer --quiet && indexer_failed_uninstall=1"
+            fi
+        elif [ "${sys_type}" == "zypper" ]; then
+            common_checkZypperLock
+            if [ "${attempt}" -ne "${max_attempts}" ]; then
+                eval "zypper remove -y wazuh-indexer ${debug}"
                 eval "rpm -q wazuh-indexer --quiet && indexer_failed_uninstall=1"
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
@@ -507,18 +547,24 @@ function installCommon_rollBack() {
         fi
     fi
 
-    if [[ ( -n "${indexer_remaining_files}" || -n "${indexer_installed}" ) && ( -n "${indexer}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
+    if [[ (-n "${indexer_remaining_files}" || -n "${indexer_installed}") && (-n "${indexer}" || -n "${AIO}" || -n "${uninstall}") ]]; then
         eval "rm -rf /var/lib/wazuh-indexer/ ${debug}"
         eval "rm -rf /usr/share/wazuh-indexer/ ${debug}"
         eval "rm -rf /etc/wazuh-indexer/ ${debug}"
     fi
 
-    if [[ -n "${dashboard_installed}" && ( -n "${dashboard}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
+    if [[ -n "${dashboard_installed}" && (-n "${dashboard}" || -n "${AIO}" || -n "${uninstall}") ]]; then
         common_logger "Removing Wazuh dashboard."
         if [ "${sys_type}" == "yum" ]; then
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-dashboard -y ${debug}"
+                eval "rpm -q wazuh-dashboard --quiet && dashboard_failed_uninstall=1"
+            fi
+        elif [ "${sys_type}" == "zypper" ]; then
+            common_checkZypperLock
+            if [ "${attempt}" -ne "${max_attempts}" ]; then
+                eval "zypper remove -y wazuh-dashboard ${debug}"
                 eval "rpm -q wazuh-dashboard --quiet && dashboard_failed_uninstall=1"
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
@@ -534,22 +580,22 @@ function installCommon_rollBack() {
         fi
     fi
 
-    if [[ ( -n "${dashboard_remaining_files}" || -n "${dashboard_installed}" ) && ( -n "${dashboard}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
+    if [[ (-n "${dashboard_remaining_files}" || -n "${dashboard_installed}") && (-n "${dashboard}" || -n "${AIO}" || -n "${uninstall}") ]]; then
         eval "rm -rf /var/lib/wazuh-dashboard/ ${debug}"
         eval "rm -rf /usr/share/wazuh-dashboard/ ${debug}"
         eval "rm -rf /etc/wazuh-dashboard/ ${debug}"
         eval "rm -rf /run/wazuh-dashboard/ ${debug}"
     fi
 
-    elements_to_remove=(    "/var/log/wazuh-indexer/"
-                            "/etc/systemd/system/opensearch.service.wants/"
-                            "/securityadmin_demo.sh"
-                            "/etc/systemd/system/multi-user.target.wants/wazuh-manager.service"
-                            "/etc/systemd/system/multi-user.target.wants/opensearch.service"
-                            "/etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service"
-                            "/etc/systemd/system/wazuh-dashboard.service"
-                            "/lib/firewalld/services/dashboard.xml"
-                            "/lib/firewalld/services/opensearch.xml" )
+    elements_to_remove=("/var/log/wazuh-indexer/"
+        "/etc/systemd/system/opensearch.service.wants/"
+        "/securityadmin_demo.sh"
+        "/etc/systemd/system/multi-user.target.wants/wazuh-manager.service"
+        "/etc/systemd/system/multi-user.target.wants/opensearch.service"
+        "/etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service"
+        "/etc/systemd/system/wazuh-dashboard.service"
+        "/lib/firewalld/services/dashboard.xml"
+        "/lib/firewalld/services/opensearch.xml")
 
     eval "rm -rf ${elements_to_remove[*]} ${debug}"
 
@@ -567,58 +613,68 @@ function installCommon_rollBack() {
 
 }
 
-
 function installCommon_scanDependencies() {
 
     wazuh_deps=()
     if [ -n "${AIO}" ]; then
         if [ "${sys_type}" == "yum" ]; then
-            wazuh_deps+=( "${indexer_yum_dependencies[@]}" "${wazuh_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" )
+            wazuh_deps+=("${indexer_yum_dependencies[@]}" "${wazuh_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}")
+        elif [ "${sys_type}" == "zypper" ]; then
+            wazuh_deps+=("${indexer_zypper_dependencies[@]}" "${wazuh_zypper_dependencies[@]}" "${dashboard_zypper_dependencies[@]}")
         else
-            wazuh_deps+=( "${indexer_apt_dependencies[@]}" "${wazuh_apt_dependencies[@]}" "${dashboard_apt_dependencies[@]}" )
+            wazuh_deps+=("${indexer_apt_dependencies[@]}" "${wazuh_apt_dependencies[@]}" "${dashboard_apt_dependencies[@]}")
         fi
     elif [ -n "${indexer}" ]; then
         if [ "${sys_type}" == "yum" ]; then
-            wazuh_deps+=( "${indexer_yum_dependencies[@]}" )
+            wazuh_deps+=("${indexer_yum_dependencies[@]}")
+        elif [ "${sys_type}" == "zypper" ]; then
+            wazuh_deps+=("${indexer_zypper_dependencies[@]}")
         else
-            wazuh_deps+=( "${indexer_apt_dependencies[@]}" )
+            wazuh_deps+=("${indexer_apt_dependencies[@]}")
         fi
     elif [ -n "${wazuh}" ]; then
         if [ "${sys_type}" == "yum" ]; then
-            wazuh_deps+=( "${wazuh_yum_dependencies[@]}" )
+            wazuh_deps+=("${wazuh_yum_dependencies[@]}")
+        elif [ "${sys_type}" == "zypper" ]; then
+            wazuh_deps+=("${wazuh_zypper_dependencies[@]}")
         else
-            wazuh_deps+=( "${wazuh_apt_dependencies[@]}" )
+            wazuh_deps+=("${wazuh_apt_dependencies[@]}")
         fi
     elif [ -n "${dashboard}" ]; then
         if [ "${sys_type}" == "yum" ]; then
-            wazuh_deps+=( "${dashboard_yum_dependencies[@]}" )
+            wazuh_deps+=("${dashboard_yum_dependencies[@]}")
+        elif [ "${sys_type}" == "zypper" ]; then
+            wazuh_deps+=("${dashboard_zypper_dependencies[@]}")
         else
-            wazuh_deps+=( "${dashboard_apt_dependencies[@]}" )
+            wazuh_deps+=("${dashboard_apt_dependencies[@]}")
         fi
     fi
 
-    all_deps=( "${wazuh_deps[@]}" )
+    all_deps=("${wazuh_deps[@]}")
     if [ "${sys_type}" == "apt-get" ]; then
-        assistant_deps+=( "${assistant_apt_dependencies[@]}" )
+        assistant_deps+=("${assistant_apt_dependencies[@]}")
         command='! apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/'
+    elif [ "${sys_type}" == "zypper" ]; then
+        assistant_deps+=("${assistant_zypper_dependencies[@]}")
+        command='! rpm -q ${dep} --quiet'
     else
-        assistant_deps+=( "${assistant_yum_dependencies[@]}" )
+        assistant_deps+=("${assistant_yum_dependencies[@]}")
         command='! rpm -q ${dep} --quiet'
     fi
 
     # Remove openssl dependency if not necessary
     if [ -z "${configurations}" ] && [ -z "${AIO}" ]; then
-        assistant_deps=( "${assistant_deps[@]/openssl}" )
+        assistant_deps=("${assistant_deps[@]/openssl/}")
     fi
 
     # Remove lsof dependency if not necessary
     if [ -z "${AIO}" ] && [ -z "${wazuh}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ]; then
-        assistant_deps=( "${assistant_deps[@]/lsof}" )
+        assistant_deps=("${assistant_deps[@]/lsof/}")
     fi
 
     # Delete duplicates and sort
-    all_deps+=( "${assistant_deps[@]}" )
-    all_deps=( $(echo "${all_deps[@]}" | tr ' ' '\n' | sort -u) )
+    all_deps+=("${assistant_deps[@]}")
+    all_deps=($(echo "${all_deps[@]}" | tr ' ' '\n' | sort -u))
     deps_to_install=()
 
     # Get not installed dependencies of Assistant and Wazuh
@@ -664,7 +720,7 @@ function installCommon_startService() {
         eval "systemctl daemon-reload ${debug}"
         eval "systemctl enable ${1}.service ${debug}"
         eval "systemctl start ${1}.service ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        if [ "${PIPESTATUS[0]}" != 0 ]; then
             common_logger -e "${1} could not be started."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -678,7 +734,7 @@ function installCommon_startService() {
         eval "chkconfig ${1} on ${debug}"
         eval "service ${1} start ${debug}"
         eval "/etc/init.d/${1} start ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        if [ "${PIPESTATUS[0]}" != 0 ]; then
             common_logger -e "${1} could not be started."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -688,9 +744,9 @@ function installCommon_startService() {
         else
             common_logger "${1} service started."
         fi
-    elif [ -x "/etc/rc.d/init.d/${1}" ] ; then
+    elif [ -x "/etc/rc.d/init.d/${1}" ]; then
         eval "/etc/rc.d/init.d/${1} start ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        if [ "${PIPESTATUS[0]}" != 0 ]; then
             common_logger -e "${1} could not be started."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -718,7 +774,7 @@ function installCommon_restartService() {
 
     if [[ -d /run/systemd/system ]]; then
         eval "systemctl restart ${1}.service ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        if [ "${PIPESTATUS[0]}" != 0 ]; then
             common_logger -e "${1} could not be restarted."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -732,7 +788,7 @@ function installCommon_restartService() {
         eval "chkconfig ${1} on ${debug}"
         eval "service ${1} restart ${debug}"
         eval "/etc/init.d/${1} restart ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        if [ "${PIPESTATUS[0]}" != 0 ]; then
             common_logger -e "${1} could not be restarted."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -742,9 +798,9 @@ function installCommon_restartService() {
         else
             common_logger "${1} service restarted."
         fi
-    elif [ -x "/etc/rc.d/init.d/${1}" ] ; then
+    elif [ -x "/etc/rc.d/init.d/${1}" ]; then
         eval "/etc/rc.d/init.d/${1} restart ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        if [ "${PIPESTATUS[0]}" != 0 ]; then
             common_logger -e "${1} could not be restarted."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -761,12 +817,45 @@ function installCommon_restartService() {
 
 }
 
-function installCommon_yumInstallList(){
+function installCommon_zypperInstallList() {
 
     dependencies=("$@")
     not_installed=()
     for dep in "${dependencies[@]}"; do
-        if ! rpm -q "${dep}" --quiet;then
+        if ! rpm -q "${dep}" --quiet; then
+            not_installed+=("${dep}")
+            for wia_dep in "${wia_zypper_dependencies[@]}"; do
+                if [ "${wia_dep}" == "${dep}" ]; then
+                    wia_dependencies_installed+=("${dep}")
+                fi
+            done
+        fi
+    done
+
+    if [ "${#not_installed[@]}" -gt 0 ]; then
+        common_logger "--- Dependencies ---"
+        for dep in "${not_installed[@]}"; do
+            common_logger "Installing $dep."
+            installCommon_zypperInstall "${dep}"
+            zypper_code="${PIPESTATUS[0]}"
+
+            eval "echo \${zypper_output} ${debug}"
+            if [ "${zypper_code}" != 0 ]; then
+                common_logger -e "Cannot install dependency: ${dep}."
+                installCommon_rollBack
+                exit 1
+            fi
+        done
+    fi
+
+}
+
+function installCommon_yumInstallList() {
+
+    dependencies=("$@")
+    not_installed=()
+    for dep in "${dependencies[@]}"; do
+        if ! rpm -q "${dep}" --quiet; then
             not_installed+=("${dep}")
             for wia_dep in "${wia_yum_dependencies[@]}"; do
                 if [ "${wia_dep}" == "${dep}" ]; then
@@ -784,7 +873,7 @@ function installCommon_yumInstallList(){
             yum_code="${PIPESTATUS[0]}"
 
             eval "echo \${yum_output} ${debug}"
-            if [  "${yum_code}" != 0  ]; then
+            if [ "${yum_code}" != 0 ]; then
                 common_logger -e "Cannot install dependency: ${dep}."
                 installCommon_rollBack
                 exit 1
@@ -798,13 +887,36 @@ function installCommon_removeWIADependencies() {
 
     if [ "${sys_type}" == "yum" ]; then
         installCommon_yumRemoveWIADependencies
+    elif [ "${sys_type}" == "zypper" ]; then
+        installCommon_zypperRemoveWIADependencies
     elif [ "${sys_type}" == "apt-get" ]; then
         installCommon_aptRemoveWIADependencies
     fi
 
 }
 
-function installCommon_yumRemoveWIADependencies(){
+function installCommon_zypperRemoveWIADependencies() {
+
+    if [ "${#wia_dependencies_installed[@]}" -gt 0 ]; then
+        common_logger "--- Dependencies ---"
+        for dep in "${wia_dependencies_installed[@]}"; do
+            if [ "${dep}" != "systemd" ]; then
+                common_logger "Removing $dep."
+                zypper_output=$(zypper remove -y ${dep} 2>&1)
+                zypper_code="${PIPESTATUS[0]}"
+
+                eval "echo \${zypper_output} ${debug}"
+                if [ "${zypper_code}" != 0 ]; then
+                    common_logger -e "Cannot remove dependency: ${dep}."
+                    exit 1
+                fi
+            fi
+        done
+    fi
+
+}
+
+function installCommon_yumRemoveWIADependencies() {
 
     if [ "${#wia_dependencies_installed[@]}" -gt 0 ]; then
         common_logger "--- Dependencies ---"
@@ -815,7 +927,7 @@ function installCommon_yumRemoveWIADependencies(){
                 yum_code="${PIPESTATUS[0]}"
 
                 eval "echo \${yum_output} ${debug}"
-                if [  "${yum_code}" != 0  ]; then
+                if [ "${yum_code}" != 0 ]; then
                     common_logger -e "Cannot remove dependency: ${dep}."
                     exit 1
                 fi
@@ -825,7 +937,7 @@ function installCommon_yumRemoveWIADependencies(){
 
 }
 
-function installCommon_aptRemoveWIADependencies(){
+function installCommon_aptRemoveWIADependencies() {
 
     if [ "${#wia_dependencies_installed[@]}" -gt 0 ]; then
         common_logger "--- Dependencies ----"
@@ -836,7 +948,7 @@ function installCommon_aptRemoveWIADependencies(){
                 apt_code="${PIPESTATUS[0]}"
 
                 eval "echo \${apt_output} ${debug}"
-                if [  "${apt_code}" != 0  ]; then
+                if [ "${apt_code}" != 0 ]; then
                     common_logger -e "Cannot remove dependency: ${dep}."
                     exit 1
                 fi
@@ -859,6 +971,48 @@ function installCommon_removeDownloadPackagesDirectory() {
         common_logger -d "Removed download packages directory: ${download_dir}"
     else
         common_logger -w "Download packages directory does not exist: ${download_dir}"
+    fi
+
+}
+
+function installCommon_zypperInstall() {
+
+    package="${1}"
+    version="${2}"
+    install_result=1
+
+    # If package is a file path (contains .rpm), install directly
+    if [[ "${package}" == *.rpm ]]; then
+        installer="${package}"
+        command="rpm -ivh ${installer}"
+        common_logger -d "Installing local package: ${installer}"
+    elif [ -n "${version}" ]; then
+        installer="${package}-${version}"
+        if [ -n "${offline_install}" ]; then
+            package_name=$(ls ${offline_packages_path} | grep ${package})
+            installer="${offline_packages_path}/${package_name}"
+            command="rpm -ivh ${installer}"
+            common_logger -d "Installing local package: ${installer}"
+        else
+            command="zypper install -y ${installer}"
+        fi
+    else
+        installer="${package}"
+        if [ -n "${offline_install}" ]; then
+            package_name=$(ls ${offline_packages_path} | grep ${package})
+            installer="${offline_packages_path}/${package_name}"
+            command="rpm -ivh ${installer}"
+            common_logger -d "Installing local package: ${installer}"
+        else
+            command="zypper install -y ${installer}"
+        fi
+    fi
+    common_checkZypperLock
+
+    if [ "${attempt}" -ne "${max_attempts}" ]; then
+        zypper_output=$(eval "${command} 2>&1")
+        install_result="${PIPESTATUS[0]}"
+        eval "echo \${zypper_output} ${debug}"
     fi
 
 }
@@ -907,7 +1061,6 @@ function installCommon_yumInstall() {
 
 }
 
-
 function installCommon_checkAptLock() {
 
     attempt=0
@@ -915,7 +1068,7 @@ function installCommon_checkAptLock() {
     max_attempts=10
 
     while fuser "${apt_lockfile}" >/dev/null 2>&1 && [ "${attempt}" -lt "${max_attempts}" ]; do
-        attempt=$((attempt+1))
+        attempt=$((attempt + 1))
         common_logger "Another process is using APT. Waiting for it to release the lock. Next retry in ${seconds} seconds (${attempt}/${max_attempts})"
         sleep "${seconds}"
     done

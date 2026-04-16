@@ -109,6 +109,55 @@ class TestManagerInstall:
         result = self._run("apt-get", "=", tmp_path, pkg_install_success=True)
         assert_success(result)
 
+    def test_fail_package_not_found_zypper(self, tmp_path):
+        """Exit 1 when no .rpm package file is present for zypper."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            "manager_install",
+            {**IGNORE_LOGGER, "installCommon_rollBack": "true"},
+            {
+                "sys_type": "zypper",
+                "sep": "-",
+                "wazuh_version": "5.0.0",
+                "wazuh_revision": "1",
+                "base_path": str(tmp_path),
+                "download_packages_directory": "packages",
+            },
+        )
+        assert_failure(result)
+
+    def test_fail_zypper_install_error(self, tmp_path):
+        """Exit 1 when zypper package install fails."""
+        result = self._run("zypper", "-", tmp_path, pkg_install_success=False)
+        assert_failure(result)
+
+    def test_success_zypper_install(self, tmp_path):
+        """Exit 0 when zypper package install succeeds and component is detected."""
+        ext = "rpm"
+        pkg_dir = tmp_path / "packages"
+        pkg_dir.mkdir()
+        (pkg_dir / f"wazuh-manager-5.0.0-1.x86_64.{ext}").touch()
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_zypperInstall": "install_result=0",
+            "common_checkInstalled": "wazuh_installed=1; install_result=0",
+            "installCommon_rollBack": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "manager_install",
+            mocks,
+            {
+                "sys_type": "zypper",
+                "sep": "-",
+                "wazuh_version": "5.0.0",
+                "wazuh_revision": "1",
+                "base_path": str(tmp_path),
+                "download_packages_directory": "packages",
+            },
+        )
+        assert_success(result)
+
 
 class TestManagerStartCluster:
     """Tests for manager_startCluster.

@@ -100,6 +100,18 @@ class TestInstallCommonInstallPrerequisites:
         result = self._run("apt-get", "AIO")
         assert_success(result)
 
+    def test_success_zypper_indexer(self):
+        result = self._run("zypper", "indexer")
+        assert_success(result)
+
+    def test_success_zypper_dashboard(self):
+        result = self._run("zypper", "dashboard")
+        assert_success(result)
+
+    def test_success_zypper_aio(self):
+        result = self._run("zypper", "AIO")
+        assert_success(result)
+
 
 class TestInstallCommonStartService:
     """Tests for installCommon_startService.
