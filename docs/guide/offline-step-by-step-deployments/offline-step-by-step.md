@@ -206,7 +206,7 @@ After completing the installation of the Wazuh manager on every node, configure 
 
 #### Configuring the Wazuh manager master node
 
-1. Edit the following settings in `/var/ossec/etc/ossec.conf`:
+1. Edit the following settings in `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
     ```xml
     <cluster>

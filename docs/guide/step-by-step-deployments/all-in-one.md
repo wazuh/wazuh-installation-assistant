@@ -9,11 +9,11 @@ Install and configure the Wazuh indexer as a single-node cluster following step-
 
 Wazuh uses certificates to establish confidentiality and encrypt communications between its central components. Follow these steps to create certificates for the Wazuh central components.
 
-  1. Download the `wazuh-certs-tool-5.0.0-1.sh` script and the `config.yml` configuration file. This creates the certificates that encrypt communications between the Wazuh central components.
+  1. Download the `wazuh-certs-tool-5.0.0.sh` script and the `config.yml` configuration file. This creates the certificates that encrypt communications between the Wazuh central components.
 
   ```BASH
-      curl -sO https://packages.wazuh.com/5.0/wazuh-certs-tool-5.0.0-1.sh
-      curl -s -o config.yml https://packages.wazuh.com/5.0/config-5.0.0-1.yml
+      curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-certs-tool-5.0.0.sh
+      curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
    ```
 
   2. Edit `config.yml` and replace the node names and IP values with the corresponding names and IP addresses. In this case, the IP to configure can be `127.0.0.1` since we are performing an All-In-One installation.
@@ -36,10 +36,10 @@ Wazuh uses certificates to establish confidentiality and encrypt communications 
       ip: "127.0.0.1"
    ```
 
-  3. Run `wazuh-certs-tool-5.0.0-1.sh` to create the certificates.
+  3. Run `wazuh-certs-tool-5.0.0.sh` to create the certificates.
 
   ```BASH
-      bash wazuh-certs-tool-5.0.0-1.sh -A
+      bash wazuh-certs-tool-5.0.0.sh -A
   ```
 
 ## Wazuh indexer
@@ -65,29 +65,29 @@ yum install coreutils
 #### DEB amd64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-1_amd64.deb
-dpkg -i ./wazuh-indexer_5.0.0-1_amd64.deb
+curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_amd64.deb
+dpkg -i ./wazuh-indexer_5.0.0_amd64.deb
 ```
 
 #### DEB arm64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-1_arm64.deb
-dpkg -i ./wazuh-indexer_5.0.0-1_arm64.deb
+curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_arm64.deb
+dpkg -i ./wazuh-indexer_5.0.0_arm64.deb
 ```
 
 #### RPM x86_64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/yum/wazuh-indexer-5.0.0-1.x86_64.rpm
-yum install -y ./wazuh-indexer-5.0.0-1.x86_64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.x86_64.rpm
+yum install -y ./wazuh-indexer-5.0.0.x86_64.rpm
 ```
 
 #### RPM aarch64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/yum/wazuh-indexer-5.0.0-1.aarch64.rpm
-yum install -y ./wazuh-indexer-5.0.0-1.aarch64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.aarch64.rpm
+yum install -y ./wazuh-indexer-5.0.0.aarch64.rpm
 ```
 
 ### Configuring the Wazuh indexer
@@ -236,29 +236,29 @@ Install and configure the Wazuh manager following step-by-step instructions. The
 #### DEB amd64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-1_amd64.deb
-dpkg -i ./wazuh-manager_5.0.0-1_amd64.deb
+curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_amd64.deb
+dpkg -i ./wazuh-manager_5.0.0_amd64.deb
 ```
 
 #### DEB arm64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-1_arm64.deb
-dpkg -i ./wazuh-manager_5.0.0-1_arm64.deb
+curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_arm64.deb
+dpkg -i ./wazuh-manager_5.0.0_arm64.deb
 ```
 
 #### RPM x86_64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/yum/wazuh-manager-5.0.0-1.x86_64.rpm
-yum install -y ./wazuh-manager-5.0.0-1.x86_64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.x86_64.rpm
+yum install -y ./wazuh-manager-5.0.0.x86_64.rpm
 ```
 
 #### RPM aarch64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/yum/wazuh-manager-5.0.0-1.aarch64.rpm
-yum install -y ./wazuh-manager-5.0.0-1.aarch64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.aarch64.rpm
+yum install -y ./wazuh-manager-5.0.0.aarch64.rpm
 ```
 
 ### Deploying certificates
@@ -270,13 +270,13 @@ NODE_NAME=<MANAGER_NODE_NAME>
 ```
 
 ```BASH
-mkdir -p /var/ossec/etc/certs
-cp ./wazuh-certificates/root-ca.pem /var/ossec/etc/certs/root-ca.pem
-mv ./wazuh-certificates/$NODE_NAME.pem /var/ossec/etc/certs/manager.pem
-mv ./wazuh-certificates/$NODE_NAME-key.pem /var/ossec/etc/certs/manager-key.pem
-chmod 500 /var/ossec/etc/certs
-chmod 400 /var/ossec/etc/certs/*
-chown -R wazuh:wazuh /var/ossec/etc/certs
+mkdir -p /var/wazuh-manager/etc/certs
+cp ./wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem
+mv ./wazuh-certificates/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
+mv ./wazuh-certificates/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
+chmod 500 /var/wazuh-manager/etc/certs
+chmod 400 /var/wazuh-manager/etc/certs/*
+chown -R wazuh:wazuh /var/wazuh-manager/etc/certs
 ```
 
 > [!NOTE]
@@ -287,11 +287,11 @@ chown -R wazuh:wazuh /var/ossec/etc/certs
 Configure the Wazuh manager to connect to the Wazuh indexer using the secure keystore:
 
 ```BASH
-/var/ossec/bin/wazuh-keystore -f indexer -k username -v admin
-/var/ossec/bin/wazuh-keystore -f indexer -k password -v admin
+/var/wazuh-manager/bin/wazuh-keystore -f indexer -k username -v admin
+/var/wazuh-manager/bin/wazuh-keystore -f indexer -k password -v admin
 ```
 
-Update the indexer configuration in `/var/ossec/etc/ossec.conf` to specify the indexer IP address:
+Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
 
 ```
 <indexer>
@@ -300,10 +300,10 @@ Update the indexer configuration in `/var/ossec/etc/ossec.conf` to specify the i
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/var/ossec/etc/certs/root-ca.pem</ca>
+      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/ossec/etc/certs/manager.pem</certificate>
-    <key>/var/ossec/etc/certs/manager-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -347,29 +347,29 @@ yum install libcap
 #### DEB amd64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-1_amd64.deb
-dpkg -i ./wazuh-dashboard_5.0.0-1_amd64.deb
+curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_amd64.deb
+dpkg -i ./wazuh-dashboard_5.0.0_amd64.deb
 ```
 
 #### DEB arm64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-1_arm64.deb
-dpkg -i ./wazuh-dashboard_5.0.0-1_arm64.deb
+curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_arm64.deb
+dpkg -i ./wazuh-dashboard_5.0.0_arm64.deb
 ```
 
 #### RPM x86_64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/yum/wazuh-dashboard-5.0.0-1.x86_64.rpm
-yum install -y ./wazuh-dashboard-5.0.0-1.x86_64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.x86_64.rpm
+yum install -y ./wazuh-dashboard-5.0.0.x86_64.rpm
 ```
 
 #### RPM aarch64
 
 ```BASH
-curl -sO https://packages.wazuh.com/5.x/yum/wazuh-dashboard-5.0.0-1.aarch64.rpm
-yum install -y ./wazuh-dashboard-5.0.0-1.aarch64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.aarch64.rpm
+yum install -y ./wazuh-dashboard-5.0.0.aarch64.rpm
 ```
 
 ### Configuring the Wazuh dashboard
