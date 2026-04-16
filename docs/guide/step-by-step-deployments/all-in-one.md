@@ -11,14 +11,14 @@ Wazuh uses certificates to establish confidentiality and encrypt communications 
 
   1. Download the `wazuh-certs-tool-5.0.0-1.sh` script and the `config.yml` configuration file. This creates the certificates that encrypt communications between the Wazuh central components.
 
-  ```BASH
+```BASH
       curl -sO https://packages.wazuh.com/5.0/wazuh-certs-tool-5.0.0-1.sh
       curl -s -o config.yml https://packages.wazuh.com/5.0/config-5.0.0-1.yml
-   ```
+```
 
   2. Edit `config.yml` and replace the node names and IP values with the corresponding names and IP addresses. In this case, the IP to configure can be `127.0.0.1` since we are performing an All-In-One installation.
 
-  ```
+```
   nodes:
   # Wazuh indexer node
   indexer:
@@ -34,13 +34,13 @@ Wazuh uses certificates to establish confidentiality and encrypt communications 
   dashboard:
     - name: dashboard
       ip: "127.0.0.1"
-   ```
+```
 
   3. Run `wazuh-certs-tool-5.0.0-1.sh` to create the certificates.
 
-  ```BASH
+```BASH
       bash wazuh-certs-tool-5.0.0-1.sh -A
-  ```
+```
 
 ## Wazuh indexer
 
@@ -102,24 +102,24 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
   3. `cluster.initial_master_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file.
 
-  ```
+```
         cluster.initial_master_nodes:
         - "indexer"
-  ```
+```
 
   3. `discovery.seed_hosts`: List of the addresses of the master-eligible nodes. Each element can be either an IP address or a hostname. You may leave this setting commented if you are configuring the Wazuh indexer as a single node.
 
-  ```
+```
             discovery.seed_hosts:
               - "10.0.0.1"
-  ```
+```
 
   4. `plugins.security.nodes_dn`: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes.
 
-  ```
+```
         plugins.security.nodes_dn:
         - "CN=indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
-  ```
+```
 
 > [!NOTE]
 > Firewalls can block communication between Wazuh components on different hosts. Refer to the Required ports section and ensure the necessary ports are open.
@@ -190,11 +190,11 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
 
   1. Run the following commands to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer:
 
-  ```BASH
+```BASH
     curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
-  ```
+```
 
-  ```
+```
   {
     "name" : "indexer",
     "cluster_name" : "wazuh-cluster",
@@ -211,18 +211,18 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
     },
     "tagline" : "The OpenSearch Project: https://opensearch.org/"
   }
-  ```
+```
 
   2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer:
 
-  ```BASH
+```BASH
     curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
-  ```
+```
 
-  ```
+```
     ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
     192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
-  ```
+```
 
 ## Wazuh manager
 

@@ -21,10 +21,10 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
 
   1. Download the Wazuh installation assistant and the configuration file.
 
-   ```BASH
+```BASH
     curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
     curl -s -o config.yml https://packages.wazuh.com/5.0/config-5.0.0-1.yml
-   ```
+```
 
   2. Edit `./config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
 
@@ -68,9 +68,9 @@ nodes:
 
   3. Run the Wazuh installation assistant with the option `--generate-config-files` to generate the Wazuh cluster key, certificates, and passwords necessary for installation. You can find these files in `./wazuh-install-files.tar`.
 
-  ```BASH
+```BASH
     bash wazuh-install-5.0.0-1.sh --generate-config-files
-  ```
+```
 
   4. Copy the `wazuh-install-files.tar` file to all the servers of the distributed deployment, including the Wazuh manager, the Wazuh indexer, and the Wazuh dashboard nodes. This can be done by using the `scp` utility.
 
@@ -80,18 +80,18 @@ Follow these steps to install and configure a multi-node Wazuh indexer.
 
   1. Download the Wazuh installation assistant. Skip this step if you performed the initial configuration on the same server and the Wazuh installation assistant is already in your working directory:
 
-  ```BASH
+```BASH
     curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
-  ```
+```
 
   2. Run the Wazuh installation assistant with the option `--wazuh-indexer` and the node name to install and configure the Wazuh indexer. The node name must be the same one used in `config.yml` for the initial configuration, for example, `indexer`.
 
   > [!NOTE]
   > Make sure that a copy of `wazuh-install-files.tar`, created during the initial configuration step, is placed in your working directory.
 
-  ```bash
+```bash
       bash wazuh-install-5.0.0-1.sh --wazuh-indexer indexer
-  ```
+```
 
 Repeat this stage of the installation process for every Wazuh indexer node in your cluster. Then proceed with initializing your multi-node cluster in the next stage.
 
@@ -119,11 +119,11 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
 
   1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer and use the password gotten from the output of the previous command:
 
-  ```BASH
+```BASH
         curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
-  ```
+```
 
-  ```json
+```json
   {
     "name" : "indexer",
     "cluster_name" : "wazuh-cluster",
@@ -140,18 +140,18 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
     },
     "tagline" : "The OpenSearch Project: https://opensearch.org/"
   }
-  ```
+```
 
   2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer and enter the password for the Wazuh indexer admin user when it prompts for password:
 
-  ```BASH
+```BASH
         curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
-  ```
+```
 
-  ```bash
+```bash
         ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
         192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
-  ```
+```
 
 ## Wazuh manager
 
@@ -161,18 +161,18 @@ Install the Wazuh manager as a multi-node cluster on a 64-bit (x86_64/AMD64 or A
 
   1. Download the Wazuh installation assistant. Skip this step if you installed Wazuh indexer on the same server and the Wazuh installation assistant is already in your working directory:
 
-  ```BASH
+```BASH
         curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
-  ```
+```
 
   2. Run the Wazuh installation assistant with the option `--wazuh-manager` followed by the node name to install the Wazuh manager. The node name must be the same one used in `config.yml` for the initial configuration, for example, `manager`:
 
   > [!NOTE]
   > Make sure that a copy of `wazuh-install-files.tar`, created during the initial configuration step, is placed in your working directory.
 
-  ```BASH
+```BASH
         bash wazuh-install-5.0.0-1.sh --wazuh-manager manager
-  ```
+```
 
 Your Wazuh manager is now successfully installed, repeat this process on every Wazuh manager node.
 
@@ -184,22 +184,22 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
 
   1. Download the Wazuh installation assistant. You can skip this step if you have already installed Wazuh indexer on the same server.
 
-  ```BASH
+```BASH
         curl -sO https://packages.wazuh.com/5.0/wazuh-install-5.0.0-1.sh
-  ```
+```
 
   2. Run the Wazuh installation assistant with the option `--wazuh-dashboard` and the node name to install and configure the Wazuh dashboard. The node name must be the same one used in `config.yml` for the initial configuration, for example, `dashboard`:
 
   > [!NOTE]
   > Make sure that a copy of `wazuh-install-files.tar` created during the Wazuh indexer installation is placed in your working directory.
 
-  ```BASH
+```BASH
         bash wazuh-install-5.0.0-1.sh --wazuh-dashboard dashboard
-  ```
+```
 
   Once the Wazuh installation is completed, the output shows the access credentials and a message that confirms that the installation was successful.
 
-  ```bash
+```bash
   INFO: --- Summary ---
   INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>
   User: admin
@@ -207,7 +207,7 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
 
   INFO: Installation finished.
 
-  ```
+```
 
   3. Access the Wazuh web interface with your `admin` user credentials. This is the default administrator account for the Wazuh indexer and it allows you to access the Wazuh dashboard.
 

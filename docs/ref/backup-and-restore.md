@@ -21,23 +21,23 @@ To create a backup of the Wazuh indexer, follow these steps. Repeat them on ever
 
 1. Backup the existing Wazuh indexer security configuration files.
 
-    ```bash
+```bash
     /usr/share/wazuh-indexer/bin/indexer-security-init.sh --options "-backup /etc/wazuh-indexer/opensearch-security -icl -nhnv"
-    ```
+```
 
 2. Create the destination folder to store the files. For version control, add the date and time of the backup to the name of the folder.
 
-    ```bash
+```bash
     backup_folder=~/wazuh_files_backup/$(date +%F_%H:%M)
     mkdir -p $backup_folder && echo $backup_folder
-    ```
+```
 
 3. Save the host information.
 
-    ```bash
+```bash
     cat /etc/*release* > $backup_folder/host-info.txt
     echo -e "\n$(hostname): $(hostname -I)" >> $backup_folder/host-info.txt
-    ```
+```
 
 #### Backing up the Wazuh indexer
 
@@ -79,17 +79,17 @@ This guide explains how to restore a backup of your configuration files.
 
 1. In the new node, move the compressed backup file to the root `/` directory:
 
-    ```bash
+```bash
     mv wazuh-indexer-backup.tar.gz /
     cd /
-    ```
+```
 
 2. Decompress the backup files and change the current working directory to the directory based on the date and time of the backup files:
 
-    ```bash
+```bash
     tar -xzvf wazuh-indexer-backup.tar.gz
     cd $backup_folder
-    ```
+```
 
 #### Restoring Wazuh indexer files
 
@@ -97,13 +97,13 @@ Perform the following steps to restore the Wazuh indexer files on the new server
 
 1. Stop the Wazuh indexer to prevent any modifications to the Wazuh indexer files during the restoration process:
 
-    ```bash
+```bash
     systemctl stop wazuh-indexer
-    ```
+```
 
 2. Restore the Wazuh indexer configuration files and change the file permissions and ownership accordingly:
 
-    ```bash
+```bash
     cp etc/wazuh-indexer/jvm.options /etc/wazuh-indexer/jvm.options
     cp -r etc/wazuh-indexer/jvm.options.d/ /etc/wazuh-indexer/jvm.options.d/
     cp etc/wazuh-indexer/log4j2.properties /etc/wazuh-indexer/log4j2.properties
@@ -123,20 +123,20 @@ Perform the following steps to restore the Wazuh indexer files on the new server
     chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-notifications/
     chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-notifications-core/
     chown wazuh-indexer:wazuh-indexer /usr/lib/sysctl.d/wazuh-indexer.conf
-    ```
+```
 
 3. Start the Wazuh indexer service:
 
-    ```bash
+```bash
     systemctl start wazuh-indexer
-    ```
+```
 
 4. Clear the backup files to free up space:
 
-    ```bash
+```bash
     rm -rf $backup_folder
     rm -rf /wazuh-indexer-backup.tar.gz
-    ```
+```
 
 ## Wazuh Manager
 
