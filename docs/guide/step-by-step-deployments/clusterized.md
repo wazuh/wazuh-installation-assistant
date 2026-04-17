@@ -258,7 +258,7 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
     curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
   ```
 
-  ```
+  ```bash
     ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
     192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
   ```
