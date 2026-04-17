@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Added upgrade documentation and modify summary accordingly (#703)(https://github.com/wazuh/wazuh-installation-assistant/pull/703)
 - Updated bumper script with --set-as-main parameter. ([#686](https://github.com/wazuh/wazuh-installation-assistant/pull/686))
 - Added offline installation documentation ([#683](https://github.com/wazuh/wazuh-installation-assistant/pull/683))
 - Add unit and integration test ([#630](https://github.com/wazuh/wazuh-installation-assistant/pull/630))
