@@ -222,10 +222,10 @@ Directory containing SSL/TLS certificates for the Wazuh Indexer, including the n
 
 Directory containing SSL/TLS certificates for the Wazuh Dashboard, including the node certificate, key, and root CA.
 
-### /var/ossec/etc/certs
+### /var/wazuh-manager/etc/certs
 
 Directory containing SSL/TLS certificates for the Wazuh Manager (server), including the node certificate, key, and root CA.
 
-### /var/ossec/etc/ossec.conf
+### /var/wazuh-manager/etc/wazuh-manager.conf
 
 Main configuration file for the Wazuh Manager, containing settings for cluster configuration, agent communication, and log analysis.
