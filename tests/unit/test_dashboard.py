@@ -29,7 +29,7 @@ class TestDashboardInstall:
         ext = "rpm" if sys_type == "yum" else "deb"
         pkg_dir = tmp_path / "packages"
         pkg_dir.mkdir()
-        (pkg_dir / f"wazuh-dashboard-5.0.0-1.x86_64.{ext}").touch()
+        (pkg_dir / f"wazuh-dashboard-5.0.1-1.x86_64.{ext}").touch()
 
         install_result = "0" if pkg_install_success else "1"
         dashboard_installed = "1" if pkg_install_success else ""
@@ -48,7 +48,7 @@ class TestDashboardInstall:
             {
                 "sys_type": sys_type,
                 "sep": sep,
-                "dashboard_version": "5.0.0",
+                "dashboard_version": "5.0.1",
                 "dashboard_revision": "1",
                 "base_path": str(tmp_path),
                 "download_packages_directory": "packages",
@@ -64,7 +64,7 @@ class TestDashboardInstall:
             {
                 "sys_type": "yum",
                 "sep": "-",
-                "dashboard_version": "5.0.0",
+                "dashboard_version": "5.0.1",
                 "dashboard_revision": "1",
                 "base_path": str(tmp_path),
                 "download_packages_directory": "packages",
@@ -81,7 +81,7 @@ class TestDashboardInstall:
             {
                 "sys_type": "apt-get",
                 "sep": "=",
-                "dashboard_version": "5.0.0",
+                "dashboard_version": "5.0.1",
                 "dashboard_revision": "1",
                 "base_path": str(tmp_path),
                 "download_packages_directory": "packages",

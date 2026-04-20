@@ -8,19 +8,19 @@ This glossary provides definitions for key terms, components, and concepts used 
 
 ### Wazuh Installation Assistant
 
-The main tool (`wazuh-install-5.0.0-1.sh`) that automates the deployment and configuration of Wazuh central components. It guides users through the process of installing Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard. The assistant supports both All-In-One (AIO) installations and distributed deployments, includes system requirements checking, automated configuration, and embeds both the Certificate Tool and Password Tool for complete setup automation.
+The main tool (`wazuh-install-5.0.1-1.sh`) that automates the deployment and configuration of Wazuh central components. It guides users through the process of installing Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard. The assistant supports both All-In-One (AIO) installations and distributed deployments, includes system requirements checking, automated configuration, and embeds both the Certificate Tool and Password Tool for complete setup automation.
 
 ### Wazuh Certs Tool
 
-A utility script (`wazuh-certs-tool-5.0.0-1.sh`) for generating and managing SSL/TLS certificates required for secure communication between Wazuh components. It uses OpenSSL to create 2048-bit SHA-256 certificates for each node specified in the `config.yml` file. The tool can generate root CA certificates, admin certificates, Wazuh Indexer certificates, Wazuh Manager certificates, and Wazuh Dashboard certificates.
+A utility script (`wazuh-certs-tool-5.0.1-1.sh`) for generating and managing SSL/TLS certificates required for secure communication between Wazuh components. It uses OpenSSL to create 2048-bit SHA-256 certificates for each node specified in the `config.yml` file. The tool can generate root CA certificates, admin certificates, Wazuh Indexer certificates, Wazuh Manager certificates, and Wazuh Dashboard certificates.
 
 ### Wazuh Password Tool
 
-A script (`wazuh-passwords-tool-5.0.0-1.sh`) for securely generating, managing, and resetting passwords for Wazuh internal users. It can create random secure passwords, update passwords in the different Wazuh components, modify Wazuh API passwords, and update the `internal_users.yml` file using Wazuh Indexer's hashing tool to obfuscate passwords.
+A script (`wazuh-passwords-tool-5.0.1-1.sh`) for securely generating, managing, and resetting passwords for Wazuh internal users. It can create random secure passwords, update passwords in the different Wazuh components, modify Wazuh API passwords, and update the `internal_users.yml` file using Wazuh Indexer's hashing tool to obfuscate passwords.
 
 ### Builder Script
 
-The `builder.sh` script used to build the installation assistant and tools. It combines multiple source files into single, distributable shell scripts (`wazuh-install-5.0.0-1.sh`, `wazuh-certs-tool-5.0.0-1.sh`, and `wazuh-passwords-tool-5.0.0-1.sh`). Accepts options to build the installer (`-i`), certificate tool (`-c`), or password tool (`-p`).
+The `builder.sh` script used to build the installation assistant and tools. It combines multiple source files into single, distributable shell scripts (`wazuh-install-5.0.1-1.sh`, `wazuh-certs-tool-5.0.1-1.sh`, and `wazuh-passwords-tool-5.0.1-1.sh`). Accepts options to build the installer (`-i`), certificate tool (`-c`), or password tool (`-p`).
 
 ---
 
