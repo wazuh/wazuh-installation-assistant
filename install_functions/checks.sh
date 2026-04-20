@@ -414,7 +414,7 @@ function checks_ports() {
     fi
 
     for i in "${!ports[@]}"; do
-        if eval "${port_command}""${ports[i]}" > /dev/null; then
+        if ${port_command}"${ports[i]}" > /dev/null; then
             used_port=1
             common_logger -e "Port ${ports[i]} is being used by another process. Please, check it before installing Wazuh."
         fi
@@ -462,7 +462,7 @@ function checks_filebeatURL() {
 
     # URL using master branch
     new_filebeat_url="${filebeat_wazuh_template/${source_branch}/master}"
-    
+
     response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
     if [ "${response}" != "200" ]; then
         response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)
@@ -502,8 +502,8 @@ function checks_firewall(){
 
     # Check if the firewall is installed
     if [ "${sys_type}" == "yum" ]; then
-        eval "rpm -q firewalld --quiet && firewalld_installed=1"
-        eval "rpm -q ufw --quiet && ufw_installed=1"
+        rpm -q firewalld --quiet && firewalld_installed=1
+        rpm -q ufw --quiet && ufw_installed=1
     elif [ "${sys_type}" == "apt-get" ]; then
         if apt list --installed 2>/dev/null | grep -q -E ^"firewalld"\/; then
             firewalld_installed=1
