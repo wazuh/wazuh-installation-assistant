@@ -1,6 +1,6 @@
 run-name: >-
   ${{ github.event_name == 'workflow_dispatch'
-    && format('Test Integration Tools - Manual {0} on {1}', inputs.tool_type, inputs.pr_head_ref)
+    && format('Test Integration Tools - Manual {0} [{1}] on {2}', inputs.tool_type, inputs.install_mode, inputs.pr_head_ref)
     || format('Test Integration Tools - #{0} {1}', github.event.issue.number, github.event.issue.title) }}
 name: PR Check - Test Integration Tools
 
@@ -9,6 +9,15 @@ on:
     types: [created]
   workflow_dispatch:
     inputs:
+      pr_head_ref:
+        description: 'Branch of wazuh installation assistant'
+        required: true
+        type: string
+      automation_reference:
+        description: 'Branch of wazuh-automation to use'
+        required: false
+        default: 'main'
+        type: string
       tool_type:
         description: 'Tool to test'
         required: true
@@ -18,14 +27,27 @@ on:
           - cert-tool
           - passwords-tool
           - all
-      pr_head_ref:
-        description: 'Branch of wazuh installation assistant'
-        required: true
-        type: string
-      automation_reference:
-        description: 'Branch of wazuh-automation to use'
+      install_mode:
+        description: 'Installation mode (installer tool only)'
         required: false
-        default: 'main'
+        default: 'aio'
+        type: choice
+        options:
+          - aio
+          - distributed
+          - offline
+      package_type:
+        description: 'Package source'
+        required: false
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      systems:
+        description: 'Systems to test — comma-separated (e.g. ubuntu-24-amd64,redhat-9-arm64) or "all".'
+        required: false
+        default: 'all'
         type: string
 
 permissions:
@@ -40,16 +62,20 @@ env:
   ALLOCATOR_PATH: /tmp/allocator_instance
   REGION: us-east-1
   GENERATE_PRESIGNED_URLS_SCRIPT_PATH: wazuh-automation/tools/sign_urls/generate_presigned_dev_urls.py
+  SG_NO_INTERNET: ${{ vars.AWS_SG_OFFLINE }}
+  ALL_SYSTEMS: '["ubuntu-24-amd64","ubuntu-24-arm64","ubuntu-22-amd64","ubuntu-22-arm64","redhat-9-amd64","redhat-9-arm64","redhat-10-amd64","redhat-10-arm64"]' # Commented unti fix allocator "amazon-2023-amd64","amazon-2023-arm64"
 
 jobs:
   # -------------------------------------------------------------------------
   # Job 1: Parse PR info and determine which tool to test
   #
   # Available commands:
-  #   /test-install       — test the installation assistant only
-  #   /test-cert-tool     — test the certificates tool only
-  #   /test-passwords-tool — test the passwords tool only
-  #   /test-assistant     — test all three tools in sequence
+  #   /test-install              — test the installation assistant (AIO)
+  #   /test-install-distributed  — test the installation assistant (Distributed)
+  #   /test-install-offline      — test the installation assistant (Offline)
+  #   /test-cert-tool            — test the certificates tool only
+  #   /test-passwords-tool       — test the passwords tool only
+  #   /test-assistant            — test all three tools in sequence (AIO, cert-tool, passwords-tool)
   # -------------------------------------------------------------------------
   get_pr_info:
     if: |
@@ -68,6 +94,7 @@ jobs:
       pr_head_sha: ${{ steps.pr_data.outputs.pr_head_sha }}
       check_run_id: ${{ steps.create_check.outputs.result }}
       tool_type: ${{ steps.parse_command.outputs.tool_type }}
+      install_mode: ${{ steps.parse_command.outputs.install_mode }}
       check_name: ${{ steps.parse_command.outputs.check_name }}
 
     steps:
@@ -100,17 +127,29 @@ jobs:
         run: |
           COMMENT_BODY="${{ github.event.comment.body }}"
           if echo "$COMMENT_BODY" | grep -q '/test-assistant'; then
-            echo "tool_type=all"                      >> $GITHUB_OUTPUT
-            echo "check_name=Full Integration Check"  >> $GITHUB_OUTPUT
+            echo "tool_type=all"                       >> $GITHUB_OUTPUT
+            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
+            echo "check_name=Full Integration Check"   >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -q '/test-install-distributed'; then
+            echo "tool_type=installer"                 >> $GITHUB_OUTPUT
+            echo "install_mode=distributed"            >> $GITHUB_OUTPUT
+            echo "check_name=Installation Assistant Check (Distributed)" >> $GITHUB_OUTPUT
+          elif echo "$COMMENT_BODY" | grep -q '/test-install-offline'; then
+            echo "tool_type=installer"                 >> $GITHUB_OUTPUT
+            echo "install_mode=offline"                >> $GITHUB_OUTPUT
+            echo "check_name=Installation Assistant Check (Offline)" >> $GITHUB_OUTPUT
           elif echo "$COMMENT_BODY" | grep -q '/test-install'; then
-            echo "tool_type=installer"                >> $GITHUB_OUTPUT
+            echo "tool_type=installer"                 >> $GITHUB_OUTPUT
+            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
             echo "check_name=Installation Assistant Check" >> $GITHUB_OUTPUT
           elif echo "$COMMENT_BODY" | grep -q '/test-cert-tool'; then
-            echo "tool_type=cert-tool"                >> $GITHUB_OUTPUT
-            echo "check_name=Certificates Tool Check" >> $GITHUB_OUTPUT
+            echo "tool_type=cert-tool"                 >> $GITHUB_OUTPUT
+            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
+            echo "check_name=Certificates Tool Check"  >> $GITHUB_OUTPUT
           elif echo "$COMMENT_BODY" | grep -q '/test-passwords-tool'; then
-            echo "tool_type=passwords-tool"           >> $GITHUB_OUTPUT
-            echo "check_name=Passwords Tool Check"    >> $GITHUB_OUTPUT
+            echo "tool_type=passwords-tool"            >> $GITHUB_OUTPUT
+            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
+            echo "check_name=Passwords Tool Check"     >> $GITHUB_OUTPUT
           fi
 
       - name: Create check run
@@ -140,7 +179,8 @@ jobs:
             return check.id;
 
   # -------------------------------------------------------------------------
-  # Job 2: Build the tool(s) from the PR branch and upload as artifacts.
+  # Job 2: Build tool(s) from the PR branch, generate presigned artifact
+  #        URLs, and upload everything as a single artifact.
   # -------------------------------------------------------------------------
   build_tools:
     needs: get_pr_info
@@ -150,19 +190,35 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tool_type: ${{ steps.ctx.outputs.tool_type }}
+      install_mode: ${{ steps.ctx.outputs.install_mode }}
+      package_type: ${{ steps.ctx.outputs.package_type }}
       pr_head_ref: ${{ steps.ctx.outputs.pr_head_ref }}
       wazuh_version: ${{ steps.version.outputs.wazuh_version }}
+      matrix: ${{ steps.ctx.outputs.matrix }}
 
     steps:
       - name: Resolve context
         id: ctx
         run: |
+          ALL_SYSTEMS='${{ env.ALL_SYSTEMS }}'
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tool_type=${{ inputs.tool_type }}"     >> $GITHUB_OUTPUT
-            echo "pr_head_ref=${{ inputs.pr_head_ref }}" >> $GITHUB_OUTPUT
+            echo "tool_type=${{ inputs.tool_type }}"         >> $GITHUB_OUTPUT
+            echo "install_mode=${{ inputs.install_mode }}"   >> $GITHUB_OUTPUT
+            echo "package_type=${{ inputs.package_type }}"   >> $GITHUB_OUTPUT
+            echo "pr_head_ref=${{ inputs.pr_head_ref }}"     >> $GITHUB_OUTPUT
+            SYSTEMS_INPUT="${{ inputs.systems }}"
+            if [ -z "$SYSTEMS_INPUT" ] || [ "$SYSTEMS_INPUT" = "all" ]; then
+              echo "matrix=${ALL_SYSTEMS}" >> $GITHUB_OUTPUT
+            else
+              MATRIX=$(echo "$SYSTEMS_INPUT" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R . | jq -sc .)
+              echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "tool_type=${{ needs.get_pr_info.outputs.tool_type }}"     >> $GITHUB_OUTPUT
-            echo "pr_head_ref=${{ needs.get_pr_info.outputs.pr_head_ref }}" >> $GITHUB_OUTPUT
+            echo "tool_type=${{ needs.get_pr_info.outputs.tool_type }}"         >> $GITHUB_OUTPUT
+            echo "install_mode=${{ needs.get_pr_info.outputs.install_mode }}"   >> $GITHUB_OUTPUT
+            echo "package_type=staging"                                          >> $GITHUB_OUTPUT
+            echo "pr_head_ref=${{ needs.get_pr_info.outputs.pr_head_ref }}"     >> $GITHUB_OUTPUT
+            echo "matrix=${ALL_SYSTEMS}"                                         >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout PR branch
@@ -170,6 +226,19 @@ jobs:
         with:
           ref: ${{ steps.ctx.outputs.pr_head_ref }}
           path: wazuh-installation-assistant
+
+      - name: Checkout wazuh-automation
+        uses: actions/checkout@v6
+        with:
+          repository: wazuh/wazuh-automation
+          ref: ${{ env.AUTOMATION_REFERENCE }}
+          token: ${{ secrets.GH_CLONE_TOKEN }}
+          path: wazuh-automation
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
 
       - name: Get Wazuh version
         id: version
@@ -189,42 +258,56 @@ jobs:
             bash builder.sh -p
           fi
 
-      - name: Upload built tools as artifacts
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          role-session-name: assistant-build-${{ github.run_id }}
+          aws-region: ${{ env.REGION }}
+
+      - name: Generate presigned artifact URLs
+        run: |
+          pip install pyyaml --quiet
+          python ${{ env.GENERATE_PRESIGNED_URLS_SCRIPT_PATH }} \
+            --process test_assistant \
+            --wazuh-version "${{ steps.version.outputs.wazuh_version }}" \
+            --aws-s3-bucket-dev "${{ vars.AWS_S3_BUCKET_DEV }}"
+          echo "Generated presigned URLs:"
+          cat /tmp/artifact_urls.yaml
+
+      - name: Stage built tools for artifact upload
+        run: |
+          mkdir -p /tmp/built-tools
+          cp wazuh-installation-assistant/wazuh-install.sh /tmp/built-tools/
+          cp /tmp/artifact_urls.yaml /tmp/built-tools/
+          [ -f wazuh-installation-assistant/wazuh-certs-tool.sh ] && \
+            cp wazuh-installation-assistant/wazuh-certs-tool.sh /tmp/built-tools/ || true
+          [ -f wazuh-installation-assistant/wazuh-passwords-tool.sh ] && \
+            cp wazuh-installation-assistant/wazuh-passwords-tool.sh /tmp/built-tools/ || true
+
+      - name: Upload built tools and artifact URLs
         uses: actions/upload-artifact@v7
         with:
           name: built-tools
-          path: |
-            wazuh-installation-assistant/wazuh-install.sh
-            wazuh-installation-assistant/wazuh-certs-tool.sh
-            wazuh-installation-assistant/wazuh-passwords-tool.sh
-          if-no-files-found: ignore
+          path: /tmp/built-tools/
+          if-no-files-found: error
           retention-days: 1
 
   # -------------------------------------------------------------------------
-  # Job 3: For each OS — allocate instance, deploy, run tools, run tests.
+  # Job 3: For each OS — provision VM, deploy tools, install, test, cleanup.
   # -------------------------------------------------------------------------
-  test_on_system:
-    needs: [get_pr_info, build_tools]
+  vm_test:
+    needs: [build_tools]
     if: always() && needs.build_tools.result == 'success'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        system:
-          - ubuntu-24-amd64
-          - ubuntu-24-arm64
-          - ubuntu-22-amd64
-          - ubuntu-22-arm64
-          - redhat-9-amd64
-          - redhat-9-arm64
-          - redhat-10-amd64
-          - redhat-10-arm64
-          - amazon-2023-amd64
-          - amazon-2023-arm64
+        system: ${{ fromJSON(needs.build_tools.outputs.matrix) }}
 
     steps:
       # -----------------------------------------------------------------------
-      # Setup: automation repo, Python, AWS credentials, instance name
+      # Setup
       # -----------------------------------------------------------------------
       - name: Checkout wazuh-automation
         uses: actions/checkout@v6
@@ -239,18 +322,21 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install allocator requirements
-        run: pip install -r wazuh-automation/deployability/deps/requirements.txt
+      - name: Install requirements
+        run: |
+          pip install -r wazuh-automation/deployability/deps/requirements.txt
+          pip install -r wazuh-automation/integration-test-module/requirements.txt
+          pip install -e wazuh-automation/integration-test-module/
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
-          role-session-name: assistant-integration-check-${{ github.run_id }}
+          role-session-name: assistant-vm-test-${{ github.run_id }}
           aws-region: ${{ env.REGION }}
 
       # -----------------------------------------------------------------------
-      # Allocate instance
+      # Provision: use allocator and extract SSH credentials
       # -----------------------------------------------------------------------
       - name: Allocate instance
         id: allocate
@@ -276,15 +362,18 @@ jobs:
             > ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
           sed -i 's/-o StrictHostKeyChecking=no/"-o StrictHostKeyChecking=no"/g' \
             ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
-          source ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
 
+      - name: Set SSH credentials from inventory
+        run: |
+          find ${{ env.ALLOCATOR_PATH }} -name '*-key-*' -exec chmod 600 {} \;
+          source ${{ env.ALLOCATOR_PATH }}/inventory_vars.yml
           echo "SSH_HOST=$ansible_host"                >> $GITHUB_ENV
           echo "SSH_PORT=$ansible_port"                >> $GITHUB_ENV
           echo "SSH_USER=$ansible_user"                >> $GITHUB_ENV
           echo "SSH_KEY=$ansible_ssh_private_key_file" >> $GITHUB_ENV
 
       # -----------------------------------------------------------------------
-      # Deploy: copy artifacts to remote instance
+      # Deploy: copy built tools and artifact URLs to remote instance
       # -----------------------------------------------------------------------
       - name: Download built tools
         uses: actions/download-artifact@v8
@@ -292,81 +381,282 @@ jobs:
           name: built-tools
           path: /tmp/built-tools
 
+      - name: Set SSH/SCP helper env vars
+        run: |
+          echo "SSH_OPTS=-o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=20 -p ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}" >> $GITHUB_ENV
+          echo "SCP_OPTS=-o StrictHostKeyChecking=no -P ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}" >> $GITHUB_ENV
+          echo "REMOTE=${{ env.SSH_USER }}@${{ env.SSH_HOST }}" >> $GITHUB_ENV
+          if [ "${{ needs.build_tools.outputs.package_type }}" = "staging" ]; then
+            echo "DEV_FLAG=-d local" >> $GITHUB_ENV
+          else
+            echo "DEV_FLAG=" >> $GITHUB_ENV
+          fi
+
       - name: Copy tool(s) to remote instance
         run: |
           TOOL_TYPE="${{ needs.build_tools.outputs.tool_type }}"
-          SCP_OPTS="-o StrictHostKeyChecking=no -P ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}"
-          DEST="${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp"
-          scp $SCP_OPTS /tmp/built-tools/wazuh-install.sh ${DEST}/wazuh-install.sh
+          DEST="${{ env.REMOTE }}:/tmp"
+          scp ${{ env.SCP_OPTS }} /tmp/built-tools/wazuh-install.sh ${DEST}/wazuh-install.sh
           if [ "$TOOL_TYPE" = "cert-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
-            scp $SCP_OPTS /tmp/built-tools/wazuh-certs-tool.sh ${DEST}/wazuh-certs-tool.sh
+            scp ${{ env.SCP_OPTS }} /tmp/built-tools/wazuh-certs-tool.sh ${DEST}/wazuh-certs-tool.sh
           fi
           if [ "$TOOL_TYPE" = "passwords-tool" ] || [ "$TOOL_TYPE" = "all" ]; then
-            scp $SCP_OPTS /tmp/built-tools/wazuh-passwords-tool.sh ${DEST}/wazuh-passwords-tool.sh
+            scp ${{ env.SCP_OPTS }} /tmp/built-tools/wazuh-passwords-tool.sh ${DEST}/wazuh-passwords-tool.sh
           fi
+          scp ${{ env.SCP_OPTS }} /tmp/built-tools/artifact_urls.yaml ${DEST}/artifact_urls.yaml
 
-      - name: Generate presigned artifact URLs
-        run: |
-          pip install pyyaml --quiet
-          python ${{ env.GENERATE_PRESIGNED_URLS_SCRIPT_PATH }} \
-            --process test_assistant \
-            --wazuh-version "${{ needs.build_tools.outputs.wazuh_version }}" \
-            --aws-s3-bucket-dev "${{ vars.AWS_S3_BUCKET_DEV }}"
-          echo "Generated presigned URLs:"
-          cat /tmp/artifact_urls.yaml
-
-      - name: Copy artifact_urls.yaml to remote instance
-        run: |
-          scp -o StrictHostKeyChecking=no \
-              -P "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              /tmp/artifact_urls.yaml \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp/artifact_urls.yaml"
-
-      # -----------------------------------------------------------------------
-      # Run tools on the remote instance
-      # -----------------------------------------------------------------------
-      - name: Run installer (AIO)
-        timeout-minutes: 60
-        run: |
-          ssh -o StrictHostKeyChecking=no \
-              -o ServerAliveInterval=60 \
-              -o ServerAliveCountMax=20 \
-              -p "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-              "sudo bash /tmp/wazuh-install.sh -a -d local -id"
-
-      - name: Run cert-tool
+      - name: Create config.yml and copy to remote instance
         if: |
+          needs.build_tools.outputs.install_mode == 'distributed' ||
+          needs.build_tools.outputs.install_mode == 'offline' ||
           needs.build_tools.outputs.tool_type == 'cert-tool' ||
           needs.build_tools.outputs.tool_type == 'all'
         run: |
           cat > /tmp/config.yml <<'EOF'
           nodes:
             indexer:
-              - name: wazuh-indexer
+              - name: indexer
                 ip: 127.0.0.1
             manager:
-              - name: wazuh-manager
+              - name: manager
                 ip: 127.0.0.1
             dashboard:
-              - name: wazuh-dashboard
+              - name: dashboard
                 ip: 127.0.0.1
           EOF
+          if [ "${{ needs.build_tools.outputs.install_mode }}" = "offline" ]; then
+            cp /tmp/config.yml /tmp/built-tools/config.yml
+          else
+            scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
+          fi
 
-          scp -o StrictHostKeyChecking=no \
-              -P "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              /tmp/config.yml \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/tmp/config.yml"
+      # -----------------------------------------------------------------------
+      # Install with assistant AIO
+      # -----------------------------------------------------------------------
+      - name: Run installer (AIO)
+        if: |
+          needs.build_tools.outputs.install_mode == 'aio' ||
+          needs.build_tools.outputs.tool_type != 'installer'
+        timeout-minutes: 60
+        run: |
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] AIO installation in progress...\"; sleep 60; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -a ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-aio.log
+            RESULT=\${PIPESTATUS[0]}
+            kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-aio.log; }
+            exit \$RESULT
+          "
 
-          ssh -o StrictHostKeyChecking=no \
-              -p "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-              "sudo bash /tmp/wazuh-certs-tool.sh -A -cc /tmp/config.yml"
+      # -----------------------------------------------------------------------
+      # Install with assistant Distributed
+      # -----------------------------------------------------------------------
 
+      - name: Run installer (Distributed)
+        if: needs.build_tools.outputs.install_mode == 'distributed'
+        timeout-minutes: 60
+        run: |
+          # Generate install files (certificates + config) from config.yml
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Generating certificates and config...\"; sleep 60; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -g -id 2>&1 | tee /tmp/install-g.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; }
+            exit \$RESULT
+          "
+          # Install indexer
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-indexer...\"; sleep 60; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -wi indexer ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wi.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-wi.log; }
+            exit \$RESULT
+          "
+          # Initialize indexer cluster security settings
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Initializing indexer security...\"; sleep 60; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -s 2>&1 | tee /tmp/install-s.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-s.log; }
+            exit \$RESULT
+          "
+          # Install manager
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-manager...\"; sleep 60; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -wm manager ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wm.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-wm.log; }
+            exit \$RESULT
+          "
+          # Install dashboard
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-dashboard...\"; sleep 60; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -wd dashboard ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-wd.log
+            RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-wd.log; }
+            exit \$RESULT
+          "
+
+      # -----------------------------------------------------------------------
+      # Install with assistant Offline
+      # -----------------------------------------------------------------------
+
+      - name: Detect package type and arch for offline download (Offline installation)
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          SYSTEM="${{ matrix.system }}"
+          case "$SYSTEM" in
+            ubuntu-*) PKG_TYPE="deb" ;;
+            *)        PKG_TYPE="rpm" ;;
+          esac
+          if [ "$PKG_TYPE" = "rpm" ]; then
+            case "$SYSTEM" in
+              *-arm64) ARCH="aarch64" ;;
+              *)       ARCH="x86_64"  ;;
+            esac
+          else
+            case "$SYSTEM" in
+              *-arm64) ARCH="arm64" ;;
+              *)       ARCH="amd64" ;;
+            esac
+          fi
+          echo "PKG_TYPE=$PKG_TYPE" >> $GITHUB_ENV
+          echo "ARCH=$ARCH"         >> $GITHUB_ENV
+
+      - name: Install offline prerequisites on remote instance (Offline installation)
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          if [ "${{ env.PKG_TYPE }}" = "deb" ]; then
+            ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+              "sudo apt-get update -q && sudo apt-get install -y debconf adduser procps gnupg apt-transport-https debhelper tar curl libcap2-bin"
+          else
+            SYSTEM="${{ matrix.system }}"
+            case "$SYSTEM" in
+              amazon-2023-*)
+                # AL2023 does not ship yum-utils; dnf-utils provides the equivalent
+                # and registers as yum-utils in the RPM database for installer checks.
+                ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+                  "sudo dnf install -y coreutils libcap dnf-utils lsof"
+                ;;
+              *)
+                ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+                  "sudo dnf install -y coreutils libcap lsof"
+                ;;
+            esac
+          fi
+
+      - name: Download offline packages on runner (Offline installation)
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          cd /tmp/built-tools
+          sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
+          sudo chmod 644 wazuh-offline.tar.gz
+
+      - name: Generate install files on runner (Offline installation)
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          cd /tmp/built-tools
+          sudo bash wazuh-install.sh -g 2>&1 | tee /tmp/install-g.log
+          [ ${PIPESTATUS[0]} -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; exit 1; }
+          sudo chmod 644 wazuh-install-files.tar
+
+      - name: Copy all offline files to remote instance (Offline installation)
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          scp ${{ env.SCP_OPTS }} \
+            /tmp/built-tools/wazuh-install.sh \
+            /tmp/built-tools/wazuh-offline.tar.gz \
+            /tmp/built-tools/wazuh-install-files.tar \
+            /tmp/built-tools/artifact_urls.yaml \
+            /tmp/config.yml \
+            "${{ env.REMOTE }}:/tmp/"
+
+      - name: Remove internet access from instance (Offline installation)
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters \
+              "Name=tag:Name,Values=gha_${{ github.run_id }}_${{ matrix.system }}_tool_check" \
+              "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text --region ${{ env.REGION }})
+          echo "Switching instance $INSTANCE_ID to no-internet SG (${{ env.SG_NO_INTERNET }})"
+          aws ec2 modify-instance-attribute \
+            --instance-id "$INSTANCE_ID" \
+            --groups "${{ env.SG_NO_INTERNET }}" \
+            --region ${{ env.REGION }}
+
+      - name: Run installer (Offline installation)
+        if: needs.build_tools.outputs.install_mode == 'offline'
+        timeout-minutes: 60
+        run: |
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Offline installation in progress...\"; sleep 60; done } &
+            HB=\$!
+            cd /tmp && sudo bash /tmp/wazuh-install.sh -a -of 2>&1 | tee /tmp/install-offline.log
+            RESULT=\${PIPESTATUS[0]}
+            kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-offline.log; }
+            exit \$RESULT
+          "
+
+      # -----------------------------------------------------------------------
+      # Disable host firewall (ubuntu-*, redhat-*)
+      # -----------------------------------------------------------------------
+      - name: Disable firewall on remote instance
+        run: |
+          case "${{ matrix.system }}" in
+            ubuntu-*)
+              ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+                "sudo ufw disable || true"
+              ;;
+            redhat-*)
+              ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+                "sudo systemctl stop firewalld || true"
+              ;;
+          esac
+
+      # -----------------------------------------------------------------------
+      # Wait for wazuh-dashboard to be ready
+      # -----------------------------------------------------------------------
+      - name: Wait for wazuh-dashboard
+        if: |
+          needs.build_tools.outputs.tool_type == 'installer' ||
+          needs.build_tools.outputs.tool_type == 'all'
+        timeout-minutes: 5
+        run: |
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            for i in \$(seq 1 30); do
+              code=\$(curl -sk -u 'admin:admin' -o /dev/null -w '%{http_code}' 'https://localhost/status')
+              [ \"\$code\" = '200' ] && { echo 'wazuh-dashboard is ready'; exit 0; }
+              echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
+              sleep 10
+            done
+            echo 'ERROR: wazuh-dashboard not ready after 5 minutes'
+            exit 1
+          "
+
+      # -----------------------------------------------------------------------
+      # Run cert-tool
+      # -----------------------------------------------------------------------
+      - name: Run cert-tool
+        if: |
+          needs.build_tools.outputs.tool_type == 'cert-tool' ||
+          needs.build_tools.outputs.tool_type == 'all'
+        run: |
+          scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo bash /tmp/wazuh-certs-tool.sh -A"
+
+      # -----------------------------------------------------------------------
+      # Run passwords-tool
+      # -----------------------------------------------------------------------
       - name: Run passwords-tool
         if: |
           needs.build_tools.outputs.tool_type == 'passwords-tool' ||
@@ -374,117 +664,137 @@ jobs:
         env:
           WAZUH_NEW_PASSWORD: "T3sting-Password"
         run: |
-          SSH_OPTS="-o StrictHostKeyChecking=no -p ${{ env.SSH_PORT }} -i ${{ env.SSH_KEY }}"
-          HOST="${{ env.SSH_USER }}@${{ env.SSH_HOST }}"
-          ssh $SSH_OPTS "$HOST" \
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo bash /tmp/wazuh-passwords-tool.sh -u admin -p '${{ env.WAZUH_NEW_PASSWORD }}'"
-          ssh $SSH_OPTS "$HOST" \
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-server -p '${{ env.WAZUH_NEW_PASSWORD }}'"
-          ssh $SSH_OPTS "$HOST" \
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-dashboard -p '${{ env.WAZUH_NEW_PASSWORD }}'"
-          ssh $SSH_OPTS "$HOST" \
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo bash /tmp/wazuh-passwords-tool.sh -au wazuh -ap wazuh -u wazuh-wui -p '${{ env.WAZUH_NEW_PASSWORD }}' -A"
-          ssh $SSH_OPTS "$HOST" \
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo systemctl restart wazuh-indexer wazuh-dashboard wazuh-manager"
 
       - name: Wait for services to be ready after password changes
+        if: |
+          needs.build_tools.outputs.tool_type == 'passwords-tool' ||
+          needs.build_tools.outputs.tool_type == 'all'
         env:
           WAZUH_NEW_PASSWORD: "T3sting-Password"
         run: |
-          ssh -o StrictHostKeyChecking=no \
-              -o ServerAliveInterval=30 \
-              -o ServerAliveCountMax=10 \
-              -p "${{ env.SSH_PORT }}" \
-              -i "${{ env.SSH_KEY }}" \
-              "${{ env.SSH_USER }}@${{ env.SSH_HOST }}" \
-              "
-              NEW_PW='${{ env.WAZUH_NEW_PASSWORD }}'
-              RETRIES=36
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+          NEW_PW='${{ env.WAZUH_NEW_PASSWORD }}'
+          RETRIES=30
 
-              echo 'Waiting for wazuh-indexer to accept new admin credentials...'
-              for i in \$(seq 1 \$RETRIES); do
-                code=\$(curl -sk -u \"admin:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:9200/_cluster/health?pretty')
-                [ \"\$code\" = '200' ] && break
-                echo \"  attempt \$i: HTTP \$code, retrying in 5s...\"
-                sleep 5
-              done
-              [ \"\$code\" = '200' ] || { echo 'ERROR: indexer not accepting new credentials after 3 minutes'; exit 1; }
-              echo 'wazuh-indexer is ready'
+          echo 'Waiting for wazuh-indexer to accept new admin credentials...'
+          for i in \$(seq 1 \$RETRIES); do
+            code=\$(curl -sk -u \"admin:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:9200/_cluster/health?pretty')
+            [ \"\$code\" = '200' ] && break
+            echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
+            sleep 10
+          done
+          [ \"\$code\" = '200' ] || { echo 'ERROR: indexer not accepting new credentials after 3 minutes'; exit 1; }
+          echo 'wazuh-indexer is ready'
 
-              echo 'Waiting for wazuh-dashboard to accept new admin credentials...'
-              for i in \$(seq 1 \$RETRIES); do
-                code=\$(curl -sk -u \"admin:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost/status')
-                [ \"\$code\" = '200' ] && break
-                echo \"  attempt \$i: HTTP \$code, retrying in 5s...\"
-                sleep 5
-              done
-              [ \"\$code\" = '200' ] || { echo 'ERROR: dashboard not accepting new credentials after 3 minutes'; exit 1; }
-              echo 'wazuh-dashboard is ready'
+          echo 'Waiting for wazuh-dashboard to accept new admin credentials...'
+          for i in \$(seq 1 \$RETRIES); do
+            code=\$(curl -sk -u \"admin:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost/status')
+            [ \"\$code\" = '200' ] && break
+            echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
+            sleep 10
+          done
+          [ \"\$code\" = '200' ] || { echo 'ERROR: dashboard not accepting new credentials after 3 minutes'; exit 1; }
+          echo 'wazuh-dashboard is ready'
 
-              echo 'Waiting for wazuh-manager API to accept wazuh-wui credentials...'
-              for i in \$(seq 1 \$RETRIES); do
-                code=\$(curl -sk -u \"wazuh-wui:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate')
-                [ \"\$code\" = '200' ] && break
-                echo \"  attempt \$i: HTTP \$code, retrying in 5s...\"
-                sleep 5
-              done
-              [ \"\$code\" = '200' ] || { echo 'ERROR: manager API not accepting wazuh-wui credentials after 3 minutes'; exit 1; }
-              echo 'wazuh-manager API is ready'
-              "
+          echo 'Waiting for wazuh-manager API to accept wazuh-wui credentials...'
+          for i in \$(seq 1 \$RETRIES); do
+            code=\$(curl -sk -X POST -u \"wazuh-wui:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate')
+            [ \"\$code\" = '200' ] && break
+            echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
+            sleep 10
+          done
+          [ \"\$code\" = '200' ] || { echo 'ERROR: manager API not accepting wazuh-wui credentials after 3 minutes'; exit 1; }
+          echo 'wazuh-manager API is ready'
+          "
 
       # -----------------------------------------------------------------------
-      # Run integration tests and report results
+      # Run integration tests and generate results
       # -----------------------------------------------------------------------
-      - name: Install integration-test-module
-        run: |
-          pip install -r wazuh-automation/integration-test-module/requirements.txt
-          pip install -e wazuh-automation/integration-test-module/
-
       - name: Run tests
         id: run_tests
         continue-on-error: true
         env:
           WAZUH_NEW_PASSWORD: ${{ (needs.build_tools.outputs.tool_type == 'passwords-tool' || needs.build_tools.outputs.tool_type == 'all') && 'T3sting-Password' || '' }}
+          WAZUH_SERVICE_PASSWORD: ${{ (needs.build_tools.outputs.tool_type == 'passwords-tool' || needs.build_tools.outputs.tool_type == 'all') && 'T3sting-Password' || '' }}
           WAZUH_CERT_TOOL_OUTPUT_DIR: /tmp/wazuh-certificates
         run: |
           TOOL_TYPE="${{ needs.build_tools.outputs.tool_type }}"
           OS="${{ matrix.system }}"
-          if [ "$TOOL_TYPE" = "all" ]; then
-            for t in installer cert-tool passwords-tool; do
-              test_runner \
-                --test-type "$t" \
-                --ssh-host "${{ env.SSH_HOST }}" \
-                --ssh-port "${{ env.SSH_PORT }}" \
-                --ssh-key-path "${{ env.SSH_KEY }}" \
-                --ssh-username "${{ env.SSH_USER }}" \
-                --log-level INFO \
-                --output github \
-                --output-file "test-results-${OS}-${t}.github"
-            done
-            cat test-results-${OS}-*.github > "test-results-${OS}.github"
-          else
-            test_runner \
-              --test-type "$TOOL_TYPE" \
-              --ssh-host "${{ env.SSH_HOST }}" \
-              --ssh-port "${{ env.SSH_PORT }}" \
-              --ssh-key-path "${{ env.SSH_KEY }}" \
-              --ssh-username "${{ env.SSH_USER }}" \
-              --log-level INFO \
-              --output github \
-              --output-file "test-results-${OS}.github"
-          fi
+          test_runner \
+            --test-type "$TOOL_TYPE" \
+            --ssh-host "${{ env.SSH_HOST }}" \
+            --ssh-port "${{ env.SSH_PORT }}" \
+            --ssh-key-path "${{ env.SSH_KEY }}" \
+            --ssh-username "${{ env.SSH_USER }}" \
+            --log-level INFO \
+            --output github \
+            --output-file "test-results-${OS}.github"
+
+      - name: Uninstall Wazuh
+        if: |
+          always() && (
+            needs.build_tools.outputs.tool_type == 'installer' ||
+            needs.build_tools.outputs.tool_type == 'all'
+          )
+        timeout-minutes: 30
+        run: |
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Uninstall in progress...\"; sleep 30; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh --uninstall 2>&1 | tee /tmp/install-uninstall.log
+            RESULT=\${PIPESTATUS[0]}
+            kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-uninstall.log; }
+            exit \$RESULT
+          "
+
+      - name: Run tests (uninstall)
+        id: run_tests_uninstall
+        if: |
+          always() && (
+            needs.build_tools.outputs.tool_type == 'installer' ||
+            needs.build_tools.outputs.tool_type == 'all'
+          )
+        continue-on-error: true
+        run: |
+          OS="${{ matrix.system }}"
+          test_runner \
+            --test-type uninstall \
+            --ssh-host "${{ env.SSH_HOST }}" \
+            --ssh-port "${{ env.SSH_PORT }}" \
+            --ssh-key-path "${{ env.SSH_KEY }}" \
+            --ssh-username "${{ env.SSH_USER }}" \
+            --log-level INFO \
+            --output github \
+            --output-file "test-results-${OS}-uninstall.github"
 
       - name: Create step summary
         if: always()
         run: |
           TOOL="${{ needs.build_tools.outputs.tool_type }}"
+          MODE="${{ needs.build_tools.outputs.install_mode }}"
           OS="${{ matrix.system }}"
-          echo "## 🧪 Integration Test Results — ${TOOL} on ${OS}" >> $GITHUB_STEP_SUMMARY
+          echo "## 🧪 Integration Test Results — ${TOOL} [${MODE}] on ${OS}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -f "test-results-${OS}.github" ]; then
             cat "test-results-${OS}.github" >> $GITHUB_STEP_SUMMARY
           else
             echo "No test results file found." >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f "test-results-${OS}-uninstall.github" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Uninstall" >> $GITHUB_STEP_SUMMARY
+            cat "test-results-${OS}-uninstall.github" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Post PR comment with results
@@ -492,6 +802,7 @@ jobs:
         uses: actions/github-script@v8
         env:
           TOOL: ${{ needs.build_tools.outputs.tool_type }}
+          INSTALL_MODE: ${{ needs.build_tools.outputs.install_mode }}
           OS: ${{ matrix.system }}
           RUN_OUTCOME: ${{ steps.run_tests.outcome }}
         with:
@@ -499,11 +810,12 @@ jobs:
           script: |
             const fs = require('fs');
             const tool = process.env.TOOL;
+            const mode = process.env.INSTALL_MODE;
             const os = process.env.OS;
             const outcome = process.env.RUN_OUTCOME;
-            const marker = `<!-- integration-check-${tool}-${os} -->`;
+            const marker = `<!-- integration-check-${tool}-${mode}-${os} -->`;
 
-            let body = `${marker}\n## 🧪 Integration Tests — \`${tool}\` on \`${os}\`\n\n`;
+            let body = `${marker}\n## 🧪 Integration Tests — \`${tool}\` [\`${mode}\`] on \`${os}\`\n\n`;
             body += outcome === 'success'
               ? '✅ **All tests passed!**\n\n'
               : '❌ **Some tests failed**\n\n';
@@ -516,13 +828,21 @@ jobs:
             } catch (e) {
               console.log('Could not read results file:', e.message);
             }
+            const uninstallFile = `test-results-${os}-uninstall.github`;
+            try {
+              if (fs.existsSync(uninstallFile)) {
+                body += '### Uninstall\n\n' + fs.readFileSync(uninstallFile, 'utf8') + '\n\n';
+              }
+            } catch (e) {
+              console.log('Could not read uninstall results file:', e.message);
+            }
 
             body += `- **Workflow:** [View Details](${context.payload.repository.html_url}/actions/runs/${context.runId})\n`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: ${{ needs.get_pr_info.outputs.pr_number }},
+              issue_number: context.issue.number,
             });
 
             const existing = comments.find(c =>
@@ -540,7 +860,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: ${{ needs.get_pr_info.outputs.pr_number }},
+                issue_number: context.issue.number,
                 body: body,
               });
             }
@@ -549,15 +869,23 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-results-${{ needs.build_tools.outputs.tool_type }}-${{ matrix.system }}
-          path: test-results-${{ matrix.system }}.github
+          name: test-results-${{ needs.build_tools.outputs.tool_type }}-${{ needs.build_tools.outputs.install_mode }}-${{ matrix.system }}
+          path: test-results-${{ matrix.system }}*.github
           retention-days: 7
 
       # -----------------------------------------------------------------------
-      # Cleanup: always deallocate the instance
+      # Cleanup: always deallocate instance with allocator
       # -----------------------------------------------------------------------
+      - name: Configure AWS credentials for cleanup
+        if: always()
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          role-session-name: assistant-cleanup-${{ github.run_id }}
+          aws-region: ${{ env.REGION }}
+
       - name: Deallocate instance
-        if: always() && steps.allocate.outcome == 'success'
+        if: always()
         run: |
           python3 wazuh-automation/deployability/modules/allocation/main.py \
             --action delete \
@@ -566,48 +894,37 @@ jobs:
   # -------------------------------------------------------------------------
   # Job 4: Update the GitHub check run (issue_comment trigger only)
   # -------------------------------------------------------------------------
-  update_check_success:
-    needs: [get_pr_info, test_on_system]
-    if: success() && github.event_name == 'issue_comment'
+  update_check:
+    needs: [get_pr_info, vm_test]
+    if: always() && github.event_name == 'issue_comment' && needs.get_pr_info.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Update check run — success
+      - name: Update check run
         uses: actions/github-script@v8
+        env:
+          VM_RESULT: ${{ needs.vm_test.result }}
+          CHECK_NAME: ${{ needs.get_pr_info.outputs.check_name }}
+          CHECK_RUN_ID: ${{ needs.get_pr_info.outputs.check_run_id }}
         with:
           script: |
+            const result = process.env.VM_RESULT;
+            const conclusionMap = {
+              success:   { conclusion: 'success',   icon: '✅', summary: 'All integration tests passed on all matrix OS.' },
+              failure:   { conclusion: 'failure',   icon: '❌', summary: 'One or more integration tests failed.' },
+              cancelled: { conclusion: 'cancelled', icon: '⏹️', summary: 'Workflow was cancelled.' },
+            };
+            const { conclusion, icon, summary } = conclusionMap[result] ?? conclusionMap.failure;
+            const label = conclusion.charAt(0).toUpperCase() + conclusion.slice(1);
             await github.rest.checks.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              check_run_id: ${{ needs.get_pr_info.outputs.check_run_id }},
+              check_run_id: parseInt(process.env.CHECK_RUN_ID),
               status: 'completed',
-              conclusion: 'success',
+              conclusion,
               completed_at: new Date().toISOString(),
               output: {
-                title: '✅ ${{ needs.get_pr_info.outputs.check_name }} — Success',
-                summary: 'All integration tests passed on all matrix OS.',
+                title: `${icon} ${process.env.CHECK_NAME} — ${label}`,
+                summary,
                 text: `[View workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
-              }
-            });
-
-  update_check_failure:
-    needs: [get_pr_info, test_on_system]
-    if: failure() && github.event_name == 'issue_comment'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Update check run — failure
-        uses: actions/github-script@v8
-        with:
-          script: |
-            await github.rest.checks.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              check_run_id: ${{ needs.get_pr_info.outputs.check_run_id }},
-              status: 'completed',
-              conclusion: 'failure',
-              completed_at: new Date().toISOString(),
-              output: {
-                title: '❌ ${{ needs.get_pr_info.outputs.check_name }} — Failed',
-                summary: 'One or more integration tests failed.',
-                text: `[View workflow run for details](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
               }
             });
