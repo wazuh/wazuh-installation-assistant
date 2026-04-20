@@ -25,7 +25,7 @@ The steps to perform the installation are as follows:
 
     4.1 To install the Wazuh Manager:
 
-    ``` bash
+    ```bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-server
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -ws
@@ -33,7 +33,7 @@ The steps to perform the installation are as follows:
 
     4.2 To install the Wazuh Indexer:
 
-    ``` bash
+    ```bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-indexer
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -wi
@@ -41,7 +41,7 @@ The steps to perform the installation are as follows:
 
     4.3 To install the Wazuh Dashboard:
 
-    ``` bash
+    ```bash
     sudo bash wazuh-install-5.0.0-1.sh --wazuh-dashboard
     # or use the short form
     sudo bash wazuh-install-5.0.0-1.sh -wd

@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add test documentation and fix all documetations with mermaid problems. ([#702](https://github.com/wazuh/wazuh-installation-assistant/pull/702))
+- Add distributed, AIO and Offline test into the integration test checks ([#684](https://github.com/wazuh/wazuh-installation-assistant/pull/684))
 - Updated bumper script with --set-as-main parameter. ([#686](https://github.com/wazuh/wazuh-installation-assistant/pull/686))
 - Added offline installation documentation ([#683](https://github.com/wazuh/wazuh-installation-assistant/pull/683))
 - Add unit and integration test ([#630](https://github.com/wazuh/wazuh-installation-assistant/pull/630))
