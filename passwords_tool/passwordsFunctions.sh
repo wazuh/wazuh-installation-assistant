@@ -60,7 +60,7 @@ function passwords_changePassword() {
             echo "${conf}" > /etc/filebeat/filebeat.yml
             common_logger "The filebeat.yml file has been updated to use the Filebeat Keystore username and password."
             passwords_restartService "filebeat"
-            eval "/var/ossec/bin/wazuh-keystore -f indexer -k password -v ${adminpass}"
+            /var/ossec/bin/wazuh-keystore -f indexer -k password -v "${adminpass}"
             passwords_restartService "wazuh-manager"
         fi
     fi
@@ -89,7 +89,7 @@ function passwords_changePasswordApi() {
             if [ -n "${wazuh_installed}" ]; then
                 passwords_getApiUserId "${api_users[i]}"
                 WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
-                eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
+                common_curl -s -k -X PUT -H "Authorization: Bearer $TOKEN_API" -H "Content-Type: application/json" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
                 if [ "${api_users[i]}" == "${adminUser}" ]; then
                     sleep 1
                     adminPassword="${api_passwords[i]}"
@@ -107,7 +107,7 @@ function passwords_changePasswordApi() {
         if [ -n "${wazuh_installed}" ]; then
             passwords_getApiUserId "${nuser}"
             WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-            eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
+            common_curl -s -k -X PUT -H "Authorization: Bearer $TOKEN_API" -H "Content-Type: application/json" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
             if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
                 common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
             fi
@@ -421,7 +421,7 @@ For Wazuh API users, the file must have this format:
         mapfile -t fileusers <<< "${sfileusers}"
         mapfile -t filepasswords <<< "${sfilepasswords}"
     fi
-    
+
     if [ -n "${sfileapiusers}" ] && [ -n "${sfileapipasswords}" ]; then
         mapfile -t fileapiusers <<< "${sfileapiusers}"
         mapfile -t fileapipasswords <<< "${sfileapipasswords}"

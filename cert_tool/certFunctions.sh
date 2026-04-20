@@ -7,13 +7,107 @@
 # Foundation.
 
 
+# Security validation functions
+
+function cert_validatePath() {
+    local path="$1"
+    local path_type="${2:-file}"
+
+    # Check if path is empty
+    if [[ -z "${path}" ]]; then
+        common_logger -e "Path cannot be empty."
+        return 1
+    fi
+
+    # Prevent path traversal attacks - reject paths with suspicious patterns
+    if [[ "${path}" =~ \.\./|\.\.\\ ]]; then
+        common_logger -e "Path traversal detected in: ${path}"
+        return 1
+    fi
+
+    # Reject paths with newlines, carriage returns, or tabs (specific problematic characters)
+    if [[ "${path}" =~ $'\n'|$'\r'|$'\t' ]]; then
+        common_logger -e "Invalid characters detected in path: ${path}"
+        return 1
+    fi
+
+    # For absolute paths validation
+    if [[ "${path}" == /* ]]; then
+        # Resolve to canonical path to prevent symlink attacks
+        if command -v realpath >/dev/null 2>&1; then
+            local canonical_path
+            canonical_path=$(realpath -m "${path}" 2>/dev/null) || return 1
+
+            # Ensure the canonical path doesn't escape expected boundaries
+            if [[ ! "${canonical_path}" =~ ^/[a-zA-Z0-9/_.\-]+$ ]]; then
+                common_logger -e "Invalid canonical path: ${canonical_path}"
+                return 1
+            fi
+        fi
+    fi
+
+    return 0
+}
+
+function cert_sanitizeFilename() {
+    local filename="$1"
+
+    # Remove any path components
+    filename="${filename##*/}"
+
+    # Only allow alphanumeric, dash, underscore, and dot
+    filename=$(echo "${filename}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+
+    # Prevent hidden files
+    filename="${filename#.}"
+
+    # Limit length to 255 characters
+    if [[ ${#filename} -gt 255 ]]; then
+        filename="${filename:0:255}"
+    fi
+
+    echo "${filename}"
+}
+
+function cert_sanitizeNodeName() {
+    local nodename="$1"
+
+    # Only allow alphanumeric, dash, underscore, and dot (typical for hostnames)
+    if [[ ! "${nodename}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+        common_logger -e "Invalid node name: ${nodename}. Only alphanumeric characters, dots, dashes, and underscores are allowed."
+        return 1
+    fi
+
+    # Prevent names starting with dash or dot
+    if [[ "${nodename}" =~ ^[-\.] ]]; then
+        common_logger -e "Node name cannot start with dash or dot: ${nodename}"
+        return 1
+    fi
+
+    # Limit length
+    if [[ ${#nodename} -gt 253 ]]; then
+        common_logger -e "Node name too long: ${nodename}"
+        return 1
+    fi
+
+    return 0
+}
+
 function cert_cleanFiles() {
-    
+
     common_logger -d "Cleaning certificate files."
-    eval "rm -f ${cert_tmp_path}/*.csr ${debug}"
-    eval "rm -f ${cert_tmp_path}/*.srl ${debug}"
-    eval "rm -f ${cert_tmp_path}/*.conf ${debug}"
-    eval "rm -f ${cert_tmp_path}/admin-key-temp.pem ${debug}"
+
+    # Validate cert_tmp_path before use
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        exit 1
+    fi
+
+    # Remove files
+    rm -f "${cert_tmp_path}"/*.csr
+    rm -f "${cert_tmp_path}"/*.srl
+    rm -f "${cert_tmp_path}"/*.conf
+    rm -f "${cert_tmp_path}"/admin-key-temp.pem
 
 }
 
@@ -39,16 +133,36 @@ function cert_checkRootCA() {
             rootca=${rootcakey}
             rootcakey=${ca_temp}
         fi
+
+        # Validate paths
+        if ! cert_validatePath "${rootca}" "file"; then
+            common_logger -e "Invalid root CA certificate path: ${rootca}"
+            cert_cleanFiles
+            exit 1
+        fi
+
+        if ! cert_validatePath "${rootcakey}" "file"; then
+            common_logger -e "Invalid root CA key path: ${rootcakey}"
+            cert_cleanFiles
+            exit 1
+        fi
+
+        if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+            common_logger -e "Invalid certificate temporary path."
+            cert_cleanFiles
+            exit 1
+        fi
+
         # Validate that files exist
         if [[ -e ${rootca} ]]; then
-            eval "cp ${rootca} ${cert_tmp_path}/root-ca.pem ${debug}"
+            cp "${rootca}" "${cert_tmp_path}/root-ca.pem"
         else
             common_logger -e "The file ${rootca} does not exists"
             cert_cleanFiles
             exit 1
         fi
         if [[ -e ${rootcakey} ]]; then
-            eval "cp ${rootcakey} ${cert_tmp_path}/root-ca.key ${debug}"
+            cp "${rootcakey}" "${cert_tmp_path}/root-ca.key"
         else
             common_logger -e "The file ${rootcakey} does not exists"
             cert_cleanFiles
@@ -62,9 +176,10 @@ function cert_checkRootCA() {
 
 # Executes and analyze the output of the command. It prints the output
 # in case of an error
+# Note: This function now executes commands directly
 function cert_executeAndValidate() {
 
-    command_output=$(eval "$@" 2>&1)
+    command_output=$("$@" 2>&1)
     e_code="${PIPESTATUS[0]}"
 
     if [ "${e_code}" -ne 0 ]; then
@@ -80,21 +195,43 @@ function cert_executeAndValidate() {
 function cert_generateAdmincertificate() {
 
     common_logger "Generating Admin certificates."
+
+    # Validate cert_tmp_path
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        exit 1
+    fi
+
     common_logger -d "Generating Admin private key."
-    cert_executeAndValidate "openssl genrsa -out ${cert_tmp_path}/admin-key-temp.pem 2048"
+    cert_executeAndValidate openssl genrsa -out "${cert_tmp_path}/admin-key-temp.pem" 2048
     common_logger -d "Converting Admin private key to PKCS8 format."
-    cert_executeAndValidate "openssl pkcs8 -inform PEM -outform PEM -in ${cert_tmp_path}/admin-key-temp.pem -topk8 -nocrypt -v1 PBE-SHA1-3DES -out ${cert_tmp_path}/admin-key.pem"
+    cert_executeAndValidate openssl pkcs8 -inform PEM -outform PEM -in "${cert_tmp_path}/admin-key-temp.pem" -topk8 -nocrypt -v1 PBE-SHA1-3DES -out "${cert_tmp_path}/admin-key.pem"
     common_logger -d "Generating Admin CSR."
-    cert_executeAndValidate "openssl req -new -key ${cert_tmp_path}/admin-key.pem -out ${cert_tmp_path}/admin.csr -batch -subj '/C=US/L=California/O=Wazuh/OU=Wazuh/CN=admin'"
+    cert_executeAndValidate openssl req -new -key "${cert_tmp_path}/admin-key.pem" -out "${cert_tmp_path}/admin.csr" -batch -subj '/C=US/L=California/O=Wazuh/OU=Wazuh/CN=admin'
     common_logger -d "Creating Admin certificate."
-    cert_executeAndValidate "openssl x509 -days 3650 -req -in ${cert_tmp_path}/admin.csr -CA ${cert_tmp_path}/root-ca.pem -CAkey ${cert_tmp_path}/root-ca.key -CAcreateserial -sha256 -out ${cert_tmp_path}/admin.pem"
+    cert_executeAndValidate openssl x509 -days 3650 -req -in "${cert_tmp_path}/admin.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -sha256 -out "${cert_tmp_path}/admin.pem"
 
 }
 
 function cert_generateCertificateconfiguration() {
 
     common_logger -d "Generating certificate configuration."
-    cat > "${cert_tmp_path}/${1}.conf" <<- EOF
+
+    local node_name="$1"
+
+    # Validate node name
+    if ! cert_sanitizeNodeName "${node_name}"; then
+        common_logger -e "Invalid node name: ${node_name}"
+        exit 1
+    fi
+
+    # Validate cert_tmp_path
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        exit 1
+    fi
+
+    cat > "${cert_tmp_path}/${node_name}.conf" <<- EOF
         [ req ]
         prompt = no
         default_bits = 2048
@@ -120,18 +257,18 @@ function cert_generateCertificateconfiguration() {
 	EOF
 
 
-    conf="$(awk '{sub("CN = cname", "CN = '"${1}"'")}1' "${cert_tmp_path}/${1}.conf")"
-    echo "${conf}" > "${cert_tmp_path}/${1}.conf"
+    conf="$(awk '{sub("CN = cname", "CN = '"${node_name}"'")}1' "${cert_tmp_path}/${node_name}.conf")"
+    echo "${conf}" > "${cert_tmp_path}/${node_name}.conf"
 
     if [ "${#@}" -gt 1 ]; then
-        sed -i '/IP.1/d' "${cert_tmp_path}/${1}.conf"
+        sed -i '/IP.1/d' "${cert_tmp_path}/${node_name}.conf"
         for (( i=2; i<=${#@}; i++ )); do
             isIP=$(echo "${!i}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
             isDNS=$(echo "${!i}" | grep -P "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.([A-Za-z]{2,})$" )            j=$((i-1))
             if [ "${isIP}" ]; then
-                printf '%s\n' "        IP.${j} = ${!i}" >> "${cert_tmp_path}/${1}.conf"
+                printf '%s\n' "        IP.${j} = ${!i}" >> "${cert_tmp_path}/${node_name}.conf"
             elif [ "${isDNS}" ]; then
-                printf '%s\n' "        DNS.${j} = ${!i}" >> "${cert_tmp_path}/${1}.conf"
+                printf '%s\n' "        DNS.${j} = ${!i}" >> "${cert_tmp_path}/${node_name}.conf"
             else
                 common_logger -e "Invalid IP or DNS ${!i}"
                 exit 1
@@ -151,12 +288,19 @@ function cert_generateIndexercertificates() {
 
         for i in "${!indexer_node_names[@]}"; do
             indexer_node_name=${indexer_node_names[$i]}
+
+            # Validate node name
+            if ! cert_sanitizeNodeName "${indexer_node_name}"; then
+                common_logger -e "Invalid indexer node name: ${indexer_node_name}"
+                exit 1
+            fi
+
             common_logger -d "Creating the certificates for ${indexer_node_name} indexer node."
             cert_generateCertificateconfiguration "${indexer_node_name}" "${indexer_node_ips[i]}"
             common_logger -d "Creating the Wazuh indexer tmp key pair."
-            cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${indexer_node_name}-key.pem -out ${cert_tmp_path}/${indexer_node_name}.csr -config ${cert_tmp_path}/${indexer_node_name}.conf"
+            cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${indexer_node_name}-key.pem" -out "${cert_tmp_path}/${indexer_node_name}.csr" -config "${cert_tmp_path}/${indexer_node_name}.conf"
             common_logger -d "Creating the Wazuh indexer certificates."
-            cert_executeAndValidate "openssl x509 -req -in ${cert_tmp_path}/${indexer_node_name}.csr -CA ${cert_tmp_path}/root-ca.pem -CAkey ${cert_tmp_path}/root-ca.key -CAcreateserial -out ${cert_tmp_path}/${indexer_node_name}.pem -extfile ${cert_tmp_path}/${indexer_node_name}.conf -extensions v3_req -days 3650"
+            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${indexer_node_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${indexer_node_name}.pem" -extfile "${cert_tmp_path}/${indexer_node_name}.conf" -extensions v3_req -days 3650
         done
     else
         return 1
@@ -171,14 +315,21 @@ function cert_generateFilebeatcertificates() {
 
         for i in "${!server_node_names[@]}"; do
             server_name="${server_node_names[i]}"
+
+            # Validate node name
+            if ! cert_sanitizeNodeName "${server_name}"; then
+                common_logger -e "Invalid server node name: ${server_name}"
+                exit 1
+            fi
+
             common_logger -d "Generating the certificates for ${server_name} server node."
             j=$((i+1))
             declare -a server_ips=(server_node_ip_"$j"[@])
             cert_generateCertificateconfiguration "${server_name}" "${!server_ips}"
             common_logger -d "Creating the Wazuh server tmp key pair."
-            cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${server_name}-key.pem -out ${cert_tmp_path}/${server_name}.csr  -config ${cert_tmp_path}/${server_name}.conf"
+            cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${server_name}-key.pem" -out "${cert_tmp_path}/${server_name}.csr" -config "${cert_tmp_path}/${server_name}.conf"
             common_logger -d "Creating the Wazuh server certificates."
-            cert_executeAndValidate "openssl x509 -req -in ${cert_tmp_path}/${server_name}.csr -CA ${cert_tmp_path}/root-ca.pem -CAkey ${cert_tmp_path}/root-ca.key -CAcreateserial -out ${cert_tmp_path}/${server_name}.pem -extfile ${cert_tmp_path}/${server_name}.conf -extensions v3_req -days 3650"
+            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${server_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${server_name}.pem" -extfile "${cert_tmp_path}/${server_name}.conf" -extensions v3_req -days 3650
         done
     else
         return 1
@@ -192,11 +343,18 @@ function cert_generateDashboardcertificates() {
 
         for i in "${!dashboard_node_names[@]}"; do
             dashboard_node_name="${dashboard_node_names[i]}"
+
+            # Validate node name
+            if ! cert_sanitizeNodeName "${dashboard_node_name}"; then
+                common_logger -e "Invalid dashboard node name: ${dashboard_node_name}"
+                exit 1
+            fi
+
             cert_generateCertificateconfiguration "${dashboard_node_name}" "${dashboard_node_ips[i]}"
             common_logger -d "Creating the Wazuh dashboard tmp key pair."
-            cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${dashboard_node_name}-key.pem -out ${cert_tmp_path}/${dashboard_node_name}.csr -config ${cert_tmp_path}/${dashboard_node_name}.conf"
+            cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${dashboard_node_name}-key.pem" -out "${cert_tmp_path}/${dashboard_node_name}.csr" -config "${cert_tmp_path}/${dashboard_node_name}.conf"
             common_logger -d "Creating the Wazuh dashboard certificates."
-            cert_executeAndValidate "openssl x509 -req -in ${cert_tmp_path}/${dashboard_node_name}.csr -CA ${cert_tmp_path}/root-ca.pem -CAkey ${cert_tmp_path}/root-ca.key -CAcreateserial -out ${cert_tmp_path}/${dashboard_node_name}.pem -extfile ${cert_tmp_path}/${dashboard_node_name}.conf -extensions v3_req -days 3650"
+            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${dashboard_node_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${dashboard_node_name}.pem" -extfile "${cert_tmp_path}/${dashboard_node_name}.conf" -extensions v3_req -days 3650
         done
     else
         return 1
@@ -207,7 +365,14 @@ function cert_generateDashboardcertificates() {
 function cert_generateRootCAcertificate() {
 
     common_logger "Generating the root certificate."
-    cert_executeAndValidate "openssl req -x509 -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/root-ca.key -out ${cert_tmp_path}/root-ca.pem -batch -subj '/OU=Wazuh/O=Wazuh/L=California/' -days 3650"
+
+    # Validate cert_tmp_path
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        exit 1
+    fi
+
+    cert_executeAndValidate openssl req -x509 -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/root-ca.key" -out "${cert_tmp_path}/root-ca.pem" -batch -subj '/OU=Wazuh/O=Wazuh/L=California/' -days 3650
 
 }
 
@@ -227,7 +392,7 @@ function cert_parseYaml() {
 
     local s='[[:space:]]*' sm='[ \t]*' w='[a-zA-Z0-9_]*' fs=${fs:-$(echo @|tr @ '\034')} i=${i:-  }
     cat $1 2>/dev/null | \
-    awk -F$fs "{multi=0; 
+    awk -F$fs "{multi=0;
         if(match(\$0,/$sm\|$sm$/)){multi=1; sub(/$sm\|$sm$/,\"\");}
         if(match(\$0,/$sm>$sm$/)){multi=2; sub(/$sm>$sm$/,\"\");}
         while(multi>0){
@@ -327,7 +492,7 @@ function cert_parseYaml() {
 }
 
 function cert_checkPrivateIp() {
-    
+
     local ip=$1
     common_logger -d "Checking if ${ip} is private."
 
@@ -354,17 +519,29 @@ function cert_readConfig() {
             common_logger -e "File ${config_file} is empty"
             exit 1
         fi
-        eval "$(cert_convertCRLFtoLF "${config_file}")"
 
-        eval "indexer_node_names=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+=" | cut -d = -f 2 ) )"
-        eval "server_node_names=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+=" | cut -d = -f 2 ) )"
-        eval "dashboard_node_names=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+[0-9]+=" | cut -d = -f 2) )"
-        eval "indexer_node_ips=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
-        eval "server_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
-        eval "dashboard_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" | cut -d = -f 2 ) )"
-        eval "server_node_types=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+[_]+node_type=" | cut -d = -f 2 ) )"
-        eval "number_server_ips=( $(cert_parseYaml "${config_file}" | grep -o -E 'nodes[_]+server[_]+[0-9]+[_]+ip' | sort -u | wc -l) )"
+        # Convert CRLF to LF
+        cert_convertCRLFtoLF "${config_file}"
+
+        # Read node names and IPs - use mapfile/readarray for safer array assignment
+        mapfile -t indexer_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t server_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+server[_]+[0-9]+=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t dashboard_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+[0-9]+=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t indexer_node_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t server_node_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+server[_]+[0-9]+[_]+ip=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t dashboard_node_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t server_node_types < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+server[_]+[0-9]+[_]+node_type=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+
+        number_server_ips=$(cert_parseYaml "${config_file}" | grep -o -E 'nodes[_]+server[_]+[0-9]+[_]+ip' | sort -u | wc -l)
         all_ips=("${indexer_node_ips[@]}" "${server_node_ips[@]}" "${dashboard_node_ips[@]}")
+
+        # Validate all node names
+        for name in "${indexer_node_names[@]}" "${server_node_names[@]}" "${dashboard_node_names[@]}"; do
+            if ! cert_sanitizeNodeName "${name}"; then
+                common_logger -e "Invalid node name found in config: ${name}"
+                exit 1
+            fi
+        done
 
         for ip in "${all_ips[@]}"; do
             isIP=$(echo "${ip}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
@@ -378,29 +555,29 @@ function cert_readConfig() {
 
         for i in $(seq 1 "${number_server_ips}"); do
             nodes_server="nodes[_]+server[_]+${i}[_]+ip"
-            eval "server_node_ip_$i=( $( cert_parseYaml "${config_file}" | grep -E "${nodes_server}" | sed '/\./!d' | cut -d = -f 2 | sed -r 's/\s+//g') )"
+            mapfile -t "server_node_ip_$i" < <(cert_parseYaml "${config_file}" | grep -E "${nodes_server}" | sed '/\./!d' | cut -d = -f 2 | sed -r 's/\s+//g' | tr -d '"' | tr -d "'")
         done
 
         unique_names=($(echo "${indexer_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_names[@]}" -ne "${#indexer_node_names[@]}" ]; then 
+        if [ "${#unique_names[@]}" -ne "${#indexer_node_names[@]}" ]; then
             common_logger -e "Duplicated indexer node names."
             exit 1
         fi
 
         unique_ips=($(echo "${indexer_node_ips[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_ips[@]}" -ne "${#indexer_node_ips[@]}" ]; then 
+        if [ "${#unique_ips[@]}" -ne "${#indexer_node_ips[@]}" ]; then
             common_logger -e "Duplicated indexer node ips."
             exit 1
         fi
 
         unique_names=($(echo "${server_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_names[@]}" -ne "${#server_node_names[@]}" ]; then 
+        if [ "${#unique_names[@]}" -ne "${#server_node_names[@]}" ]; then
             common_logger -e "Duplicated Wazuh server node names."
             exit 1
         fi
 
         unique_ips=($(echo "${server_node_ips[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-        if [ "${#unique_ips[@]}" -ne "${#server_node_ips[@]}" ]; then 
+        if [ "${#unique_ips[@]}" -ne "${#server_node_ips[@]}" ]; then
             common_logger -e "Duplicated Wazuh server node ips."
             exit 1
         fi
@@ -456,14 +633,40 @@ function cert_readConfig() {
 }
 
 function cert_setpermisions() {
-    eval "chmod -R 744 ${cert_tmp_path} ${debug}"
+    # Validate cert_tmp_path
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        return 1
+    fi
+
+    chmod -R 744 "${cert_tmp_path}"
 }
 
 function cert_convertCRLFtoLF() {
-    if [[ ! -d "/tmp/wazuh-install-files" ]]; then
-        eval "mkdir /tmp/wazuh-install-files ${debug}"
+    local config_file_path="$1"
+
+    # Validate config file path
+    if ! cert_validatePath "${config_file_path}" "file"; then
+        common_logger -e "Invalid config file path."
+        return 1
     fi
-    eval "chmod -R 755 /tmp/wazuh-install-files ${debug}"
-    eval "tr -d '\015' < $1 > /tmp/wazuh-install-files/new_config.yml"
-    eval "mv /tmp/wazuh-install-files/new_config.yml $1 ${debug}"
+
+    # Create secure temporary directory with mktemp
+    local temp_dir
+    temp_dir=$(mktemp -d -t wazuh-install-files.XXXXXXXXXX) || {
+        common_logger -e "Failed to create temporary directory"
+        return 1
+    }
+
+    # Set restrictive permissions
+    chmod 700 "${temp_dir}"
+
+    # Convert CRLF to LF
+    tr -d '\015' < "${config_file_path}" > "${temp_dir}/new_config.yml"
+
+    # Move back to original location
+    mv "${temp_dir}/new_config.yml" "${config_file_path}"
+
+    # Clean up temporary directory
+    rm -rf "${temp_dir}"
 }

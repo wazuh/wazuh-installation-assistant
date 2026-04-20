@@ -48,7 +48,8 @@ function getHelp() {
 
 function main() {
 
-    umask 177
+    # Set restrictive umask to ensure generated files have secure permissions (0077 = rwx------)
+    umask 0077
 
     cert_checkOpenSSL
 
@@ -76,7 +77,7 @@ function main() {
                             common_logger -e "You have not entered a root-ca.pem"
                             exit 1
                         else
-                            common_logger -e "You have not entered a root-ca.key" 
+                            common_logger -e "You have not entered a root-ca.key"
                             exit 1
                         fi
                     fi
@@ -166,10 +167,20 @@ function main() {
                 exit 1
             fi
         fi
-        
+
+        # Validate and create secure temporary directory
+        if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+            common_logger -e "Invalid temporary path: ${cert_tmp_path}"
+            exit 1
+        fi
+
         if [[ ! -d "${cert_tmp_path}" ]]; then
+            # Create directory with secure permissions
             mkdir -p "${cert_tmp_path}"
-            chmod 744 "${cert_tmp_path}"
+            chmod 700 "${cert_tmp_path}"
+        else
+            # Ensure existing directory has secure permissions
+            chmod 700 "${cert_tmp_path}"
         fi
 
         cert_readConfig
@@ -184,7 +195,7 @@ function main() {
             common_logger "Admin certificates created."
             cert_cleanFiles
             cert_setpermisions
-            eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+            mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
         fi
 
         if [[ -n "${all}" ]]; then
@@ -202,14 +213,14 @@ function main() {
             fi
             cert_cleanFiles
             cert_setpermisions
-            eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+            mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
         fi
 
         if [[ -n "${ca}" ]]; then
             cert_generateRootCAcertificate
             common_logger "Authority certificates created."
             cert_cleanFiles
-            eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+            mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
         fi
 
         if [[ -n "${cindexer}" ]]; then
@@ -219,7 +230,7 @@ function main() {
                 common_logger "Wazuh indexer certificates created."
                 cert_cleanFiles
                 cert_setpermisions
-                eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
             else
                 common_logger -e "Indexer node not present in config.yml."
                 exit 1
@@ -233,7 +244,7 @@ function main() {
                 common_logger "Wazuh Filebeat certificates created."
                 cert_cleanFiles
                 cert_setpermisions
-                eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
             else
                 common_logger -e "Server node not present in config.yml."
                 exit 1
@@ -247,7 +258,7 @@ function main() {
                 common_logger "Wazuh dashboard certificates created."
                 cert_cleanFiles
                 cert_setpermisions
-                eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
             else
                 common_logger -e "Dashboard node not present in config.yml."
                 exit 1
