@@ -8,7 +8,7 @@
 
 ## Package vars
 readonly wazuh_major="5"
-readonly wazuh_version="5.0.1"
+readonly wazuh_version="5.9.9"
 readonly wazuh_install_vesion="0.1"
 bucket="packages.wazuh.com"
 staging_url_stage=""
