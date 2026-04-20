@@ -20,3 +20,9 @@
   - [Certs Tool Installation](ref/installation/certs-tool/certs-tool-installation.md)
   - [Passwords Tool Installation](ref/installation/passwords-tool/passwords-tool-installation.md)
   - [Installation Assistant Installation](ref/installation/installation-assistant/ia-installation.md)
+
+# Tests
+
+- [Tests](ref/tests/tests.md)
+  - [Unit Tests](ref/tests/unit-test/unit-tests.md)
+  - [Integration Tests](ref/tests/integration-test/integration-tests.md)
