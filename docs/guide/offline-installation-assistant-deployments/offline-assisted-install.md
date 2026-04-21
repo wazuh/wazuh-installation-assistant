@@ -28,14 +28,14 @@ For the single-node offline installation, you need to have the following files i
 
 - `wazuh-install-files.tar`
 - `wazuh-offline.tar.gz`
-- `wazuh-install-5.0.0-1.sh`
+- `wazuh-install-5.0.0.sh`
 
 ### Installation
 
 To perform the offline installation with the `--offline-installation` flag of Wazuh manager on a single-node using the assisted method, run:
 
 ```bash
-bash wazuh-install-5.0.0-1.sh --offline-installation -a
+bash wazuh-install-5.0.0.sh --offline-installation -a
 ```
 
 Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful:
@@ -84,7 +84,7 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 1. Run the multi-node assisted method with the `--offline-installation` flag to perform an offline installation. Use the option `--wazuh-indexer` and the node name to install and configure the Wazuh indexer. The node name must be the same one used in `config.yml` for the initial configuration, for example, `indexer`.
 
     ```bash
-    bash wazuh-install-5.0.0-1.sh --offline-installation --wazuh-indexer indexer
+    bash wazuh-install-5.0.0.sh --offline-installation --wazuh-indexer indexer
     ```
 
     Repeat this step for every Wazuh indexer node in your cluster. Then proceed with initializing your multi-node cluster in the next step.
@@ -92,7 +92,7 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 2. Run the Wazuh assisted installation option `--start-cluster` on any Wazuh indexer node to load the new certificates information and start the cluster.
 
     ```bash
-    bash wazuh-install-5.0.0-1.sh --offline-installation --start-cluster
+    bash wazuh-install-5.0.0.sh --offline-installation --start-cluster
     ```
 
     > **Note:** You only have to initialize the cluster once. There is no need to run this command on every node.
@@ -150,7 +150,7 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 Run the assisted method with `--offline-installation` to perform an offline installation. Use the option `--wazuh-manager` followed by the node name to install the Wazuh manager. The node name must be the same one used in `config.yml` for the initial configuration, for example, `manager`.
 
 ```bash
-bash wazuh-install-5.0.0-1.sh --offline-installation --wazuh-manager manager
+bash wazuh-install-5.0.0.sh --offline-installation --wazuh-manager manager
 ```
 
 Your Wazuh manager is now successfully installed. Repeat this step on every Wazuh manager node.
@@ -174,7 +174,7 @@ The following dependencies must be installed on the Wazuh dashboard node:
 1. Run the assisted method with `--offline-installation` to perform an offline installation. Use the option `--wazuh-dashboard` and the node name to install and configure the Wazuh dashboard. The node name must be the same one used in `config.yml` for the initial configuration, for example, `dashboard`.
 
     ```bash
-    bash wazuh-install-5.0.0-1.sh --offline-installation --wazuh-dashboard dashboard
+    bash wazuh-install-5.0.0.sh --offline-installation --wazuh-dashboard dashboard
     ```
 
 The TCP port for the Wazuh web user interface (dashboard) is 443.

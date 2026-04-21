@@ -147,8 +147,8 @@ On systems with apt as package manager, the following dependencies must be insta
     NODE_NAME=<MANAGER_NODE_NAME>
     ```
 
-    ```bash
-    mkdir -p /var/ossec/etc/certs
+    ```BASH
+    mkdir -p /var/wazuh-manager/etc/certs
     cp ./wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem
     mv ./wazuh-certificates/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
     mv ./wazuh-certificates/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
@@ -163,8 +163,8 @@ On systems with apt as package manager, the following dependencies must be insta
 3. Save the Wazuh indexer username and password into the Wazuh manager keystore using the `wazuh-keystore` tool:
 
     ```bash
-    echo '<INDEXER_USERNAME>' | /var/ossec/bin/wazuh-keystore -f indexer -k username
-    echo '<INDEXER_PASSWORD>' | /var/ossec/bin/wazuh-keystore -f indexer -k password
+    echo '<INDEXER_USERNAME>' | /var/wazuh-manager/bin/wazuh-keystore -f indexer -k username
+    echo '<INDEXER_PASSWORD>' | /var/wazuh-manager/bin/wazuh-keystore -f indexer -k password
     ```
 
     > Note: The default offline-installation credentials are `admin:admin`.
@@ -206,7 +206,7 @@ After completing the installation of the Wazuh manager on every node, configure 
 
 #### Configuring the Wazuh manager master node
 
-1. Edit the following settings in `/var/ossec/etc/ossec.conf`:
+1. Edit the following settings in `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
     ```xml
     <cluster>

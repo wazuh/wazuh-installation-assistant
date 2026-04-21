@@ -30,7 +30,7 @@ class TestIndexerInstall:
         ext = "rpm" if sys_type == "yum" else "deb"
         pkg_dir = tmp_path / "packages"
         pkg_dir.mkdir()
-        (pkg_dir / f"wazuh-indexer-5.0.0-1.x86_64.{ext}").touch()
+        (pkg_dir / f"wazuh-indexer-5.0.0.x86_64.{ext}").touch()
 
         install_result = "0" if pkg_install_success else "1"
         indexer_installed = "1" if pkg_install_success else ""
