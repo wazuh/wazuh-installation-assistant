@@ -487,54 +487,41 @@ function checks_available_port() {
 }
 
 function checks_filebeatURL() {
-    # URL uses branch when the source_branch is not a stage branch
-    if [[ ! $last_stage ]]; then
-        source_branch="${source_branch#v}"
-        filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
-    fi
-
-    # URL using master branch
-    new_filebeat_url="${filebeat_wazuh_template/${source_branch}/${wazuh_version}}"
-
-    response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
-    if [ "${response}" != "200" ]; then
-        response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $new_filebeat_url)
-
-        # Display error if both URLs do not get the resource
-        if [ "${response}" != "200" ]; then
-            common_logger -e "Could not get the Filebeat Wazuh template."
-        else
-            common_logger "Using Filebeat template from ${wazuh_version} branch."
-            filebeat_wazuh_template="${new_filebeat_url}"
+    # if the filebeat template URL is defined and accessible, return it, no need to check other URLs
+    if [ -n "${filebeat_wazuh_template}" ]; then
+        response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
+        if [ "${response}" == "200" ]; then
+            common_logger -d "Using Filebeat template from ${source_branch} branch."
+            return
         fi
+        common_logger -d "The provided Filebeat template URL (${filebeat_wazuh_template}) is not accessible. Trying with other URLs."
     fi
-}
 
-function checks_development_source_tag() {
-    source_branch="${source_branch}-${last_stage}"
-
-    # Check if the stage tag exists
-    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
-        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/git/refs/tags/$source_branch")
-
-    if [ "$status_code" -ne 200 ]; then
-        common_logger -w "Tag '$source_branch' does not exist. Using the source branch related to the Wazuh version ($wazuh_version)."
-        source_branch="${wazuh_version}"
-
-        # Check if the source branch exists
-        checks_source_branch
+    # If the URL with the tag exists and is accessible, use it
+    if [ -n "${last_stage}" ]; then
+        tag_branch="${source_branch}-${last_stage}"
+        filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${tag_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
+        response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
+        if [ "${response}" == "200" ]; then
+            source_branch="${tag_branch}"
+            common_logger -d "Using Filebeat template from ${source_branch} tag."
+            return
+        fi
+        common_logger -d "The Filebeat template URL with the tag ${tag_branch} (${filebeat_wazuh_template}) is not accessible. Trying with base branch."
     fi
-}
 
-function checks_source_branch() {
-    # Check if the source branch exists
-    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
-        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/branches/$source_branch")
-
-    if [ "$status_code" -ne 200 ]; then
-        common_logger -w "Branch '$source_branch' does not exist. Using the ${wazuh_version} branch."
-        source_branch="${wazuh_version}"
+    # if the URL with the tag does not exist or is not accessible, try with the branch
+    source_branch="${source_branch#v}"
+    filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
+    response=$(curl -I --write-out '%{http_code}' --silent --output /dev/null $filebeat_wazuh_template)
+    if [ "${response}" == "200" ]; then
+        common_logger -d "Using Filebeat template from ${source_branch} branch."
+        return
     fi
+
+    common_logger -e "Could not get the Filebeat Wazuh template from Wazuh repository."
+    installCommon_rollBack
+    exit 1
 }
 
 function checks_firewall(){
