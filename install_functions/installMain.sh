@@ -256,7 +256,9 @@ function main() {
 # -------------- Uninstall case  ------------------------------------
 
     common_checkSystem
-
+    common_checkInstalled
+    checks_arguments
+    
     if [ -z "${download}" ]; then
         check_dist
     fi
@@ -267,8 +269,6 @@ function main() {
         offline_checkPrerequisites "wia_offline_dependencies" "${wia_offline_dependencies[@]}"
     fi
 
-    common_checkInstalled
-    checks_arguments
     if [ -n "${development}" ]; then
         checks_filebeatURL
         repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"

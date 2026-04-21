@@ -854,8 +854,13 @@ function installCommon_yumRemoveWIADependencies(){
 
     if [ "${#wia_dependencies_installed[@]}" -gt 0 ]; then
         common_logger "--- Dependencies ---"
+        local wazuh_deps=( $(echo "${wazuh_yum_dependencies[@]}" "${indexer_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" | tr ' ' '\n' | sort -u) )
         for dep in "${wia_dependencies_installed[@]}"; do
             if [ "${dep}" != "systemd" ]; then
+                if [[ " ${wazuh_deps[*]} " == *" ${dep} "* ]]; then
+                    common_logger -d "Skipping removal of ${dep}: it is also a Wazuh component dependency."
+                    continue
+                fi
                 common_logger "Removing $dep."
                 yum_output=$(yum remove ${dep} -y 2>&1)
                 yum_code="${PIPESTATUS[0]}"
@@ -875,8 +880,14 @@ function installCommon_aptRemoveWIADependencies(){
 
     if [ "${#wia_dependencies_installed[@]}" -gt 0 ]; then
         common_logger "--- Dependencies ----"
+        local wazuh_deps=( $(echo "${wazuh_apt_dependencies[@]}" "${indexer_apt_dependencies[@]}" "${dashboard_apt_dependencies[@]}" | tr ' ' '\n' | sort -u) )
+        common_logger -d "Wazuh components dependencies: ${wazuh_deps[*]}"
         for dep in "${wia_dependencies_installed[@]}"; do
             if [ "${dep}" != "systemd" ]; then
+                if [[ " ${wazuh_deps[*]} " == *" ${dep} "* ]]; then
+                    common_logger -d "Skipping removal of ${dep}: it is also a Wazuh component dependency."
+                    continue
+                fi
                 common_logger "Removing $dep."
                 apt_output=$(apt-get remove --purge ${dep} -y 2>&1)
                 apt_code="${PIPESTATUS[0]}"
