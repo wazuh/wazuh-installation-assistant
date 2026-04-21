@@ -48,7 +48,7 @@ nodes:
   dashboard:
     - name: dashboard
       ip: "<dashboard-node-ip>"
-   ```
+```
 
   3. Run `wazuh-certs-tool-5.0.0.sh` to create the certificates.
 
@@ -58,7 +58,7 @@ nodes:
 
   4. Compress all the necessary files.
 
-  ```BASH
+  ```bash
     tar -cvf ./wazuh-certificates.tar -C ./wazuh-certificates/ .
     rm -rf ./wazuh-certificates
   ```
@@ -73,13 +73,13 @@ Follow these steps to install and configure a multi-node Wazuh indexer.
 
 #### APT
 
-```BASH
+```bash
 dpkg -i debconf adduser procps
 ```
 
 #### YUM
 
-```BASH
+```bash
 yum install coreutils
 ```
 
@@ -157,11 +157,11 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
 1. Run the following commands, replacing `<INDEXER_NODE_NAME>` with the name of the Wazuh indexer node you are configuring as defined in `config.yml`. For example, `indexer`. This deploys the SSL certificates to encrypt communications between the Wazuh central components.
 
-```BASH
+```bash
 NODE_NAME=<INDEXER_NODE_NAME>
 ```
 
-```BASH
+```bash
 mkdir /etc/wazuh-indexer/certs
 tar -xf ./wazuh-certificates.tar -C /etc/wazuh-indexer/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./admin.pem ./admin-key.pem ./root-ca.pem
 mv -n /etc/wazuh-indexer/certs/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
@@ -173,7 +173,7 @@ chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs
 
 2. **Recommended action**: If no other Wazuh components will be installed on this node, run the following command to remove the `wazuh-certificates.tar` file.
 
-```BASH
+```bash
 rm -f ./wazuh-certificates.tar
 ```
 
@@ -186,7 +186,7 @@ Enable and start the Wazuh indexer service.
 
 #### Systemd
 
-```BASH
+```bash
 systemctl daemon-reload
 systemctl enable wazuh-indexer
 systemctl start wazuh-indexer
@@ -198,14 +198,14 @@ Choose one option according to the operating system used.
 
 ##### RPM-based operating system
 
-```BASH
+```bash
 chkconfig --add wazuh-indexer
 service wazuh-indexer start
 ```
 
 ##### Debian-based operating system
 
-```BASH
+```bash
 update-rc.d wazuh-indexer defaults 95 10
 service wazuh-indexer start
 ```
@@ -218,7 +218,7 @@ service wazuh-indexer start
 The final stage of installing the Wazuh indexer cluster consists of running the security admin script.
 Run the Wazuh `indexer indexer-security-init.sh` script to load the new certificates information and start the multi-node cluster.
 
-```BASH
+```bash
 /usr/share/wazuh-indexer/bin/indexer-security-init.sh
 ```
 
@@ -229,7 +229,7 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
 
   1. Run the following commands to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer:
 
-  ```BASH
+  ```bash
     curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
   ```
 
@@ -254,7 +254,7 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
 
   2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer:
 
-  ```BASH
+  ```bash
     curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
   ```
 
@@ -304,7 +304,7 @@ yum install -y ./wazuh-manager-5.0.0.aarch64.rpm
 
 Deploy the SSL certificates for secure communication between the Wazuh manager and indexer. These certificates should be extracted from the `wazuh-certificates.tar` file generated during the certificate creation process.
 
-```BASH
+```bash
 NODE_NAME=<MANAGER_NODE_NAME>
 ```
 
@@ -351,7 +351,7 @@ Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` 
 
 Start and enable the Wazuh manager service:
 
-```BASH
+```bash
 systemctl daemon-reload
 systemctl enable wazuh-manager
 systemctl start wazuh-manager
@@ -359,7 +359,7 @@ systemctl start wazuh-manager
 
 Verify the Wazuh manager service is running:
 
-```BASH
+```bash
 systemctl status wazuh-manager
 ```
 
@@ -424,7 +424,7 @@ Replace `MASTER_NODE_IP` with the actual IP address of the master node, and use 
 
 3. Restart the Wazuh manager service on all nodes after making configuration changes:
 
-```BASH
+```bash
 systemctl restart wazuh-manager
 ```
 
@@ -442,13 +442,13 @@ Follow these steps to install the Wazuh dashboard.
 
 #### APT
 
-```BASH
+```bash
 dpkg -i debhelper tar curl libcap2-bin # debhelper version 9 or later
 ```
 
 #### YUM
 
-```BASH
+```bash
 yum install libcap
 ```
 
@@ -512,11 +512,11 @@ wazuh_core.hosts:
 
 ### Deploying certificates
 
-```BASH
+```bash
 NODE_NAME=<DASHBOARD_NODE_NAME>
 ```
 
-```BASH
+```bash
 mkdir -p /etc/wazuh-dashboard/certs
 cp ./wazuh-certificates/root-ca.pem /etc/wazuh-dashboard/certs/root-ca.pem
 mv ./wazuh-certificates/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
@@ -530,7 +530,7 @@ chown -R wazuh:wazuh /etc/wazuh-dashboard/certs
 
 #### Systemd
 
-```BASH
+```bash
 systemctl daemon-reload
 systemctl enable wazuh-dashboard
 systemctl start wazuh-dashboard
@@ -540,14 +540,14 @@ systemctl start wazuh-dashboard
 
 ##### RPM-based operating system
 
-```BASH
+```bash
 chkconfig --add wazuh-dashboard
 service wazuh-dashboard start
 ```
 
 ##### Debian-based operating system
 
-```BASH
+```bash
 update-rc.d wazuh-dashboard defaults 95 10
 service wazuh-dashboard start
 ```

@@ -119,11 +119,11 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
 
   1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer and use the password gotten from the output of the previous command:
 
-  ```BASH
+  ```bash
         curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
   ```
 
-  ```json
+```json
   {
     "name" : "indexer",
     "cluster_name" : "wazuh-cluster",
@@ -140,18 +140,18 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
     },
     "tagline" : "The OpenSearch Project: https://opensearch.org/"
   }
-  ```
+```
 
   2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer and enter the password for the Wazuh indexer admin user when it prompts for password:
 
-  ```BASH
+    ```bash
         curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
-  ```
+    ```
 
-  ```bash
+    ```bash
         ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
         192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
-  ```
+    ```
 
 ## Wazuh manager
 
@@ -199,7 +199,7 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
 
   Once the Wazuh installation is completed, the output shows the access credentials and a message that confirms that the installation was successful.
 
-  ```bash
+```bash
   INFO: --- Summary ---
   INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>
   User: admin
@@ -207,7 +207,7 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
 
   INFO: Installation finished.
 
-  ```
+```
 
   3. Access the Wazuh web interface with your `admin` user credentials. This is the default administrator account for the Wazuh indexer and it allows you to access the Wazuh dashboard.
 

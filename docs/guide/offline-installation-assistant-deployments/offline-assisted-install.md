@@ -107,7 +107,7 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
     **Output example:**
 
-    ```json
+```json
     {
     "name" : "indexer",
     "cluster_name" : "wazuh-cluster",
@@ -125,7 +125,7 @@ The following dependencies must be installed on the Wazuh indexer nodes:
     },
     "tagline" : "The OpenSearch Project: https://opensearch.org/"
     }
-    ```
+```
 
 2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command, then execute it:
 

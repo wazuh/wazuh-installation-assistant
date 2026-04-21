@@ -143,7 +143,7 @@ On systems with apt as package manager, the following dependencies must be insta
 
 2. Deploy the SSL certificates for secure communication between the Wazuh manager and indexer. These certificates should be extracted from the `wazuh-certificates/` directory generated during the certificate creation process.
 
-    ```BASH
+    ```bash
     NODE_NAME=<MANAGER_NODE_NAME>
     ```
 
@@ -247,13 +247,13 @@ After completing the installation of the Wazuh manager on every node, configure 
 
 3. Restart the Wazuh manager service on all nodes after making configuration changes:
 
-    ```BASH
+    ```bash
     systemctl restart wazuh-manager
     ```
 
 4. Verify the cluster status from any node:
 
-    ```BASH
+    ```bash
     /var/wazuh-manager/bin/cluster_control -l
     ```
 

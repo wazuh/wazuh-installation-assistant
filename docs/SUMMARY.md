@@ -40,3 +40,9 @@
 - [Offline Step-by-step Deployments](guide/offline-step-by-step-deployments/offline-step-by-step.md)
 - [Back up and restore](guide/backup-and-restore.md)
 - [Security](guide/security.md)
+
+# Tests
+
+- [Tests](ref/tests/tests.md)
+  - [Unit Tests](ref/tests/unit-test/unit-tests.md)
+  - [Integration Tests](ref/tests/integration-test/integration-tests.md)
