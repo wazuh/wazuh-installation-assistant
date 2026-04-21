@@ -521,7 +521,10 @@ function cert_readConfig() {
         fi
 
         # Convert CRLF to LF
-        cert_convertCRLFtoLF "${config_file}"
+        if ! cert_convertCRLFtoLF "${config_file}"; then
+            common_logger -e "Failed to convert configuration file from CRLF to LF: ${config_file}"
+            exit 1
+        fi
 
         # Read node names and IPs - use mapfile/readarray for safer array assignment
         mapfile -t indexer_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
@@ -639,7 +642,13 @@ function cert_setpermisions() {
         return 1
     fi
 
-    chmod -R 744 "${cert_tmp_path}"
+    # Restrict the certificate directory and subdirectories to the owner only
+    chmod 700 "${cert_tmp_path}" || return 1
+    find "${cert_tmp_path}" -type d -exec chmod 700 {} \; || return 1
+    # Restrict private key material to the owner only
+    find "${cert_tmp_path}" -type f \( -name '*.key' -o -name '*.pem' \) -exec chmod 600 {} \; || return 1
+    # Public certificate material can be readable by others
+    find "${cert_tmp_path}" -type f \( -name '*.crt' -o -name '*.cer' -o -name '*.csr' \) -exec chmod 644 {} \; || return 1
 }
 
 function cert_convertCRLFtoLF() {

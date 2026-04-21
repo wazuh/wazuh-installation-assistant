@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- The security of the installation assistant is improved when creating configuration files.. ([#707](https://github.com/wazuh/wazuh-installation-assistant/pull/707))
+- The security of the installation assistant is improved when creating configuration files. ([#707](https://github.com/wazuh/wazuh-installation-assistant/pull/707))
 
 ### Fixed
 

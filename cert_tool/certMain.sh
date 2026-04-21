@@ -48,7 +48,8 @@ function getHelp() {
 
 function main() {
 
-    # Set restrictive umask to ensure generated files have secure permissions (0077 = rwx------)
+    # Set a restrictive umask so new regular files default to 600 and directories to 700,
+    # limiting access to the current user.
     umask 0077
 
     cert_checkOpenSSL
