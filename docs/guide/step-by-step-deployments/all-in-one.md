@@ -376,16 +376,16 @@ yum install -y ./wazuh-dashboard-5.0.0.aarch64.rpm
 
 Edit the `/etc/wazuh-dashboard/opensearch_dashboards.yml` file and replace the following values:
 
-  - `server.host`: This setting specifies the host of the Wazuh dashboard server. To allow remote users to connect, set the value to the IP address or DNS name of the Wazuh dashboard server. The value 0.0.0.0 will accept all the available IP addresses of the host.
-  - `opensearch.hosts`: The URLs of the Wazuh indexer instances to use for all your queries. For example, ["https://127.0.0.1:9200"]
-  - `wazuh_core.hosts`: The Wazuh manager hosts that the dashboard will use to query the Wazuh manager API.
-    - `url`: The URL to the server API including the protocol and address (DNS or IP).
-    - `port`: The port where is served.
-    - `username`: The user that runs the requests.
-    - `password`: The password for the user.
-    - `run_as`: This defines how the dashboard requests the data, using the default configured account (false) or the current user's context (true).
+- `server.host`: This setting specifies the host of the Wazuh dashboard server. To allow remote users to connect, set the value to the IP address or DNS name of the Wazuh dashboard server. The value 0.0.0.0 will accept all the available IP addresses of the host.
+- `opensearch.hosts`: The URLs of the Wazuh indexer instances to use for all your queries. For example, ["https://127.0.0.1:9200"]
+- `wazuh_core.hosts`: The Wazuh manager hosts that the dashboard will use to query the Wazuh manager API.
+  - `url`: The URL to the server API including the protocol and address (DNS or IP).
+  - `port`: The port where is served.
+  - `username`: The user that runs the requests.
+  - `password`: The password for the user.
+  - `run_as`: This defines how the dashboard requests the data, using the default configured account (false) or the current user's context (true).
 
-```
+```yaml
 server.host: 0.0.0.0
 server.port: 443
 opensearch.hosts: https://localhost:9200
@@ -446,8 +446,8 @@ service wazuh-dashboard start
 
 Access the Wazuh web interface with your `admin` user credentials. This is the default administrator account for the Wazuh indexer and it allows you to access the Wazuh dashboard.
 
-  - URL: https://<WAZUH_DASHBOARD_IP_ADDRESS>
-  - Username: admin
-  - Password: admin
+- URL: https://<WAZUH_DASHBOARD_IP_ADDRESS>
+- Username: admin
+- Password: admin
 
 When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, the `root-ca.pem` file previously generated can be imported to the certificate manager of the browser. Alternatively, you can configure a certificate from a trusted authority.

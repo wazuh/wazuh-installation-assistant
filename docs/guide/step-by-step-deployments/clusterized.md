@@ -19,7 +19,7 @@ Wazuh uses certificates to establish confidentiality and encrypt communications 
 
   2. Edit `config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
 
-  ```
+  ```yaml
 nodes:
   # Wazuh indexer nodes
   indexer:
@@ -125,7 +125,7 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
   3. `cluster.initial_master_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file. Uncomment the `indexer-2` and `indexer-3` lines, change the names, or add more lines, according to your `config.yml` definitions.
 
-  ```
+  ```yaml
     cluster.initial_master_nodes:
     - "indexer"
     - "indexer-2"
@@ -134,7 +134,7 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
   3. `discovery.seed_hosts`: List of the addresses of the master-eligible nodes. Each element can be either an IP address or a hostname. For multi-node configurations, uncomment this setting and set the IP addresses of each master-eligible node.
 
-  ```
+  ```yaml
     discovery.seed_hosts:
       - "10.0.0.1"
       - "10.0.0.2"
@@ -143,7 +143,7 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
   4. `plugins.security.nodes_dn`: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for `indexer-2` and `indexer-3` and change the common names (CN) and values according to your settings and your `config.yml` definitions.
 
-  ```
+  ```yaml
     plugins.security.nodes_dn:
     - "CN=indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
     - "CN=indexer-2,OU=Wazuh,O=Wazuh,L=California,C=US"
@@ -196,14 +196,14 @@ systemctl start wazuh-indexer
 
 Choose one option according to the operating system used.
 
-##### RPM-based operating system:
+##### RPM-based operating system
 
 ```BASH
 chkconfig --add wazuh-indexer
 service wazuh-indexer start
 ```
 
-##### Debian-based operating system:
+##### Debian-based operating system
 
 ```BASH
 update-rc.d wazuh-indexer defaults 95 10
@@ -233,7 +233,7 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
     curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
   ```
 
-  ```
+  ```json
   {
     "name" : "indexer",
     "cluster_name" : "wazuh-cluster",
@@ -332,7 +332,7 @@ Configure the Wazuh manager to connect to the Wazuh indexer using the secure key
 
 Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
 
-```
+```xml
 <indexer>
   <hosts>
     <host>https://127.0.0.1:9200</host>
@@ -362,11 +362,12 @@ Verify the Wazuh manager service is running:
 ```BASH
 systemctl status wazuh-manager
 ```
+
 ### Cluster configuration
 
 The Wazuh manager cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following configuration in `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
-```
+```xml
 <cluster>
   <name>wazuh</name>
   <node_name>node01</node_name>
@@ -385,7 +386,7 @@ For a multi-node cluster deployment, you need to configure one master node and o
 
 1. On the master node, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
-```
+```xml
 <cluster>
   <name>wazuh</name>
   <node_name>master-node</node_name>
@@ -404,7 +405,7 @@ Replace `MASTER_NODE_IP` with the actual IP address of the master node.
 
 2. On each worker node, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
-```
+```xml
 <cluster>
   <name>wazuh</name>
   <node_name>worker-node-01</node_name>
@@ -485,16 +486,16 @@ yum install -y ./wazuh-dashboard-5.0.0.aarch64.rpm
 
 Edit the `/etc/wazuh-dashboard/opensearch_dashboards.yml` file and replace the following values:
 
-  - `server.host`: This setting specifies the host of the Wazuh dashboard server. To allow remote users to connect, set the value to the IP address or DNS name of the Wazuh dashboard server. The value 0.0.0.0 will accept all the available IP addresses of the host.
-  - `opensearch.hosts`: The URLs of the Wazuh indexer instances to use for all your queries. The Wazuh dashboard can be configured to connect to multiple Wazuh indexer nodes in the same cluster. The addresses of the nodes can be separated by commas. For example, ["https://10.0.0.2:9200", "https://10.0.0.3:9200","https://10.0.0.4:9200"]
-  - `wazuh_core.hosts`: The Wazuh manager hosts that the dashboard will use to query the Wazuh manager API. At least one host is required. Each host entry defined with an unique ID and must include:
-    - `url`: The URL to the server API including the protocol and address (DNS or IP).
-    - `port`: The port where is served.
-    - `username`: The user that runs the requests.
-    - `password`: The password for the user.
-    - `run_as`: This defines how the dashboard requests the data, using the default configured account (false) or the current user's context (true).
+- `server.host`: This setting specifies the host of the Wazuh dashboard server. To allow remote users to connect, set the value to the IP address or DNS name of the Wazuh dashboard server. The value 0.0.0.0 will accept all the available IP addresses of the host.
+- `opensearch.hosts`: The URLs of the Wazuh indexer instances to use for all your queries. The Wazuh dashboard can be configured to connect to multiple Wazuh indexer nodes in the same cluster. The addresses of the nodes can be separated by commas. For example, ["https://10.0.0.2:9200", "https://10.0.0.3:9200","https://10.0.0.4:9200"]
+- `wazuh_core.hosts`: The Wazuh manager hosts that the dashboard will use to query the Wazuh manager API. At least one host is required. Each host entry defined with an unique ID and must include:
+  - `url`: The URL to the server API including the protocol and address (DNS or IP).
+  - `port`: The port where is served.
+  - `username`: The user that runs the requests.
+  - `password`: The password for the user.
+  - `run_as`: This defines how the dashboard requests the data, using the default configured account (false) or the current user's context (true).
 
-```
+```yaml
 server.host: 0.0.0.0
 server.port: 443
 opensearch.hosts: https://localhost:9200
@@ -555,8 +556,8 @@ service wazuh-dashboard start
 
 Access the Wazuh web interface with your `admin` user credentials. This is the default administrator account for the Wazuh indexer and it allows you to access the Wazuh dashboard.
 
-  - URL: https://<WAZUH_DASHBOARD_IP_ADDRESS>
-  - Username: admin
-  - Password: admin
+- URL: https://<WAZUH_DASHBOARD_IP_ADDRESS>
+- Username: admin
+- Password: admin
 
 When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, the `root-ca.pem` file previously generated can be imported to the certificate manager of the browser. Alternatively, you can configure a certificate from a trusted authority.

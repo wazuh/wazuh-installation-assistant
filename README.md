@@ -8,6 +8,7 @@
 [![YouTube](https://img.shields.io/youtube/views/peTSzcAueEc?style=social)](https://www.youtube.com/watch?v=peTSzcAueEc)
 
 ## Table of Contents
+
 - [Wazuh installation assistant](#wazuh-installation-assistant)
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
@@ -40,30 +41,32 @@ The Wazuh installation assistant uses the following tools to enhance security du
 - **Wazuh passwords tool**: Securely generate and manage passwords. [Learn more](https://documentation.wazuh.com/current/user-manual/user-administration/passwords-management.html).
 - **Wazuh cert tool**: Manage SSL/TLS certificates for secure communications. [Learn more](https://documentation.wazuh.com/current/user-manual/wazuh-dashboard/certificates.html).
 
-
-
 ## User Guide
 
 ### Downloads
+
 - [Download the Wazuh installation assistant.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install.sh)
 - [Download the Wazuh passwords tool.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-passwords-tool.sh)
 - [Download the Wazuh cert tool.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-certs-tool.sh)
 
 ### Build the scripts
+
 As an alternative to downloading, use the `builder.sh` script to build the Wazuh installation assistant and tools:
 
-
 1. Build the Wazuh installation assistant - `wazuh-install.sh`:
+
    ```bash
    bash builder.sh -i
    ```
 
 2. Build the Wazuh passwords tool - `wazuh-passwords-tool.sh`:
+
    ```bash
    bash builder.sh -p
    ```
 
 3. Build the Wazuh cert tool - `wazuh-certs-tool.sh`:
+
    ```bash
    bash builder.sh -c
    ```
@@ -78,40 +81,49 @@ Start by downloading the [configuration file](https://packages.wazuh.com/product
 ### Common commands
 
 1. Generate the passwords and certificates. Needs the [configuration file](https://packages.wazuh.com/production/5.x/installation-assistant/config.yml).
+
    ```bash
    bash wazuh-install.sh -g
    ```
+
 2. Install all central components on the local machine:
+
    ```bash
    bash wazuh-install.sh -a
    ```
 
 3. Uninstall all central components:
+
    ```bash
    bash wazuh-install.sh -u
    ```
 
 4. Install the Wazuh indexer specifying the same name as specified in the configuration file:
+
    ```bash
    bash wazuh-install.sh --wazuh-indexer <NODE_NAME>
    ```
 
 5. Initialize the Wazuh indexer cluster:
+
    ```bash
    bash wazuh-install.sh --start-cluster
    ```
 
 6. Install the Wazuh manager specifying the same name as specified in the configuration file:
+
    ```bash
    bash wazuh-install.sh --wazuh-manager <NODE_NAME>
    ```
 
 7. Install the Wazuh dashboard specifying the same name as specified in the configuration file:
+
    ```bash
    bash wazuh-install.sh --wazuh-dashboard <NODE_NAME>
    ```
 
 8. Display all options and help:
+
    ```bash
    bash wazuh-install.sh -h
    ```
@@ -119,8 +131,9 @@ Start by downloading the [configuration file](https://packages.wazuh.com/product
 ## Options Table
 
 All the options for the Wazuh installation assistant are listed in the following table:
+
 | Option | Description |
-|---------------------------------------|----------------------------------------|
+| --------------------------------------- | ---------------------------------------- |
 | `-a`, `--all-in-one`                  | Install and configure Wazuh manager, Wazuh indexer, Wazuh dashboard.  |
 | `-dw`, `--download-wazuh <deb,rpm>`   | Download all the packages necessary for offline installation. Specify the type of packages to download for offline installation (`rpm`, `deb`).  |
 | `-g`, `--generate-config-files`       | Generate `wazuh-install-files.tar` file containing the files needed for installation from `config.yml`. In distributed deployments, you will need to copy this file to all hosts.  |
@@ -135,7 +148,6 @@ All the options for the Wazuh installation assistant are listed in the following
 | `-wd`, `--wazuh-dashboard <dashboard-node-name>`  | Install and configure Wazuh dashboard, used for distributed deployments.  |
 | `-wi`, `--wazuh-indexer <indexer-node-name>`      | Install and configure Wazuh indexer, used for distributed deployments.  |
 | `-wm`, `--wazuh-manager <manager-node-name>`        | Install and configure Wazuh manager, used for distributed deployments.  |
-
 
 ## Contribute
 
@@ -164,13 +176,13 @@ To ensure consistency in development, please follow these guidelines:
 > *Additional check*: Run unit [tests](/tests/unit/README) before preparing a pull request.
 
 Some useful links and acknowledgment:
+
 - [Bash meets solid](https://codewizardly.com/bash-meets-solid/)
 - [Shellcheck](https://github.com/koalaman/shellcheck#gallery-of-bad-code)
 
 ## More Information
 
 For more detailed instructions and advanced use cases, please refer to the [Wazuh Quickstart Guide](https://documentation.wazuh.com/current/quickstart.html).
-
 
 ## Authors
 
