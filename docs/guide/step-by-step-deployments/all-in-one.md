@@ -18,6 +18,8 @@ Wazuh uses certificates to establish confidentiality and encrypt communications 
 
   2. Edit `config.yml` and replace the node names and IP values with the corresponding names and IP addresses. In this case, the IP to configure can be `127.0.0.1` since we are performing an All-In-One installation.
 
+  For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
+
   ```yaml
   nodes:
   # Wazuh indexer node

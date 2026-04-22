@@ -105,6 +105,8 @@ After installation the workflow waits for the Wazuh dashboard to respond at `htt
 
 Each Wazuh component is installed in a separate step on the same node. This mode tests the distributed installation code paths — certificate generation from `config.yml`, component-by-component installation, and indexer cluster security initialization.
 
+For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../configuration/configuration-files.md#other-configyml-examples).
+
 A `config.yml` file with `127.0.0.1` as the IP for all three nodes is generated and transferred to the instance before installation:
 
 ```yaml

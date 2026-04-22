@@ -61,6 +61,8 @@ curl -s -o config.yml https://packages.wazuh.com/production/5.x/config-5.0.0.yml
 - If you are performning an all-in-one deployment, replace the `"<indexer-node-ip>"`, `"<wazuh-manager-ip>"`, and `"<dashboard-node-ip>"` with `127.0.0.1`.
 - If you are performing a distributed deployment, replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all the Wazuh server, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
 
+For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
+
 ### 5. Create the certificates
 
 Run the following command in order to create the certificates using the installation assistant script.
