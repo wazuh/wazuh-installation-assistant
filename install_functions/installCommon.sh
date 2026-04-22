@@ -918,7 +918,7 @@ function installCommon_aptRemoveWIADependencies(){
                 mapfile -t wazuh_deps < <(printf '%s\n' "${wazuh_deps[@]}" | sort -u)
             fi
         fi
-        common_logger -d "Wazuh components dependencies: ${wazuh_deps[*]}"
+
         for dep in "${wia_dependencies_installed[@]}"; do
             if [ "${dep}" != "systemd" ]; then
                 if [[ " ${wazuh_deps[*]} " == *" ${dep} "* ]]; then
