@@ -62,37 +62,6 @@ function installCommon_aptInstall() {
 
 }
 
-function installCommon_aptInstallList(){
-
-    dependencies=("$@")
-    not_installed=()
-
-    for dep in "${dependencies[@]}"; do
-        if ! apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/; then
-            not_installed+=("${dep}")
-            for wia_dep in "${wia_apt_dependencies[@]}"; do
-                if [ "${wia_dep}" == "${dep}" ]; then
-                    wia_dependencies_installed+=("${dep}")
-                fi
-            done
-        fi
-    done
-
-    if [ "${#not_installed[@]}" -gt 0 ]; then
-        common_logger "--- Dependencies ----"
-        for dep in "${not_installed[@]}"; do
-            common_logger "Installing $dep."
-            installCommon_aptInstall "${dep}"
-            if [ "${install_result}" != 0 ]; then
-                common_logger -e "Cannot install dependency: ${dep}."
-                installCommon_rollBack
-                exit 1
-            fi
-        done
-    fi
-
-}
-
 function installCommon_createCertificates() {
 
     common_logger -d "Creating Wazuh certificates."
@@ -335,7 +304,7 @@ function installCommon_installCheckDependencies() {
 
     if [ "${1}" == "assistant" ]; then
         installing_assistant_deps=1
-        assistant_deps_installed=()
+        wia_dependencies_installed=()
         installCommon_installList "${assistant_deps_to_install[@]}"
     else
         installing_assistant_deps=0
@@ -366,79 +335,9 @@ function installCommon_installList(){
                 exit 1
             fi
             if [ "${installing_assistant_deps}" == 1 ]; then
-                assistant_deps_installed+=("${dep}")
+                wia_dependencies_installed+=("${dep}")
             fi
         done
-    fi
-
-}
-
-function installCommon_installPrerequisites() {
-
-    message="Installing prerequisites dependencies."
-    if [ "${sys_type}" == "yum" ]; then
-        if [ "${1}" == "AIO" ]; then
-            deps=($(echo "${indexer_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" | tr ' ' '\n' | sort -u))
-            if [ -z "${offline_install}" ]; then
-                common_logger -d "${message}"
-                installCommon_yumInstallList "${deps[@]}"
-            else
-                offline_checkPrerequisites "${deps[@]}"
-            fi
-        fi
-        if [ "${1}" == "indexer" ]; then
-            if [ -z "${offline_install}" ]; then
-                common_logger -d "${message}"
-                installCommon_yumInstallList "${indexer_yum_dependencies[@]}"
-            else
-                offline_checkPrerequisites "${indexer_yum_dependencies[@]}"
-            fi
-        fi
-        if [ "${1}" == "dashboard" ]; then
-            if [ -z "${offline_install}" ]; then
-                common_logger -d "${message}"
-                installCommon_yumInstallList "${dashboard_yum_dependencies[@]}"
-            else
-                offline_checkPrerequisites "${dashboard_yum_dependencies[@]}"
-            fi
-        fi
-    elif [ "${sys_type}" == "apt-get" ]; then
-        if [ -z "${offline_install}" ]; then
-            eval "apt-get update -q ${debug}"
-        fi
-        if [ "${1}" == "AIO" ]; then
-            deps=($(echo "${wazuh_apt_dependencies[@]}" "${indexer_apt_dependencies[@]}" "${dashboard_apt_dependencies[@]}" | tr ' ' '\n' | sort -u))
-            if [ -z "${offline_install}" ]; then
-                common_logger -d "${message}"
-                installCommon_aptInstallList "${deps[@]}"
-            else
-                offline_checkPrerequisites "${deps[@]}"
-            fi
-        fi
-        if [ "${1}" == "indexer" ]; then
-            if [ -z "${offline_install}" ]; then
-                common_logger -d "${message}"
-                installCommon_aptInstallList "${indexer_apt_dependencies[@]}"
-            else
-                offline_checkPrerequisites "${indexer_apt_dependencies[@]}"
-            fi
-        fi
-        if [ "${1}" == "dashboard" ]; then
-            if [ -z "${offline_install}" ]; then
-                common_logger -d "${message}"
-                installCommon_aptInstallList "${dashboard_apt_dependencies[@]}"
-            else
-                offline_checkPrerequisites "${dashboard_apt_dependencies[@]}"
-            fi
-        fi
-        if [ "${1}" == "wazuh" ]; then
-            if [ -z "${offline_install}" ]; then
-                common_logger -d "${message}"
-                installCommon_aptInstallList "${wazuh_apt_dependencies[@]}"
-            else
-                offline_checkPrerequisites "${wazuh_apt_dependencies[@]}"
-            fi
-        fi
     fi
 
 }
@@ -758,39 +657,6 @@ function installCommon_restartService() {
 
 }
 
-function installCommon_yumInstallList(){
-
-    dependencies=("$@")
-    not_installed=()
-    for dep in "${dependencies[@]}"; do
-        if ! rpm -q "${dep}" --quiet;then
-            not_installed+=("${dep}")
-            for wia_dep in "${wia_yum_dependencies[@]}"; do
-                if [ "${wia_dep}" == "${dep}" ]; then
-                    wia_dependencies_installed+=("${dep}")
-                fi
-            done
-        fi
-    done
-
-    if [ "${#not_installed[@]}" -gt 0 ]; then
-        common_logger "--- Dependencies ---"
-        for dep in "${not_installed[@]}"; do
-            common_logger "Installing $dep."
-            installCommon_yumInstall "${dep}"
-            yum_code="${PIPESTATUS[0]}"
-
-            eval "echo \${yum_output} ${debug}"
-            if [  "${yum_code}" != 0  ]; then
-                common_logger -e "Cannot install dependency: ${dep}."
-                installCommon_rollBack
-                exit 1
-            fi
-        done
-    fi
-
-}
-
 function installCommon_removeWIADependencies() {
 
     if [ "${sys_type}" == "yum" ]; then
@@ -805,8 +671,32 @@ function installCommon_yumRemoveWIADependencies(){
 
     if [ "${#wia_dependencies_installed[@]}" -gt 0 ]; then
         common_logger "--- Dependencies ---"
+        local wazuh_deps=()
+
+        if [ -n "${AIO}" ]; then
+            wazuh_deps=( $(echo "${wazuh_yum_dependencies[@]}" "${indexer_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" | tr ' ' '\n' | sort -u) )
+        else
+            if [ -n "${wazuh}" ]; then
+                wazuh_deps+=( "${wazuh_yum_dependencies[@]}" )
+            fi
+            if [ -n "${indexer}" ]; then
+                wazuh_deps+=( "${indexer_yum_dependencies[@]}" )
+            fi
+            if [ -n "${dashboard}" ]; then
+                wazuh_deps+=( "${dashboard_yum_dependencies[@]}" )
+            fi
+
+            if [ "${#wazuh_deps[@]}" -gt 0 ]; then
+                mapfile -t wazuh_deps < <(printf '%s\n' "${wazuh_deps[@]}" | sort -u)
+            fi
+        fi
+
         for dep in "${wia_dependencies_installed[@]}"; do
             if [ "${dep}" != "systemd" ]; then
+                if [[ " ${wazuh_deps[*]} " == *" ${dep} "* ]]; then
+                    common_logger -d "Skipping removal of ${dep}: it is also a Wazuh component dependency."
+                    continue
+                fi
                 common_logger "Removing $dep."
                 yum_output=$(yum remove ${dep} -y 2>&1)
                 yum_code="${PIPESTATUS[0]}"
@@ -826,8 +716,32 @@ function installCommon_aptRemoveWIADependencies(){
 
     if [ "${#wia_dependencies_installed[@]}" -gt 0 ]; then
         common_logger "--- Dependencies ----"
+        local wazuh_deps=()
+
+        if [ -n "${AIO}" ]; then
+            wazuh_deps=( $(echo "${wazuh_apt_dependencies[@]}" "${indexer_apt_dependencies[@]}" "${dashboard_apt_dependencies[@]}" | tr ' ' '\n' | sort -u) )
+        else
+            if [ -n "${wazuh}" ]; then
+                wazuh_deps+=( "${wazuh_apt_dependencies[@]}" )
+            fi
+            if [ -n "${indexer}" ]; then
+                wazuh_deps+=( "${indexer_apt_dependencies[@]}" )
+            fi
+            if [ -n "${dashboard}" ]; then
+                wazuh_deps+=( "${dashboard_apt_dependencies[@]}" )
+            fi
+
+            if [ "${#wazuh_deps[@]}" -gt 0 ]; then
+                mapfile -t wazuh_deps < <(printf '%s\n' "${wazuh_deps[@]}" | sort -u)
+            fi
+        fi
+
         for dep in "${wia_dependencies_installed[@]}"; do
             if [ "${dep}" != "systemd" ]; then
+                if [[ " ${wazuh_deps[*]} " == *" ${dep} "* ]]; then
+                    common_logger -d "Skipping removal of ${dep}: it is also a Wazuh component dependency."
+                    continue
+                fi
                 common_logger "Removing $dep."
                 apt_output=$(apt-get remove --purge ${dep} -y 2>&1)
                 apt_code="${PIPESTATUS[0]}"
