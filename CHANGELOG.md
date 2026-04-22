@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Prevent curl errors and cascading uninstalls when running with -d flag ([#712](https://github.com/wazuh/wazuh-installation-assistant/pull/712))
 
 ### Deleted
 
