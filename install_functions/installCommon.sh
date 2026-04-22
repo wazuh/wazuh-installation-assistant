@@ -854,7 +854,26 @@ function installCommon_yumRemoveWIADependencies(){
 
     if [ "${#wia_dependencies_installed[@]}" -gt 0 ]; then
         common_logger "--- Dependencies ---"
-        local wazuh_deps=( $(echo "${wazuh_yum_dependencies[@]}" "${indexer_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" | tr ' ' '\n' | sort -u) )
+        local wazuh_deps=()
+
+        if [ -n "${AIO}" ]; then
+            wazuh_deps=( $(echo "${wazuh_yum_dependencies[@]}" "${indexer_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" | tr ' ' '\n' | sort -u) )
+        else
+            if [ -n "${wazuh}" ]; then
+                wazuh_deps+=( "${wazuh_yum_dependencies[@]}" )
+            fi
+            if [ -n "${indexer}" ]; then
+                wazuh_deps+=( "${indexer_yum_dependencies[@]}" )
+            fi
+            if [ -n "${dashboard}" ]; then
+                wazuh_deps+=( "${dashboard_yum_dependencies[@]}" )
+            fi
+
+            if [ "${#wazuh_deps[@]}" -gt 0 ]; then
+                mapfile -t wazuh_deps < <(printf '%s\n' "${wazuh_deps[@]}" | sort -u)
+            fi
+        fi
+
         for dep in "${wia_dependencies_installed[@]}"; do
             if [ "${dep}" != "systemd" ]; then
                 if [[ " ${wazuh_deps[*]} " == *" ${dep} "* ]]; then
@@ -880,7 +899,25 @@ function installCommon_aptRemoveWIADependencies(){
 
     if [ "${#wia_dependencies_installed[@]}" -gt 0 ]; then
         common_logger "--- Dependencies ----"
-        local wazuh_deps=( $(echo "${wazuh_apt_dependencies[@]}" "${indexer_apt_dependencies[@]}" "${dashboard_apt_dependencies[@]}" | tr ' ' '\n' | sort -u) )
+        local wazuh_deps=()
+
+        if [ -n "${AIO}" ]; then
+            wazuh_deps=( $(echo "${wazuh_apt_dependencies[@]}" "${indexer_apt_dependencies[@]}" "${dashboard_apt_dependencies[@]}" | tr ' ' '\n' | sort -u) )
+        else
+            if [ -n "${wazuh}" ]; then
+                wazuh_deps+=( "${wazuh_apt_dependencies[@]}" )
+            fi
+            if [ -n "${indexer}" ]; then
+                wazuh_deps+=( "${indexer_apt_dependencies[@]}" )
+            fi
+            if [ -n "${dashboard}" ]; then
+                wazuh_deps+=( "${dashboard_apt_dependencies[@]}" )
+            fi
+
+            if [ "${#wazuh_deps[@]}" -gt 0 ]; then
+                mapfile -t wazuh_deps < <(printf '%s\n' "${wazuh_deps[@]}" | sort -u)
+            fi
+        fi
         common_logger -d "Wazuh components dependencies: ${wazuh_deps[*]}"
         for dep in "${wia_dependencies_installed[@]}"; do
             if [ "${dep}" != "systemd" ]; then
