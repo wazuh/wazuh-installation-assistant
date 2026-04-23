@@ -636,7 +636,13 @@ function cert_setpermisions() {
         return 1
     fi
 
-    chmod -R 744 "${cert_tmp_path}"
+    # Restrict the certificate directory and subdirectories to the owner only
+    chmod 700 "${cert_tmp_path}" || return 1
+    find "${cert_tmp_path}" -type d -exec chmod 700 {} \; || return 1
+    # Restrict private key material to the owner only
+    find "${cert_tmp_path}" -type f \( -name '*.key' -o -name '*.pem' \) -exec chmod 600 {} \; || return 1
+    # Public certificate material can be readable by others
+    find "${cert_tmp_path}" -type f \( -name '*.crt' -o -name '*.cer' -o -name '*.csr' \) -exec chmod 644 {} \; || return 1
 }
 
 function cert_convertCRLFtoLF() {
