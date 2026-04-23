@@ -156,7 +156,7 @@ function installCommon_changePasswordApi() {
             if [ -n "${wazuh}" ] || [ -n "${AIO}" ]; then
                 passwords_getApiUserId "${api_users[i]}"
                 WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
-                common_curl -s -k -X PUT -H "Authorization: Bearer $TOKEN_API" -H "Content-Type: application/json" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
+                common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
                 if [ "${api_users[i]}" == "${adminUser}" ]; then
                     sleep 1
                     adminPassword="${api_passwords[i]}"
@@ -171,7 +171,7 @@ function installCommon_changePasswordApi() {
         if [ -n "${wazuh}" ] || [ -n "${AIO}" ]; then
             passwords_getApiUserId "${nuser}"
             WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-            common_curl -s -k -X PUT -H "Authorization: Bearer $TOKEN_API" -H "Content-Type: application/json" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
+            common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
         fi
         if [ "${nuser}" == "wazuh-wui" ] && { [ -n "${dashboard}" ] || [ -n "${AIO}" ]; }; then
                 passwords_changeDashboardApiPassword "${password}"
