@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Added artifact_urls s3 bucket folder to the download process. ([#731](https://github.com/wazuh/wazuh-installation-assistant/pull/731))
 - Changed config.yml template to show only ip keys ([#717](https://github.com/wazuh/wazuh-installation-assistant/pull/717))
 - Adapted the config.yml component names to match the default certificate names. ([#679](https://github.com/wazuh/wazuh-installation-assistant/pull/679))
 - Updated GitHub actions version for wazuh-installation-assistant main workflows. ([#678](https://github.com/wazuh/wazuh-installation-assistant/pull/678))

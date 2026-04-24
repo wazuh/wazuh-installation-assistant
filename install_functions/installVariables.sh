@@ -20,6 +20,7 @@ config_file="${base_path}/config.yml"
 readonly tar_file_name="wazuh-install-files.tar"
 tar_file="${base_path}/${tar_file_name}"
 artifact_urls_file_name="artifact_urls.yaml"
+readonly artifact_urls_bucket_folder="artifact-urls"
 readonly download_packages_directory="wazuh-install-packages"
 
 readonly dashboard_cert_path="/etc/wazuh-dashboard/certs"
