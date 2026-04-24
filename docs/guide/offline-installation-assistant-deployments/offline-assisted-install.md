@@ -83,6 +83,8 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
 1. Run the multi-node assisted method with the `--offline-installation` flag to perform an offline installation. Use the option `--wazuh-indexer` and the node name to install and configure the Wazuh indexer. The node name must be the same one used in `config.yml` for the initial configuration, for example, `indexer`.
 
+    For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
+
     ```bash
     bash wazuh-install-5.0.0.sh --offline-installation --wazuh-indexer indexer
     ```

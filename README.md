@@ -75,6 +75,8 @@ As an alternative to downloading, use the `builder.sh` script to build the Wazuh
 
 Start by downloading the [configuration file](https://packages.wazuh.com/production/5.x/installation-assistant/config.yml) and replace the node names and IP values with the corresponding ones.
 
+For DNS-based or mixed address configurations, see [Other `config.yml` examples](docs/ref/configuration/configuration-files.md#other-configyml-examples).
+
 > [!NOTE]
 > It is not necessary to download the Wazuh passwords tool and the Wazuh cert tool to use the Wazuh installation assistant. The Wazuh installation assistant has embedded the previous tools.
 
