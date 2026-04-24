@@ -57,7 +57,7 @@ class TestCommonCheckInstalled:
         mocks = {
             **IGNORE_LOGGER,
             "yum": "echo wazuh-manager.x86_64",
-            "grep": "echo wazuh-manager.x86_64 1.2.3",
+            "grep": "echo wazuh-manager.x86_64 5.0.0",
         }
         result = self._run(env_vars={"sys_type": "yum"}, extra_mocks=mocks)
         assert_success(result)

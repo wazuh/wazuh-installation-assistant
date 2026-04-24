@@ -4,7 +4,7 @@ This section describes the security mechanisms used by the Wazuh installation to
 
 ## SSL/TLS certificates
 
-All communication between Wazuh components (Indexer, Manager, and Dashboard) is encrypted using SSL/TLS certificates. Certificates are generated with the `wazuh-certs-tool-1.2.3.sh` script based on the node information in `config.yml`.
+All communication between Wazuh components (Indexer, Manager, and Dashboard) is encrypted using SSL/TLS certificates. Certificates are generated with the `wazuh-certs-tool-5.0.0.sh` script based on the node information in `config.yml`.
 
 The certificate bundle (`wazuh-install-files.tar`) is created once and then distributed to each node. It contains:
 
@@ -22,18 +22,18 @@ Certificate files are stored in the following paths on each node:
 
 ## Password management
 
-The installation assistant sets default passwords for internal Wazuh users during installation. It is strongly recommended to change these passwords after installation using the `wazuh-passwords-tool-1.2.3.sh` script.
+The installation assistant sets default passwords for internal Wazuh users during installation. It is strongly recommended to change these passwords after installation using the `wazuh-passwords-tool-5.0.0.sh` script.
 
 To change a specific user's password:
 
 ```bash
-bash wazuh-passwords-tool-1.2.3.sh -u <USER> -p <NEW_PASSWORD>
+bash wazuh-passwords-tool-5.0.0.sh -u <USER> -p <NEW_PASSWORD>
 ```
 
 To change the Wazuh API password:
 
 ```bash
-bash wazuh-passwords-tool-1.2.3.sh -A -u <API_USER> -p <NEW_PASSWORD> -au <ADMIN_USER> -ap <ADMIN_PASSWORD>
+bash wazuh-passwords-tool-5.0.0.sh -A -u <API_USER> -p <NEW_PASSWORD> -au <ADMIN_USER> -ap <ADMIN_PASSWORD>
 ```
 
 Passwords for internal users are stored hashed in `/etc/wazuh-indexer/opensearch-security/internal_users.yml`.

@@ -181,7 +181,7 @@ Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_
 
 ## Wazuh Manager
 
-**Important**: Upgrading the Wazuh **manager** from version 4.x to 1.x is **not supported**. For manager major version upgrades, a fresh installation is required. However, Wazuh **agents** support upgrades from 4.x to 1.x and can connect to a 1.x manager.
+**Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. For manager major version upgrades, a fresh installation is required. However, Wazuh **agents** support upgrades from 4.x to 5.x and can connect to a 5.x manager.
 
 ### Pre-Upgrade Requirements
 
