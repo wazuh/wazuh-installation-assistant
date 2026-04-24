@@ -61,7 +61,7 @@ test-04-common_checkInstalled-all-installed-yum() {
 
     @mocktrue yum list installed
 
-    @mock grep wazuh-manager === @echo wazuh-manager.x86_64 5.0.0 @wazuh
+    @mock grep wazuh-manager === @echo wazuh-manager.x86_64 1.2.3 @wazuh
     @mkdir /var/wazuh-manager
 
     @mock grep wazuh-indexer === @echo wazuh-indexer.x86_64 1.13.2-1 @wazuh
@@ -94,10 +94,10 @@ test-04-common_checkInstalled-all-installed-yum() {
 }
 
 test-05-common_checkInstalled-all-installed-yum-assert() {
-    @echo "wazuh-manager.x86_64 5.0.0 @wazuh"
+    @echo "wazuh-manager.x86_64 1.2.3 @wazuh"
     @echo 1
 
-    @echo "wazuh-indexer.x86_64 5.0.0 @wazuh"
+    @echo "wazuh-indexer.x86_64 1.2.3 @wazuh"
     @echo 1
 
     @echo "wazuh-dashboard.x86_64"
