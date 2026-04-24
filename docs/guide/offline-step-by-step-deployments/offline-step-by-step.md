@@ -31,6 +31,8 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
 2. Run the following commands replacing `<INDEXER_NODE_NAME>` with the name of the Wazuh indexer node you are configuring as defined in `config.yml`. For example, `indexer`. This deploys the SSL certificates to encrypt communications between the Wazuh central components.
 
+    For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
+
     ```bash
     NODE_NAME=<INDEXER_NODE_NAME>
     mkdir /etc/wazuh-indexer/certs

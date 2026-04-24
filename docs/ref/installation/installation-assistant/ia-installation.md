@@ -8,6 +8,8 @@ curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-
 
 If you want to perform an installation of a specific component, you must also download the config-.yml file with:
 
+For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../configuration/configuration-files.md#other-configyml-examples).
+
 ```bash
 curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
 ```

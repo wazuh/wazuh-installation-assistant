@@ -20,6 +20,10 @@
   - [Certs Tool Installation](ref/installation/certs-tool/certs-tool-installation.md)
   - [Passwords Tool Installation](ref/installation/passwords-tool/passwords-tool-installation.md)
   - [Installation Assistant Installation](ref/installation/installation-assistant/ia-installation.md)
+- [Configuration](ref/configuration/README.md)
+  - [Command line options](ref/configuration/command-line-options.md)
+  - [Configuration files](ref/configuration/configuration-files.md)
+  - [Environment variables](ref/configuration/environment-variables.md)
 
 # Guide
 
