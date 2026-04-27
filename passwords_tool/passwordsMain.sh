@@ -16,10 +16,6 @@ function getHelp() {
     echo -e "        $(basename "${0}") [OPTIONS]"
     echo -e ""
     echo -e "DESCRIPTION"
-    echo -e "        -a,  --change-all"
-    echo -e "                Changes all the Wazuh indexer and Wazuh API user passwords and prints them on screen."
-    echo -e "                To change API passwords -au|--admin-user and -ap|--admin-password are required."
-    echo -e ""
     echo -e "        -A,  --api"
     echo -e "                Change the Wazuh API password."
     echo -e "                Requires -u|--user, and -p|--password, -au|--admin-user and -ap|--admin-password."
@@ -33,38 +29,15 @@ function getHelp() {
     echo -e "                Requires -A|--api."
     echo -e ""
     echo -e "        -u,  --user <user>"
+    echo -e "                Required parameter."
     echo -e "                Indicates the name of the user whose password will be changed."
     echo -e "                If no password specified it will generate a random one."
     echo -e ""
     echo -e "        -p,  --password <password>"
     echo -e "                Indicates the new password, must be used with option -u."
     echo -e ""
-    echo -e "        -c,  --cert <route-admin-certificate>"
-    echo -e "                Indicates route to the admin certificate."
-    echo -e ""
-    echo -e "        -k,  --certkey <route-admin-certificate-key>"
-    echo -e "                Indicates route to the admin certificate key."
-    echo -e ""
     echo -e "        -v,  --verbose"
     echo -e "                Shows the complete script execution output."
-    echo -e ""
-    echo -e "        -f,  --file <wazuh-passwords.txt>"
-    echo -e "                Changes the passwords for the ones given in the file."
-    echo -e ""
-    echo -e "                Wazuh indexer users must have this format:"
-    echo -e ""
-    echo -e "                    # Description"
-    echo -e "                      indexer_username: <user>"
-    echo -e "                      indexer_password: <password>"
-    echo -e ""
-    echo -e "                Wazuh API users must have this format:"
-    echo -e ""
-    echo -e "                    # Description"
-    echo -e "                      api_username: <user>"
-    echo -e "                      api_password: <password>"
-    echo -e ""
-    echo -e "        -gf, --generate-file <wazuh-passwords.txt>"
-    echo -e "                Generate password file with random passwords for standard users."
     echo -e ""
     echo -e "        -h,  --help"
     echo -e "                Shows help."
@@ -85,10 +58,6 @@ function main() {
             case "${1}" in
             "-v"|"--verbose")
                 verboseenabled=1
-                shift 1
-                ;;
-            "-a"|"--change-all")
-                changeall=1
                 shift 1
                 ;;
             "-A"|"--api")
@@ -131,42 +100,6 @@ function main() {
                 password=${2}
                 shift 2
                 ;;
-            "-c"|"--cert")
-                if [ -z "${2}" ]; then
-                    echo "Argument --cert needs a second argument"
-                    getHelp
-                    exit 1
-                fi
-                adminpem=${2}
-                shift 2
-                ;;
-            "-k"|"--certkey")
-                if [ -z "${2}" ]; then
-                    echo "Argument --certkey needs a second argument"
-                    getHelp
-                    exit 1
-                fi
-                adminkey=${2}
-                shift 2
-                ;;
-            "-f"|"--file")
-                if [ -z "${2}" ]; then
-                    echo "Argument --file needs a second argument"
-                    getHelp
-                    exit 1
-                fi
-                p_file=${2}
-                shift 2
-                ;;
-            "-gf"|"--generate-file")
-                if [ -z "${2}" ]; then
-                    echo "Argument --generate-file needs a second argument"
-                    getHelp
-                    exit 1
-                fi
-                gen_file=${2}
-                shift 2
-                ;;
             "-h"|"--help")
                 getHelp
                 ;;
@@ -181,41 +114,11 @@ function main() {
             debug="2>&1 | tee -a ${logfile}"
         fi
 
-        if [ -n "${gen_file}" ]; then
-            passwords_generatePasswordFile
-            if [ -z "${p_file}" ] && [ -z "${nuser}" ] && [ -z "${changeall}" ]; then
-                exit 0
-            fi
-        fi
-
         common_checkSystem
         common_checkInstalled
 
-        if [ -n "${p_file}" ] && [ ! -f "${p_file}" ]; then
-            getHelp
-        fi
-
-        if [ -n "${nuser}" ] && [ -n "${changeall}" ]; then
-            getHelp
-        fi
-
-        if [ -n "${password}" ] && [ -n "${changeall}" ]; then
-            getHelp
-        fi
-
-        if [ -n "${nuser}" ] && [ -n "${p_file}" ]; then
-            getHelp
-        fi
-
-        if [ -n "${password}" ] && [ -n "${p_file}" ]; then
-            getHelp
-        fi
-
-        if [ -z "${nuser}" ] && [ -n "${password}" ]; then
-            getHelp
-        fi
-
-        if [ -z "${nuser}" ] && [ -z "${password}" ] && [ -z "${changeall}" ] && [ -z  "${p_file}" ]; then
+        if [ -z "${nuser}" ]; then
+            echo "Error: -u|--user is required"
             getHelp
         fi
 
@@ -241,38 +144,23 @@ function main() {
         if [ -n "${nuser}" ] && [ -n "${password}" ]; then
             passwords_checkPassword "${password}"
         fi
-        
 
-        if [ -n "${changeall}" ] || [ -n "${p_file}" ]; then
-            if [ -n "${indexer_installed}" ]; then
-                passwords_readUsers
-            fi
-            if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
-                passwords_getApiToken
-                passwords_getApiUsers
-            else
-                common_logger "Wazuh API admin credentials not provided, Wazuh API passwords not changed."
-            fi
-            if [ -n "${changeall}" ]; then
-                passwords_generatePassword
-            fi
-        fi
-
-
-        if [ -n "${p_file}" ]; then
-            passwords_readFileUsers
-        fi
-
-        if { [ -z "${api}" ] || [ -n "${changeall}" ]; } && [ -n "${indexer_installed}" ]; then
+        if [ -z "${api}" ] && [ -n "${indexer_installed}" ]; then
             passwords_getNetworkHost
             passwords_generateHash
             passwords_changePassword
             passwords_runSecurityAdmin
         fi
 
-        if [ -n "${api}" ] || [ -n "${changeall}" ]; then
+        if [ -n "${api}" ]; then
             if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
                 passwords_changePasswordApi
+                if [ -n "${wazuh_installed}" ]; then
+                    passwords_restartService "wazuh-manager"
+                fi
+                if [ -n "${dashboard_installed}" ]; then
+                    passwords_restartService "wazuh-dashboard"
+                fi
             fi
         fi
 
