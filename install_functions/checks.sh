@@ -486,7 +486,6 @@ function checks_ArtifactURLs_component_present() {
         elif [ "${architecture}" == "aarch64" ]; then
             arch_suffix="arm64"
         fi
-        common_logger -d "The provided Filebeat template URL (${filebeat_wazuh_template}) is not accessible. Trying with other URLs."
     fi
 
     indexer_key="wazuh_indexer_${arch_suffix}_${pkg_type}"
@@ -512,10 +511,6 @@ function checks_ArtifactURLs_component_present() {
             exit 1
         fi
     fi
-
-    common_logger -e "Could not get the Filebeat Wazuh template from Wazuh repository."
-    installCommon_rollBack
-    exit 1
 }
 
 function checks_firewall(){
