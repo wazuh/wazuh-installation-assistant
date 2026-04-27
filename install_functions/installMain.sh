@@ -119,14 +119,6 @@ function main() {
                     devrepo="pre-release"
                     shift 1
                 fi
-                checks_development_source_tag
-                repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
-                repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
-                reporelease="unstable"
-                filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
-                filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.5.tar.gz"
-                bucket="packages-dev.wazuh.com"
-                repository="${devrepo}"
                 ;;
 
             "-fd"|"--force-install-dashboard")
@@ -264,7 +256,9 @@ function main() {
 # -------------- Uninstall case  ------------------------------------
 
     common_checkSystem
-
+    common_checkInstalled
+    checks_arguments
+    
     if [ -z "${download}" ]; then
         check_dist
     fi
@@ -275,10 +269,13 @@ function main() {
         offline_checkPrerequisites "wia_offline_dependencies" "${wia_offline_dependencies[@]}"
     fi
 
-    common_checkInstalled
-    checks_arguments
     if [ -n "${development}" ]; then
         checks_filebeatURL
+        repogpg="https://packages-dev.wazuh.com/key/GPG-KEY-WAZUH"
+        repobaseurl="https://packages-dev.wazuh.com/${devrepo}"
+        reporelease="unstable"
+        filebeat_wazuh_module="${repobaseurl}/filebeat/wazuh-filebeat-0.5.tar.gz"
+        bucket="packages-dev.wazuh.com"
     fi
     if [ -n "${uninstall}" ]; then
         installCommon_rollBack
