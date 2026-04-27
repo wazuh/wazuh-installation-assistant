@@ -61,6 +61,24 @@ All notable changes to this project will be documented in this file.
 - Delete all passwords change option and passwords file support ([#567](https://github.com/wazuh/wazuh-installation-assistant/pull/567))
 - Remove the Password Tool from the Installation Assistant files ([#560](https://github.com/wazuh/wazuh-installation-assistant/pull/560))
 
+## [4.14.6]
+
+### Added
+
+- None
+
+### Changed
+
+- None
+
+### Fixed
+
+- Prevent curl errors and cascading uninstalls when running with -d flag ([#712](https://github.com/wazuh/wazuh-installation-assistant/pull/712))
+
+### Deleted
+
+- None
+
 ## [4.14.5]
 
 ### Added
