@@ -14,7 +14,7 @@ function common_checkAptLock() {
     max_attempts=10
 
     while fuser "${apt_lockfile}" >/dev/null 2>&1 && [ "${attempt}" -lt "${max_attempts}" ]; do
-        attempt=$((attempt+1))
+        attempt=$((attempt + 1))
         common_logger "Another process is using APT. Waiting for it to release the lock. Next retry in ${seconds} seconds (${attempt}/${max_attempts})"
         sleep "${seconds}"
     done
@@ -30,27 +30,27 @@ function common_logger() {
     if [ -n "${1}" ]; then
         while [ -n "${1}" ]; do
             case ${1} in
-                "-e")
-                    mtype="ERROR:"
-                    shift 1
-                    ;;
-                "-w")
-                    mtype="WARNING:"
-                    shift 1
-                    ;;
-                "-d")
-                    debugLogger=1
-                    mtype="DEBUG:"
-                    shift 1
-                    ;;
-                "-nl")
-                    nolog=1
-                    shift 1
-                    ;;
-                *)
-                    message="${1}"
-                    shift 1
-                    ;;
+            "-e")
+                mtype="ERROR:"
+                shift 1
+                ;;
+            "-w")
+                mtype="WARNING:"
+                shift 1
+                ;;
+            "-d")
+                debugLogger=1
+                mtype="DEBUG:"
+                shift 1
+                ;;
+            "-nl")
+                nolog=1
+                shift 1
+                ;;
+            *)
+                message="${1}"
+                shift 1
+                ;;
             esac
         done
     fi
@@ -70,7 +70,7 @@ function common_checkRoot() {
     common_logger -d "Checking root permissions."
     if [ "$EUID" -ne 0 ]; then
         echo "This script must be run as root."
-        exit 1;
+        exit 1
     fi
 
 }
@@ -85,7 +85,7 @@ function common_checkInstalled() {
     if [ "${sys_type}" == "yum" ]; then
         eval "rpm -q wazuh-manager --quiet && wazuh_installed=1"
     elif [ "${sys_type}" == "apt-get" ]; then
-        wazuh_installed=$(apt list --installed  2>/dev/null | grep wazuh-manager)
+        wazuh_installed=$(apt list --installed 2>/dev/null | grep wazuh-manager)
     fi
 
     if [ -d "/var/wazuh-manager" ]; then
@@ -108,7 +108,7 @@ function common_checkInstalled() {
     if [ "${sys_type}" == "yum" ]; then
         eval "rpm -q wazuh-dashboard --quiet && dashboard_installed=1"
     elif [ "${sys_type}" == "apt-get" ]; then
-        dashboard_installed=$(apt list --installed  2>/dev/null | grep wazuh-dashboard)
+        dashboard_installed=$(apt list --installed 2>/dev/null | grep wazuh-dashboard)
     fi
 
     if [ -d "/var/lib/wazuh-dashboard/" ] || [ -d "/usr/share/wazuh-dashboard" ] || [ -d "/etc/wazuh-dashboard" ] || [ -d "/run/wazuh-dashboard/" ]; then
@@ -128,8 +128,12 @@ function common_checkSystem() {
         sys_type="apt-get"
         sep="="
         common_logger -d "APT package manager will be used."
+    elif [ -n "$(command -v zypper)" ]; then
+        sys_type="zypper"
+        sep="-"
+        common_logger -d "Zypper package manager will be used."
     else
-        common_logger -e "Couldn't find YUM or APT package manager. Try installing the one corresponding to your operating system and then, launch the installation assistant again."
+        common_logger -e "Couldn't find YUM, APT, or Zypper package manager. Try installing the one corresponding to your operating system and then, launch the installation assistant again."
         exit 1
     fi
 
@@ -157,7 +161,7 @@ function common_curl() {
         eval "curl $@"
         e_code="${PIPESTATUS[0]}"
         while [ "${e_code}" -eq 7 ] && [ "${retries}" -ne 12 ]; do
-            retries=$((retries+1))
+            retries=$((retries + 1))
             sleep 5
             eval "curl $@"
             e_code="${PIPESTATUS[0]}"
@@ -174,8 +178,22 @@ function common_checkYumLock() {
     max_attempts=10
 
     while [ -f "${yum_lockfile}" ] && [ "${attempt}" -lt "${max_attempts}" ]; do
-        attempt=$((attempt+1))
+        attempt=$((attempt + 1))
         common_logger "Another process is using YUM. Waiting for it to release the lock. Next retry in ${seconds} seconds (${attempt}/${max_attempts})"
+        sleep "${seconds}"
+    done
+
+}
+
+function common_checkZypperLock() {
+
+    attempt=0
+    seconds=30
+    max_attempts=10
+
+    while [ -f "${zypper_lockfile}" ] && [ "${attempt}" -lt "${max_attempts}" ]; do
+        attempt=$((attempt + 1))
+        common_logger "Another process is using Zypper. Waiting for it to release the lock. Next retry in ${seconds} seconds (${attempt}/${max_attempts})"
         sleep "${seconds}"
     done
 

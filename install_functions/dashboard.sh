@@ -14,7 +14,7 @@ function dashboard_obtainNodeIp() {
         else
             for i in "${!dashboard_node_names[@]}"; do
                 if [[ "${dashboard_node_names[i]}" == "${dashname}" ]]; then
-                    dashboard_ip=${dashboard_node_ips[i]};
+                    dashboard_ip=${dashboard_node_ips[i]}
                     break
                 fi
             done
@@ -72,10 +72,10 @@ function dashboard_copyCertificates() {
     # else we assume that dashname is already set
 
     if [ -f "${tar_file}" ]; then
-        if ! tar -tvf "${tar_file}" | grep -q "${dashname}" ; then
+        if ! tar -tvf "${tar_file}" | grep -q "${dashname}"; then
             common_logger -e "Tar file does not contain certificate for the node ${dashname}."
             installCommon_rollBack
-            exit 1;
+            exit 1
         fi
         eval "mkdir ${dashboard_cert_path} ${debug}"
         eval "sed -i s/dashboard.pem/${dashname}.pem/ /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
@@ -125,6 +125,13 @@ function dashboard_install() {
             exit 1
         fi
         installCommon_yumInstall "${package_file}"
+    elif [ "${sys_type}" == "zypper" ]; then
+        package_file=$(ls "${download_dir}"/wazuh-dashboard*.rpm 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh dashboard package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_zypperInstall "${package_file}"
     elif [ "${sys_type}" == "apt-get" ]; then
         package_file=$(ls "${download_dir}"/wazuh-dashboard*.deb 2>/dev/null | head -n 1)
         if [ -z "${package_file}" ]; then
@@ -135,7 +142,7 @@ function dashboard_install() {
     fi
 
     common_checkInstalled
-    if [  "$install_result" != 0  ] || [ -z "${dashboard_installed}" ]; then
+    if [ "$install_result" != 0 ] || [ -z "${dashboard_installed}" ]; then
         common_logger -e "Wazuh dashboard installation failed."
         installCommon_rollBack
         exit 1
