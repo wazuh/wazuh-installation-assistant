@@ -156,7 +156,7 @@ function installCommon_changePasswordApi() {
             if [ -n "${wazuh}" ] || [ -n "${AIO}" ]; then
                 passwords_getApiUserId "${api_users[i]}"
                 WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
-                eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
+                common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
                 if [ "${api_users[i]}" == "${adminUser}" ]; then
                     sleep 1
                     adminPassword="${api_passwords[i]}"
@@ -171,7 +171,7 @@ function installCommon_changePasswordApi() {
         if [ -n "${wazuh}" ] || [ -n "${AIO}" ]; then
             passwords_getApiUserId "${nuser}"
             WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-            eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
+            common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
         fi
         if [ "${nuser}" == "wazuh-wui" ] && { [ -n "${dashboard}" ] || [ -n "${AIO}" ]; }; then
                 passwords_changeDashboardApiPassword "${password}"
@@ -303,7 +303,7 @@ function installCommon_configureCentOSRepositories() {
 
     centos_repos_configured=1
     centos_key="/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial"
-    eval "common_curl -sLo ${centos_key} 'https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official' --max-time 300 --retry 5 --retry-delay 5 --fail"
+    common_curl -sLo ${centos_key} 'https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official' --max-time 300 --retry 5 --retry-delay 5 --fail
 
     if [ ! -f "${centos_key}" ]; then
         common_logger -w "The CentOS key could not be added. Some dependencies may not be installed."
@@ -619,7 +619,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-manager -y ${debug}"
-                eval "rpm -q wazuh-manager --quiet && wazuh_failed_uninstall=1"
+                rpm -q wazuh-manager --quiet && wazuh_failed_uninstall=1
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
@@ -645,7 +645,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-indexer -y ${debug}"
-                eval "rpm -q wazuh-indexer --quiet && indexer_failed_uninstall=1"
+                rpm -q wazuh-indexer --quiet && indexer_failed_uninstall=1
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
@@ -672,7 +672,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove filebeat -y ${debug}"
-                eval "rpm -q filebeat --quiet && filebeat_failed_uninstall=1"
+                rpm -q filebeat --quiet && filebeat_failed_uninstall=1
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
@@ -699,7 +699,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-dashboard -y ${debug}"
-                eval "rpm -q wazuh-dashboard --quiet && dashboard_failed_uninstall=1"
+                rpm -q wazuh-dashboard --quiet && dashboard_failed_uninstall=1
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock

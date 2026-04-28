@@ -447,7 +447,7 @@ function checks_ports() {
     fi
 
     for i in "${!ports[@]}"; do
-        if eval "${port_command}""${ports[i]}" > /dev/null; then
+        if ${port_command}"${ports[i]}" > /dev/null; then
             used_port=1
             common_logger -e "Port ${ports[i]} is being used by another process. Please, check it before installing Wazuh."
         fi
@@ -510,6 +510,28 @@ function checks_filebeatURL() {
         common_logger -d "The Filebeat template URL with the tag ${tag_branch} (${filebeat_wazuh_template}) is not accessible. Trying with base branch."
     fi
 
+    # Check if the stage tag exists
+    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
+        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/git/refs/tags/${source_branch}")
+
+    if [ "$status_code" -ne 200 ]; then
+        common_logger -w "Tag '${source_branch}' does not exist. Using the source branch related to the Wazuh version (${wazuh_version})."
+        source_branch="${wazuh_version}"
+
+        # Check if the source branch exists
+        checks_source_branch
+    fi
+}
+
+function checks_source_branch() {
+    # Check if the source branch exists
+    status_code=$(curl -s -o /dev/null -w "%{http_code}" \
+        "https://api.github.com/repos/wazuh/wazuh-installation-assistant/branches/${source_branch}")
+
+    if [ "$status_code" -ne 200 ]; then
+        common_logger -w "Branch '${source_branch}' does not exist. Using the ${wazuh_version} branch."
+        source_branch="${wazuh_version}"
+    fi
     # if the URL with the tag does not exist or is not accessible, try with the branch
     source_branch="${source_branch#v}"
     filebeat_wazuh_template="https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/extensions/elasticsearch/7.x/wazuh-template.json"
@@ -549,8 +571,8 @@ function checks_firewall(){
 
     # Check if the firewall is installed
     if [ "${sys_type}" == "yum" ]; then
-        eval "rpm -q firewalld --quiet && firewalld_installed=1"
-        eval "rpm -q ufw --quiet && ufw_installed=1"
+        rpm -q firewalld --quiet && firewalld_installed=1
+        rpm -q ufw --quiet && ufw_installed=1
     elif [ "${sys_type}" == "apt-get" ]; then
         if apt list --installed 2>/dev/null | grep -q -E ^"firewalld"\/; then
             firewalld_installed=1
