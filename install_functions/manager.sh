@@ -50,7 +50,7 @@ function manager_configure(){
         if [ $i -eq 0 ]; then
             eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
         else
-            eval "sed -i '/<hosts>/a\      <host>https:\/\/${indexer_node_ips[$i]}:9200<\/host>' /var/wazuh-manager/etc/wazuh-manager.conf"
+            sed -i "/<hosts>/a\      <host>https://${indexer_node_ips[$i]}:9200</host>" /var/wazuh-manager/etc/wazuh-manager.conf
         fi
     done
 
@@ -61,8 +61,8 @@ function manager_configure(){
     eval "sed -i s/manager-key.pem/${winame}-key.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
     manager_copyCertificates "${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
-    eval "/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin"
-    eval "/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin"
+    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin
+    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin
     common_logger "Wazuh manager vulnerability detection configuration finished."
 }
 

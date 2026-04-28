@@ -184,7 +184,11 @@ function main() {
             common_logger "Admin certificates created."
             cert_cleanFiles
             cert_setpermisions
-            eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+            if [ -n "${debugEnabled}" ]; then
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+            else
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+            fi
         fi
 
         if [[ -n "${all}" ]]; then
@@ -202,14 +206,22 @@ function main() {
             fi
             cert_cleanFiles
             cert_setpermisions
-            eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+            if [ -n "${debugEnabled}" ]; then
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+            else
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+            fi
         fi
 
         if [[ -n "${ca}" ]]; then
             cert_generateRootCAcertificate
             common_logger "Authority certificates created."
             cert_cleanFiles
-            eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+            if [ -n "${debugEnabled}" ]; then
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+            else
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+            fi
         fi
 
         if [[ -n "${cindexer}" ]]; then
@@ -219,7 +231,11 @@ function main() {
                 common_logger "Wazuh indexer certificates created."
                 cert_cleanFiles
                 cert_setpermisions
-                eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+                if [ -n "${debugEnabled}" ]; then
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+                else
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+                fi
             else
                 common_logger -e "Indexer node not present in config.yml."
                 exit 1
@@ -233,7 +249,11 @@ function main() {
                 common_logger "Wazuh manager certificates created."
                 cert_cleanFiles
                 cert_setpermisions
-                eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+                if [ -n "${debugEnabled}" ]; then
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+                else
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+                fi
             else
                 common_logger -e "Manager node not present in config.yml."
                 exit 1
@@ -247,7 +267,11 @@ function main() {
                 common_logger "Wazuh dashboard certificates created."
                 cert_cleanFiles
                 cert_setpermisions
-                eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
+                if [ -n "${debugEnabled}" ]; then
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+                else
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+                fi
             else
                 common_logger -e "Dashboard node not present in config.yml."
                 exit 1
