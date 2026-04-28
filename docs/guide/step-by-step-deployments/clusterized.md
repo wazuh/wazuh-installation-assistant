@@ -19,6 +19,8 @@ Wazuh uses certificates to establish confidentiality and encrypt communications 
 
   2. Edit `config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
 
+  For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
+
   ```yaml
 nodes:
   # Wazuh indexer nodes

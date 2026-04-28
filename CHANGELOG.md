@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add 5.x bumper revert changes ([#727](https://github.com/wazuh/wazuh-installation-assistant/pull/727))
 - Added upgrade documentation and modify summary accordingly ([#703](https://github.com/wazuh/wazuh-installation-assistant/pull/703))
 - Add test documentation and fix all documetations with mermaid problems. ([#702](https://github.com/wazuh/wazuh-installation-assistant/pull/702))
 - Add distributed, AIO and Offline test into the integration test checks ([#684](https://github.com/wazuh/wazuh-installation-assistant/pull/684))
@@ -22,6 +23,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Added artifact_urls s3 bucket folder to the download process. ([#731](https://github.com/wazuh/wazuh-installation-assistant/pull/731))
+- Changed config.yml template to show only ip keys ([#717](https://github.com/wazuh/wazuh-installation-assistant/pull/717))
 - Adapted the config.yml component names to match the default certificate names. ([#679](https://github.com/wazuh/wazuh-installation-assistant/pull/679))
 - Updated GitHub actions version for wazuh-installation-assistant main workflows. ([#678](https://github.com/wazuh/wazuh-installation-assistant/pull/678))
 - Change wazuh-manager certs folder ownership to wazuh-manager ([#676](https://github.com/wazuh/wazuh-installation-assistant/pull/676))
@@ -57,6 +60,24 @@ All notable changes to this project will be documented in this file.
 - Remove hardcoded config files and use component defaults ([#572](https://github.com/wazuh/wazuh-installation-assistant/pull/572))
 - Delete all passwords change option and passwords file support ([#567](https://github.com/wazuh/wazuh-installation-assistant/pull/567))
 - Remove the Password Tool from the Installation Assistant files ([#560](https://github.com/wazuh/wazuh-installation-assistant/pull/560))
+
+## [4.14.6]
+
+### Added
+
+- None
+
+### Changed
+
+- None
+
+### Fixed
+
+- Prevent curl errors and cascading uninstalls when running with -d flag ([#712](https://github.com/wazuh/wazuh-installation-assistant/pull/712))
+
+### Deleted
+
+- None
 
 ## [4.14.5]
 

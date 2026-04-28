@@ -54,7 +54,7 @@ The steps to perform the installation are as follows:
 The `config.yml` file is a YAML format configuration file that contains the necessary information to generate certificates for Wazuh nodes.
 It is very important to ensure that the `config.yml` file is correctly configured with both the name of each node and the IP address, as they will be used to generate the corresponding certificate.
 
-Here is a basic example of how this file should be structured:
+Here is the default example of how this file should be structured (using only `ip`):
 
 ```yaml
 nodes:
@@ -62,13 +62,10 @@ nodes:
   indexer:
     - name: indexer
       ip: "<indexer-node-ip>"
-    #  dns: "<indexer-node-dns>"
     #- name: indexer-2
-    #  dns: "<indexer-node-dns>"
+    #  ip: "<indexer-node-ip>"
     #- name: indexer-3
     #  ip: "<indexer-node-ip>"
-    #  dns:
-    #    - "<indexer-node-dns>"
 
   # Wazuh manager nodes
   # If there is more than one Wazuh manager
@@ -76,28 +73,110 @@ nodes:
   manager:
     - name: manager
       ip: "<wazuh-manager-ip>"
-    #  dns: "<wazuh-manager-dns>"
     #  node_type: master
     #- name: manager-2
-    #  dns: "<wazuh-manager-dns>"
+    #  ip: "<wazuh-manager-ip>"
     #  node_type: worker
     #- name: manager-3
     #  ip: "<wazuh-manager-ip>"
-    #  dns:
-    #    - "<wazuh-manager-dns>"
     #  node_type: worker
 
   # Wazuh dashboard nodes
   dashboard:
     - name: dashboard
       ip: "<dashboard-node-ip>"
-    #  dns: "<dashboard-node-dns>"
 ```
 
-Each node must have a unique name and an associated IP address. In the case of Wazuh server nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.
+### Other `config.yml` examples
 
-For the certs-tool to detect the file, it must be located in the same path as the `wazuh-certs-tool-5.0.0.sh` script.
+Each node must have a unique name and at least one network identifier (`ip` or `dns`). In the case of Wazuh manager nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.
 
-## Wazuh password tool
+#### Example 1: using only `dns` values
 
-The wazuh password tool does not accept configuration files for use.
+```yaml
+nodes:
+  indexer:
+    - name: indexer-1
+      dns: "indexer-1.example.org"
+
+  manager:
+    - name: manager-1
+      dns: "manager-1.example.org"
+      node_type: master
+    - name: manager-2
+      dns: "manager-2.example.org"
+      node_type: worker
+
+  dashboard:
+    - name: dashboard-1
+      dns: "dashboard.example.org"
+```
+
+#### Example 2: using only DNS lists
+
+```yaml
+nodes:
+  indexer:
+    - name: indexer-1
+      dns:
+        - "indexer-1.example.org"
+        - "indexer-1.internal.local"
+
+  manager:
+    - name: manager-1
+      dns:
+        - "manager-1.example.org"
+        - "manager-1.internal.local"
+      node_type: master
+    - name: manager-2
+      dns:
+        - "manager-2.example.org"
+        - "manager-2.internal.local"
+      node_type: worker
+
+  dashboard:
+    - name: dashboard-1
+      dns:
+        - "dashboard.example.org"
+        - "dashboard.internal.local"
+```
+
+#### Example 3: combining `ip`, `dns`, and DNS lists
+
+```yaml
+nodes:
+  indexer:
+    - name: indexer-by-ip
+      ip: "10.0.0.11"
+    - name: indexer-by-dns
+      dns: "indexer.example.org"
+    - name: indexer-by-dns-list
+      dns:
+        - "indexer.example.org"
+        - "indexer.internal.local"
+    - name: indexer-combined
+      ip: "10.0.0.12"
+      dns:
+        - "indexer-alt.example.org"
+
+  manager:
+    - name: manager-by-ip
+      ip: "10.0.0.21"
+      node_type: master
+    - name: manager-combined
+      ip: "10.0.0.22"
+      dns: "manager.example.org"
+      node_type: worker
+
+  dashboard:
+    - name: dashboard-by-dns
+      dns: "dashboard.example.org"
+```
+
+By default, documentation examples use only `ip` values for simplicity.
+
+For the wazuh certs tool to detect the file, it must be located in the same path as the `wazuh-certs-tool-5.0.0.sh` script.
+
+## Wazuh passwords tool
+
+The wazuh passwords tool does not accept configuration files for use.
