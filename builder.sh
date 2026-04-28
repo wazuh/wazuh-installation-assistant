@@ -68,7 +68,11 @@ function buildInstaller() {
 
     ## Configuration files as variables
     configuration_files=($(find "${resources_config}" -type f))
-    config_file_name=($(eval "echo "${configuration_files[@]}" | sed 's|${resources_config}||g;s|/|_|g;s|.yml||g'"))
+    config_file_name=()
+    for file in "${configuration_files[@]}"; do
+        name=$(echo "${file}" | sed "s|${resources_config}||g;s|/|_|g;s|.yml||g")
+        config_file_name+=("${name}")
+    done
     for index in "${!config_file_name[@]}"; do
         echo "config_file${config_file_name[$index]}=\"$(cat "${configuration_files[$index]}" | sed 's|\"|\\\"|g;s|\$|\\\$|g')\"" >> "${output_script_path}"
         echo >> "${output_script_path}"
@@ -82,11 +86,15 @@ function buildInstaller() {
 
     ## Functions for all install function modules
     install_modules=($(find "${resources_installer}" -type f))
-    install_modules_names=($(eval "echo \"${install_modules[*]}\" | sed 's,${resources_installer}/,,g'"))
+    install_modules_names=()
+    for module in "${install_modules[@]}"; do
+        name=$(echo "${module}" | sed "s,${resources_installer}/,,g")
+        install_modules_names+=("${name}")
+    done
     for i in "${!install_modules[@]}"; do
         if [ "${install_modules_names[$i]}" != "installVariables.sh" ]; then
             echo "# ------------ ${install_modules_names[$i]} ------------ " >> "${output_script_path}"
-            sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' ${install_modules[$i]} >> "${output_script_path}"
+            sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${install_modules[$i]}" >> "${output_script_path}"
             echo >> "${output_script_path}"
         fi
     done
@@ -135,7 +143,11 @@ function buildPasswordsTool() {
 
     ## Functions for all password function modules
     passwords_modules=($(find "${resources_passwords}" -type f))
-    passwords_modules_names=($(eval "echo "${passwords_modules[@]}" | sed 's,${resources_passwords}/,,g'"))
+    passwords_modules_names=()
+    for module in "${passwords_modules[@]}"; do
+        name=$(echo "${module}" | sed "s,${resources_passwords}/,,g")
+        passwords_modules_names+=("${name}")
+    done
     for i in "${!passwords_modules[@]}"; do
         if [ "${passwords_modules[$i]}" != "passwordsVariables.sh" ]; then
             echo "# ------------ ${passwords_modules_names[$i]} ------------ " >> "${output_script_path}"
@@ -176,7 +188,11 @@ function buildCertsTool() {
 
     ## Functions for all certs tool function modules
     certs_modules=($(find "${resources_certs}" -type f))
-    certs_modules_names=($(eval "echo "${certs_modules[@]}" | sed 's,${resources_certs}/,,g'"))
+    certs_modules_names=()
+    for module in "${certs_modules[@]}"; do
+        name=$(echo "${module}" | sed "s,${resources_certs}/,,g")
+        certs_modules_names+=("${name}")
+    done
     for i in "${!certs_modules[@]}"; do
         if [ "${certs_modules[$i]}" != "certVariables.sh" ]; then
             echo "# ------------ ${certs_modules_names[$i]} ------------ " >> "${output_script_path}"
@@ -244,7 +260,7 @@ function checkDistDetectURL() {
           "https://raw.githubusercontent.com/wazuh/wazuh/master/src/init/dist-detect.sh")
 
     for url in "${urls[@]}"; do
-        eval "curl -s -o /dev/null '${url}' --retry 5 --retry-delay 5 --max-time 300 --fail"
+        curl -s -o /dev/null "${url}" --retry 5 --retry-delay 5 --max-time 300 --fail
         e_code="${PIPESTATUS[0]}"
 
         if [ "${e_code}" -eq 0 ]; then

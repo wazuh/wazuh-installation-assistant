@@ -29,7 +29,7 @@ function manager_startCluster() {
     lstart=$(grep -n "<cluster>" /var/ossec/etc/ossec.conf | cut -d : -f 1)
     lend=$(grep -n "</cluster>" /var/ossec/etc/ossec.conf | cut -d : -f 1)
 
-    eval 'sed -i -e "${lstart},${lend}s/<name>.*<\/name>/<name>wazuh_cluster<\/name>/" \
+    sed -i -e "${lstart},${lend}s/<name>.*<\/name>/<name>wazuh_cluster<\/name>/" \
         -e "${lstart},${lend}s/<node_name>.*<\/node_name>/<node_name>${winame}<\/node_name>/" \
         -e "${lstart},${lend}s/<node_type>.*<\/node_type>/<node_type>${server_node_types[pos],,}<\/node_type>/" \
         -e "${lstart},${lend}s/<key>.*<\/key>/<key>${key}<\/key>/" \
@@ -38,7 +38,7 @@ function manager_startCluster() {
         -e "${lstart},${lend}s/<node>.*<\/node>/<node>${master_address}<\/node>/" \
         -e "${lstart},${lend}s/<hidden>.*<\/hidden>/<hidden>${hidden}<\/hidden>/" \
         -e "${lstart},${lend}s/<disabled>.*<\/disabled>/<disabled>${disabled}<\/disabled>/" \
-        /var/ossec/etc/ossec.conf'
+        /var/ossec/etc/ossec.conf
 
 }
 
@@ -55,15 +55,15 @@ function manager_configure(){
             if [ $i -eq 0 ]; then
                 eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' /var/ossec/etc/ossec.conf ${debug}"
             else
-                eval "sed -i '/<hosts>/a\      <host>https:\/\/${indexer_node_ips[$i]}:9200<\/host>' /var/ossec/etc/ossec.conf"
+                eval "sed -i '/<hosts>/a\      <host>https:\/\/${indexer_node_ips[$i]}:9200<\/host>' /var/ossec/etc/ossec.conf ${debug}"
             fi
         done
     fi
     eval "sed -i s/filebeat.pem/${server_node_names[0]}.pem/ /var/ossec/etc/ossec.conf ${debug}"
     eval "sed -i s/filebeat-key.pem/${server_node_names[0]}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
-    eval "/var/ossec/bin/wazuh-keystore -f indexer -k username -v admin"
-    eval "/var/ossec/bin/wazuh-keystore -f indexer -k password -v admin"
+    /var/ossec/bin/wazuh-keystore -f indexer -k username -v admin
+    /var/ossec/bin/wazuh-keystore -f indexer -k password -v admin
     common_logger "Wazuh manager vulnerability detection configuration finished."
 }
 
