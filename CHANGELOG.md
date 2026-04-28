@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 ## [5.0.0]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Add 5.x bumper revert changes ([#727](https://github.com/wazuh/wazuh-installation-assistant/pull/727))
 - Added upgrade documentation and modify summary accordingly ([#703](https://github.com/wazuh/wazuh-installation-assistant/pull/703))
@@ -64,6 +65,7 @@ All notable changes to this project will be documented in this file.
 ## [4.14.6]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -82,6 +84,7 @@ All notable changes to this project will be documented in this file.
 ## [4.14.5]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -101,6 +104,7 @@ All notable changes to this project will be documented in this file.
 ## [4.14.4]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -120,6 +124,7 @@ All notable changes to this project will be documented in this file.
 ## [4.14.3]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -138,6 +143,7 @@ All notable changes to this project will be documented in this file.
 ## [4.14.2]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -156,6 +162,7 @@ All notable changes to this project will be documented in this file.
 ## [4.14.1]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -174,6 +181,7 @@ All notable changes to this project will be documented in this file.
 ## [4.14.0]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -195,6 +203,7 @@ All notable changes to this project will be documented in this file.
 ## [4.13.1]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -213,6 +222,7 @@ All notable changes to this project will be documented in this file.
 ## [4.13.0]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Add opensearch_dashboard.yml parameters. ([#447](https://github.com/wazuh/wazuh-installation-assistant/pull/447))
 - Integrate bumper script via GitHub action. ([#382](https://github.com/wazuh/wazuh-installation-assistant/pull/382))
@@ -234,6 +244,7 @@ All notable changes to this project will be documented in this file.
 ## [4.12.0]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Add workflow step to add last_stage variable to the `wazuh-install.sh` ([#226](https://github.com/wazuh/wazuh-installation-assistant/pull/226))
 
@@ -258,6 +269,7 @@ All notable changes to this project will be documented in this file.
 ## [4.11.2]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -276,6 +288,7 @@ All notable changes to this project will be documented in this file.
 ## [4.11.1]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -294,6 +307,7 @@ All notable changes to this project will be documented in this file.
 ## [4.11.0]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Refactor offline instalation test ([#191](https://github.com/wazuh/wazuh-installation-assistant/pull/191))
 
@@ -316,6 +330,7 @@ All notable changes to this project will be documented in this file.
 ## [4.10.1]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - None
 
@@ -335,6 +350,7 @@ All notable changes to this project will be documented in this file.
 ## [4.10.0]
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Migrated documentation templates to wazuh-installation-assistant repository. ([#144](https://github.com/wazuh/wazuh-installation-assistant/pull/144))
 
