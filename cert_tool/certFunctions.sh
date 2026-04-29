@@ -69,25 +69,32 @@ function cert_sanitizeFilename() {
 }
 
 function cert_sanitizeNodeName() {
-    local nodename="$1"
+    local component_name="$1"
+    local node_names_var="$2"
 
-    # Only allow alphanumeric, dash, underscore, and dot (typical for hostnames)
-    if [[ ! "${nodename}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
-        common_logger -e "Invalid node name: ${nodename}. Only alphanumeric characters, dots, dashes, and underscores are allowed."
-        return 1
-    fi
+    # Use nameref for safe dynamic array access
+    declare -n component_node_names="${node_names_var}"
 
-    # Prevent names starting with dash or dot
-    if [[ "${nodename}" =~ ^[-\.] ]]; then
-        common_logger -e "Node name cannot start with dash or dot: ${nodename}"
-        return 1
-    fi
+    for i in "${!component_node_names[@]}"; do
 
-    # Limit length
-    if [[ ${#nodename} -gt 253 ]]; then
-        common_logger -e "Node name too long: ${nodename}"
-        return 1
-    fi
+        # Only allow alphanumeric, dash, underscore, and dot (typical for hostnames)
+        if [[ ! "${component_node_names[$i]}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+            common_logger -e "Invalid ${component_name} node name: ${component_node_names[$i]}. Only alphanumeric characters, dots, dashes, and underscores are allowed."
+            exit 1
+        fi
+
+        # Prevent names starting with dash or dot
+        if [[ "${component_node_names[$i]}" =~ ^[-\.] ]]; then
+            common_logger -e "${component_name} node name cannot start with dash or dot: ${component_node_names[$i]}"
+            exit 1
+        fi
+
+        # Limit length
+        if [[ ${#component_node_names[$i]} -gt 253 ]]; then
+            common_logger -e "${component_name} node name too long: ${component_node_names[$i]}"
+            exit 1
+        fi
+    done
 
     return 0
 }
@@ -216,12 +223,6 @@ function cert_generateCertificateconfiguration() {
 
     local node_name="$1"
 
-    # Validate node name
-    if ! cert_sanitizeNodeName "${node_name}"; then
-        common_logger -e "Invalid node name: ${node_name}"
-        exit 1
-    fi
-
     # Validate cert_tmp_path
     if ! cert_validatePath "${cert_tmp_path}" "directory"; then
         common_logger -e "Invalid certificate temporary path."
@@ -288,12 +289,6 @@ function cert_generateIndexercertificates() {
         for i in "${!indexer_node_names[@]}"; do
             indexer_node_name=${indexer_node_names[$i]}
 
-            # Validate node name
-            if ! cert_sanitizeNodeName "${indexer_node_name}"; then
-                common_logger -e "Invalid indexer node name: ${indexer_node_name}"
-                exit 1
-            fi
-
             common_logger -d "Creating the certificates for ${indexer_node_name} indexer node."
             j=$((i+1))
             # Use nameref for safe dynamic array access
@@ -326,12 +321,6 @@ function cert_generateManagercertificates() {
         for i in "${!manager_node_names[@]}"; do
             manager_name="${manager_node_names[i]}"
 
-            # Validate node name
-            if ! cert_sanitizeNodeName "${manager_name}"; then
-                common_logger -e "Invalid manager node name: ${manager_name}"
-                exit 1
-            fi
-
             common_logger -d "Generating the certificates for ${manager_name} manager node."
             j=$((i+1))
             # Use nameref for safe dynamic array access
@@ -362,12 +351,6 @@ function cert_generateDashboardcertificates() {
 
         for i in "${!dashboard_node_names[@]}"; do
             dashboard_node_name="${dashboard_node_names[i]}"
-
-            # Validate node name
-            if ! cert_sanitizeNodeName "${dashboard_node_name}"; then
-                common_logger -e "Invalid dashboard node name: ${dashboard_node_name}"
-                exit 1
-            fi
 
             j=$((i+1))
             # Use nameref for safe dynamic array access
@@ -547,9 +530,9 @@ function cert_normalizeYamlFormat() {
 
 function cert_parseYaml() {
 
-    local config_file_path=$1
-    local prefix=$2
-    local separator=${3:-_}
+    local config_file_path="$1"
+    local prefix="$2"
+    local separator="${3:-_}"
     local indexfix
 
     # Detect awk flavor
@@ -666,7 +649,7 @@ function cert_parseYaml() {
 
 function cert_checkPrivateIp() {
 
-    local ip=$1
+    local ip="$1"
     common_logger -d "Checking if ${ip} is private."
 
     # Check private IPv4 ranges
@@ -685,28 +668,28 @@ function cert_checkPrivateIp() {
 
 function cert_isIPv4() {
 
-    local ip=$1
+    local ip="$1"
     [[ ${ip} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
 
 }
 
 function cert_isIPv6() {
 
-    local ip=$1
+    local ip="$1"
     [[ ${ip} =~ ^(([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,7}:|:([0-9A-Fa-f]{1,4}:){1,7}|([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2}|([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3}|([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4}|([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:((:[0-9A-Fa-f]{1,4}){1,6})|::)$ ]]
 
 }
 
 function cert_isIP() {
 
-    local ip=$1
+    local ip="$1"
     cert_isIPv4 "${ip}" || cert_isIPv6 "${ip}"
 
 }
 
 function cert_isDNS() {
 
-    local dns=$1
+    local dns="$1"
     if ! cert_isIP "${dns}" && [[ ${dns} =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$ ]]; then
         return 0
     fi
@@ -716,10 +699,10 @@ function cert_isDNS() {
 
 function cert_validateComponentSanValues() {
 
-    local component_name=$1
-    local node_names_var=$2
-    local node_ip_prefix=$3
-    local node_dns_prefix=$4
+    local component_name="$1"
+    local node_names_var="$2"
+    local node_ip_prefix="$3"
+    local node_dns_prefix="$4"
     local i
     local j
 
@@ -760,10 +743,10 @@ function cert_validateComponentSanValues() {
 
 function cert_validateComponentDuplicatedValues() {
 
-    local component_name=$1
-    local node_names_var=$2
-    local node_ips_var=$3
-    local node_dns_prefix=$4
+    local component_name="$1"
+    local node_names_var="$2"
+    local node_ips_var="$3"
+    local node_dns_prefix="$4"
     local i
     local j
 
@@ -876,27 +859,9 @@ function cert_readConfig() {
         cert_validateComponentSanValues "Manager" "manager_node_names" "manager_node_ip" "manager_node_dns"
         cert_validateComponentSanValues "Dashboard" "dashboard_node_names" "dashboard_node_ip" "dashboard_node_dns"
 
-        # Validate all node names before checking for duplicates
-        for indexer_name in "${indexer_node_names[@]}"; do
-            if ! cert_sanitizeNodeName "${indexer_name}"; then
-                common_logger -e "Invalid indexer node name: ${indexer_name}"
-                exit 1
-            fi
-        done
-
-        for manager_name in "${manager_node_names[@]}"; do
-            if ! cert_sanitizeNodeName "${manager_name}"; then
-                common_logger -e "Invalid manager node name: ${manager_name}"
-                exit 1
-            fi
-        done
-
-        for dashboard_name in "${dashboard_node_names[@]}"; do
-            if ! cert_sanitizeNodeName "${dashboard_name}"; then
-                common_logger -e "Invalid dashboard node name: ${dashboard_name}"
-                exit 1
-            fi
-        done
+        cert_sanitizeNodeName "Indexer" "indexer_node_names"
+        cert_sanitizeNodeName "Manager" "manager_node_names"
+        cert_sanitizeNodeName "Dashboard" "dashboard_node_names"
 
         cert_validateComponentDuplicatedValues "Indexer" "indexer_node_names" "indexer_node_ips" "indexer_node_dns"
         cert_validateComponentDuplicatedValues "Wazuh manager" "manager_node_names" "manager_node_ips" "manager_node_dns"
