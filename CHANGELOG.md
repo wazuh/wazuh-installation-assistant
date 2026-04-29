@@ -47,6 +47,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- The security of the installation assistant is improved when creating configuration files in main. ([#737](https://github.com/wazuh/wazuh-installation-assistant/pull/737))
 - Fixed Wazuh Dashboard API host. ([#681](https://github.com/wazuh/wazuh-installation-assistant/pull/681))
 - Fixed offline one liner quickstart aio hang during files validation. ([#680](https://github.com/wazuh/wazuh-installation-assistant/pull/680))
 - Fix YAML Parser to Accept Multiple Indentation Formats ([#631](https://github.com/wazuh/wazuh-installation-assistant/pull/631))
