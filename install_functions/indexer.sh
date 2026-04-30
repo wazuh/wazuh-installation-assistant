@@ -12,10 +12,10 @@ function indexer_configure() {
 
     # Configure JVM options for Wazuh indexer
     ram_mb=$(free -m | awk 'FNR == 2 {print $2}')
-    ram="$(( ram_mb / 2 ))"
+    ram="$((ram_mb / 2))"
 
     if [ "${ram}" -eq "0" ]; then
-        ram=1024;
+        ram=1024
     fi
     eval "sed -i "s/-Xms1g/-Xms${ram}m/" /etc/wazuh-indexer/jvm.options ${debug}"
     eval "sed -i "s/-Xmx1g/-Xmx${ram}m/" /etc/wazuh-indexer/jvm.options ${debug}"
@@ -24,16 +24,16 @@ function indexer_configure() {
         indexer_ip="${indexer_node_ips[0]}"
         indxname="${indexer_node_names[0]}"
         # This variables are used to not overwrite the indexer_node* arrays
-        indexer_configuration_ips=("${indexer_node_ips[0]}") # I'll take only the first ip
+        indexer_configuration_ips=("${indexer_node_ips[0]}")     # I'll take only the first ip
         indexer_configuration_names=("${indexer_node_names[0]}") # I'll take only the first name
     else
         for i in "${!indexer_node_names[@]}"; do
             if [[ "${indexer_node_names[i]}" == "${indxname}" ]]; then
-                indexer_ip=${indexer_node_ips[i]};
+                indexer_ip=${indexer_node_ips[i]}
                 break
             fi
         done
-        indexer_configuration_ips=("${indexer_node_ips[@]}") # I'll take all the ips
+        indexer_configuration_ips=("${indexer_node_ips[@]}")     # I'll take all the ips
         indexer_configuration_names=("${indexer_node_names[@]}") # I'll take all the names
     fi
 
@@ -65,15 +65,15 @@ function indexer_configure() {
 
     indexer_copyCertificates
 
-    jv=$(java -version 2>&1 | grep -o -m1 '1.8.0' )
+    jv=$(java -version 2>&1 | grep -o -m1 '1.8.0')
     if [ "$jv" == "1.8.0" ]; then
         {
-        echo "wazuh-indexer hard nproc 4096"
-        echo "wazuh-indexer soft nproc 4096"
-        echo "wazuh-indexer hard nproc 4096"
-        echo "wazuh-indexer soft nproc 4096"
-        } >> /etc/security/limits.conf
-        echo -ne "\nbootstrap.system_call_filter: false" >> /etc/wazuh-indexer/opensearch.yml
+            echo "wazuh-indexer hard nproc 4096"
+            echo "wazuh-indexer soft nproc 4096"
+            echo "wazuh-indexer hard nproc 4096"
+            echo "wazuh-indexer soft nproc 4096"
+        } >>/etc/security/limits.conf
+        echo -ne "\nbootstrap.system_call_filter: false" >>/etc/wazuh-indexer/opensearch.yml
     fi
 
     common_logger "Wazuh indexer post-install configuration finished."
@@ -89,10 +89,10 @@ function indexer_copyCertificates() {
     fi
 
     if [ -f "${tar_file}" ]; then
-        if ! tar -tvf "${tar_file}" | grep -q "${indxname}" ; then
+        if ! tar -tvf "${tar_file}" | grep -q "${indxname}"; then
             common_logger -e "Tar file does not contain certificate for the node ${indxname}."
             installCommon_rollBack
-            exit 1;
+            exit 1
         fi
         eval "mkdir ${indexer_cert_path} ${debug}"
         eval "sed -i s/indexer.pem/${indxname}.pem/ /etc/wazuh-indexer/opensearch.yml ${debug}"
@@ -109,7 +109,7 @@ function indexer_copyCertificates() {
     else
         common_logger -e "No certificates found. Could not initialize Wazuh indexer"
         installCommon_rollBack
-        exit 1;
+        exit 1
     fi
 
 }
@@ -132,6 +132,13 @@ function indexer_install() {
             exit 1
         fi
         installCommon_yumInstall "${package_file}"
+    elif [ "${sys_type}" == "zypper" ]; then
+        package_file=$(ls "${download_dir}"/wazuh-indexer*.rpm 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh indexer package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_zypperInstall "${package_file}"
     elif [ "${sys_type}" == "apt-get" ]; then
         package_file=$(ls "${download_dir}"/wazuh-indexer*.deb 2>/dev/null | head -n 1)
         if [ -z "${package_file}" ]; then
@@ -142,7 +149,7 @@ function indexer_install() {
     fi
 
     common_checkInstalled
-    if [  "$install_result" != 0  ] || [ -z "${indexer_installed}" ]; then
+    if [ "$install_result" != 0 ] || [ -z "${indexer_installed}" ]; then
         common_logger -e "Wazuh indexer installation failed."
         installCommon_rollBack
         exit 1
@@ -160,7 +167,7 @@ function indexer_startCluster() {
 
     wazuh_indexer_ip=$(grep "network.host" /etc/wazuh-indexer/opensearch.yml | sed 's/network.host:\s//')
     eval "JAVA_HOME=/usr/share/wazuh-indexer/jdk/ OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -cd /etc/wazuh-indexer/opensearch-security -icl -p 9200 -nhnv -cacert ${indexer_cert_path}/root-ca.pem -cert ${indexer_cert_path}/admin.pem -key ${indexer_cert_path}/admin-key.pem -h ${wazuh_indexer_ip} ${debug}"
-    if [  "${PIPESTATUS[0]}" != 0  ]; then
+    if [ "${PIPESTATUS[0]}" != 0 ]; then
         common_logger -e "The Wazuh indexer cluster security configuration could not be initialized."
         installCommon_rollBack
         exit 1

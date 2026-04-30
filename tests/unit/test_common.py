@@ -37,6 +37,20 @@ class TestCommonCheckSystem:
         result = self._run(False, True)
         assert_success(result)
 
+    def test_success_zypper_present(self):
+        mocks = {
+            **IGNORE_LOGGER,
+            "command": (
+                'case "$2" in '
+                'yum) return 1 ;; '
+                'apt-get) return 1 ;; '
+                'zypper) echo /usr/bin/zypper ;; '
+                '*) return 1 ;; esac'
+            ),
+        }
+        result = run_bash_function(BASE_SOURCES, "common_checkSystem", mocks)
+        assert_success(result)
+
 
 class TestCommonCheckInstalled:
     def _run(self, env_vars=None, extra_mocks=None):

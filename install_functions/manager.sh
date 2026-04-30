@@ -11,7 +11,7 @@ function manager_startCluster() {
     common_logger -d "Starting Wazuh manager cluster."
     for i in "${!manager_node_names[@]}"; do
         if [[ "${manager_node_names[i]}" == "${winame}" ]]; then
-            pos="${i}";
+            pos="${i}"
         fi
     done
 
@@ -42,7 +42,7 @@ function manager_startCluster() {
 
 }
 
-function manager_configure(){
+function manager_configure() {
 
     common_logger -d "Configuring Wazuh manager."
 
@@ -84,6 +84,13 @@ function manager_install() {
             exit 1
         fi
         installCommon_yumInstall "${package_file}"
+    elif [ "${sys_type}" == "zypper" ]; then
+        package_file=$(ls "${download_dir}"/wazuh-manager*.rpm 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh manager package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_zypperInstall "${package_file}"
     elif [ "${sys_type}" == "apt-get" ]; then
         package_file=$(ls "${download_dir}"/wazuh-manager*.deb 2>/dev/null | head -n 1)
         if [ -z "${package_file}" ]; then
@@ -94,7 +101,7 @@ function manager_install() {
     fi
 
     common_checkInstalled
-    if [  "$install_result" != 0  ] || [ -z "${wazuh_installed}" ]; then
+    if [ "$install_result" != 0 ] || [ -z "${wazuh_installed}" ]; then
         common_logger -e "Wazuh installation failed."
         installCommon_rollBack
         exit 1
@@ -112,7 +119,7 @@ function manager_copyCertificates() {
     fi
 
     if [ -f "${tar_file}" ]; then
-        if ! tar -tvf "${tar_file}" | grep -q "${winame}" ; then
+        if ! tar -tvf "${tar_file}" | grep -q "${winame}"; then
             common_logger -e "Tar file does not contain certificate for the node ${winame}."
             installCommon_rollBack
             exit 1
