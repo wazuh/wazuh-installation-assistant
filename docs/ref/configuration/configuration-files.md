@@ -15,9 +15,9 @@ The steps to perform the installation are as follows:
 2. Create the necessary files for installation that will be stored in `wazuh-install-files.tar` with the following command:
 
     ```bash
-    sudo bash wazuh-install-5.0.0.sh --generate-config-files
+    sudo bash wazuh-install-5.9.9.sh --generate-config-files
     # or use the short form
-    sudo bash wazuh-install-5.0.0.sh -g
+    sudo bash wazuh-install-5.9.9.sh -g
     ```
 
 3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
@@ -26,25 +26,25 @@ The steps to perform the installation are as follows:
     4.1 To install the Wazuh Manager:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0.sh --wazuh-manager
+    sudo bash wazuh-install-5.9.9.sh --wazuh-manager
     # or use the short form
-    sudo bash wazuh-install-5.0.0.sh -wm
+    sudo bash wazuh-install-5.9.9.sh -wm
     ```
 
     4.2 To install the Wazuh Indexer:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0.sh --wazuh-indexer
+    sudo bash wazuh-install-5.9.9.sh --wazuh-indexer
     # or use the short form
-    sudo bash wazuh-install-5.0.0.sh -wi
+    sudo bash wazuh-install-5.9.9.sh -wi
     ```
 
     4.3 To install the Wazuh Dashboard:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0.sh --wazuh-dashboard
+    sudo bash wazuh-install-5.9.9.sh --wazuh-dashboard
     # or use the short form
-    sudo bash wazuh-install-5.0.0.sh -wd
+    sudo bash wazuh-install-5.9.9.sh -wd
     ```
 
 > **note**: The installation assistant is designed to facilitate the initial installation of Wazuh, so the passwords for each Wazuh internal user are set to default. Therefore, it is highly recommended to change them to more secure ones using this tool. You can see how to use this tool in the [Passwords Tool Usage](../getting-started/usage.md#wazuh-password-tool) section.
@@ -175,7 +175,7 @@ nodes:
 
 By default, documentation examples use only `ip` values for simplicity.
 
-For the wazuh certs tool to detect the file, it must be located in the same path as the `wazuh-certs-tool-5.0.0.sh` script.
+For the wazuh certs tool to detect the file, it must be located in the same path as the `wazuh-certs-tool-5.9.9.sh` script.
 
 ## Wazuh passwords tool
 
