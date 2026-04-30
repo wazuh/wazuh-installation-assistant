@@ -10,11 +10,11 @@ Install and configure the Wazuh indexer as a multi-node cluster following step-b
 
 Wazuh uses certificates to establish confidentiality and encrypt communications between its central components. Follow these steps to create certificates for the Wazuh central components.
 
-  1. Download the `wazuh-certs-tool-5.0.0.sh` script and the `config.yml` configuration file. This creates the certificates that encrypt communications between the Wazuh central components.
+  1. Download the `wazuh-certs-tool-5.9.9.sh` script and the `config.yml` configuration file. This creates the certificates that encrypt communications between the Wazuh central components.
 
   ```BASH
-      curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-certs-tool-5.0.0.sh
-      curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
+      curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-certs-tool-5.9.9.sh
+      curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.9.9.yml
    ```
 
   2. Edit `config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
@@ -52,10 +52,10 @@ nodes:
       ip: "<dashboard-node-ip>"
 ```
 
-  3. Run `wazuh-certs-tool-5.0.0.sh` to create the certificates.
+  3. Run `wazuh-certs-tool-5.9.9.sh` to create the certificates.
 
   ```BASH
-      bash wazuh-certs-tool-5.0.0.sh -A
+      bash wazuh-certs-tool-5.9.9.sh -A
   ```
 
   4. Compress all the necessary files.
@@ -104,15 +104,15 @@ dpkg -i ./wazuh-indexer_5.0.0_arm64.deb
 #### RPM x86_64
 
 ```BASH
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.x86_64.rpm
-yum install -y ./wazuh-indexer-5.0.0.x86_64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.9.9.x86_64.rpm
+yum install -y ./wazuh-indexer-5.9.9.x86_64.rpm
 ```
 
 #### RPM aarch64
 
 ```BASH
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.aarch64.rpm
-yum install -y ./wazuh-indexer-5.0.0.aarch64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.9.9.aarch64.rpm
+yum install -y ./wazuh-indexer-5.9.9.aarch64.rpm
 ```
 
 ### Configuring the Wazuh indexer
@@ -291,15 +291,15 @@ dpkg -i ./wazuh-manager_5.0.0_arm64.deb
 #### RPM x86_64
 
 ```BASH
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.x86_64.rpm
-yum install -y ./wazuh-manager-5.0.0.x86_64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.9.9.x86_64.rpm
+yum install -y ./wazuh-manager-5.9.9.x86_64.rpm
 ```
 
 #### RPM aarch64
 
 ```BASH
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.aarch64.rpm
-yum install -y ./wazuh-manager-5.0.0.aarch64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.9.9.aarch64.rpm
+yum install -y ./wazuh-manager-5.9.9.aarch64.rpm
 ```
 
 ### Deploying certificates
@@ -473,15 +473,15 @@ dpkg -i ./wazuh-dashboard_5.0.0_arm64.deb
 #### RPM x86_64
 
 ```BASH
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.x86_64.rpm
-yum install -y ./wazuh-dashboard-5.0.0.x86_64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.9.9.x86_64.rpm
+yum install -y ./wazuh-dashboard-5.9.9.x86_64.rpm
 ```
 
 #### RPM aarch64
 
 ```BASH
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.aarch64.rpm
-yum install -y ./wazuh-dashboard-5.0.0.aarch64.rpm
+curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.9.9.aarch64.rpm
+yum install -y ./wazuh-dashboard-5.9.9.aarch64.rpm
 ```
 
 ### Configuring the Wazuh dashboard
