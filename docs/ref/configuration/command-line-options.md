@@ -30,6 +30,8 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 
 The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.0.0.sh` script along with the `config.yml` configuration file. The certs tool generates the necessary certificates for the nodes specified in the configuration file.
 
+For DNS-based or mixed address configurations, see [Other `config.yml` examples](configuration-files.md#other-configyml-examples).
+
 ### Options list
 
 | Option | Description |

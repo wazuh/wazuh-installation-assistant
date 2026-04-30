@@ -86,6 +86,8 @@ A shared secret key used to authenticate and secure communication between nodes 
 
 The main configuration file that defines the deployment architecture, including node names, IP addresses or DNS names, and node types for each component. Required for generating certificates and for distributed deployments. Should be customized before installation.
 
+For supported `config.yml` formats using `ip`, `dns`, DNS lists, or mixed values, see [Other `config.yml` examples](configuration/configuration-files.md#other-configyml-examples).
+
 ### internal_users.yml
 
 A configuration file in Wazuh Indexer that defines internal users and their hashed passwords. Modified by the Wazuh Password Tool when updating user credentials.

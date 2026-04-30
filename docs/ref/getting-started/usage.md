@@ -44,6 +44,8 @@ If you want to install a specific Wazuh component, first make sure you have the 
 
 The `config.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [certs-tool-usage.md](../certs-tool/certs-tool-usage.md) section.
 
+For additional `config.yml` formats (`dns`, DNS lists, and mixed configurations), see [Other `config.yml` examples](../configuration/configuration-files.md#other-configyml-examples).
+
 The steps to perform the installation are as follows:
 > **note**: If you have already configured the `config.yml` and generated the `wazuh-install-files.tar` in the installation of another Wazuh component, you can skip directly to step 4.
 
@@ -107,6 +109,8 @@ See the [Installation Assistant Installation](../../installation/installation-as
     This command will generate the `wazuh-offline.tar.gz` file which contains all the packages necessary to install Wazuh on the offline system.
 
 2. Next, create the necessary certificates that will be used in the offline installation. To do this, modify the `config.yml` file with the desired configuration for each of the Wazuh components and run the following command:
+
+  If you need DNS-based configurations, see [Other `config.yml` examples](../configuration/configuration-files.md#other-configyml-examples).
 
     ```bash
     sudo bash wazuh-install-5.0.0.sh --generate-config-files
@@ -211,13 +215,10 @@ nodes:
   indexer:
     - name: indexer
       ip: "<indexer-node-ip>"
-    #  dns: "<indexer-node-dns>"
     #- name: indexer-2
-    #  dns: "<indexer-node-dns>"
+    #  ip: "<indexer-node-ip>"
     #- name: indexer-3
     #  ip: "<indexer-node-ip>"
-    #  dns:
-    #    - "<indexer-node-dns>"
 
   # Wazuh manager nodes
   # If there is more than one Wazuh manager
@@ -225,22 +226,18 @@ nodes:
   manager:
     - name: manager
       ip: "<wazuh-manager-ip>"
-    #  dns: "<wazuh-manager-dns>"
     #  node_type: master
     #- name: manager-2
-    #  dns: "<wazuh-manager-dns>"
+    #  ip: "<wazuh-manager-ip>"
     #  node_type: worker
     #- name: manager-3
     #  ip: "<wazuh-manager-ip>"
-    #  dns:
-    #    - "<wazuh-manager-dns>"
     #  node_type: worker
 
   # Wazuh dashboard nodes
   dashboard:
     - name: dashboard
       ip: "<dashboard-node-ip>"
-    #  dns: "<dashboard-node-dns>"
 ```
 
 Each node must have a unique name and an associated IP address. In the case of Wazuh server nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.

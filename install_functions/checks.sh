@@ -538,8 +538,8 @@ function checks_firewall(){
 
     # Check if the firewall is installed
     if [ "${sys_type}" == "yum" ]; then
-        eval "rpm -q firewalld --quiet && firewalld_installed=1"
-        eval "rpm -q ufw --quiet && ufw_installed=1"
+        rpm -q firewalld --quiet && firewalld_installed=1
+        rpm -q ufw --quiet && ufw_installed=1
     elif [ "${sys_type}" == "apt-get" ]; then
         if apt list --installed 2>/dev/null | grep -q -E ^"firewalld"\/; then
             firewalld_installed=1

@@ -83,7 +83,7 @@ function installCommon_createCertificates() {
         component_filepath="${download_dir}/${config_filename}"
 
         common_logger -d "Downloading configuration file for the AIO installation."
-        common_curl -sSLo '${component_filepath}' '${component_url}' --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}
+        common_curl -sSLo '${component_filepath}' '${component_url}' --max-time 300 --retry 5 --retry-delay 5 --fail "${debug}"
         mv "${download_dir}/${config_filename}" "${config_file}"
 
         if [ ! -f "${config_file}" ]; then
@@ -174,10 +174,10 @@ function installCommon_downloadArtifactURLs() {
     common_logger -d "Downloading artifact URLs file."
     if [ -n "${devrepo}" ] && [ "${devrepo}" == "pre-release" ]; then
         artifact_urls_file_name="artifact_urls_${wazuh_version}-${staging_url_stage}.yaml"
-        artifact_url="https://${bucket}/pre-release/${wazuh_major}.x/${artifact_urls_file_name}"
+        artifact_url="https://${bucket}/pre-release/${wazuh_major}.x/${artifact_urls_bucket_folder}/${artifact_urls_file_name}"
     else
         artifact_urls_file_name="artifact_urls_${wazuh_version}.yaml"
-        artifact_url="https://${bucket}/production/${wazuh_major}.x/${artifact_urls_file_name}"
+        artifact_url="https://${bucket}/production/${wazuh_major}.x/${artifact_urls_bucket_folder}/${artifact_urls_file_name}"
     fi
     eval "common_curl -sSo ${base_path}/${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
 
@@ -362,7 +362,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-manager -y ${debug}"
-                eval "rpm -q wazuh-manager --quiet && wazuh_failed_uninstall=1"
+                rpm -q wazuh-manager --quiet && wazuh_failed_uninstall=1
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
@@ -388,7 +388,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-indexer -y ${debug}"
-                eval "rpm -q wazuh-indexer --quiet && indexer_failed_uninstall=1"
+                rpm -q wazuh-indexer --quiet && indexer_failed_uninstall=1
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock
@@ -415,7 +415,7 @@ function installCommon_rollBack() {
             common_checkYumLock
             if [ "${attempt}" -ne "${max_attempts}" ]; then
                 eval "yum remove wazuh-dashboard -y ${debug}"
-                eval "rpm -q wazuh-dashboard --quiet && dashboard_failed_uninstall=1"
+                rpm -q wazuh-dashboard --quiet && dashboard_failed_uninstall=1
             fi
         elif [ "${sys_type}" == "apt-get" ]; then
             common_checkAptLock

@@ -6,6 +6,8 @@ This section describes the security mechanisms used by the Wazuh installation to
 
 All communication between Wazuh components (Indexer, Manager, and Dashboard) is encrypted using SSL/TLS certificates. Certificates are generated with the `wazuh-certs-tool-5.0.0.sh` script based on the node information in `config.yml`.
 
+For DNS-based or mixed address configurations in `config.yml`, see [Other `config.yml` examples](../ref/configuration/configuration-files.md#other-configyml-examples).
+
 The certificate bundle (`wazuh-install-files.tar`) is created once and then distributed to each node. It contains:
 
 - A root CA certificate (`root-ca.pem` and `root-ca.key`)

@@ -26,7 +26,7 @@ function passwords_changePassword() {
 
     if [ "${nuser}" == "admin" ]; then
         if [ -n "${wazuh_installed}" ]; then
-            eval "/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v ${adminpass}"
+            /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v "${adminpass}"
             passwords_restartService "wazuh-manager"
         fi
     fi
@@ -34,7 +34,7 @@ function passwords_changePassword() {
     if [ "${nuser}" == "kibanaserver" ]; then
         if [ -n "${dashboard_installed}" ] && [ -n "${dashpass}" ]; then
             if /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root list | grep -q opensearch.password; then
-                eval "echo ${dashpass} | /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root add -f --stdin opensearch.password ${debug_pass} > /dev/null 2>&1"
+                echo "${dashpass}" | /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root add -f --stdin opensearch.password ${debug_pass} > /dev/null 2>&1
             else
                 wazuhdashold=$(grep "password:" /etc/wazuh-dashboard/opensearch_dashboards.yml )
                 rk="opensearch.password: "
@@ -53,7 +53,7 @@ function passwords_changePasswordApi() {
     if [ -n "${wazuh_installed}" ]; then
         passwords_getApiUserId "${nuser}"
         WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-        eval 'common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail'
+        common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
         common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
     fi
     if [ "${nuser}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
@@ -318,7 +318,7 @@ function passwords_runSecurityAdmin() {
         common_logger -e "Could not load the changes."
         exit 1;
     fi
-    eval "cp /etc/wazuh-indexer/backup/internal_users.yml /etc/wazuh-indexer/opensearch-security/internal_users.yml"
+    cp /etc/wazuh-indexer/backup/internal_users.yml /etc/wazuh-indexer/opensearch-security/internal_users.yml
     eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
 
     if [[ -n "${nuser}" ]] && [[ -n ${autopass} ]]; then
