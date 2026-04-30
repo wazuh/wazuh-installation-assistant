@@ -2,7 +2,7 @@
 
 ## Download and run the Wazuh installation assistant
 
-      curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install-5.0.0.sh && sudo bash ./wazuh-install-5.0.0.sh -a
+      curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install-5.9.9.sh && sudo bash ./wazuh-install-5.9.9.sh -a
 
    Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful.
 
