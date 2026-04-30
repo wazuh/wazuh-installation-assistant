@@ -23,7 +23,11 @@ class TestInstallCommonGetConfig:
     """
 
     def _run(self, args="", extra_mocks=None):
-        mocks = {**IGNORE_LOGGER, "installCommon_rollBack": "true", **(extra_mocks or {})}
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_rollBack": "true",
+            **(extra_mocks or {}),
+        }
         return run_bash_function(BASE_SOURCES, f"installCommon_getConfig {args}", mocks)
 
     def test_fail_no_args(self):
@@ -53,52 +57,137 @@ class TestInstallCommonGetConfig:
         assert_failure(result)
 
 
-class TestInstallCommonInstallPrerequisites:
-    """Tests for installCommon_installPrerequisites.
+class TestInstallCommonInstallCheckDependencies:
+    """Tests for installCommon_installCheckDependencies.
 
-    The function dispatches based on sys_type and the first argument
-    (AIO, indexer, dashboard, wazuh, assistant). We mock the actual
-    install list helpers to avoid real package operations.
+    Takes "assistant" or any other string (e.g. "wazuh") as first argument.
+    Sets installing_assistant_deps accordingly and calls installCommon_installList
+    with the matching dep array (assistant_deps_to_install or wazuh_deps_to_install).
     """
 
-    def _run(self, sys_type, component, extra_mocks=None):
+    def _run(self, dep_type, extra_mocks=None, extra_env=None):
         mocks = {
             **IGNORE_LOGGER,
-            "installCommon_yumInstallList": "true",
-            "installCommon_aptInstallList": "true",
-            "offline_checkPrerequisites": "true",
+            "installCommon_installList": "true",
             **(extra_mocks or {}),
+        }
+        env_vars = {
+            "assistant_deps_to_install": "(curl grep)",
+            "wazuh_deps_to_install": "(libcap)",
+            "debug": "",
+            **(extra_env or {}),
         }
         return run_bash_function(
             BASE_SOURCES,
-            f"installCommon_installPrerequisites {component}",
+            f"installCommon_installCheckDependencies {dep_type}",
             mocks,
-            {"sys_type": sys_type, "debug": ""},
+            env_vars,
         )
 
-    def test_success_yum_indexer(self):
-        result = self._run("yum", "indexer")
+    def test_success_assistant_type(self):
+        assert_success(self._run("assistant"))
+
+    def test_success_wazuh_type(self):
+        assert_success(self._run("wazuh"))
+
+    def test_success_empty_assistant_deps(self):
+        result = self._run("assistant", extra_env={"assistant_deps_to_install": "()"})
         assert_success(result)
 
-    def test_success_yum_dashboard(self):
-        result = self._run("yum", "dashboard")
+    def test_success_empty_wazuh_deps(self):
+        result = self._run("wazuh", extra_env={"wazuh_deps_to_install": "()"})
         assert_success(result)
 
-    def test_success_apt_indexer(self):
-        result = self._run("apt-get", "indexer")
+
+class TestInstallCommonInstallList:
+    """Tests for installCommon_installList.
+
+    Mocks installCommon_aptInstall / installCommon_yumInstall to avoid
+    real package operations. Verifies that wia_dependencies_installed is
+    populated only when installing_assistant_deps == 1.
+    """
+
+    def _run(
+        self,
+        sys_type,
+        packages,
+        installing_assistant_deps="0",
+        install_success=True,
+        extra_mocks=None,
+    ):
+        install_body = "install_result=0" if install_success else "install_result=1"
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_aptInstall": install_body,
+            "installCommon_yumInstall": install_body,
+            "apt-get": "true",
+            "installCommon_rollBack": "true",
+            **(extra_mocks or {}),
+        }
+        pkg_args = " ".join(f'"{p}"' for p in packages)
+        return run_bash_function(
+            BASE_SOURCES,
+            f"installCommon_installList {pkg_args}",
+            mocks,
+            {
+                "sys_type": sys_type,
+                "debug": "",
+                "installing_assistant_deps": installing_assistant_deps,
+            },
+        )
+
+    def test_success_yum_with_packages(self):
+        result = self._run("yum", ["curl", "grep"])
         assert_success(result)
 
-    def test_success_apt_dashboard(self):
-        result = self._run("apt-get", "dashboard")
+    def test_success_apt_with_packages(self):
+        result = self._run("apt-get", ["curl", "grep"])
         assert_success(result)
 
-    def test_success_yum_aio(self):
-        result = self._run("yum", "AIO")
+    def test_success_empty_list(self):
+        result = self._run("yum", [])
         assert_success(result)
 
-    def test_success_apt_aio(self):
-        result = self._run("apt-get", "AIO")
+    def test_fail_install_error(self):
+        result = self._run("yum", ["curl"], install_success=False)
+        assert_failure(result)
+
+    def test_tracks_wia_dependencies_when_installing_assistant(self):
+        """When installing_assistant_deps=1, installed packages are tracked
+        in wia_dependencies_installed."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            'installCommon_installList "curl" "grep"; echo "${wia_dependencies_installed[@]}"',
+            {
+                **IGNORE_LOGGER,
+                "installCommon_yumInstall": "install_result=0",
+                "installCommon_aptInstall": "install_result=0",
+                "apt-get": "true",
+                "installCommon_rollBack": "true",
+            },
+            {"sys_type": "yum", "debug": "", "installing_assistant_deps": "1"},
+        )
         assert_success(result)
+        assert "curl" in result.stdout
+        assert "grep" in result.stdout
+
+    def test_does_not_track_wia_dependencies_for_wazuh_type(self):
+        """When installing_assistant_deps=0, wia_dependencies_installed stays empty."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            'installCommon_installList "curl"; echo "deps=${wia_dependencies_installed[*]}"',
+            {
+                **IGNORE_LOGGER,
+                "installCommon_yumInstall": "install_result=0",
+                "installCommon_aptInstall": "install_result=0",
+                "apt-get": "true",
+                "installCommon_rollBack": "true",
+            },
+            {"sys_type": "yum", "debug": "", "installing_assistant_deps": "0"},
+        )
+        assert_success(result)
+        assert "deps=" in result.stdout
+        assert "curl" not in result.stdout.split("deps=")[1]
 
 
 class TestInstallCommonStartService:
@@ -154,7 +243,14 @@ class TestInstallCommonDownloadArtifactURLs:
     and downloads artifact metadata to a specific path.
     """
 
-    def _run(self, tmp_path, devrepo="", staging_url_stage="", curl_success=True, extra_mocks=None):
+    def _run(
+        self,
+        tmp_path,
+        devrepo="",
+        staging_url_stage="",
+        curl_success=True,
+        extra_mocks=None,
+    ):
         """Helper to run installCommon_downloadArtifactURLs with configurable scenario.
 
         Args:
