@@ -211,19 +211,19 @@ function main() {
 # -------------- Uninstall case  ------------------------------------
 
     common_checkSystem
-
+    common_checkInstalled
+    checks_arguments
     check_dist
 
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
         installCommon_scanDependencies
         installCommon_installCheckDependencies "assistant"
+        installCommon_installCheckDependencies "wazuh"
         installCommon_determinePorts
     elif [ -n "${offline_install}" ]; then
         offline_checkPrerequisites "wia_offline_dependencies" "${wia_offline_dependencies[@]}"
     fi
 
-    common_checkInstalled
-    checks_arguments
     if [ -n "${uninstall}" ]; then
         installCommon_rollBack
         exit 0
@@ -250,22 +250,30 @@ function main() {
             rm -f "${tar_file}"
         fi
         checks_ports "${wazuh_aio_ports[@]}"
-        installCommon_installPrerequisites "AIO"
+        if [ -n "${offline_install}" ]; then
+            offline_checkPrerequisites "AIO"
+        fi
     fi
 
     if [ -n "${indexer}" ]; then
         checks_ports "${wazuh_indexer_ports[@]}"
-        installCommon_installPrerequisites "indexer"
+        if [ -n "${offline_install}" ]; then
+            offline_checkPrerequisites "indexer"
+        fi
     fi
 
     if [ -n "${wazuh}" ]; then
         checks_ports "${wazuh_manager_ports[@]}"
-        installCommon_installPrerequisites "wazuh"
+        if [ -n "${offline_install}" ]; then
+            offline_checkPrerequisites "wazuh"
+        fi
     fi
 
     if [ -n "${dashboard}" ]; then
         checks_ports "${wazuh_dashboard_port}"
-        installCommon_installPrerequisites "dashboard"
+        if [ -n "${offline_install}" ]; then
+            offline_checkPrerequisites "dashboard"
+        fi
     fi
 
 

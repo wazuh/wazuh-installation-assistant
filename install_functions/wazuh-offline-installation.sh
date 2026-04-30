@@ -11,12 +11,32 @@
 # Checks the necessary packages needed for a Wazuh component
 function offline_checkPrerequisites(){
 
-    dependencies=( "${@}" )
-    if [ $1 == "wia_offline_dependencies" ]; then
+    if [ "$1" == "wia_offline_dependencies" ]; then
         dependencies=( "${@:2}" )
         common_logger "Checking dependencies for Wazuh installation assistant."
     else
         common_logger "Checking prerequisites for Offline installation."
+        if [ "${sys_type}" == "yum" ]; then
+            if [ "$1" == "AIO" ]; then
+                dependencies=( $(echo "${indexer_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" | tr ' ' '\n' | sort -u) )
+            elif [ "$1" == "indexer" ]; then
+                dependencies=( "${indexer_yum_dependencies[@]}" )
+            elif [ "$1" == "dashboard" ]; then
+                dependencies=( "${dashboard_yum_dependencies[@]}" )
+            elif [ "$1" == "wazuh" ]; then
+                dependencies=( "${wazuh_yum_dependencies[@]}" )
+            fi
+        elif [ "${sys_type}" == "apt-get" ]; then
+            if [ "$1" == "AIO" ]; then
+                dependencies=( $(echo "${wazuh_apt_dependencies[@]}" "${indexer_apt_dependencies[@]}" "${dashboard_apt_dependencies[@]}" | tr ' ' '\n' | sort -u) )
+            elif [ "$1" == "indexer" ]; then
+                dependencies=( "${indexer_apt_dependencies[@]}" )
+            elif [ "$1" == "dashboard" ]; then
+                dependencies=( "${dashboard_apt_dependencies[@]}" )
+            elif [ "$1" == "wazuh" ]; then
+                dependencies=( "${wazuh_apt_dependencies[@]}" )
+            fi
+        fi
     fi
 
     for dep in "${dependencies[@]}"; do
@@ -31,7 +51,7 @@ function offline_checkPrerequisites(){
             exit 1
         fi
     done
-    if [ $1 == "wia_offline_dependencies" ]; then
+    if [ "$1" == "wia_offline_dependencies" ]; then
         common_logger -d "Dependencies for Wazuh installation assistant are installed."
     else
         common_logger -d "Prerequisites for Offline installation are installed."
