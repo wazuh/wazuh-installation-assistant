@@ -44,6 +44,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fix install dependencies logic and delete redundant functions ([#748](https://github.com/wazuh/wazuh-installation-assistant/pull/748))
 - Fixed Wazuh Dashboard API host. ([#681](https://github.com/wazuh/wazuh-installation-assistant/pull/681))
 - Fixed offline one liner quickstart aio hang during files validation. ([#680](https://github.com/wazuh/wazuh-installation-assistant/pull/680))
 - Fix YAML Parser to Accept Multiple Indentation Formats ([#631](https://github.com/wazuh/wazuh-installation-assistant/pull/631))
