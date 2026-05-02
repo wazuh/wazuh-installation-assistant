@@ -45,9 +45,9 @@ The Wazuh installation assistant uses the following tools to enhance security du
 
 ### Downloads
 
-- [Download the Wazuh installation assistant.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install.sh)
-- [Download the Wazuh passwords tool.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-passwords-tool.sh)
-- [Download the Wazuh cert tool.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-certs-tool.sh)
+- [Download the Wazuh installation assistant.](https://packages.wazuh.com/production/10.x/installation-assistant/wazuh-install.sh)
+- [Download the Wazuh passwords tool.](https://packages.wazuh.com/production/10.x/installation-assistant/wazuh-passwords-tool.sh)
+- [Download the Wazuh cert tool.](https://packages.wazuh.com/production/10.x/installation-assistant/wazuh-certs-tool.sh)
 
 ### Build the scripts
 
@@ -73,7 +73,7 @@ As an alternative to downloading, use the `builder.sh` script to build the Wazuh
 
 ## Use Cases
 
-Start by downloading the [configuration file](https://packages.wazuh.com/production/5.x/installation-assistant/config.yml) and replace the node names and IP values with the corresponding ones.
+Start by downloading the [configuration file](https://packages.wazuh.com/production/10.x/installation-assistant/config.yml) and replace the node names and IP values with the corresponding ones.
 
 For DNS-based or mixed address configurations, see [Other `config.yml` examples](docs/ref/configuration/configuration-files.md#other-configyml-examples).
 
@@ -82,7 +82,7 @@ For DNS-based or mixed address configurations, see [Other `config.yml` examples]
 
 ### Common commands
 
-1. Generate the passwords and certificates. Needs the [configuration file](https://packages.wazuh.com/production/5.x/installation-assistant/config.yml).
+1. Generate the passwords and certificates. Needs the [configuration file](https://packages.wazuh.com/production/10.x/installation-assistant/config.yml).
 
    ```bash
    bash wazuh-install.sh -g

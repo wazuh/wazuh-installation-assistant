@@ -16,7 +16,7 @@ on:
       automation_reference:
         description: 'Branch of wazuh-automation to use'
         required: false
-        default: 'main'
+        default: '10.9.9'
         type: string
       tool_type:
         description: 'Tool to test'
