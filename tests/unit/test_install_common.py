@@ -184,7 +184,7 @@ class TestInstallCommonDownloadArtifactURLs:
         }
 
         env_vars = {
-            "wazuh_version": "5.9.9",
+            "wazuh_version": "10.9.9",
             "wazuh_major": "5",
             "bucket": "packages.wazuh.com",
             "base_path": str(tmp_path),
@@ -204,7 +204,7 @@ class TestInstallCommonDownloadArtifactURLs:
         )
 
     def test_production_mode_constructs_correct_url(self, tmp_path):
-        """Production mode: URL should be https://bucket/production/5.x/artifact-urls/artifact_urls_5.0.0.yaml"""
+        """Production mode: URL should be https://bucket/production/10.x/artifact-urls/artifact_urls_5.0.0.yaml"""
         result = self._run(tmp_path)
         assert_success(result)
 
@@ -234,7 +234,7 @@ class TestInstallCommonDownloadArtifactURLs:
         assert expected_file.exists()
 
     def test_prerelease_mode_constructs_correct_url(self, tmp_path):
-        """Pre-release mode: URL should be https://bucket/pre-release/5.x/artifact-urls/artifact_urls_5.0.0-rc1.yaml"""
+        """Pre-release mode: URL should be https://bucket/pre-release/10.x/artifact-urls/artifact_urls_5.0.0-rc1.yaml"""
         result = self._run(tmp_path, devrepo="pre-release", staging_url_stage="rc1")
         assert_success(result)
 
@@ -264,7 +264,7 @@ class TestInstallCommonDownloadArtifactURLs:
         subdir.mkdir()
 
         env_vars = {
-            "wazuh_version": "5.9.9",
+            "wazuh_version": "10.9.9",
             "wazuh_major": "5",
             "bucket": "packages.wazuh.com",
             "base_path": str(subdir),
