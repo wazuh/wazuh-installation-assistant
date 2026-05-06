@@ -84,13 +84,13 @@ Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_
     **rpm**
 
     ```bash
-    rpm -ivh --replacepkgs wazuh-indexer-<VERSION>.rpm
+    yum install wazuh-indexer-<VERSION>.rpm
     ```
 
     **dpkg**
 
     ```bash
-    dpkg -i wazuh-indexer-<VERSION>.deb
+    apt install ./wazuh-indexer-<VERSION>.deb
     ```
 
 3. Restart the Wazuh indexer service.
@@ -222,13 +222,13 @@ Install the downloaded Wazuh manager package for your platform:
 **Debian-based platforms:**
 
 ```bash
-sudo dpkg -i wazuh-manager_*.deb
+sudo apt install ./wazuh-manager_*.deb
 ```
 
 **Red Hat-based platforms:**
 
 ```bash
-sudo rpm -Uvh wazuh-manager-*.rpm
+sudo yum install ./wazuh-manager-*.rpm
 ```
 
 The package manager will automatically:
@@ -296,7 +296,7 @@ Check the wazuh-dashboard documentation for more information about downloading p
 **Debian-based:**
 
 ```bash
-dpkg -i wazuh-dashboard_<VERSION>-<REVISION>_<ARCHITECTURE>.deb
+apt install ./wazuh-dashboard_<VERSION>-<REVISION>_<ARCHITECTURE>.deb
 ```
 
 **RHEL/CentOS-based:**

@@ -72,13 +72,13 @@ sudo /var/wazuh-manager/bin/cluster_control -l
 **Debian-based platforms:**
 
 ```bash
-sudo dpkg -i wazuh-manager_*.deb
+sudo apt install ./wazuh-manager_*.deb
 ```
 
 **Red Hat-based platforms:**
 
 ```bash
-sudo rpm -Uvh wazuh-manager-*.rpm
+sudo yum install ./wazuh-manager-*.rpm
 ```
 
 4. Verify the upgrade:
@@ -129,13 +129,13 @@ sudo /var/wazuh-manager/bin/cluster_control -i
 **Debian-based platforms:**
 
 ```bash
-sudo dpkg -i wazuh-manager_*.deb
+sudo apt install ./wazuh-manager_*.deb
 ```
 
 **Red Hat-based platforms:**
 
 ```bash
-sudo rpm -Uvh wazuh-manager-*.rpm
+sudo yum install ./wazuh-manager-*.rpm
 ```
 
 4. Verify the upgrade:

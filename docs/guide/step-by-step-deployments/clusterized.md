@@ -76,7 +76,7 @@ Follow these steps to install and configure a multi-node Wazuh indexer.
 #### APT
 
 ```bash
-dpkg -i debconf adduser procps
+apt install debconf adduser procps
 ```
 
 #### YUM
@@ -91,14 +91,14 @@ yum install coreutils
 
 ```BASH
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_amd64.deb
-dpkg -i ./wazuh-indexer_5.0.0_amd64.deb
+apt install ./wazuh-indexer_5.0.0_amd64.deb
 ```
 
 #### DEB arm64
 
 ```BASH
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_arm64.deb
-dpkg -i ./wazuh-indexer_5.0.0_arm64.deb
+apt install ./wazuh-indexer_5.0.0_arm64.deb
 ```
 
 #### RPM x86_64
@@ -164,7 +164,6 @@ NODE_NAME=<INDEXER_NODE_NAME>
 ```
 
 ```bash
-mkdir /etc/wazuh-indexer/certs
 tar -xf ./wazuh-certificates.tar -C /etc/wazuh-indexer/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./admin.pem ./admin-key.pem ./root-ca.pem
 mv -n /etc/wazuh-indexer/certs/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
 mv -n /etc/wazuh-indexer/certs/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
@@ -278,14 +277,14 @@ Install and configure the Wazuh manager following step-by-step instructions. The
 
 ```BASH
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_amd64.deb
-dpkg -i ./wazuh-manager_5.0.0_amd64.deb
+apt install ./wazuh-manager_5.0.0_amd64.deb
 ```
 
 #### DEB arm64
 
 ```BASH
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_arm64.deb
-dpkg -i ./wazuh-manager_5.0.0_arm64.deb
+apt install ./wazuh-manager_5.0.0_arm64.deb
 ```
 
 #### RPM x86_64
@@ -445,7 +444,7 @@ Follow these steps to install the Wazuh dashboard.
 #### APT
 
 ```bash
-dpkg -i debhelper tar curl libcap2-bin # debhelper version 9 or later
+apt install debhelper tar curl libcap2-bin # debhelper version 9 or later
 ```
 
 #### YUM
@@ -460,14 +459,14 @@ yum install libcap
 
 ```BASH
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_amd64.deb
-dpkg -i ./wazuh-dashboard_5.0.0_amd64.deb
+apt install ./wazuh-dashboard_5.0.0_amd64.deb
 ```
 
 #### DEB arm64
 
 ```BASH
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_arm64.deb
-dpkg -i ./wazuh-dashboard_5.0.0_arm64.deb
+apt install ./wazuh-dashboard_5.0.0_arm64.deb
 ```
 
 #### RPM x86_64
@@ -520,7 +519,7 @@ NODE_NAME=<DASHBOARD_NODE_NAME>
 
 ```bash
 mkdir -p /etc/wazuh-dashboard/certs
-cp ./wazuh-certificates/root-ca.pem /etc/wazuh-dashboard/certs/root-ca.pem
+tar -xf wazuh-certificates.tar -C /etc/wazuh-dashboard/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
 mv ./wazuh-certificates/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
 mv ./wazuh-certificates/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
 chmod 500 /etc/wazuh-dashboard/certs
