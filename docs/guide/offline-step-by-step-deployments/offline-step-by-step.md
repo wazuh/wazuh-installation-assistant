@@ -20,13 +20,13 @@ The following dependencies must be installed on the Wazuh indexer nodes:
     **RPM-based systems:**
 
     ```bash
-    rpm -ivh ./wazuh-offline/wazuh-packages/wazuh-indexer*.rpm
+    yum install ./wazuh-offline/wazuh-packages/wazuh-indexer*.rpm
     ```
 
     **DEB-based systems:**
 
     ```bash
-    dpkg -i ./wazuh-offline/wazuh-packages/wazuh-indexer*.deb
+    apt install ./wazuh-offline/wazuh-packages/wazuh-indexer*.deb
     ```
 
 2. Run the following commands replacing `<INDEXER_NODE_NAME>` with the name of the Wazuh indexer node you are configuring as defined in `config.yml`. For example, `indexer`. This deploys the SSL certificates to encrypt communications between the Wazuh central components.
@@ -134,13 +134,13 @@ On systems with apt as package manager, the following dependencies must be insta
     **RPM-based systems:**
 
     ```bash
-    rpm -ivh ./wazuh-offline/wazuh-packages/wazuh-manager*.rpm
+    yum install ./wazuh-offline/wazuh-packages/wazuh-manager*.rpm
     ```
 
     **DEB-based systems:**
 
     ```bash
-    dpkg -i ./wazuh-offline/wazuh-packages/wazuh-manager*.deb
+    apt install ./wazuh-offline/wazuh-packages/wazuh-manager*.deb
     ```
 
 2. Deploy the SSL certificates for secure communication between the Wazuh manager and indexer. These certificates should be extracted from the `wazuh-certificates/` directory generated during the certificate creation process.
@@ -289,13 +289,13 @@ The following dependencies must be installed on the Wazuh dashboard node:
     **RPM-based systems:**
 
     ```bash
-    rpm -ivh ./wazuh-offline/wazuh-packages/wazuh-dashboard*.rpm
+    yum install ./wazuh-offline/wazuh-packages/wazuh-dashboard*.rpm
     ```
 
     **DEB-based systems:**
 
     ```bash
-    dpkg -i ./wazuh-offline/wazuh-packages/wazuh-dashboard*.deb
+    apt install ./wazuh-offline/wazuh-packages/wazuh-dashboard*.deb
     ```
 
 2. Edit `/etc/wazuh-dashboard/opensearch_dashboards.yml` and replace the following values:

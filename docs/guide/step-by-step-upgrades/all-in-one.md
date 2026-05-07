@@ -84,13 +84,13 @@ Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_
     **rpm**
 
     ```bash
-    rpm -ivh --replacepkgs wazuh-indexer-<VERSION>.rpm
+    yum install wazuh-indexer-<VERSION>.rpm
     ```
 
     **dpkg**
 
     ```bash
-    dpkg -i wazuh-indexer-<VERSION>.deb
+    apt install ./wazuh-indexer-<VERSION>.deb
     ```
 
 3. Restart the Wazuh indexer service.
@@ -200,15 +200,15 @@ Create a backup before upgrading:
 ```bash
 # Create backup directory
 BACKUP_DIR="/backup/wazuh-manager-$(date +%Y%m%d-%H%M%S)"
-sudo mkdir -p $BACKUP_DIR/db
+mkdir -p $BACKUP_DIR/db
 
 # Backup configuration and database
-sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
-sudo sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
+tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
+sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 
 # Verify backup integrity
 tar -tzf $BACKUP_DIR/wazuh-etc.tar.gz > /dev/null && echo "Backup successful"
-sudo sqlite3 $BACKUP_DIR/db/global.db "PRAGMA integrity_check"
+sqlite3 $BACKUP_DIR/db/global.db "PRAGMA integrity_check"
 ```
 
 ### Download package
@@ -222,13 +222,13 @@ Install the downloaded Wazuh manager package for your platform:
 **Debian-based platforms:**
 
 ```bash
-sudo dpkg -i wazuh-manager_*.deb
+apt install ./wazuh-manager_*.deb
 ```
 
 **Red Hat-based platforms:**
 
 ```bash
-sudo rpm -Uvh wazuh-manager-*.rpm
+yum install ./wazuh-manager-*.rpm
 ```
 
 The package manager will automatically:
@@ -244,13 +244,13 @@ Verify the manager is running:
 
 ```bash
 # Check service status
-sudo systemctl status wazuh-manager
+systemctl status wazuh-manager
 
 # Check logs for errors
-sudo tail -50 /var/wazuh-manager/logs/wazuh-manager.log
+tail -50 /var/wazuh-manager/logs/wazuh-manager.log
 
 # Check database integrity
-sudo sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
+sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
 ```
 
 ## Wazuh Dashboard
@@ -296,7 +296,7 @@ Check the wazuh-dashboard documentation for more information about downloading p
 **Debian-based:**
 
 ```bash
-dpkg -i wazuh-dashboard_<VERSION>-<REVISION>_<ARCHITECTURE>.deb
+apt install ./wazuh-dashboard_<VERSION>-<REVISION>_<ARCHITECTURE>.deb
 ```
 
 **RHEL/CentOS-based:**
