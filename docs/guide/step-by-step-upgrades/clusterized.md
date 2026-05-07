@@ -26,11 +26,11 @@ This approach minimizes service disruption as agents can connect to other worker
 
 ```bash
 BACKUP_DIR="/backup/wazuh-master-$(date +%Y%m%d-%H%M%S)"
-sudo mkdir -p $BACKUP_DIR/db
+mkdir -p $BACKUP_DIR/db
 
 # Full backup of master
-sudo tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /var/wazuh-manager etc/
-sudo sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
+tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /var/wazuh-manager etc/
+sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 
 # Verify backup
 tar -tzf $BACKUP_DIR/wazuh-master-etc.tar.gz > /dev/null && echo "Master backup successful"
@@ -40,10 +40,10 @@ tar -tzf $BACKUP_DIR/wazuh-master-etc.tar.gz > /dev/null && echo "Master backup 
 
 ```bash
 BACKUP_DIR="/backup/wazuh-worker-$(hostname)-$(date +%Y%m%d-%H%M%S)"
-sudo mkdir -p $BACKUP_DIR
+mkdir -p $BACKUP_DIR
 
 # Configuration backup only
-sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager/etc wazuh-manager.conf local_internal_options.conf
+tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager/etc wazuh-manager.conf local_internal_options.conf
 
 # Verify backup
 tar -tzf $BACKUP_DIR/wazuh-worker-config.tar.gz > /dev/null && echo "Worker backup successful"
@@ -62,7 +62,7 @@ Upgrade worker nodes one at a time to maintain service availability.
 1. Check cluster status before upgrading:
 
 ```bash
-sudo /var/wazuh-manager/bin/cluster_control -l
+/var/wazuh-manager/bin/cluster_control -l
 ```
 
 1. Download the package. Check the wazuh-manager documentation for more information about downloading packages.
@@ -72,36 +72,36 @@ sudo /var/wazuh-manager/bin/cluster_control -l
 **Debian-based platforms:**
 
 ```bash
-sudo apt install ./wazuh-manager_*.deb
+apt install ./wazuh-manager_*.deb
 ```
 
 **Red Hat-based platforms:**
 
 ```bash
-sudo yum install ./wazuh-manager-*.rpm
+yum install ./wazuh-manager-*.rpm
 ```
 
 4. Verify the upgrade:
 
 ```bash
 # Check service status
-sudo systemctl status wazuh-manager
+systemctl status wazuh-manager
 
 # Check cluster connectivity
-sudo /var/wazuh-manager/bin/cluster_control -l
+/var/wazuh-manager/bin/cluster_control -l
 
 # Monitor cluster synchronization
-sudo tail -f /var/wazuh-manager/logs/cluster.log
+tail -f /var/wazuh-manager/logs/cluster.log
 ```
 
 5. Wait for synchronization before upgrading the next worker:
 
 ```bash
 # Monitor synchronization status
-sudo /var/wazuh-manager/bin/cluster_control -i
+/var/wazuh-manager/bin/cluster_control -i
 
 # Check cluster logs
-sudo tail -50 /var/wazuh-manager/logs/cluster.log | grep -i sync
+tail -50 /var/wazuh-manager/logs/cluster.log | grep -i sync
 ```
 
 **Repeat for each remaining worker node**, ensuring each worker is fully synchronized before upgrading the next one.
@@ -116,10 +116,10 @@ Upgrade the master node last to ensure worker nodes can continue operating durin
 
 ```bash
 # Check cluster status
-sudo /var/wazuh-manager/bin/cluster_control -l
+/var/wazuh-manager/bin/cluster_control -l
 
 # Verify all workers are connected
-sudo /var/wazuh-manager/bin/cluster_control -i
+/var/wazuh-manager/bin/cluster_control -i
 ```
 
 1. Download the package. Check the wazuh-manager documentation for more information about downloading packages.
@@ -129,40 +129,40 @@ sudo /var/wazuh-manager/bin/cluster_control -i
 **Debian-based platforms:**
 
 ```bash
-sudo apt install ./wazuh-manager_*.deb
+apt install ./wazuh-manager_*.deb
 ```
 
 **Red Hat-based platforms:**
 
 ```bash
-sudo yum install ./wazuh-manager-*.rpm
+yum install ./wazuh-manager-*.rpm
 ```
 
 4. Verify the upgrade:
 
 ```bash
 # Check service status
-sudo systemctl status wazuh-manager
+systemctl status wazuh-manager
 
 # Check cluster status
-sudo /var/wazuh-manager/bin/cluster_control -l
+/var/wazuh-manager/bin/cluster_control -l
 
 # Verify cluster health
-sudo /var/wazuh-manager/bin/cluster_control -i
+/var/wazuh-manager/bin/cluster_control -i
 
 # Check logs
-sudo tail -50 /var/wazuh-manager/logs/wazuh-manager.log
-sudo tail -50 /var/wazuh-manager/logs/cluster.log
+tail -50 /var/wazuh-manager/logs/wazuh-manager.log
+tail -50 /var/wazuh-manager/logs/cluster.log
 ```
 
 5. Verify cluster synchronization:
 
 ```bash
 # Check that all workers are synchronized with the master
-sudo /var/wazuh-manager/bin/cluster_control -l
+/var/wazuh-manager/bin/cluster_control -l
 
 # Monitor cluster logs on master
-sudo tail -f /var/wazuh-manager/logs/cluster.log
+tail -f /var/wazuh-manager/logs/cluster.log
 ```
 
 #### Verify cluster upgrade
@@ -173,27 +173,27 @@ After upgrading all nodes, perform comprehensive verification:
 
 ```bash
 # Check cluster status
-sudo /var/wazuh-manager/bin/cluster_control -l
+/var/wazuh-manager/bin/cluster_control -l
 
 # Check cluster health
-sudo /var/wazuh-manager/bin/cluster_control -i
+/var/wazuh-manager/bin/cluster_control -i
 
 # Check database integrity
-sudo sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
+sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
 
 # Monitor logs for errors
-sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log | grep -i error
-sudo tail -100 /var/wazuh-manager/logs/cluster.log | grep -i error
+tail -100 /var/wazuh-manager/logs/wazuh-manager.log | grep -i error
+tail -100 /var/wazuh-manager/logs/cluster.log | grep -i error
 ```
 
 **On each worker node:**
 
 ```bash
 # Check cluster connectivity
-sudo /var/wazuh-manager/bin/cluster_control -l
+/var/wazuh-manager/bin/cluster_control -l
 
 # Monitor logs
-sudo tail -50 /var/wazuh-manager/logs/cluster.log
+tail -50 /var/wazuh-manager/logs/cluster.log
 ```
 
 ## Wazuh Dashboard
