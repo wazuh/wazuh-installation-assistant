@@ -316,7 +316,7 @@ mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/mana
 mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
 chmod 500 /var/wazuh-manager/etc/certs
 chmod 400 /var/wazuh-manager/etc/certs/*
-chown -R wazuh:wazuh /var/wazuh-manager/etc/certs
+chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
 ```
 
 > [!NOTE]
@@ -327,8 +327,8 @@ chown -R wazuh:wazuh /var/wazuh-manager/etc/certs
 Configure the Wazuh manager to connect to the Wazuh indexer using the secure keystore:
 
 ```BASH
-/var/wazuh-manager/bin/wazuh-keystore -f indexer -k username -v admin
-/var/wazuh-manager/bin/wazuh-keystore -f indexer -k password -v admin
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin
 ```
 
 Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
@@ -524,7 +524,7 @@ mv ./wazuh-certificates/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
 mv ./wazuh-certificates/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
 chmod 500 /etc/wazuh-dashboard/certs
 chmod 400 /etc/wazuh-dashboard/certs/*
-chown -R wazuh:wazuh /etc/wazuh-dashboard/certs
+chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
 ```
 
 ### Starting the Wazuh dashboard service
