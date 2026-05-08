@@ -195,7 +195,7 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
     curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
   ```
 
-  ```
+  ```json
   {
     "name" : "indexer",
     "cluster_name" : "wazuh-cluster",
@@ -220,7 +220,7 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
     curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
   ```
 
-  ```
+  ```bash
     ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
     192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
   ```
@@ -277,7 +277,7 @@ mv ./wazuh-certificates/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
 mv ./wazuh-certificates/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
 chmod 500 /var/wazuh-manager/etc/certs
 chmod 400 /var/wazuh-manager/etc/certs/*
-chown -R wazuh:wazuh /var/wazuh-manager/etc/certs
+chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
 ```
 
 > [!NOTE]
@@ -288,13 +288,13 @@ chown -R wazuh:wazuh /var/wazuh-manager/etc/certs
 Configure the Wazuh manager to connect to the Wazuh indexer using the secure keystore:
 
 ```BASH
-/var/wazuh-manager/bin/wazuh-keystore -f indexer -k username -v admin
-/var/wazuh-manager/bin/wazuh-keystore -f indexer -k password -v admin
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin
 ```
 
 Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
 
-```
+```xml
 <indexer>
   <hosts>
     <host>https://127.0.0.1:9200</host>
@@ -414,7 +414,7 @@ mv ./wazuh-certificates/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
 mv ./wazuh-certificates/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
 chmod 500 /etc/wazuh-dashboard/certs
 chmod 400 /etc/wazuh-dashboard/certs/*
-chown -R wazuh:wazuh /etc/wazuh-dashboard/certs
+chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
 ```
 
 ### Starting the Wazuh dashboard service

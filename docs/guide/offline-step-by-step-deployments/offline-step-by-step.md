@@ -162,11 +162,11 @@ On systems with apt as package manager, the following dependencies must be insta
     > [!NOTE]
     > Replace `<MANAGER_NODE_NAME>` with the name you used when generating the certificates.
 
-3. Save the Wazuh indexer username and password into the Wazuh manager keystore using the `wazuh-keystore` tool:
+3. Save the Wazuh indexer username and password into the Wazuh manager keystore using the `wazuh-manager-keystore` tool:
 
     ```bash
-    echo '<INDEXER_USERNAME>' | /var/wazuh-manager/bin/wazuh-keystore -f indexer -k username
-    echo '<INDEXER_PASSWORD>' | /var/wazuh-manager/bin/wazuh-keystore -f indexer -k password
+    echo '<INDEXER_USERNAME>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username
+    echo '<INDEXER_PASSWORD>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
     ```
 
     > Note: The default offline-installation credentials are `admin:admin`.
