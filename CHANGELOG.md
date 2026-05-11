@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added repository download documentation ([#783](https://github.com/wazuh/wazuh-installation-assistant/pull/783))
+- Fix offline dependency installation for Amazon Linux 2023 ([#782](https://github.com/wazuh/wazuh-installation-assistant/pull/782))
 - Add 5.x bumper revert changes ([#727](https://github.com/wazuh/wazuh-installation-assistant/pull/727))
 - Added upgrade documentation and modify summary accordingly ([#703](https://github.com/wazuh/wazuh-installation-assistant/pull/703))
 - Add test documentation and fix all documetations with mermaid problems. ([#702](https://github.com/wazuh/wazuh-installation-assistant/pull/702))
