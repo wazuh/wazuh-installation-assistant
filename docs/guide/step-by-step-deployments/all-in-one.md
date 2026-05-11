@@ -62,34 +62,69 @@ apt install debconf adduser procps
 yum install coreutils
 ```
 
+> [!NOTE]
+> You can install Wazuh by adding the Wazuh repository or by downloading the packages directly.
+
+### Adding the Wazuh repository
+
+#### APT
+
+```bash
+apt install gnupg apt-transport-https
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+```
+
+#### YUM
+
+```bash
+rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages.wazuh.com/production/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+```
+
+### Installing Wazuh indexer
+
+#### APT
+
+```bash
+apt -y install wazuh-indexer
+```
+
+#### YUM
+
+```bash
+yum -y install wazuh-indexer
+```
+
 ### Download and install Wazuh indexer package
 
 #### DEB amd64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_amd64.deb
-apt install ./wazuh-indexer_5.0.0_amd64.deb
+apt -y install ./wazuh-indexer_5.0.0_amd64.deb
 ```
 
 #### DEB arm64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_arm64.deb
-apt install ./wazuh-indexer_5.0.0_arm64.deb
+apt -y install ./wazuh-indexer_5.0.0_arm64.deb
 ```
 
 #### RPM x86_64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.x86_64.rpm
-yum install -y ./wazuh-indexer-5.0.0.x86_64.rpm
+yum -y install ./wazuh-indexer-5.0.0.x86_64.rpm
 ```
 
 #### RPM aarch64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.aarch64.rpm
-yum install -y ./wazuh-indexer-5.0.0.aarch64.rpm
+yum -y install ./wazuh-indexer-5.0.0.aarch64.rpm
 ```
 
 ### Configuring the Wazuh indexer
@@ -230,36 +265,68 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
 Install and configure the Wazuh manager following step-by-step instructions. The Wazuh manager collects and analyzes data from the deployed Wazuh agents. It triggers alerts when threats or anomalies are detected. Wazuh manager securely forwards alerts and archived events to the Wazuh indexer.
 
 > [!NOTE]
-> You need root user privileges to run all the commands described below.
+> You can install Wazuh by adding the Wazuh repository or by downloading the packages directly.
+
+### Adding the Wazuh repository
+
+#### APT
+
+```bash
+apt install gnupg apt-transport-https
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+```
+
+#### YUM
+
+```bash
+rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages.wazuh.com/production/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+```
+
+### Installing Wazuh manager
+
+#### APT
+
+```bash
+apt -y install wazuh-manager
+```
+
+#### YUM
+
+```bash
+yum -y install wazuh-manager
+```
 
 ### Download and install Wazuh manager package
 
 #### DEB amd64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_amd64.deb
-apt install ./wazuh-manager_5.0.0_amd64.deb
+apt -y install ./wazuh-manager_5.0.0_amd64.deb
 ```
 
 #### DEB arm64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_arm64.deb
-apt install ./wazuh-manager_5.0.0_arm64.deb
+apt -y install ./wazuh-manager_5.0.0_arm64.deb
 ```
 
 #### RPM x86_64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.x86_64.rpm
-yum install -y ./wazuh-manager-5.0.0.x86_64.rpm
+yum -y install ./wazuh-manager-5.0.0.x86_64.rpm
 ```
 
 #### RPM aarch64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.aarch64.rpm
-yum install -y ./wazuh-manager-5.0.0.aarch64.rpm
+yum -y install ./wazuh-manager-5.0.0.aarch64.rpm
 ```
 
 ### Deploying certificates
@@ -343,34 +410,69 @@ apt install debhelper tar curl libcap2-bin # debhelper version 9 or later
 yum install libcap
 ```
 
+> [!NOTE]
+> You can install Wazuh by adding the Wazuh repository or by downloading the packages directly.
+
+### Adding the Wazuh repository
+
+#### APT
+
+```bash
+apt install gnupg apt-transport-https
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+```
+
+#### YUM
+
+```bash
+rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages.wazuh.com/production/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+```
+
+### Installing Wazuh dashboard
+
+#### APT
+
+```bash
+apt -y install wazuh-dashboard
+```
+
+#### YUM
+
+```bash
+yum -y install wazuh-dashboard
+```
+
 ### Download and install Wazuh dashboard package
 
 #### DEB amd64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_amd64.deb
-apt install ./wazuh-dashboard_5.0.0_amd64.deb
+apt -y install ./wazuh-dashboard_5.0.0_amd64.deb
 ```
 
 #### DEB arm64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_arm64.deb
-apt install ./wazuh-dashboard_5.0.0_arm64.deb
+apt -y install ./wazuh-dashboard_5.0.0_arm64.deb
 ```
 
 #### RPM x86_64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.x86_64.rpm
-yum install -y ./wazuh-dashboard-5.0.0.x86_64.rpm
+yum -y install ./wazuh-dashboard-5.0.0.x86_64.rpm
 ```
 
 #### RPM aarch64
 
-```BASH
+```bash
 curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.aarch64.rpm
-yum install -y ./wazuh-dashboard-5.0.0.aarch64.rpm
+yum -y install ./wazuh-dashboard-5.0.0.aarch64.rpm
 ```
 
 ### Configuring the Wazuh dashboard
