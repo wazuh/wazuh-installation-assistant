@@ -42,7 +42,11 @@ function passwords_changePassword() {
                 conf="$(awk '{sub("opensearch.password: .*", "opensearch.password: '"${dashpass}"'")}1' /etc/wazuh-dashboard/opensearch_dashboards.yml)"
                 echo "${conf}" > /etc/wazuh-dashboard/opensearch_dashboards.yml
             fi
-            passwords_restartService "wazuh-dashboard"
+            if passwords_isServiceActive "wazuh-dashboard"; then
+                passwords_restartService "wazuh-dashboard"
+            else
+                common_logger -d "wazuh-dashboard service is not running. Skipping restart."
+            fi
         fi
     fi
 
@@ -51,6 +55,10 @@ function passwords_changePassword() {
 function passwords_changePasswordApi() {
     # Change API password tool
     if [ -n "${wazuh_installed}" ]; then
+        if ! passwords_isServiceActive "wazuh-manager"; then
+            common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+            exit 1;
+        fi
         passwords_getApiUserId "${nuser}"
         WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
         common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
@@ -165,6 +173,11 @@ function passwords_getApiToken() {
     retries=0
     max_internal_error_retries=20
 
+    if ! passwords_isServiceActive "wazuh-manager"; then
+        common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+        exit 1;
+    fi
+
     TOKEN_API=$(curl -s -u "${adminUser}":"${adminPassword}" -k -X POST "https://localhost:55000/security/user/authenticate?raw=true" --max-time 300 --retry 5 --retry-delay 5)
     while [[ "${TOKEN_API}" =~ "Wazuh Internal Error" ]] && [ "${retries}" -lt "${max_internal_error_retries}" ]
     do
@@ -191,12 +204,22 @@ function passwords_getApiToken() {
 
 function passwords_getApiUsers() {
 
-    mapfile -t api_users < <(common_curl -s -k -X GET -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\"  \"https://localhost:55000/security/users?pretty=true\" --max-time 300 --retry 5 --retry-delay 5 | grep username | awk -F': ' '{print $2}' | sed -e "s/[\'\",]//g")
+    if passwords_isServiceActive "wazuh-manager"; then
+        mapfile -t api_users < <(common_curl -s -k -X GET -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\"  \"https://localhost:55000/security/users?pretty=true\" --max-time 300 --retry 5 --retry-delay 5 | grep username | awk -F': ' '{print $2}' | sed -e "s/[\'\",]//g")
+    else
+        common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+        exit 1;
+    fi
 
 }
 
 function passwords_getApiUserId() {
-    user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
+    if passwords_isServiceActive "wazuh-manager"; then
+        user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
+    else
+        common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+        exit 1;
+    fi
 
     if [ -z "${user_id}" ]; then
         common_logger -e "User ${1} is not registered in Wazuh API"
@@ -234,6 +257,43 @@ function passwords_readUsers() {
     passwords_updateInternalUsers
     susers=$(grep '^[a-z-]*:$' /etc/wazuh-indexer/opensearch-security/internal_users.yml | sed 's/:$//')
     mapfile -t users <<< "${susers[@]}"
+
+}
+
+function passwords_isServiceActive() {
+
+    if [ "$#" -ne 1 ]; then
+        common_logger -e "passwords_isServiceActive must be called with 1 argument."
+        return 1
+    fi
+
+    local service_name="${1}"
+
+    if [[ -d /run/systemd/system ]]; then
+        # Check if service is active using systemctl
+        if systemctl is-active --quiet "${service_name}.service" 2>/dev/null; then
+            return 0
+        else
+            return 1
+        fi
+    elif ps -p 1 -o comm= | grep "init"; then
+        # Check service status for init systems
+        if /etc/init.d/"${service_name}" status >/dev/null 2>&1; then
+            return 0
+        else
+            return 1
+        fi
+    elif [ -x "/etc/rc.d/init.d/${service_name}" ]; then
+        # Check service status for rc.d systems
+        if /etc/rc.d/init.d/"${service_name}" status >/dev/null 2>&1; then
+            return 0
+        else
+            return 1
+        fi
+    else
+        common_logger -w "Cannot determine service status. No service manager found on the system."
+        return 1
+    fi
 
 }
 

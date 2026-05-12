@@ -154,11 +154,17 @@ function main() {
 
         if [ -n "${api}" ]; then
             if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
-                passwords_changePasswordApi
+                if passwords_isServiceActive "wazuh-manager"; then
+                    passwords_changePasswordApi
+                else
+                    common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+                    exit 1
+                fi
+
                 if [ -n "${wazuh_installed}" ]; then
                     passwords_restartService "wazuh-manager"
                 fi
-                if [ -n "${dashboard_installed}" ]; then
+                if [ -n "${dashboard_installed}" ] && passwords_isServiceActive "wazuh-dashboard"; then
                     passwords_restartService "wazuh-dashboard"
                 fi
             fi
