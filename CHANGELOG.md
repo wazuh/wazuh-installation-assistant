@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Added support for pre-release installation in documentation ([#784](https://github.com/wazuh/wazuh-installation-assistant/pull/784))
 - Added repository download documentation ([#783](https://github.com/wazuh/wazuh-installation-assistant/pull/783))
 - Add 5.x bumper revert changes ([#727](https://github.com/wazuh/wazuh-installation-assistant/pull/727))
 - Added upgrade documentation and modify summary accordingly ([#703](https://github.com/wazuh/wazuh-installation-assistant/pull/703))
