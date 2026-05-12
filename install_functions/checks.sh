@@ -383,6 +383,7 @@ function checks_specialDepsAL2023() {
     # Change curl for curl-minimal
     wia_yum_dependencies=( "${wia_yum_dependencies[@]/curl/curl-minimal}" )
     assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/curl/curl-minimal}" )
+    wia_offline_dependencies=( "${wia_offline_dependencies[@]/curl/curl-minimal}" )
 
     # In containers, coreutils is replaced for coreutils-single
     if [ -f "/.dockerenv" ]; then
