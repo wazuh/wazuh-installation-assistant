@@ -12,58 +12,65 @@ Wazuh uses certificates to establish confidentiality and encrypt communications 
 
   1. Download the `wazuh-certs-tool-5.0.0.sh` script and the `config.yml` configuration file. This creates the certificates that encrypt communications between the Wazuh central components.
 
-  ```BASH
+      ```bash
       curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-certs-tool-5.0.0.sh
       curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
-   ```
+      ```
+
+      To use `pre-release` packages instead, use the following commands:
+
+      ```bash
+      curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-certs-tool-5.0.0-<STAGE>.sh
+      curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
+      ```
 
   2. Edit `config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
 
-  For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
+      For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
 
-  ```yaml
-nodes:
-  # Wazuh indexer nodes
-  indexer:
-    - name: indexer
-      ip: "<indexer-node-ip>"
-    #- name: indexer-2
-    #  ip: "<indexer-node-ip>"
-    #- name: indexer-3
-    #  ip: "<indexer-node-ip>"
+      ```yaml
+      nodes:
+        # Wazuh indexer nodes
+        indexer:
+          - name: indexer
+            ip: "<indexer-node-ip>"
+          #- name: indexer-2
+          #  ip: "<indexer-node-ip>"
+          #- name: indexer-3
+          #  ip: "<indexer-node-ip>"
 
-  # Wazuh manager nodes
-  # If there is more than one Wazuh manager
-  # node, each one must have a node_type
-  manager:
-    - name: manager
-      ip: "<wazuh-manager-ip>"
-    #  node_type: master
-    #- name: manager-2
-    #  ip: "<wazuh-manager-ip>"
-    #  node_type: worker
-    #- name: manager-3
-    #  ip: "<wazuh-manager-ip>"
-    #  node_type: worker
+        # Wazuh manager nodes
+        # If there is more than one Wazuh manager
+        # node, each one must have a node_type
+        manager:
+          - name: manager
+            ip: "<wazuh-manager-ip>"
+          #  node_type: master
+          #- name: manager-2
+          #  ip: "<wazuh-manager-ip>"
+          #  node_type: worker
+          #- name: manager-3
+          #  ip: "<wazuh-manager-ip>"
+          #  node_type: worker
 
-  # Wazuh dashboard nodes
-  dashboard:
-    - name: dashboard
-      ip: "<dashboard-node-ip>"
-```
+        # Wazuh dashboard nodes
+        dashboard:
+          - name: dashboard
+            ip: "<dashboard-node-ip>"
+      ```
 
   3. Run `wazuh-certs-tool-5.0.0.sh` to create the certificates.
 
-  ```BASH
+      ```bash
       bash wazuh-certs-tool-5.0.0.sh -A
-  ```
+      ```
 
   4. Compress all the necessary files.
 
-  ```bash
-    tar -cvf ./wazuh-certificates.tar -C ./wazuh-certificates/ .
-    rm -rf ./wazuh-certificates
-  ```
+      ```bash
+      tar -cvf ./wazuh-certificates.tar -C ./wazuh-certificates/ .
+      rm -rf ./wazuh-certificates
+      ```
 
   5. Copy the `wazuh-certificates.tar` file to all the nodes, including the Wazuh indexer, Wazuh server, and Wazuh dashboard nodes. This can be done by using the `scp` utility.
 
@@ -99,11 +106,27 @@ echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/p
 apt update
 ```
 
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+apt install gnupg apt-transport-https
+curl -s https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+```
+
 #### YUM
 
 ```bash
 rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
 echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages.wazuh.com/production/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+```
+
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+rpm --import https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
 ```
 
 ### Installing Wazuh indexer
@@ -129,11 +152,25 @@ curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer
 apt -y install ./wazuh-indexer_5.0.0_amd64.deb
 ```
 
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-<STAGE>_amd64.deb
+apt -y install ./wazuh-indexer_5.0.0-<STAGE>_amd64.deb
+```
+
 #### DEB arm64
 
 ```bash
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_arm64.deb
 apt -y install ./wazuh-indexer_5.0.0_arm64.deb
+```
+
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-<STAGE>_arm64.deb
+apt -y install ./wazuh-indexer_5.0.0-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
@@ -143,11 +180,25 @@ curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.x86_6
 yum -y install ./wazuh-indexer-5.0.0.x86_64.rpm
 ```
 
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0-<STAGE>.x86_64.rpm
+yum -y install ./wazuh-indexer-5.0.0-<STAGE>.x86_64.rpm
+```
+
 #### RPM aarch64
 
 ```bash
 curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.aarch64.rpm
 yum -y install ./wazuh-indexer-5.0.0.aarch64.rpm
+```
+
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0-<STAGE>.aarch64.rpm
+yum -y install ./wazuh-indexer-5.0.0-<STAGE>.aarch64.rpm
 ```
 
 ### Configuring the Wazuh indexer
@@ -162,30 +213,30 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
   3. `cluster.initial_master_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file. Uncomment the `indexer-2` and `indexer-3` lines, change the names, or add more lines, according to your `config.yml` definitions.
 
-  ```yaml
-    cluster.initial_master_nodes:
-    - "indexer"
-    - "indexer-2"
-    - "indexer-3"
-  ```
+      ```yaml
+      cluster.initial_master_nodes:
+      - "indexer"
+      - "indexer-2"
+      - "indexer-3"
+      ```
 
-  3. `discovery.seed_hosts`: List of the addresses of the master-eligible nodes. Each element can be either an IP address or a hostname. For multi-node configurations, uncomment this setting and set the IP addresses of each master-eligible node.
+  4. `discovery.seed_hosts`: List of the addresses of the master-eligible nodes. Each element can be either an IP address or a hostname. For multi-node configurations, uncomment this setting and set the IP addresses of each master-eligible node.
 
-  ```yaml
-    discovery.seed_hosts:
-      - "10.0.0.1"
-      - "10.0.0.2"
-      - "10.0.0.3"
-  ```
+      ```yaml
+      discovery.seed_hosts:
+        - "10.0.0.1"
+        - "10.0.0.2"
+        - "10.0.0.3"
+      ```
 
-  4. `plugins.security.nodes_dn`: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for `indexer-2` and `indexer-3` and change the common names (CN) and values according to your settings and your `config.yml` definitions.
+  5. `plugins.security.nodes_dn`: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for `indexer-2` and `indexer-3` and change the common names (CN) and values according to your settings and your `config.yml` definitions.
 
-  ```yaml
-    plugins.security.nodes_dn:
-    - "CN=indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
-    - "CN=indexer-2,OU=Wazuh,O=Wazuh,L=California,C=US"
-    - "CN=indexer-3,OU=Wazuh,O=Wazuh,L=California,C=US"
-  ```
+      ```yaml
+      plugins.security.nodes_dn:
+      - "CN=indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
+      - "CN=indexer-2,OU=Wazuh,O=Wazuh,L=California,C=US"
+      - "CN=indexer-3,OU=Wazuh,O=Wazuh,L=California,C=US"
+      ```
 
 > [!NOTE]
 > Firewalls can block communication between Wazuh components on different hosts. Refer to the Required ports section and ensure the necessary ports are open.
@@ -194,24 +245,24 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
 1. Run the following commands, replacing `<INDEXER_NODE_NAME>` with the name of the Wazuh indexer node you are configuring as defined in `config.yml`. For example, `indexer`. This deploys the SSL certificates to encrypt communications between the Wazuh central components.
 
-```bash
-NODE_NAME=<INDEXER_NODE_NAME>
-```
+    ```bash
+    NODE_NAME=<INDEXER_NODE_NAME>
+    ```
 
-```bash
-tar -xf ./wazuh-certificates.tar -C /etc/wazuh-indexer/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./admin.pem ./admin-key.pem ./root-ca.pem
-mv -n /etc/wazuh-indexer/certs/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
-mv -n /etc/wazuh-indexer/certs/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
-chmod 500 /etc/wazuh-indexer/certs
-chmod 400 /etc/wazuh-indexer/certs/*
-chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs
-```
+    ```bash
+    tar -xf ./wazuh-certificates.tar -C /etc/wazuh-indexer/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./admin.pem ./admin-key.pem ./root-ca.pem
+    mv -n /etc/wazuh-indexer/certs/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
+    mv -n /etc/wazuh-indexer/certs/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
+    chmod 500 /etc/wazuh-indexer/certs
+    chmod 400 /etc/wazuh-indexer/certs/*
+    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs
+    ```
 
 2. **Recommended action**: If no other Wazuh components will be installed on this node, run the following command to remove the `wazuh-certificates.tar` file.
 
-```bash
-rm -f ./wazuh-certificates.tar
-```
+    ```bash
+    rm -f ./wazuh-certificates.tar
+    ```
 
 > [!NOTE]
 > For Wazuh indexer installation on hardened endpoints with `noexec` flag on the `/tmp` directory, additional setup is required. See the Wazuh indexer configuration on hardened endpoints section for necessary configuration.
@@ -265,39 +316,39 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
 
   1. Run the following commands to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer:
 
-  ```bash
-    curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
-  ```
+      ```bash
+      curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
+      ```
 
-  ```json
-  {
-    "name" : "indexer",
-    "cluster_name" : "wazuh-cluster",
-    "cluster_uuid" : "095jEW-oRJSFKLz5wmo5PA",
-    "version" : {
-      "number" : "7.10.2",
-      "build_type" : "rpm",
-      "build_hash" : "db90a415ff2fd428b4f7b3f800a51dc229287cb4",
-      "build_date" : "2023-06-03T06:24:25.112415503Z",
-      "build_snapshot" : false,
-      "lucene_version" : "9.6.0",
-      "minimum_wire_compatibility_version" : "7.10.0",
-      "minimum_index_compatibility_version" : "7.0.0"
-    },
-    "tagline" : "The OpenSearch Project: https://opensearch.org/"
-  }
-  ```
+      ```json
+      {
+        "name" : "indexer",
+        "cluster_name" : "wazuh-cluster",
+        "cluster_uuid" : "095jEW-oRJSFKLz5wmo5PA",
+        "version" : {
+          "number" : "7.10.2",
+          "build_type" : "rpm",
+          "build_hash" : "db90a415ff2fd428b4f7b3f800a51dc229287cb4",
+          "build_date" : "2023-06-03T06:24:25.112415503Z",
+          "build_snapshot" : false,
+          "lucene_version" : "9.6.0",
+          "minimum_wire_compatibility_version" : "7.10.0",
+          "minimum_index_compatibility_version" : "7.0.0"
+        },
+        "tagline" : "The OpenSearch Project: https://opensearch.org/"
+      }
+      ```
 
   2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer:
 
-  ```bash
-    curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
-  ```
+      ```bash
+      curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+      ```
 
-  ```bash
-    ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
-    192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
-  ```
+      ```bash
+      ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
+      192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
+      ```
 
 ## Wazuh manager
 
@@ -308,6 +359,9 @@ Install and configure the Wazuh manager following step-by-step instructions. The
 
 ### Adding the Wazuh repository
 
+> [!NOTE]
+> If you added the repository on any previous step you can skip this step.
+
 #### APT
 
 ```bash
@@ -317,11 +371,27 @@ echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/p
 apt update
 ```
 
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+apt install gnupg apt-transport-https
+curl -s https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+```
+
 #### YUM
 
 ```bash
 rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
 echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages.wazuh.com/production/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+```
+
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+rpm --import https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
 ```
 
 ### Installing Wazuh manager
@@ -347,11 +417,25 @@ curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager
 apt -y install ./wazuh-manager_5.0.0_amd64.deb
 ```
 
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-<STAGE>_amd64.deb
+apt -y install ./wazuh-manager_5.0.0-<STAGE>_amd64.deb
+```
+
 #### DEB arm64
 
 ```bash
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_arm64.deb
 apt -y install ./wazuh-manager_5.0.0_arm64.deb
+```
+
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-<STAGE>_arm64.deb
+apt -y install ./wazuh-manager_5.0.0-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
@@ -361,11 +445,25 @@ curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.x86_6
 yum -y install ./wazuh-manager-5.0.0.x86_64.rpm
 ```
 
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0-<STAGE>.x86_64.rpm
+yum -y install ./wazuh-manager-5.0.0-<STAGE>.x86_64.rpm
+```
+
 #### RPM aarch64
 
 ```bash
 curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.aarch64.rpm
 yum -y install ./wazuh-manager-5.0.0.aarch64.rpm
+```
+
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
+yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
 ```
 
 ### Deploying certificates
@@ -454,53 +552,53 @@ For a multi-node cluster deployment, you need to configure one master node and o
 
 1. On the master node, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
-```xml
-<cluster>
-  <name>wazuh</name>
-  <node_name>master-node</node_name>
-  <node_type>master</node_type>
-  <key>fd3350b86d239654e34866ab3c4988a8</key>
-  <port>1516</port>
-  <bind_addr>0.0.0.0</bind_addr>
-  <nodes>
-      <node>MASTER_NODE_IP</node>
-  </nodes>
-  <hidden>no</hidden>
-</cluster>
-```
+    ```xml
+    <cluster>
+      <name>wazuh</name>
+      <node_name>master-node</node_name>
+      <node_type>master</node_type>
+      <key>fd3350b86d239654e34866ab3c4988a8</key>
+      <port>1516</port>
+      <bind_addr>0.0.0.0</bind_addr>
+      <nodes>
+          <node>MASTER_NODE_IP</node>
+      </nodes>
+      <hidden>no</hidden>
+    </cluster>
+    ```
 
-Replace `MASTER_NODE_IP` with the actual IP address of the master node.
+    Replace `MASTER_NODE_IP` with the actual IP address of the master node.
 
 2. On each worker node, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
 
-```xml
-<cluster>
-  <name>wazuh</name>
-  <node_name>worker-node-01</node_name>
-  <node_type>worker</node_type>
-  <key>fd3350b86d239654e34866ab3c4988a8</key>
-  <port>1516</port>
-  <bind_addr>0.0.0.0</bind_addr>
-  <nodes>
-      <node>MASTER_NODE_IP</node>
-  </nodes>
-  <hidden>no</hidden>
-</cluster>
-```
+    ```xml
+    <cluster>
+      <name>wazuh</name>
+      <node_name>worker-node-01</node_name>
+      <node_type>worker</node_type>
+      <key>fd3350b86d239654e34866ab3c4988a8</key>
+      <port>1516</port>
+      <bind_addr>0.0.0.0</bind_addr>
+      <nodes>
+          <node>MASTER_NODE_IP</node>
+      </nodes>
+      <hidden>no</hidden>
+    </cluster>
+    ```
 
-Replace `MASTER_NODE_IP` with the actual IP address of the master node, and use a unique `node_name` for each worker.
+    Replace `MASTER_NODE_IP` with the actual IP address of the master node, and use a unique `node_name` for each worker.
 
 3. Restart the Wazuh manager service on all nodes after making configuration changes:
 
-```bash
-systemctl restart wazuh-manager
-```
+    ```bash
+    systemctl restart wazuh-manager
+    ```
 
 4. Verify the cluster status from any node:
 
-```BASH
-/var/wazuh-manager/bin/cluster_control -l
-```
+    ```bash
+    /var/wazuh-manager/bin/cluster_control -l
+    ```
 
 ## Wazuh dashboard
 
@@ -525,6 +623,9 @@ yum install libcap
 
 ### Adding the Wazuh repository
 
+> [!NOTE]
+> If you added the repository on any previous step you can skip this step.
+
 #### APT
 
 ```bash
@@ -534,11 +635,27 @@ echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/p
 apt update
 ```
 
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+apt install gnupg apt-transport-https
+curl -s https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+```
+
 #### YUM
 
 ```bash
 rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
 echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages.wazuh.com/production/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+```
+
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+rpm --import https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
 ```
 
 ### Installing Wazuh dashboard
@@ -564,11 +681,25 @@ curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboa
 apt -y install ./wazuh-dashboard_5.0.0_amd64.deb
 ```
 
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-<STAGE>_amd64.deb
+apt -y install ./wazuh-dashboard_5.0.0-<STAGE>_amd64.deb
+```
+
 #### DEB arm64
 
 ```bash
 curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_arm64.deb
 apt -y install ./wazuh-dashboard_5.0.0_arm64.deb
+```
+
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-<STAGE>_arm64.deb
+apt -y install ./wazuh-dashboard_5.0.0-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
@@ -578,11 +709,25 @@ curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.x86
 yum -y install ./wazuh-dashboard-5.0.0.x86_64.rpm
 ```
 
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0-<STAGE>.x86_64.rpm
+yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.x86_64.rpm
+```
+
 #### RPM aarch64
 
 ```bash
 curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.aarch64.rpm
 yum -y install ./wazuh-dashboard-5.0.0.aarch64.rpm
+```
+
+To use `pre-release` packages instead, run the following commands:
+
+```bash
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
+yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
 ```
 
 ### Configuring the Wazuh dashboard
