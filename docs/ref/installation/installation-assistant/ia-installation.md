@@ -9,7 +9,7 @@ curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-
 To use `pre-release` packages instead, use the following command:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0.sh
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh
 ```
 
 If you want to perform an installation of a specific component, you must also download the config-.yml file with:
@@ -23,5 +23,5 @@ curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-ass
 To use `pre-release` packages instead, use the following command:
 
 ```bash
-curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0.yml
+curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
 ```

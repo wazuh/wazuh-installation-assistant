@@ -23,8 +23,8 @@ chmod 744 wazuh-install-5.0.0.sh
 To use `pre-release` packages instead, use the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0.sh
-chmod 744 wazuh-install-5.0.0.sh
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh
+chmod 744 wazuh-install-5.0.0-<STAGE>.sh
 ```
 
 ### 2. Download packages by architecture using the installation assistant
@@ -40,7 +40,7 @@ chmod 744 wazuh-install-5.0.0.sh
 To install `pre-release` packages instead, use:
 
 ```bash
-./wazuh-install-5.0.0.sh -dw rpm -da x86_64 -d pre-release
+./wazuh-install-5.0.0-<STAGE>.sh -dw rpm -da x86_64 -d pre-release
 ```
 
 ##### aarch64
@@ -52,7 +52,7 @@ To install `pre-release` packages instead, use:
 To install `pre-release` packages instead, use:
 
 ```bash
-./wazuh-install-5.0.0.sh -dw rpm -da aarch64 -d pre-release
+./wazuh-install-5.0.0-<STAGE>.sh -dw rpm -da aarch64 -d pre-release
 ```
 
 #### For DEB
@@ -66,7 +66,7 @@ To install `pre-release` packages instead, use:
 To install `pre-release` packages instead, use:
 
 ```bash
-./wazuh-install-5.0.0.sh -dw deb -da amd64 -d pre-release`
+./wazuh-install-5.0.0-<STAGE>.sh -dw deb -da amd64 -d pre-release`
 ```
 
 ##### arm64
@@ -78,7 +78,7 @@ To install `pre-release` packages instead, use:
 To install `pre-release` packages instead, use:
 
 ```bash
-./wazuh-install-5.0.0.sh -dw deb -da arm64 -d pre-release`
+./wazuh-install-5.0.0-<STAGE>.sh -dw deb -da arm64 -d pre-release`
 ```
 
 ### 3. Download the certificates configuration file
@@ -90,7 +90,7 @@ curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-ass
 To download `pre-release` configuration file instead, use:
 
 ```bash
-curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0.yml
+curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
 ```
 
 ### 4. Edit `config.yml` to prepare the certificates creation

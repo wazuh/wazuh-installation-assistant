@@ -9,7 +9,7 @@ curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-
 To use `pre-release` packages instead, use the following command:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-certs-tool-5.0.0.sh
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-certs-tool-5.0.0-<STAGE>.sh
 ```
 
 For the certs-tool, the `config.yml` configuration file is also necessary, which can be downloaded with the following command:
@@ -23,5 +23,5 @@ curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-ass
 To use `pre-release` packages instead, use the following command:
 
 ```bash
-curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0.yml
+curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
 ```

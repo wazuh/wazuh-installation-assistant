@@ -20,8 +20,8 @@ Wazuh uses certificates to establish confidentiality and encrypt communications 
       To use `pre-release` packages instead, use the following commands:
 
       ```bash
-      curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-certs-tool-5.0.0.sh
-      curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0.yml
+      curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-certs-tool-5.0.0-<STAGE>.sh
+      curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
       ```
 
   2. Edit `config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
@@ -155,8 +155,8 @@ apt -y install ./wazuh-indexer_5.0.0_amd64.deb
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_amd64.deb
-apt -y install ./wazuh-indexer_5.0.0_amd64.deb
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-<STAGE>_amd64.deb
+apt -y install ./wazuh-indexer_5.0.0-<STAGE>_amd64.deb
 ```
 
 #### DEB arm64
@@ -169,8 +169,8 @@ apt -y install ./wazuh-indexer_5.0.0_arm64.deb
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_arm64.deb
-apt -y install ./wazuh-indexer_5.0.0_arm64.deb
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-<STAGE>_arm64.deb
+apt -y install ./wazuh-indexer_5.0.0-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
@@ -183,8 +183,8 @@ yum -y install ./wazuh-indexer-5.0.0.x86_64.rpm
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0.x86_64.rpm
-yum -y install ./wazuh-indexer-5.0.0.x86_64.rpm
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0-<STAGE>.x86_64.rpm
+yum -y install ./wazuh-indexer-5.0.0-<STAGE>.x86_64.rpm
 ```
 
 #### RPM aarch64
@@ -197,8 +197,8 @@ yum -y install ./wazuh-indexer-5.0.0.aarch64.rpm
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0.aarch64.rpm
-yum -y install ./wazuh-indexer-5.0.0.aarch64.rpm
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0-<STAGE>.aarch64.rpm
+yum -y install ./wazuh-indexer-5.0.0-<STAGE>.aarch64.rpm
 ```
 
 ### Configuring the Wazuh indexer
@@ -214,28 +214,28 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
   3. `cluster.initial_master_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file. Uncomment the `indexer-2` and `indexer-3` lines, change the names, or add more lines, according to your `config.yml` definitions.
 
       ```yaml
-        cluster.initial_master_nodes:
-        - "indexer"
-        - "indexer-2"
-        - "indexer-3"
+      cluster.initial_master_nodes:
+      - "indexer"
+      - "indexer-2"
+      - "indexer-3"
       ```
 
-  3. `discovery.seed_hosts`: List of the addresses of the master-eligible nodes. Each element can be either an IP address or a hostname. For multi-node configurations, uncomment this setting and set the IP addresses of each master-eligible node.
+  4. `discovery.seed_hosts`: List of the addresses of the master-eligible nodes. Each element can be either an IP address or a hostname. For multi-node configurations, uncomment this setting and set the IP addresses of each master-eligible node.
 
       ```yaml
-        discovery.seed_hosts:
-          - "10.0.0.1"
-          - "10.0.0.2"
-          - "10.0.0.3"
+      discovery.seed_hosts:
+        - "10.0.0.1"
+        - "10.0.0.2"
+        - "10.0.0.3"
       ```
 
-  4. `plugins.security.nodes_dn`: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for `indexer-2` and `indexer-3` and change the common names (CN) and values according to your settings and your `config.yml` definitions.
+  5. `plugins.security.nodes_dn`: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for `indexer-2` and `indexer-3` and change the common names (CN) and values according to your settings and your `config.yml` definitions.
 
       ```yaml
-        plugins.security.nodes_dn:
-        - "CN=indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
-        - "CN=indexer-2,OU=Wazuh,O=Wazuh,L=California,C=US"
-        - "CN=indexer-3,OU=Wazuh,O=Wazuh,L=California,C=US"
+      plugins.security.nodes_dn:
+      - "CN=indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
+      - "CN=indexer-2,OU=Wazuh,O=Wazuh,L=California,C=US"
+      - "CN=indexer-3,OU=Wazuh,O=Wazuh,L=California,C=US"
       ```
 
 > [!NOTE]
@@ -359,6 +359,9 @@ Install and configure the Wazuh manager following step-by-step instructions. The
 
 ### Adding the Wazuh repository
 
+> [!NOTE]
+> If you added the repository on any previous step you can skip this step.
+
 #### APT
 
 ```bash
@@ -417,8 +420,8 @@ apt -y install ./wazuh-manager_5.0.0_amd64.deb
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_amd64.deb
-apt -y install ./wazuh-manager_5.0.0_amd64.deb
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-<STAGE>_amd64.deb
+apt -y install ./wazuh-manager_5.0.0-<STAGE>_amd64.deb
 ```
 
 #### DEB arm64
@@ -431,8 +434,8 @@ apt -y install ./wazuh-manager_5.0.0_arm64.deb
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_arm64.deb
-apt -y install ./wazuh-manager_5.0.0_arm64.deb
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-<STAGE>_arm64.deb
+apt -y install ./wazuh-manager_5.0.0-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
@@ -445,8 +448,8 @@ yum -y install ./wazuh-manager-5.0.0.x86_64.rpm
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0.x86_64.rpm
-yum -y install ./wazuh-manager-5.0.0.x86_64.rpm
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0-<STAGE>.x86_64.rpm
+yum -y install ./wazuh-manager-5.0.0-<STAGE>.x86_64.rpm
 ```
 
 #### RPM aarch64
@@ -459,8 +462,8 @@ yum -y install ./wazuh-manager-5.0.0.aarch64.rpm
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0.aarch64.rpm
-yum -y install ./wazuh-manager-5.0.0.aarch64.rpm
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
+yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
 ```
 
 ### Deploying certificates
@@ -620,6 +623,9 @@ yum install libcap
 
 ### Adding the Wazuh repository
 
+> [!NOTE]
+> If you added the repository on any previous step you can skip this step.
+
 #### APT
 
 ```bash
@@ -678,8 +684,8 @@ apt -y install ./wazuh-dashboard_5.0.0_amd64.deb
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_amd64.deb
-apt -y install ./wazuh-dashboard_5.0.0_amd64.deb
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-<STAGE>_amd64.deb
+apt -y install ./wazuh-dashboard_5.0.0-<STAGE>_amd64.deb
 ```
 
 #### DEB arm64
@@ -692,8 +698,8 @@ apt -y install ./wazuh-dashboard_5.0.0_arm64.deb
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_arm64.deb
-apt -y install ./wazuh-dashboard_5.0.0_arm64.deb
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-<STAGE>_arm64.deb
+apt -y install ./wazuh-dashboard_5.0.0-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
@@ -706,8 +712,8 @@ yum -y install ./wazuh-dashboard-5.0.0.x86_64.rpm
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0.x86_64.rpm
-yum -y install ./wazuh-dashboard-5.0.0.x86_64.rpm
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0-<STAGE>.x86_64.rpm
+yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.x86_64.rpm
 ```
 
 #### RPM aarch64
@@ -720,8 +726,8 @@ yum -y install ./wazuh-dashboard-5.0.0.aarch64.rpm
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0.aarch64.rpm
-yum -y install ./wazuh-dashboard-5.0.0.aarch64.rpm
+curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
+yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
 ```
 
 ### Configuring the Wazuh dashboard

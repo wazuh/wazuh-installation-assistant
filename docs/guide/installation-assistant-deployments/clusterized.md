@@ -29,8 +29,8 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
       To use `pre-release` packages instead, use the following commands:
 
       ```bash
-      curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-certs-tool-5.0.0.sh
-      curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0.yml
+      curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-certs-tool-5.0.0-<STAGE>.sh
+      curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
       ```
 
   2. Edit `./config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
@@ -89,7 +89,7 @@ Follow these steps to install and configure a multi-node Wazuh indexer.
       To use `pre-release` packages instead, use the following command:
 
       ```bash
-      curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0.sh
+      curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh
       ```
 
   2. Run the Wazuh installation assistant with the option `--wazuh-indexer` and the node name to install and configure the Wazuh indexer. The node name must be the same one used in `config.yml` for the initial configuration, for example, `indexer`.
@@ -104,7 +104,7 @@ Follow these steps to install and configure a multi-node Wazuh indexer.
       To install `pre-release` packages instead, use:
 
       ```bash
-      bash wazuh-install-5.0.0.sh --wazuh-indexer indexer -d pre-release
+      bash wazuh-install-5.0.0-<STAGE>.sh --wazuh-indexer indexer -d pre-release
       ```
 
 Repeat this stage of the installation process for every Wazuh indexer node in your cluster. Then proceed with initializing your multi-node cluster in the next stage.
@@ -182,7 +182,7 @@ Install the Wazuh manager as a multi-node cluster on a 64-bit (x86_64/AMD64 or A
       To use `pre-release` packages instead, use the following command:
 
       ```bash
-      curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0.sh
+      curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh
       ```
 
   2. Run the Wazuh installation assistant with the option `--wazuh-manager` followed by the node name to install the Wazuh manager. The node name must be the same one used in `config.yml` for the initial configuration, for example, `manager`:
@@ -197,7 +197,7 @@ Install the Wazuh manager as a multi-node cluster on a 64-bit (x86_64/AMD64 or A
         To install `pre-release` packages instead, use:
 
         ```bash
-        bash wazuh-install-5.0.0.sh --wazuh-manager manager -d pre-release
+        bash wazuh-install-5.0.0-<STAGE>.sh --wazuh-manager manager -d pre-release
         ```
 
 Your Wazuh manager is now successfully installed, repeat this process on every Wazuh manager node.
@@ -217,7 +217,7 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
       To use `pre-release` packages instead, use the following command:
 
         ```bash
-        curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0.sh
+        curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh
         ```
 
   2. Run the Wazuh installation assistant with the option `--wazuh-dashboard` and the node name to install and configure the Wazuh dashboard. The node name must be the same one used in `config.yml` for the initial configuration, for example, `dashboard`:
@@ -232,7 +232,7 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
       To install `pre-release` packages instead, use:
 
       ```bash
-      bash wazuh-install-5.0.0.sh --wazuh-dashboard dashboard -d pre-release
+      bash wazuh-install-5.0.0-<STAGE>.sh --wazuh-dashboard dashboard -d pre-release
       ```
 
       Once the Wazuh installation is completed, the output shows the access credentials and a message that confirms that the installation was successful.
