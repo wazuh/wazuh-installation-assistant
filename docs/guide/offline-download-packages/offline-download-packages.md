@@ -84,7 +84,7 @@ To install `pre-release` packages instead, use:
 ### 3. Download the certificates configuration file
 
 ```bash
-curl -s -o config.yml https://packages.wazuh.com/production/5.x/config-5.0.0.yml
+curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
 ```
 
 To download `pre-release` configuration file instead, use:
