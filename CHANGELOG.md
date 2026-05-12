@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- A validation for the status of services is added to the password tool. ([#786](https://github.com/wazuh/wazuh-installation-assistant/pull/786))
 - Added repository download documentation ([#783](https://github.com/wazuh/wazuh-installation-assistant/pull/783))
 - Fix offline dependency installation for Amazon Linux 2023 ([#782](https://github.com/wazuh/wazuh-installation-assistant/pull/782))
 - Add 5.x bumper revert changes ([#727](https://github.com/wazuh/wazuh-installation-assistant/pull/727))
