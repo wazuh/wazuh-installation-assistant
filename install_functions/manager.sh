@@ -63,7 +63,6 @@ function manager_configure(){
     common_logger -d "Setting provisional Wazuh indexer password."
     /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin
     /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin
-    common_logger "Wazuh manager vulnerability detection configuration finished."
 }
 
 function manager_install() {
