@@ -48,19 +48,19 @@ nodes:
     #- name: indexer-3
     #  ip: "<indexer-node-ip>"
 
-# Wazuh manager nodes
-# If there is more than one Wazuh manager
-# node, each one must have a node_type
-manager:
-  - name: manager
-    ip: "<wazuh-manager-ip>"
-  #  node_type: master
-  #- name: manager-2
-  #  ip: "<wazuh-manager-ip>"
-  #  node_type: worker
-  #- name: manager-3
-  #  ip: "<wazuh-manager-ip>"
-  #  node_type: worker
+  # Wazuh manager nodes
+  # If there is more than one Wazuh manager
+  # node, each one must have a node_type
+  manager:
+    - name: manager
+      ip: "<wazuh-manager-ip>"
+    #  node_type: master
+    #- name: manager-2
+    #  ip: "<wazuh-manager-ip>"
+    #  node_type: worker
+    #- name: manager-3
+    #  ip: "<wazuh-manager-ip>"
+    #  node_type: worker
 
   # Wazuh dashboard nodes
   dashboard:
