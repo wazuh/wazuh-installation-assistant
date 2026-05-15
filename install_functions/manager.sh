@@ -38,7 +38,7 @@ function manager_startCluster() {
         -e "${lstart},${lend}s/<node>.*<\/node>/<node>${master_address}<\/node>/" \
         -e "${lstart},${lend}s/<hidden>.*<\/hidden>/<hidden>${hidden}<\/hidden>/" \
         -e "${lstart},${lend}s/<disabled>.*<\/disabled>/<disabled>${disabled}<\/disabled>/" \
-        /var/wazuh-manager/etc/wazuh-manager.conf'
+        /var/wazuh-manager/etc/wazuh-manager.conf
 
 }
 
