@@ -5,7 +5,7 @@ nodes:
     - name: {{ hostvars[indexer]['inventory_hostname'] }}
       ip: "{{ hostvars[indexer]['private_ip'] }}"
 {% endfor %}
-  server:
+  manager:
 {% for manager in groups['managers'] %}
     - name: {{ hostvars[manager]['inventory_hostname'] }}
       ip: "{{ hostvars[manager]['private_ip'] }}"
