@@ -54,6 +54,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Removed simple quote from manager.sh. ([#800](https://github.com/wazuh/wazuh-installation-assistant/pull/800))
 - Fixed step-by-step installation documentation errors ([#781](https://github.com/wazuh/wazuh-installation-assistant/pull/781))
 - Fix install dependencies logic and delete redundant functions ([#748](https://github.com/wazuh/wazuh-installation-assistant/pull/748))
 - The security of the installation assistant is improved when creating configuration files in main. ([#737](https://github.com/wazuh/wazuh-installation-assistant/pull/737))
