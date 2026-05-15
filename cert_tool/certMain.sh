@@ -48,7 +48,9 @@ function getHelp() {
 
 function main() {
 
-    umask 177
+    # Set a restrictive umask so new regular files default to 600 and directories to 700,
+    # limiting access to the current user.
+    umask 0077
 
     cert_checkOpenSSL
 
@@ -168,8 +170,12 @@ function main() {
         fi
 
         if [[ ! -d "${cert_tmp_path}" ]]; then
+            # Create directory with secure permissions
             mkdir -p "${cert_tmp_path}"
-            chmod 744 "${cert_tmp_path}"
+            chmod 700 "${cert_tmp_path}"
+        else
+            # Ensure existing directory has secure permissions
+            chmod 700 "${cert_tmp_path}"
         fi
 
         cert_readConfig

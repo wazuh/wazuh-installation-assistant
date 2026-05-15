@@ -29,7 +29,7 @@ function manager_startCluster() {
     lstart=$(grep -n "<cluster>" /var/wazuh-manager/etc/wazuh-manager.conf | cut -d : -f 1)
     lend=$(grep -n "</cluster>" /var/wazuh-manager/etc/wazuh-manager.conf | cut -d : -f 1)
 
-    eval 'sed -i -e "${lstart},${lend}s/<name>.*<\/name>/<name>wazuh_cluster<\/name>/" \
+    sed -i -e "${lstart},${lend}s/<name>.*<\/name>/<name>wazuh_cluster<\/name>/" \
         -e "${lstart},${lend}s/<node_name>.*<\/node_name>/<node_name>${winame}<\/node_name>/" \
         -e "${lstart},${lend}s/<node_type>.*<\/node_type>/<node_type>${manager_node_types[pos],,}<\/node_type>/" \
         -e "${lstart},${lend}s/<key>.*<\/key>/<key>${key}<\/key>/" \
