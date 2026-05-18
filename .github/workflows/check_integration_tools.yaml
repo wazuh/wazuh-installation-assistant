@@ -345,7 +345,7 @@ jobs:
           python3 wazuh-automation/deployability/modules/allocation/main.py \
             --action create \
             --provider aws \
-            --size large \
+            --size xlarge \
             --composite-name ${{ matrix.system }} \
             --working-dir ${{ env.ALLOCATOR_PATH }} \
             --track-output ${{ env.ALLOCATOR_PATH }}/track.yml \
