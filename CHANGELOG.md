@@ -27,7 +27,6 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Removed old Wazuh installation assistant test workflows. ([#803](https://github.com/wazuh/wazuh-installation-assistant/pull/803))
 - Updated test instances size. ([#804](https://github.com/wazuh/wazuh-installation-assistant/pull/804))
 - VD log message removed ([#795](https://github.com/wazuh/wazuh-installation-assistant/pull/795))
 - Fixed clusterized documentation for wazuh-install.sh download file. ([#794](https://github.com/wazuh/wazuh-installation-assistant/pull/794))
@@ -68,6 +67,7 @@ All notable changes to this project will be documented in this file.
 
 ### Deleted
 
+- Removed old Wazuh installation assistant test workflows. ([#803](https://github.com/wazuh/wazuh-installation-assistant/pull/803))
 - Deleted yum-utils and lsof dependencies ([#692](https://github.com/wazuh/wazuh-installation-assistant/pull/692))
 - Remove last_stage and other deprecated variables and functions in the installation Assistant ([#593](https://github.com/wazuh/wazuh-installation-assistant/pull/593))
 - Remove admin key custom paths options from the Password Tool ([#586](https://github.com/wazuh/wazuh-installation-assistant/pull/586))
