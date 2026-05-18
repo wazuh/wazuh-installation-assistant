@@ -220,32 +220,25 @@ function check_curlVersion() {
 function check_dist() {
     common_logger -d "Checking system distribution."
     dist_detect
-    if  [ "${DIST_NAME}" != "centos" ] && [ "${DIST_NAME}" != "rhel" ] &&
-        [ "${DIST_NAME}" != "amzn" ]   && [ "${DIST_NAME}" != "ubuntu" ] && [ "${DIST_NAME}" != "rocky" ]; then
+    if  [ "${DIST_NAME}" != "rhel" ] &&
+        [ "${DIST_NAME}" != "amzn" ] && [ "${DIST_NAME}" != "ubuntu" ]; then
         notsupported=1
     fi
-    if [ "${DIST_NAME}" == "centos" ] && { [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ]; }; then
-        notsupported=1
-    fi
-    if [ "${DIST_NAME}" == "rhel" ] && { [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ] && [ "${DIST_VER}" -ne "9" ]; }; then
+
+    if [ "${DIST_NAME}" == "rhel" ] && { [ "${DIST_VER}" -ne "9" ] && [ "${DIST_VER}" -ne "10" ]; }; then
         notsupported=1
     fi
 
     if [ "${DIST_NAME}" == "amzn" ]; then
-        if  [ "${DIST_VER}" != "2" ] &&
-            [ "${DIST_VER}" != "2023" ] &&
-            [ "${DIST_VER}" != "2018.03" ]; then
+        if [ "${DIST_VER}" != "2023" ]; then
             notsupported=1
-        fi
-        if [ "${DIST_VER}" -eq "2023" ]; then
+        else
             checks_specialDepsAL2023
         fi
     fi
 
     if [ "${DIST_NAME}" == "ubuntu" ]; then
-        if  [ "${DIST_VER}" == "16" ] || [ "${DIST_VER}" == "18" ] ||
-            [ "${DIST_VER}" == "20" ] || [ "${DIST_VER}" == "22" ] ||
-            [ "${DIST_VER}" == "24" ]; then
+        if [ "${DIST_VER}" == "24" ] || [ "${DIST_VER}" == "26" ]; then
             if [ "${DIST_SUBVER}" != "04" ]; then
                 notsupported=1
             fi
@@ -254,15 +247,9 @@ function check_dist() {
         fi
     fi
 
-    if [ "${DIST_NAME}" == "rocky" ]; then
-        if [ "${DIST_VER}" != "9" ] || [ "${DIST_SUBVER}" != "4" ]; then
-            notsupported=1
-        fi
-    fi
-
     if [ -n "${notsupported}" ]; then
-        common_logger "The recommended systems are: Red Hat Enterprise Linux 7, 8, 9; CentOS 7, 8; Amazon Linux 2; Amazon Linux 2023; Ubuntu 16.04, 18.04, 20.04, 22.04; Rocky Linux 9.4."
-        common_logger -w "The current system does not match with the list of recommended systems. The installation may not work properly."
+        common_logger "The supported systems are: Red Hat Enterprise Linux 9, 10; Amazon Linux 2023; Ubuntu 24.04, 26.04."
+        common_logger -w "The current system does not match with the list of supported systems. The installation may not work properly."
     fi
     common_logger -d "Detected distribution name: ${DIST_NAME}"
     common_logger -d "Detected distribution version: ${DIST_VER}"
@@ -277,29 +264,29 @@ function checks_health() {
     common_logger -d "Free RAM memory detected: ${ram_gb}"
 
     if [ -n "${indexer}" ]; then
-        if [ "${cores}" -lt 2 ] || [ "${ram_gb}" -lt 3700 ]; then
-            common_logger -e "Your system does not meet the recommended minimum hardware requirements of 4Gb of RAM and 2 CPU cores. If you want to proceed with the installation use the -i option to ignore these requirements."
+        if [ "${cores}" -lt 4 ] || [ "${ram_gb}" -lt 7300 ]; then
+            common_logger -e "Your system does not meet the recommended minimum hardware requirements of 8Gb of RAM and 4 CPU cores. If you want to proceed with the installation use the -i option to ignore these requirements."
             exit 1
         fi
     fi
 
     if [ -n "${dashboard}" ]; then
-        if [ "${cores}" -lt 2 ] || [ "${ram_gb}" -lt 3700 ]; then
+        if [ "${cores}" -lt 2 ] || [ "${ram_gb}" -lt 3300 ]; then
             common_logger -e "Your system does not meet the recommended minimum hardware requirements of 4Gb of RAM and 2 CPU cores. If you want to proceed with the installation use the -i option to ignore these requirements."
             exit 1
         fi
     fi
 
     if [ -n "${wazuh}" ]; then
-        if [ "${cores}" -lt 2 ] || [ "${ram_gb}" -lt 1700 ]; then
-            common_logger -e "Your system does not meet the recommended minimum hardware requirements of 2Gb of RAM and 2 CPU cores . If you want to proceed with the installation use the -i option to ignore these requirements."
+        if [ "${cores}" -lt 4 ] || [ "${ram_gb}" -lt 7300 ]; then
+            common_logger -e "Your system does not meet the recommended minimum hardware requirements of 8Gb of RAM and 4 CPU cores . If you want to proceed with the installation use the -i option to ignore these requirements."
             exit 1
         fi
     fi
 
     if [ -n "${AIO}" ]; then
-        if [ "${cores}" -lt 2 ] || [ "${ram_gb}" -lt 3700 ]; then
-            common_logger -e "Your system does not meet the recommended minimum hardware requirements of 4Gb of RAM and 2 CPU cores. If you want to proceed with the installation use the -i option to ignore these requirements."
+        if [ "${cores}" -lt 8 ] || [ "${ram_gb}" -lt 15300 ]; then
+            common_logger -e "Your system does not meet the recommended minimum hardware requirements of 16Gb of RAM and 8 CPU cores. If you want to proceed with the installation use the -i option to ignore these requirements."
             exit 1
         fi
     fi

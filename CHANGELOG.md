@@ -54,6 +54,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Update the OS compatibility matrix and ram specs ([#802](https://github.com/wazuh/wazuh-installation-assistant/pull/802))
 - Removed simple quote from manager.sh. ([#800](https://github.com/wazuh/wazuh-installation-assistant/pull/800))
 - Fixed step-by-step installation documentation errors ([#781](https://github.com/wazuh/wazuh-installation-assistant/pull/781))
 - Fix install dependencies logic and delete redundant functions ([#748](https://github.com/wazuh/wazuh-installation-assistant/pull/748))

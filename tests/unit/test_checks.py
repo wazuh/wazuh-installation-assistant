@@ -258,40 +258,40 @@ class TestChecksHealth:
         assert_success(self._run())
 
     def test_fail_aio_1_core(self):
-        assert_failure(self._run({"AIO": "1", "cores": "1", "ram_gb": "3700"}))
+        assert_failure(self._run({"AIO": "1", "cores": "1", "ram_gb": "15300"}))
 
     def test_fail_aio_insufficient_ram(self):
-        assert_failure(self._run({"AIO": "1", "cores": "2", "ram_gb": "3000"}))
+        assert_failure(self._run({"AIO": "1", "cores": "8", "ram_gb": "7300"}))
 
-    def test_success_aio_2_cores_4gb(self):
-        assert_success(self._run({"AIO": "1", "cores": "2", "ram_gb": "3700"}))
+    def test_success_aio_8_cores_16gb(self):
+        assert_success(self._run({"AIO": "1", "cores": "8", "ram_gb": "15300"}))
 
     def test_fail_indexer_1_core(self):
-        assert_failure(self._run({"indexer": "1", "cores": "1", "ram_gb": "3700"}))
+        assert_failure(self._run({"indexer": "1", "cores": "1", "ram_gb": "7300"}))
 
     def test_fail_indexer_insufficient_ram(self):
-        assert_failure(self._run({"indexer": "1", "cores": "2", "ram_gb": "3000"}))
+        assert_failure(self._run({"indexer": "1", "cores": "4", "ram_gb": "3700"}))
 
-    def test_success_indexer_2_cores_enough_ram(self):
-        assert_success(self._run({"indexer": "1", "cores": "2", "ram_gb": "3700"}))
+    def test_success_indexer_4_cores_8gb(self):
+        assert_success(self._run({"indexer": "1", "cores": "4", "ram_gb": "7300"}))
 
     def test_fail_dashboard_1_core(self):
-        assert_failure(self._run({"dashboard": "1", "cores": "1", "ram_gb": "3700"}))
+        assert_failure(self._run({"dashboard": "1", "cores": "1", "ram_gb": "3300"}))
 
     def test_fail_dashboard_insufficient_ram(self):
         assert_failure(self._run({"dashboard": "1", "cores": "2", "ram_gb": "3000"}))
 
     def test_success_dashboard_2_cores_enough_ram(self):
-        assert_success(self._run({"dashboard": "1", "cores": "2", "ram_gb": "3700"}))
+        assert_success(self._run({"dashboard": "1", "cores": "2", "ram_gb": "3300"}))
 
     def test_fail_wazuh_1_core(self):
-        assert_failure(self._run({"wazuh": "1", "cores": "1", "ram_gb": "1700"}))
+        assert_failure(self._run({"wazuh": "1", "cores": "1", "ram_gb": "7300"}))
 
     def test_fail_wazuh_insufficient_ram(self):
-        assert_failure(self._run({"wazuh": "1", "cores": "2", "ram_gb": "1000"}))
+        assert_failure(self._run({"wazuh": "1", "cores": "4", "ram_gb": "3700"}))
 
-    def test_success_wazuh_2_cores_enough_ram(self):
-        assert_success(self._run({"wazuh": "1", "cores": "2", "ram_gb": "1700"}))
+    def test_success_wazuh_4_cores_8gb(self):
+        assert_success(self._run({"wazuh": "1", "cores": "4", "ram_gb": "7300"}))
 
 
 # ---------------------------------------------------------------------------
