@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Removed old Wazuh installation assistant test workflows. ([#803](https://github.com/wazuh/wazuh-installation-assistant/pull/803))
+- Updated test instances size. ([#804](https://github.com/wazuh/wazuh-installation-assistant/pull/804))
 - VD log message removed ([#795](https://github.com/wazuh/wazuh-installation-assistant/pull/795))
 - Fixed clusterized documentation for wazuh-install.sh download file. ([#794](https://github.com/wazuh/wazuh-installation-assistant/pull/794))
 - Updated step by step documentation with apt and yum commands. ([#779](https://github.com/wazuh/wazuh-installation-assistant/pull/779))
