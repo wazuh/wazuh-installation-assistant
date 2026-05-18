@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- VD log message removed ([#795](https://github.com/wazuh/wazuh-installation-assistant/pull/795))
 - Fixed clusterized documentation for wazuh-install.sh download file. ([#794](https://github.com/wazuh/wazuh-installation-assistant/pull/794))
 - Updated step by step documentation with apt and yum commands. ([#779](https://github.com/wazuh/wazuh-installation-assistant/pull/779))
 - Added artifact_urls s3 bucket folder to the download process. ([#731](https://github.com/wazuh/wazuh-installation-assistant/pull/731))
@@ -54,6 +55,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Update the OS compatibility matrix and ram specs ([#802](https://github.com/wazuh/wazuh-installation-assistant/pull/802))
+- Removed simple quote from manager.sh. ([#800](https://github.com/wazuh/wazuh-installation-assistant/pull/800))
 - Fixed step-by-step installation documentation errors ([#781](https://github.com/wazuh/wazuh-installation-assistant/pull/781))
 - Fix install dependencies logic and delete redundant functions ([#748](https://github.com/wazuh/wazuh-installation-assistant/pull/748))
 - The security of the installation assistant is improved when creating configuration files in main. ([#737](https://github.com/wazuh/wazuh-installation-assistant/pull/737))
@@ -79,7 +81,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- The security of the installation assistant is improved when creating configuration files. ([#707](https://github.com/wazuh/wazuh-installation-assistant/pull/707))
 
 ### Fixed
 

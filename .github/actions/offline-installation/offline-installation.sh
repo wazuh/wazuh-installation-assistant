@@ -121,7 +121,7 @@ function indexer_installation() {
 
     indexer_initialize
     sleep 10
-    eval "curl -s -XGET https://127.0.0.1:9200 -u admin:admin -k --fail"
+    curl -s -XGET https://127.0.0.1:9200 -u admin:admin -k --fail
     if [ "${PIPESTATUS[0]}" != 0 ]; then
         echo "ERROR: The Wazuh indexer installation has failed."
         exit 1

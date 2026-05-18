@@ -99,6 +99,92 @@ function cert_sanitizeNodeName() {
     return 0
 }
 
+# Security validation functions
+
+function cert_validatePath() {
+    local path="$1"
+    local path_type="${2:-file}"
+
+    # Check if path is empty
+    if [[ -z "${path}" ]]; then
+        common_logger -e "Path cannot be empty."
+        return 1
+    fi
+
+    # Prevent path traversal attacks - reject paths with suspicious patterns
+    if [[ "${path}" =~ \.\./|\.\.\\ ]]; then
+        common_logger -e "Path traversal detected in: ${path}"
+        return 1
+    fi
+
+    # Reject paths with newlines, carriage returns, or tabs (specific problematic characters)
+    if [[ "${path}" =~ $'\n'|$'\r'|$'\t' ]]; then
+        common_logger -e "Invalid characters detected in path: ${path}"
+        return 1
+    fi
+
+    # For absolute paths validation
+    if [[ "${path}" == /* ]]; then
+        # Resolve to canonical path to prevent symlink attacks
+        if command -v realpath >/dev/null 2>&1; then
+            local canonical_path
+            canonical_path=$(realpath -m "${path}" 2>/dev/null) || return 1
+
+            # Ensure the canonical path doesn't escape expected boundaries
+            if [[ ! "${canonical_path}" =~ ^/[a-zA-Z0-9/_.\-]+$ ]]; then
+                common_logger -e "Invalid canonical path: ${canonical_path}"
+                return 1
+            fi
+        fi
+    fi
+
+    return 0
+}
+
+function cert_sanitizeFilename() {
+    local filename="$1"
+
+    # Remove any path components
+    filename="${filename##*/}"
+
+    # Only allow alphanumeric, dash, underscore, and dot
+    filename=$(echo "${filename}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+
+    # Prevent hidden files
+    filename="${filename#.}"
+
+    # Limit length to 255 characters
+    if [[ ${#filename} -gt 255 ]]; then
+        filename="${filename:0:255}"
+    fi
+
+    echo "${filename}"
+}
+
+function cert_sanitizeNodeName() {
+    local nodename="$1"
+
+    # Only allow alphanumeric, dash, underscore, and dot (typical for hostnames)
+    if [[ ! "${nodename}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+        common_logger -e "Invalid node name: ${nodename}. Only alphanumeric characters, dots, dashes, and underscores are allowed."
+        return 1
+    fi
+
+    # Prevent names starting with dash or dot
+    if [[ "${nodename}" =~ ^[-\.] ]]; then
+        common_logger -e "Node name cannot start with dash or dot: ${nodename}"
+        return 1
+    fi
+
+    # Limit length
+    if [[ ${#nodename} -gt 253 ]]; then
+        common_logger -e "Node name too long: ${nodename}"
+        return 1
+    fi
+
+    return 0
+}
+
 function cert_cleanFiles() {
 
     # Validate cert_tmp_path before use

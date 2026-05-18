@@ -402,7 +402,7 @@ function checks_ports() {
     fi
 
     for i in "${!ports[@]}"; do
-        if eval "${port_command}""${ports[i]}" > /dev/null; then
+        if ${port_command}"${ports[i]}" > /dev/null; then
             used_port=1
             common_logger -e "Port ${ports[i]} is being used by another process. Please, check it before installing Wazuh."
         fi
