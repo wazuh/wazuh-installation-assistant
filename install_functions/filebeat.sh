@@ -101,9 +101,9 @@ function filebeat_install() {
 
     common_logger "Starting Filebeat installation."
     if [ "${sys_type}" == "yum" ]; then
-        installCommon_yumInstall "filebeat" "${filebeat_version}"
+        installCommon_yumInstall "filebeat" "${filebeat_version}-1"
     elif [ "${sys_type}" == "apt-get" ]; then
-        installCommon_aptInstall "filebeat" "${filebeat_version}"
+        installCommon_aptInstall "filebeat" "${filebeat_version}-1"
     fi
 
     install_result="${PIPESTATUS[0]}"
