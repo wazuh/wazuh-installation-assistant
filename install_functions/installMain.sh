@@ -34,9 +34,6 @@ function getHelp() {
     echo -e "        -h,  --help"
     echo -e "                Display this help and exit."
     echo -e ""
-    echo -e "        -i,  --ignore-check"
-    echo -e "                Ignore the check for minimum hardware requirements."
-    echo -e ""
     echo -e "        -id,  --install-dependencies"
     echo -e "                Installs automatically the necessary dependencies for the installation."
     echo -e ""
@@ -103,10 +100,6 @@ function main() {
                 ;;
             "-h"|"--help")
                 getHelp
-                ;;
-            "-i"|"--ignore-check")
-                ignore=1
-                shift 1
                 ;;
             "-id"|"--install-dependencies")
                 install_dependencies=1
@@ -231,12 +224,8 @@ function main() {
 
     checks_arch
 
-    if [ -n "${ignore}" ]; then
-        common_logger -w "Hardware checks ignored."
-    else
-        common_logger "Verifying that your system meets the recommended minimum hardware requirements."
-        checks_health
-    fi
+    common_logger "Verifying that your system meets the recommended minimum hardware requirements."
+    checks_health
 
 
 # -------------- Preliminary checks and Prerequisites --------------------------------

@@ -14,7 +14,6 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
 | `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
 | `-h`, `--help` | Display this help and exit. |
-| `-i`, `--ignore-check` | Ignore the check for minimum hardware requirements. |
 | `-id`, `--install-dependencies` | Installs automatically the necessary dependencies for the installation. |
 | `-o`, `--overwrite` | Overwrites previously installed components. This will erase all the existing configuration and data. |
 | `-of`, `--offline-installation` | Perform an offline installation. This option must be used with -a, -ws, -s, -wi, or -wd. |
