@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Tool to create wazuh-install.sh, wazuh-cert-tool.sh
+# Tool to create wazuh-install.sh, wazuh-certs-tool.sh
 # and wazuh-passwords-tool.sh
 # Copyright (C) 2015, Wazuh Inc.
 #
@@ -16,7 +16,7 @@ readonly resources_certs="${base_path_builder}/cert_tool"
 readonly resources_passwords="${base_path_builder}/passwords_tool"
 readonly resources_common="${base_path_builder}/common_functions"
 readonly resources_download="${base_path_builder}/downloader"
-source_branch="v4.14.7"
+source_branch="v5.0.0"
 
 function getHelp() {
 
@@ -32,10 +32,10 @@ function getHelp() {
     echo -e "                Builds the unattended installer single file wazuh-install.sh"
     echo -e ""
     echo -e "        -c,  --cert-tool"
-    echo -e "                Builds the certificate creation tool wazuh-cert-tool.sh"
+    echo -e "                Builds the certificate creation tool wazuh-certs-tool.sh"
     echo -e ""
-    echo -e "        -p,  --password-tool"
-    echo -e "                Builds the password creation and modification tool wazuh-password-tool.sh"
+    echo -e "        -p,  --passwords-tool"
+    echo -e "                Builds the password creation and modification tool wazuh-passwords-tool.sh"
     echo -e ""
     echo -e "        -h,  --help"
     echo -e "                Shows help."
@@ -64,19 +64,12 @@ function buildInstaller() {
 
     grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
     grep -Ev '^#|^\s*$' ${resources_installer}/installVariables.sh >> "${output_script_path}"
-    echo >> "${output_script_path}"
 
-    ## Configuration files as variables
-    configuration_files=($(find "${resources_config}" -type f))
-    config_file_name=()
-    for file in "${configuration_files[@]}"; do
-        name=$(echo "${file}" | sed "s|${resources_config}||g;s|/|_|g;s|.yml||g")
-        config_file_name+=("${name}")
-    done
-    for index in "${!config_file_name[@]}"; do
-        echo "config_file${config_file_name[$index]}=\"$(cat "${configuration_files[$index]}" | sed 's|\"|\\\"|g;s|\$|\\\$|g')\"" >> "${output_script_path}"
-        echo >> "${output_script_path}"
-    done
+    ## Update staging_url_stage from VERSION.json
+    stage_value=$(grep '"stage"' "${base_path_builder}/VERSION.json" | sed 's/.*"stage": *"\([^"]*\)".*/\1/')
+    sed -i "s/staging_url_stage=\"\"/staging_url_stage=\"${stage_value}\"/" "${output_script_path}"
+
+    echo >> "${output_script_path}"
 
     ## Sigint trap
     echo "trap installCommon_cleanExit SIGINT" >> "${output_script_path}"
@@ -99,6 +92,7 @@ function buildInstaller() {
         fi
     done
 
+
     ## dist-detect.sh
     checkDistDetectURL
     echo "function dist_detect() {" >> "${output_script_path}"
@@ -110,9 +104,6 @@ function buildInstaller() {
 
     ## Certificate tool library functions
     sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_certs}/certFunctions.sh" >> "${output_script_path}"
-
-    ## Passwords tool library functions
-    sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_passwords}/passwordsFunctions.sh" >> "${output_script_path}"
 
     ## Main function and call to it
     echo >> "${output_script_path}"
@@ -141,7 +132,7 @@ function buildPasswordsTool() {
     grep -Ev '^#|^\s*$' "${resources_passwords}/passwordsVariables.sh" >> "${output_script_path}"
     echo >> "${output_script_path}"
 
-    ## Functions for all password function modules
+    ## Functions for all passwords tool function modules
     passwords_modules=($(find "${resources_passwords}" -type f))
     passwords_modules_names=()
     for module in "${passwords_modules[@]}"; do
@@ -225,7 +216,7 @@ function builder_main() {
                 certTool=1
                 shift 1
                 ;;
-            "-p"|"--password-tool")
+            "-p"|"--passwords-tool")
                 passwordsTool=1
                 shift 1
                 ;;
