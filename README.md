@@ -140,7 +140,6 @@ All the options for the Wazuh installation assistant are listed in the following
 | `-dw`, `--download-wazuh <deb,rpm>`   | Download all the packages necessary for offline installation. Specify the type of packages to download for offline installation (`rpm`, `deb`).  |
 | `-g`, `--generate-config-files`       | Generate `wazuh-install-files.tar` file containing the files needed for installation from `config.yml`. In distributed deployments, you will need to copy this file to all hosts.  |
 | `-h`, `--help`                        | Display this help and exit.  |
-| `-i`, `--ignore-check`                | Ignore the check for minimum hardware requirements.  |
 | `-o`, `--overwrite`                   | Overwrite previously installed components. This will erase all the existing configuration and data.  |
 | `-of`, `--offline-installation`       | Perform an offline installation. This option must be used with `-a`, `-wm`, `-s`, `-wi`, or `-wd`.  |
 | `-s`, `--start-cluster`               | Initialize Wazuh indexer cluster security settings.  |
