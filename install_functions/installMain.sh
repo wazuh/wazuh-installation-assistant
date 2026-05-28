@@ -84,15 +84,19 @@ function main() {
                 ;;
             "-d"|"--development")
                 development=1
-                if [ "${2}" = "pre-release" ] || [ "${2}" = "local" ]; then
+                if [ -z "${2}" ] || [[ "${2}" == -* ]]; then
+                    devrepo="pre-release"
+                    bucket="packages-staging.xdrsiem.wazuh.info"
+                    shift 1
+                elif [ "${2}" = "pre-release" ] || [ "${2}" = "local" ]; then
                     devrepo="${2}"
                     bucket="packages-staging.xdrsiem.wazuh.info"
+                    shift 2
                 else
-                    common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'local'."
+                    common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'local'. If no value is specified, 'pre-release' is used by default."
                     getHelp
                     exit 1
                 fi
-                shift 2
                 ;;
             "-g"|"--generate-config-files")
                 configurations=1
