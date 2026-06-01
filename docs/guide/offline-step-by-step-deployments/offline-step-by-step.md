@@ -321,7 +321,7 @@ The following dependencies must be installed on the Wazuh dashboard node:
         port: 55000
         username: wazuh-wui
         password: wazuh-wui
-        run_as: false
+        run_as: true
     ```
 
 3. Replace `<DASHBOARD_NODE_NAME>` with your Wazuh dashboard node name used in `config.yml` (for example, `dashboard`) and move the certificates.

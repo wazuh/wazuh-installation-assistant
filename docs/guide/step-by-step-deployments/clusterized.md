@@ -755,7 +755,7 @@ wazuh_core.hosts:
     port: 55000
     username: wazuh-wui
     password: wazuh-wui
-    run_as: false
+    run_as: true
 ```
 
 ### Deploying certificates

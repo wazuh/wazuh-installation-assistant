@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Changed run_as: false to true in step-by-step documentation ([#834](https://github.com/wazuh/wazuh-installation-assistant/pull/834))
 - Updated test instances size. ([#804](https://github.com/wazuh/wazuh-installation-assistant/pull/804))
 - VD log message removed ([#795](https://github.com/wazuh/wazuh-installation-assistant/pull/795))
 - Fixed clusterized documentation for wazuh-install.sh download file. ([#794](https://github.com/wazuh/wazuh-installation-assistant/pull/794))
