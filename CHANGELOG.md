@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Change Wazuh dashboard certificates path for clusterized deployment ([#841](https://github.com/wazuh/wazuh-installation-assistant/pull/841))
 - Changed run_as: false to true in step-by-step documentation ([#834](https://github.com/wazuh/wazuh-installation-assistant/pull/834))
 - Updated test instances size. ([#804](https://github.com/wazuh/wazuh-installation-assistant/pull/804))
 - VD log message removed ([#795](https://github.com/wazuh/wazuh-installation-assistant/pull/795))
