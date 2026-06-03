@@ -349,6 +349,80 @@ All notable changes to this project will be documented in this file.
 
 - None
 
+## [4.10.5]
+
+### Added
+
+- None
+
+### Changed
+
+- None
+
+### Fixed
+
+- None
+
+### Deleted
+
+- None
+
+## [4.10.4]
+
+### Added
+
+- None
+
+### Changed
+
+- None
+
+### Fixed
+
+- Force Filebeat revision to be -1 when installed by repository ([#807](https://github.com/wazuh/wazuh-installation-assistant/pull/807))
+- Updated the password tool with hash script modifications. ([#801](https://github.com/wazuh/wazuh-installation-assistant/pull/801))
+- The security of the installation assistant is improved when creating configuration files in LTS version. ([#723](https://github.com/wazuh/wazuh-installation-assistant/pull/723))
+
+### Deleted
+
+- None
+
+## [4.10.3]
+
+### Added
+
+- None
+
+### Changed
+
+- None
+
+### Fixed
+
+- None
+
+### Deleted
+
+- None
+
+## [4.10.2]
+
+### Added
+
+- None
+
+### Changed
+
+- None
+
+### Fixed
+
+- None
+
+### Deleted
+
+- None
+
 ## [4.10.1]
 
 ### Added
