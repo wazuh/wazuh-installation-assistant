@@ -6,28 +6,11 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-function dashboard_obtainNodeIp() {
-
-    if [ -z "${dashboard_ip}" ]; then
-        if [ "${AIO}" ]; then
-            dashboard_ip="${dashboard_node_ips[0]}"
-        else
-            for i in "${!dashboard_node_names[@]}"; do
-                if [[ "${dashboard_node_names[i]}" == "${dashname}" ]]; then
-                    dashboard_ip=${dashboard_node_ips[i]};
-                    break
-                fi
-            done
-        fi
-    fi
-}
-
 function dashboard_configure() {
 
     common_logger -d "Configuring Wazuh dashboard."
 
     # dashboard configuration itself
-    dashboard_obtainNodeIp
     dashboard_copyCertificates "${debug}"
 
     # dashboard configuration to connect to the indexer cluster
@@ -97,11 +80,6 @@ function dashboard_copyCertificates() {
 
 function dashboard_displaySummary() {
 
-    dashboard_obtainNodeIp
-
-    common_logger -d "Wazuh dashboard connection was successful."
-
-    common_logger "Wazuh dashboard web application initialized."
     common_logger -nl "--- Summary ---"
     common_logger -nl "You can access the web interface https://<wazuh_dashboard_ip>:${http_port}\n    User: admin\n    Password: admin"
 
