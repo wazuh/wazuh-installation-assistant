@@ -141,7 +141,7 @@ function passwords_createBackUp() {
 function passwords_generateHash() {
 
     common_logger "Generating password hash"
-    hash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${password}" 2>&1)
+    hash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${password}" 2>/dev/null)
     if [  "${PIPESTATUS[0]}" != 0  ]; then
         common_logger -e "Hash generation failed."
         if [[ $(type -t installCommon_rollBack) == "function" ]]; then
