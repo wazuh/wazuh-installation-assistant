@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Fix password tool generateHash ([#846](https://github.com/wazuh/wazuh-installation-assistant/pull/846))
 - Add open and reopened types for pull requests trigger in check_unit_tests workflow ([#805](https://github.com/wazuh/wazuh-installation-assistant/pull/805))
 - A validation for the status of services is added to the password tool. ([#786](https://github.com/wazuh/wazuh-installation-assistant/pull/786))
 - Added support for pre-release installation in documentation ([#784](https://github.com/wazuh/wazuh-installation-assistant/pull/784))
