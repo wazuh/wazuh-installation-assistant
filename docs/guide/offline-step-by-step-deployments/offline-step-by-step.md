@@ -180,10 +180,10 @@ On systems with apt as package manager, the following dependencies must be insta
     </hosts>
     <ssl>
         <certificate_authorities>
-        <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
+        <ca>etc/certs/root-ca.pem</ca>
         </certificate_authorities>
-        <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
-        <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
+        <certificate>etc/certs/manager.pem</certificate>
+        <key>etc/certs/manager-key.pem</key>
     </ssl>
     </indexer>
     ```
