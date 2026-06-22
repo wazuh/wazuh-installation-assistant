@@ -556,14 +556,14 @@ jobs:
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           cd /tmp/built-tools
-          sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
+          sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }} -id
           sudo chmod 644 wazuh-offline.tar.gz
 
       - name: Generate install files on runner (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           cd /tmp/built-tools
-          sudo bash wazuh-install.sh -g 2>&1 | tee /tmp/install-g.log
+          sudo bash wazuh-install.sh -g -id 2>&1 | tee /tmp/install-g.log
           [ ${PIPESTATUS[0]} -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; exit 1; }
           sudo chmod 644 wazuh-install-files.tar
 
