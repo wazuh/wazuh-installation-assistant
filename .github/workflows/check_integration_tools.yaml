@@ -87,7 +87,7 @@ jobs:
        contains(github.event.comment.body, '/test-cert-tool') ||
        contains(github.event.comment.body, '/test-passwords-tool') ||
        contains(github.event.comment.body, '/test-assistant'))
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       pr_number: ${{ steps.pr_data.outputs.pr_number }}
       pr_head_ref: ${{ steps.pr_data.outputs.pr_head_ref }}
@@ -187,7 +187,7 @@ jobs:
     if: |
       always() &&
       (needs.get_pr_info.result == 'success' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       tool_type: ${{ steps.ctx.outputs.tool_type }}
       install_mode: ${{ steps.ctx.outputs.install_mode }}
@@ -299,7 +299,7 @@ jobs:
   vm_test:
     needs: [build_tools]
     if: always() && needs.build_tools.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     strategy:
       fail-fast: false
       matrix:
@@ -897,7 +897,7 @@ jobs:
   update_check:
     needs: [get_pr_info, vm_test]
     if: always() && github.event_name == 'issue_comment' && needs.get_pr_info.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Update check run
         uses: actions/github-script@v8
