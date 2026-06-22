@@ -436,7 +436,8 @@ jobs:
       - name: Run installer (AIO)
         if: |
           needs.build_tools.outputs.install_mode == 'aio' ||
-          needs.build_tools.outputs.tool_type != 'installer'
+          (needs.build_tools.outputs.tool_type != 'installer' &&
+           needs.build_tools.outputs.tool_type != 'all')
         timeout-minutes: 60
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
@@ -534,7 +535,7 @@ jobs:
         run: |
           if [ "${{ env.PKG_TYPE }}" = "deb" ]; then
             ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-              "sudo apt-get update -q && sudo apt-get install -y debconf adduser procps gnupg apt-transport-https debhelper tar curl libcap2-bin"
+              "sudo apt-get update -q && sudo apt-get install -y debconf adduser procps gnupg apt-transport-https debhelper tar curl libcap2-bin gawk"
           else
             SYSTEM="${{ matrix.system }}"
             case "$SYSTEM" in
@@ -542,11 +543,11 @@ jobs:
                 # AL2023 does not ship yum-utils; dnf-utils provides the equivalent
                 # and registers as yum-utils in the RPM database for installer checks.
                 ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-                  "sudo dnf install -y coreutils libcap dnf-utils lsof"
+                  "sudo dnf install -y coreutils libcap dnf-utils lsof gawk"
                 ;;
               *)
                 ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-                  "sudo dnf install -y coreutils libcap lsof"
+                  "sudo dnf install -y coreutils libcap lsof gawk"
                 ;;
             esac
           fi
