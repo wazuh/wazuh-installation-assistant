@@ -189,7 +189,7 @@ test-14-installCommon_restoreWazuhrepo-yum() {
 
 test-14-installCommon_restoreWazuhrepo-yum-assert() {
     sed -i 's/-dev//g' /etc/yum.repos.d/wazuh.repo
-    sed -i 's/pre-release/4.x/g' /etc/yum.repos.d/wazuh.repo
+    sed -i 's/pre-release/5.x/g' /etc/yum.repos.d/wazuh.repo
     sed -i 's/unstable/stable/g' /etc/yum.repos.d/wazuh.repo
 }
 
@@ -205,7 +205,7 @@ test-15-installCommon_restoreWazuhrepo-apt() {
 
 test-15-installCommon_restoreWazuhrepo-apt-assert() {
     sed -i 's/-dev//g' /etc/apt/sources.list.d/wazuh.list
-    sed -i 's/pre-release/4.x/g' /etc/apt/sources.list.d/wazuh.list
+    sed -i 's/pre-release/5.x/g' /etc/apt/sources.list.d/wazuh.list
     sed -i 's/unstable/stable/g' /etc/apt/sources.list.d/wazuh.list
 }
 
@@ -219,7 +219,7 @@ test-16-installCommon_restoreWazuhrepo-yum-no-file() {
 
 test-16-installCommon_restoreWazuhrepo-yum-no-file-assert() {
     sed -i 's/-dev//g'
-    sed -i 's/pre-release/4.x/g'
+    sed -i 's/pre-release/5.x/g'
     sed -i 's/unstable/stable/g'
 }
 
@@ -232,7 +232,7 @@ test-17-installCommon_restoreWazuhrepo-apt-no-file() {
 
 test-17-installCommon_restoreWazuhrepo-apt-no-file-assert() {
     sed -i 's/-dev//g'
-    sed -i 's/pre-release/4.x/g'
+    sed -i 's/pre-release/5.x/g'
     sed -i 's/unstable/stable/g'
 }
 
