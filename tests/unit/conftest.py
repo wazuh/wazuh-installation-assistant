@@ -6,6 +6,7 @@ functions through bash function overriding to avoid real system calls.
 """
 
 import shlex
+import shutil
 import subprocess
 import textwrap
 from pathlib import Path
@@ -85,6 +86,30 @@ def assert_failure(result: subprocess.CompletedProcess) -> None:
         f"Expected failure (exit != 0) but got exit {result.returncode}.\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_systemd_dir():
+    """Create /run/systemd/system if missing so bash [[ -d ]] checks work.
+
+    Bash functions branch on this directory to detect systemd. On some CI
+    runners it doesn't exist; we create it here and remove it after the
+    session if we were the ones who created it.
+    """
+    path = Path("/run/systemd/system")
+    created = not path.exists()
+    if created:
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            created = False
+    yield
+    if created and path.exists():
+        shutil.rmtree(str(path), ignore_errors=True)
+        try:
+            path.parent.rmdir()
+        except OSError:
+            pass
 
 
 @pytest.fixture
