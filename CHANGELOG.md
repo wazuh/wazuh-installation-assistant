@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Migrate GH runner to codebuild ([#884](https://github.com/wazuh/wazuh-installation-assistant/pull/884))
 
 ### Fixed
 
