@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [5.0.0]
+## [v5.0.0]
 
 ### Added
 
@@ -59,6 +59,18 @@ All notable changes to this project will be documented in this file.
 - Change the wazuh.yml references to opensearch_dashboards.yml ([#538](https://github.com/wazuh/wazuh-installation-assistant/issues/538))
 - Remove Filebeat references from the certs tool ([#510](https://github.com/wazuh/wazuh-installation-assistant/issues/510))
 
+### Removed
+
+- Wazuh dashboard initialization message. ([#836](https://github.com/wazuh/wazuh-installation-assistant/issues/836))
+- Remove -i option from installation assistant ([#811](https://github.com/wazuh/wazuh-installation-assistant/issues/811))
+- Disable 4.x test triggers in the main branch. ([#787](https://github.com/wazuh/wazuh-installation-assistant/issues/787))
+- Offline prerequisites mismatch (lsof, yum-utils / dnf-utils) causes errors and confusing UX ([#653](https://github.com/wazuh/wazuh-installation-assistant/issues/653))
+- Remove last_stage variable from the Installation Assistant ([#587](https://github.com/wazuh/wazuh-installation-assistant/issues/587))
+- RRemove options related with the certs path in the Passwords Tool ([#582](https://github.com/wazuh/wazuh-installation-assistant/issues/582))
+- Remove harcoded configuration files and modify them instead ([#542](https://github.com/wazuh/wazuh-installation-assistant/issues/542))
+- The Password tool should support only individual password changes and remove file-based options ([#555](https://github.com/wazuh/wazuh-installation-assistant/issues/555))
+- Remove the Password Tool from the Installation Assistant ([#554](https://github.com/wazuh/wazuh-installation-assistant/issues/554))
+
 ### Fixed
 
 - Incorrect behavior when using the -d option in the Installation Assistant ([#822](https://github.com/wazuh/wazuh-installation-assistant/issues/822))
@@ -71,18 +83,6 @@ All notable changes to this project will be documented in this file.
 - Offline one-liner (quickstart) AIO hang during files validation. ([#652](https://github.com/wazuh/wazuh-installation-assistant/issues/652))
 - The certificates script does not generate certificates when a valid YAML format is used ([#622](https://github.com/wazuh/wazuh-installation-assistant/issues/622))
 - Improve cluster initialization message to cluster security settings ([#533](https://github.com/wazuh/wazuh-installation-assistant/issues/533))
-
-### Deleted
-
-- Wazuh dashboard initialization message. ([#836](https://github.com/wazuh/wazuh-installation-assistant/issues/836))
-- Remove -i option from installation assistant ([#811](https://github.com/wazuh/wazuh-installation-assistant/issues/811))
-- Disable 4.x test triggers in the main branch. ([#787](https://github.com/wazuh/wazuh-installation-assistant/issues/787))
-- Offline prerequisites mismatch (lsof, yum-utils / dnf-utils) causes errors and confusing UX ([#653](https://github.com/wazuh/wazuh-installation-assistant/issues/653))
-- Remove last_stage variable from the Installation Assistant ([#587](https://github.com/wazuh/wazuh-installation-assistant/issues/587))
-- RRemove options related with the certs path in the Passwords Tool ([#582](https://github.com/wazuh/wazuh-installation-assistant/issues/582))
-- Remove harcoded configuration files and modify them instead ([#542](https://github.com/wazuh/wazuh-installation-assistant/issues/542))
-- The Password tool should support only individual password changes and remove file-based options ([#555](https://github.com/wazuh/wazuh-installation-assistant/issues/555))
-- Remove the Password Tool from the Installation Assistant ([#554](https://github.com/wazuh/wazuh-installation-assistant/issues/554))
 
 ## Prior version
 - []()
