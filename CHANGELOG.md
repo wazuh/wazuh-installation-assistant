@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- PR Revamp 4.14.7 ([#886](https://github.com/wazuh/wazuh-installation-assistant/pull/886))
 
 ### Fixed
 
