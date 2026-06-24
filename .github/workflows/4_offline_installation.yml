@@ -1,4 +1,4 @@
-name: Offline installation test
+name: (4.x) Offline installation test
 
 on:
   pull_request:
