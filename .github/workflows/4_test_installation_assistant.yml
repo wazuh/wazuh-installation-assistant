@@ -66,7 +66,7 @@ permissions:
 
 jobs:
   run-test:
-    runs-on: ubuntu-22.04
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     strategy:
       fail-fast: false    # If a job fails, the rest of jobs will not be canceled
       matrix:
