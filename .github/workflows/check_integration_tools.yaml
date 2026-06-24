@@ -87,7 +87,7 @@ jobs:
        contains(github.event.comment.body, '/test-cert-tool') ||
        contains(github.event.comment.body, '/test-passwords-tool') ||
        contains(github.event.comment.body, '/test-assistant'))
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       pr_number: ${{ steps.pr_data.outputs.pr_number }}
       pr_head_ref: ${{ steps.pr_data.outputs.pr_head_ref }}
@@ -187,7 +187,7 @@ jobs:
     if: |
       always() &&
       (needs.get_pr_info.result == 'success' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       tool_type: ${{ steps.ctx.outputs.tool_type }}
       install_mode: ${{ steps.ctx.outputs.install_mode }}
@@ -299,7 +299,7 @@ jobs:
   vm_test:
     needs: [build_tools]
     if: always() && needs.build_tools.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     strategy:
       fail-fast: false
       matrix:
@@ -436,7 +436,8 @@ jobs:
       - name: Run installer (AIO)
         if: |
           needs.build_tools.outputs.install_mode == 'aio' ||
-          needs.build_tools.outputs.tool_type != 'installer'
+          (needs.build_tools.outputs.tool_type != 'installer' &&
+           needs.build_tools.outputs.tool_type != 'all')
         timeout-minutes: 60
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
@@ -534,7 +535,7 @@ jobs:
         run: |
           if [ "${{ env.PKG_TYPE }}" = "deb" ]; then
             ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-              "sudo apt-get update -q && sudo apt-get install -y debconf adduser procps gnupg apt-transport-https debhelper tar curl libcap2-bin"
+              "sudo apt-get update -q && sudo apt-get install -y debconf adduser procps gnupg apt-transport-https debhelper tar curl libcap2-bin gawk"
           else
             SYSTEM="${{ matrix.system }}"
             case "$SYSTEM" in
@@ -542,11 +543,11 @@ jobs:
                 # AL2023 does not ship yum-utils; dnf-utils provides the equivalent
                 # and registers as yum-utils in the RPM database for installer checks.
                 ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-                  "sudo dnf install -y coreutils libcap dnf-utils lsof"
+                  "sudo dnf install -y coreutils libcap dnf-utils lsof gawk"
                 ;;
               *)
                 ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-                  "sudo dnf install -y coreutils libcap lsof"
+                  "sudo dnf install -y coreutils libcap lsof gawk"
                 ;;
             esac
           fi
@@ -555,14 +556,14 @@ jobs:
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           cd /tmp/built-tools
-          sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }}
+          sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }} -id
           sudo chmod 644 wazuh-offline.tar.gz
 
       - name: Generate install files on runner (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           cd /tmp/built-tools
-          sudo bash wazuh-install.sh -g 2>&1 | tee /tmp/install-g.log
+          sudo bash wazuh-install.sh -g -id 2>&1 | tee /tmp/install-g.log
           [ ${PIPESTATUS[0]} -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; exit 1; }
           sudo chmod 644 wazuh-install-files.tar
 
@@ -897,7 +898,7 @@ jobs:
   update_check:
     needs: [get_pr_info, vm_test]
     if: always() && github.event_name == 'issue_comment' && needs.get_pr_info.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Update check run
         uses: actions/github-script@v8

@@ -87,6 +87,22 @@ def assert_failure(result: subprocess.CompletedProcess) -> None:
     )
 
 
+@pytest.fixture(scope="session", autouse=True)
+def ensure_systemd_dir():
+    """Create /run/systemd/system if missing so bash [[ -d ]] checks work.
+
+    Bash functions branch on this directory to detect systemd. On some CI
+    runners it doesn't exist; we create it here. No teardown: /run is a
+    tmpfs on Linux so it vanishes on reboot, and CI runners are ephemeral.
+    """
+    path = Path("/run/systemd/system")
+    if not path.exists():
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            pass
+
+
 @pytest.fixture
 def bash_runner():
     """Fixture that returns the run_bash_function helper."""
