@@ -1,5 +1,5 @@
 run-name: Build Installation Assistant ${{ inputs.id }} - Branch ${{ github.ref_name }} - Launched by @${{ github.actor }}
-name: Build Installation Assistant
+name: (4.x) Build Installation Assistant
 
 on:
   workflow_dispatch:

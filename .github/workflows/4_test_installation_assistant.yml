@@ -1,5 +1,5 @@
 run-name: Test installation assistant - ${{ github.run_id }} - ${{ inputs.SYSTEMS }} - Launched by @${{ github.actor }}
-name: Test installation assistant
+name: (4.x) Test installation assistant
 
 on:
   pull_request:
