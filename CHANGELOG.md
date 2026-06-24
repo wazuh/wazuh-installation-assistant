@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- PR Revamp 5.0.0 ([#885](https://github.com/wazuh/wazuh-installation-assistant/pull/885))
 - Migrate GH runner to codebuild ([#876](https://github.com/wazuh/wazuh-installation-assistant/pull/876))
 - Fix certificate paths on wazuh-manager.conf ([#858](https://github.com/wazuh/wazuh-installation-assistant/pull/858))
 - Change Wazuh dashboard certificates path for clusterized deployment ([#841](https://github.com/wazuh/wazuh-installation-assistant/pull/841))
