@@ -25,11 +25,7 @@ on:
 
 jobs:
   bump:
-<<<<<<< HEAD
     name: Repository bumper 4.x
-=======
-    name: Repository bumper
->>>>>>> origin/4.14.7
     runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: write
