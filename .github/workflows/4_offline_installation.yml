@@ -62,7 +62,7 @@ permissions:
 
 jobs:
   Create-allocator-instances:
-    runs-on: ubuntu-latest
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     strategy:
       fail-fast: false
       matrix:
