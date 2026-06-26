@@ -1,5 +1,5 @@
 run-name: Build Installation Assistant ${{ inputs.id }} - Branch ${{ github.ref_name }} - Launched by @${{ github.actor }}
-name: Build Installation Assistant
+name: (5.x) Build Installation Assistant
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
       wazuh_installation_assistant_reference:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
-        default: 'main'
+        default: '5.0.0'
       is_stage:
         description: "Is stage?"
         type: boolean
@@ -31,7 +31,7 @@ on:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         type: string
         required: true
-        default: 'main'
+        default: '5.0.0'
       is_stage:
         description: "Is stage?"
         type: boolean
@@ -64,8 +64,7 @@ permissions:
 
 jobs:
   setup:
-    runs-on:
-      group: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       suffix: ${{ steps.set-matrix.outputs.suffix }}
     steps:
@@ -92,8 +91,7 @@ jobs:
           echo "suffix=$SUFFIX" >> $GITHUB_OUTPUT
 
   Build_Installation_Assistant:
-    runs-on:
-      group: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
     needs: setup
     strategy:
       matrix:
