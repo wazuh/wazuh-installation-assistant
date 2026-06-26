@@ -2,7 +2,7 @@ run-name: >-
   ${{ github.event_name == 'workflow_dispatch'
     && format('Test Integration Tools - Manual {0} [{1}] on {2}', inputs.tool_type, inputs.install_mode, inputs.pr_head_ref)
     || format('Test Integration Tools - #{0} {1}', github.event.issue.number, github.event.issue.title) }}
-name: PR Check - Test Integration Tools
+name: (5.x) PR Check - Test Integration Tools
 
 on:
   issue_comment:
