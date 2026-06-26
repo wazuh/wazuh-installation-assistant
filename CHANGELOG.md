@@ -1,563 +1,88 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [4.14.7]
+## [v5.0.0]
 
 ### Added
 
-- None
+- The passwords tool corrupts the admin hash ([#843](https://github.com/wazuh/wazuh-installation-assistant/issues/843))
+- Add open and reopened types for pull requests trigger in check_unit_tests workflow ([#805](https://github.com/wazuh/wazuh-installation-assistant/issues/805))
+- Dashboard connection error messages with the API. ([#785](https://github.com/wazuh/wazuh-installation-assistant/issues/785))
+- Added support for pre-release installation in documentation ([#784](https://github.com/wazuh/wazuh-installation-assistant/issues/784))
+- Add repository installation documentation ([#710](https://github.com/wazuh/wazuh-installation-assistant/issues/710))
+- Inconsistency in Amazon Linux 2023 dependencies in the assistant ([#778](https://github.com/wazuh/wazuh-installation-assistant/issues/778))
+- Support Revert bump functionality in wazuh-installation-assistant ([#713](https://github.com/wazuh/wazuh-installation-assistant/issues/713))
+- Missing documentation in the wazuh-installation-assistant repository ([#602](https://github.com/wazuh/wazuh-installation-assistant/issues/602))
+- Wazuh installation assistant test documentation. ([#592](https://github.com/wazuh/wazuh-installation-assistant/issues/592))
+- Wazuh installation assistant integration tests ([#590](https://github.com/wazuh/wazuh-installation-assistant/issues/590))
+- Add --set-as-main flag support to repository bumper. ([#666](https://github.com/wazuh/wazuh-installation-assistant/issues/666))
+- Missing wazuh-offline-installation documentation ([#662](https://github.com/wazuh/wazuh-installation-assistant/issues/662))
+- wazuh-passwords-tool integration tests and unit tests ([#589](https://github.com/wazuh/wazuh-installation-assistant/issues/589))
+- Certificates with multiple SAN ([#628](https://github.com/wazuh/wazuh-installation-assistant/issues/628))
+- Add documentation for Installation Assistant Tools in 5.0 ([#579](https://github.com/wazuh/wazuh-installation-assistant/issues/579))
+- Ensure the artifacts contain the version to the patch and revision level ([#571](https://github.com/wazuh/wazuh-installation-assistant/issues/571))
+- Backport the --install-dependencies option from 6.0 to main ([#518](https://github.com/wazuh/wazuh-installation-assistant/issues/518))
+- Add new custom internal users to the password file generation process in the password tool ([#513](https://github.com/wazuh/wazuh-installation-assistant/issues/513))
+- Remove Filebeat references from the password tool ([#511](https://github.com/wazuh/wazuh-installation-assistant/issues/511))
+- Remove all the custom option from the installation assistant ([#515](https://github.com/wazuh/wazuh-installation-assistant/issues/515))
+- Update the build workflow to upload config.yml along with the generated artifacts ([#520](https://github.com/wazuh/wazuh-installation-assistant/issues/520))
 
 ### Changed
 
-- PR Revamp 4.14.7 ([#886](https://github.com/wazuh/wazuh-installation-assistant/pull/886))
+- PR Revamp 5.0.0 ([#885](https://github.com/wazuh/wazuh-installation-assistant/issues/885))
+- Migrate GH runner to codebuild ([#876](https://github.com/wazuh/wazuh-installation-assistant/issues/876))
+- Minor change in step-by-step AIO documentation ([#855](https://github.com/wazuh/wazuh-installation-assistant/issues/855))
+- E2E documentation error found ([#835](https://github.com/wazuh/wazuh-installation-assistant/issues/835))
+- Change run_as: false default reference to run_as: true ([#829](https://github.com/wazuh/wazuh-installation-assistant/issues/829))
+- Recommended systems in the installation assistant differ from the compatibility matrix. ([#793](https://github.com/wazuh/wazuh-installation-assistant/issues/793))
+- Delete Vulnerability Detection configuration log from the installation assistant ([#792](https://github.com/wazuh/wazuh-installation-assistant/issues/792))
+- wazuh-certs-tool script referenced but never used on Clusterized installations. ([#776](https://github.com/wazuh/wazuh-installation-assistant/issues/776))
+- Update step-by-step installation documentation. ([#757](https://github.com/wazuh/wazuh-installation-assistant/issues/757))
+- Change the destination path of the artifact_urls file in wazuh-installation-assistant. ([#720](https://github.com/wazuh/wazuh-installation-assistant/issues/720))
+- Improve the usage example for DNS or IP in config.yml ([#694](https://github.com/wazuh/wazuh-installation-assistant/issues/694))
+- Adapt the config.yml component names to match the default certificate names. ([#649](https://github.com/wazuh/wazuh-installation-assistant/issues/649))
+- Updated GitHub actions version for wazuh-installation-assistant main workflows. ([#678](https://github.com/wazuh/wazuh-installation-assistant/issues/678))
+- Ensure correct Wazuh manager certificates ownership ([#673](https://github.com/wazuh/wazuh-installation-assistant/issues/673))
+- Standarize Artifact URL keys. ([#668](https://github.com/wazuh/wazuh-installation-assistant/issues/668))
+- unneeded verification of package sudo in wazuh-password-tool.sh. ([#663](https://github.com/wazuh/wazuh-installation-assistant/issues/663))
+- Missing documentation in the wazuh-installation-assistant repository ([#602](https://github.com/wazuh/wazuh-installation-assistant/issues/602))
+- Review and update the passwords tool's naming conventions. ([#656](https://github.com/wazuh/wazuh-installation-assistant/issues/656))
+- Installation assistant update pre release and prod artifact urls file paths bucket and naming. ([#655](https://github.com/wazuh/wazuh-installation-assistant/issues/655))
+- Updated wazuh-installation-assistant documentation config and tooling versions to meet new standards. ([#650](https://github.com/wazuh/wazuh-installation-assistant/issues/650))
+- Update artifact generation jobs to use wz-linux dedicated runner group ([#641](https://github.com/wazuh/wazuh-installation-assistant/issues/641))
+- Wazuh Manager/Agent Separation — Breaking Changes Summary ([#625](https://github.com/wazuh/wazuh-installation-assistant/issues/625))
+- Verify that the Wazuh installation tools comply with the development naming convention ([#619](https://github.com/wazuh/wazuh-installation-assistant/issues/619))
+- Change path and artifact names ([#600](https://github.com/wazuh/wazuh-installation-assistant/issues/600))
+- Change server references to manager ([#601](https://github.com/wazuh/wazuh-installation-assistant/issues/601))
+- Composite names update ([#562](https://github.com/wazuh/wazuh-installation-assistant/issues/562))
+- Change component installation to use packages instead of repositories ([#519](https://github.com/wazuh/wazuh-installation-assistant/issues/519))
+- Change the wazuh.yml references to opensearch_dashboards.yml ([#538](https://github.com/wazuh/wazuh-installation-assistant/issues/538))
+- Remove Filebeat references from the certs tool ([#510](https://github.com/wazuh/wazuh-installation-assistant/issues/510))
+
+### Removed
+
+- Wazuh dashboard initialization message. ([#836](https://github.com/wazuh/wazuh-installation-assistant/issues/836))
+- Remove -i option from installation assistant ([#811](https://github.com/wazuh/wazuh-installation-assistant/issues/811))
+- Disable 4.x test triggers in the main branch. ([#787](https://github.com/wazuh/wazuh-installation-assistant/issues/787))
+- Offline prerequisites mismatch (lsof, yum-utils / dnf-utils) causes errors and confusing UX ([#653](https://github.com/wazuh/wazuh-installation-assistant/issues/653))
+- Remove last_stage variable from the Installation Assistant ([#587](https://github.com/wazuh/wazuh-installation-assistant/issues/587))
+- RRemove options related with the certs path in the Passwords Tool ([#582](https://github.com/wazuh/wazuh-installation-assistant/issues/582))
+- Remove harcoded configuration files and modify them instead ([#542](https://github.com/wazuh/wazuh-installation-assistant/issues/542))
+- The Password tool should support only individual password changes and remove file-based options ([#555](https://github.com/wazuh/wazuh-installation-assistant/issues/555))
+- Remove the Password Tool from the Installation Assistant ([#554](https://github.com/wazuh/wazuh-installation-assistant/issues/554))
 
 ### Fixed
 
-- None
-
-### Deleted
-
-- None
-
-## [4.14.6]
-
-### Added
-
-- None
-
-### Changed
-
-- Migrate GH runner to codebuild ([#883](https://github.com/wazuh/wazuh-installation-assistant/pull/883))
-- The security of the installation assistant is improved when creating configuration files. ([#707](https://github.com/wazuh/wazuh-installation-assistant/pull/707))
-
-### Fixed
-
-- Fix password tool generateHash in 4.14.6 version. ([#849](https://github.com/wazuh/wazuh-installation-assistant/pull/849))
-- Prevent curl errors and cascading uninstalls when running with -d flag ([#712](https://github.com/wazuh/wazuh-installation-assistant/pull/712))
-
-### Deleted
-
-- None
-
-## [4.14.5]
-
-### Added
-
-- None
-
-### Changed
-
-- Updated GitHub actions version for wazuh-installation-assistant workflows. ([#677](https://github.com/wazuh/wazuh-installation-assistant/pull/677))
-
-### Fixed
-
-- Removed sudo command validation for installation assistant. ([#664](https://github.com/wazuh/wazuh-installation-assistant/pull/664))
-- Fix bumper script early exit ([#648](https://github.com/wazuh/wazuh-installation-assistant/pull/648))
-
-### Deleted
-
-- None
-
-## [4.14.4]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- Remove deprecated passwords_getApiIds function call ([#633](https://github.com/wazuh/wazuh-installation-assistant/pull/633))
-- Fix password change process when using a user file with partial users ([#614](https://github.com/wazuh/wazuh-installation-assistant/pull/614))
-
-### Deleted
-
-- None
-
-## [4.14.3]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- None
-
-### Deleted
-
-- None
-
-## [4.14.2]
-
-### Added
-
-- None
-
-### Changed
-
-- Updated Wazuh Filebeat module from 0.4 to 0.5 version. ([#529](https://github.com/wazuh/wazuh-installation-assistant/pull/529))
-
-### Fixed
-
-- Changed main branch as default branch for Filebeat module. ([#531](https://github.com/wazuh/wazuh-installation-assistant/pull/531))
-
-### Deleted
-
-- None
-
-## [4.14.1]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- None
-
-### Deleted
-
-- None
-
-## [4.14.0]
-
-### Added
-
-- None
-
-### Changed
-
-- Remove dashboard chat setting([#476](https://github.com/wazuh/wazuh-installation-assistant/pull/476)).
-- Rollback data source setting([#460](https://github.com/wazuh/wazuh-installation-assistant/pull/460)).
-- Dashboard settings added ([#459](https://github.com/wazuh/wazuh-installation-assistant/pull/459)).
-- Increase filebeat revision ([#400](https://github.com/wazuh/wazuh-installation-assistant/pull/400)).
-
-### Fixed
-
-- Fixed deb dependencies ([#458](https://github.com/wazuh/wazuh-installation-assistant/pull/458))
-
-### Deleted
-
-- None
-
-## [4.13.1]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- None
-
-### Deleted
-
-- None
-
-## [4.13.0]
-
-### Added
-
-- Add opensearch_dashboard.yml parameters. ([#447](https://github.com/wazuh/wazuh-installation-assistant/pull/447))
-- Integrate bumper script via GitHub action. ([#382](https://github.com/wazuh/wazuh-installation-assistant/pull/382))
-- Added repository_bumper.sh script. ([#315](https://github.com/wazuh/wazuh-installation-assistant/pull/315))
-
-### Changed
-
-- None
-
-### Fixed
-
-- Added AL2023 and Rocky Linux 9.4 to recommended OS list ([#327](https://github.com/wazuh/wazuh-installation-assistant/pull/327))
-- Fix wazuh_major version string ([#272](https://github.com/wazuh/wazuh-installation-assistant/pull/272))
-
-### Deleted
-
-- Remove default installation assistant reference version from workflow ([#284](https://github.com/wazuh/wazuh-installation-assistant/pull/284))
-
-## [4.12.0]
-
-### Added
-
-- Add workflow step to add last_stage variable to the `wazuh-install.sh` ([#226](https://github.com/wazuh/wazuh-installation-assistant/pull/226))
-
-### Changed
-
-- Adapt existing workflows to new allocator YAML inventory ([#254](https://github.com/wazuh/wazuh-installation-assistant/pull/254))
-- Changed VERSION file to the new standard format. ([#244](https://github.com/wazuh/wazuh-installation-assistant/pull/244))
-- Added support ARM architecture for Wazuh central components ([#225](https://github.com/wazuh/wazuh-installation-assistant/pull/225))
-- Change gha runners to Ubuntu 22.04 ([#186](https://github.com/wazuh/wazuh-installation-assistant/pull/186))
-
-### Fixed
-
-- Fix Offline Download with new variable offline_filebeat_version. ([#314](https://github.com/wazuh/wazuh-installation-assistant/pull/314))
-- Fixed offline download for Filebeat package. ([#301](https://github.com/wazuh/wazuh-installation-assistant/pull/301))
-- Added revision to Filebeat package. ([#300](https://github.com/wazuh/wazuh-installation-assistant/pull/300))
-- Fixed handling of hash.sh script output in Password Tool. ([#290](https://github.com/wazuh/wazuh-installation-assistant/pull/290))
-
-### Deleted
-
-- None
-
-## [4.11.2]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- None
-
-### Deleted
-
-- None
-
-## [4.11.1]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- Changed uninstall variables names. ([#259](https://github.com/wazuh/wazuh-installation-assistant/pull/259))
-
-### Deleted
-
-- None
-
-## [4.11.0]
-
-### Added
-
-- Refactor offline instalation test ([#191](https://github.com/wazuh/wazuh-installation-assistant/pull/191))
-
-### Changed
-
-- Add function to change the source_branch with the current stage with --develoment flag activated ([#211](https://github.com/wazuh/wazuh-installation-assistant/pull/211))
-- Update upload and download artifact actions to v4 ([#198](https://github.com/wazuh/wazuh-installation-assistant/pull/198))
-- Add venv to installation assistant workflows ([#134](https://github.com/wazuh/wazuh-installation-assistant/pull/134))
-
-### Fixed
-
-- Fix error related with Filebeat template ([#222](https://github.com/wazuh/wazuh-installation-assistant/pull/222))
-- Update `-d` option in the password tool workflow and fix test scripts ([#170](https://github.com/wazuh/wazuh-installation-assistant/pull/170))
-- Added architecture information to assistant. ([#92](https://github.com/wazuh/wazuh-installation-assistant/pull/92))
-
-### Deleted
-
-- None
-
-## [4.10.5]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- None
-
-### Deleted
-
-- None
-
-## [4.10.4]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- Force Filebeat revision to be -1 when installed by repository ([#807](https://github.com/wazuh/wazuh-installation-assistant/pull/807))
-- Updated the password tool with hash script modifications. ([#801](https://github.com/wazuh/wazuh-installation-assistant/pull/801))
-- The security of the installation assistant is improved when creating configuration files in LTS version. ([#723](https://github.com/wazuh/wazuh-installation-assistant/pull/723))
-
-### Deleted
-
-- None
-
-## [4.10.3]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- None
-
-### Deleted
-
-- None
-
-## [4.10.2]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- None
-
-### Deleted
-
-- None
-
-## [4.10.1]
-
-### Added
-
-- None
-
-### Changed
-
-- None
-
-### Fixed
-
-- Add matrix for pull request and fix provision playbook reference in test workflows ([#136](https://github.com/wazuh/wazuh-installation-assistant/pull/136))
-- Added architecture information to assistant. ([#92](https://github.com/wazuh/wazuh-installation-assistant/pull/92))
-
-### Deleted
-
-- None
-
-## [4.10.0]
-
-### Added
-
-- Migrated documentation templates to wazuh-installation-assistant repository. ([#144](https://github.com/wazuh/wazuh-installation-assistant/pull/144))
-
-### Changed
-
-- Removed check functions for Wazuh manager and Filebeat. ([#138](https://github.com/wazuh/wazuh-installation-assistant/pull/138))
-- Add checksum input and update the upload files to S3 steps ([#106](https://github.com/wazuh/wazuh-installation-assistant/pull/106))
-- Deleted the offline_checkDependencies function and unified logic in offline_checkPrerequisites function. ([#99](https://github.com/wazuh/wazuh-installation-assistant/pull/99))
-- Add input for wazuh installation assistant reference in workflows. ([#98](https://github.com/wazuh/wazuh-installation-assistant/pull/98))
-- Create GHA workflow to build Wazuh Installation Assistant files. ([#77](https://github.com/wazuh/wazuh-installation-assistant/pull/77))
-- Installation assistant distributed test rework and migration. ([#60](https://github.com/wazuh/wazuh-installation-assistant/pull/60))
-- Installation assistant test and tier workflow migration ([#46](https://github.com/wazuh/wazuh-installation-assistant/pull/46/))
-- Added post-install validations for the Wazuh manager and Filebeat. ([#3059](https://github.com/wazuh/wazuh-packages/pull/3059))
-- Update SECURITY.md file. ([#59](https://github.com/wazuh/wazuh-installation-assistant/pull/59))
-
-### Fixed
-
-- Fixed bug when trying to download nonexistent filebeat_wazuh_template ([#124](https://github.com/wazuh/wazuh-installation-assistant/pull/124))
-- Fixed offline pre-release package download process ([#121](https://github.com/wazuh/wazuh-installation-assistant/pull/121))
-- Changed GitHub Runner version to fix Python error ([#110](https://github.com/wazuh/wazuh-installation-assistant/pull/110))
-- Fixed Wazuh API validation ([#29](https://github.com/wazuh/wazuh-installation-assistant/pull/29))
-- Fixed token variable empty in Wazuh manager check ([#45](https://github.com/wazuh/wazuh-installation-assistant/pull/45))
-- Fixed manager check in distributed deployment ([#52](https://github.com/wazuh/wazuh-installation-assistant/pull/52))
-- Changed command order execution to get the TOKEN ([#57](https://github.com/wazuh/wazuh-installation-assistant/pull/57))
-
-## [4.9.2]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.9.2
-
-## [4.9.1]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.9.1
-
-## [4.9.0]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.9.0
-
-## [4.8.2]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.8.2
-
-## [4.8.1]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.8.1
-
-## [4.8.0]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.8.0
-
-## [4.7.5]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.7.5
-
-## [4.7.4]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.7.4
-
-## [4.7.3]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.7.3
-
-## [4.7.2]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.7.2
-
-## [4.7.1]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.7.1
-
-## [v4.7.0]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.7.0
-
-## [v4.6.0]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.6.0
-
-## [v4.5.4]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.5.4
-
-## [v4.5.3]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.5.3
-
-## [v4.5.2]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.5.2
-
-## [v4.5.1]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.5.1
-
-## [v4.5.0]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.5.0
-
-## [v4.4.5]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.4.5
-
-## [v4.4.4]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.4.4
-
-## [v4.4.3]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.4.3
-
-## [v4.4.2]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.4.2
-
-## [v4.3.11]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.11
-
-## [v4.4.1]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.4.1
-
-## [v4.4.0]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.4.0
-
-## [v4.3.10]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.10
-
-## [v4.3.9]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.9
-
-## [v4.3.8]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.8
-
-## [v4.3.7]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.7
-
-## [v4.3.6]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.6
-
-## [v4.3.5]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.5
-
-## [v4.3.4]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.4
-
-## [v4.3.3]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.3
-
-## [v4.3.2]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.2
-
-## [v4.2.7]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.2.7
-
-## [v4.3.1]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.1
-
-## [v4.3.0]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.3.0
-
-## [v4.2.7]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.2.7
-
-## [v4.2.6]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.2.7
-
-## [v4.2.5]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.2.5
-
-## [v4.2.4]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.2.4
-
-## [v4.2.3]
-
-- https://github.com/wazuh/wazuh-packages/releases/tag/v4.2.3
+- Incorrect behavior when using the -d option in the Installation Assistant ([#822](https://github.com/wazuh/wazuh-installation-assistant/issues/822))
+- Recommended systems in the installation assistant differ from the compatibility matrix ([#793](https://github.com/wazuh/wazuh-installation-assistant/issues/793))
+- Removed simple quote from manager.sh. ([#799](https://github.com/wazuh/wazuh-installation-assistant/issues/799))
+- E2E documentation errors found ([#758](https://github.com/wazuh/wazuh-installation-assistant/issues/758))
+- Unexpected log messages in 4.14.5 RC1 assistant ([#704](https://github.com/wazuh/wazuh-installation-assistant/issues/704))
+- Improve input handling in YAML configuration parser. ([#693](https://github.com/wazuh/wazuh-installation-assistant/issues/693))
+- Wazuh Dashboard API host misconfigured (blank) leads to Invalid manager API URL. ([#654](https://github.com/wazuh/wazuh-installation-assistant/issues/654))
+- Offline one-liner (quickstart) AIO hang during files validation. ([#652](https://github.com/wazuh/wazuh-installation-assistant/issues/652))
+- The certificates script does not generate certificates when a valid YAML format is used ([#622](https://github.com/wazuh/wazuh-installation-assistant/issues/622))
+- Improve cluster initialization message to cluster security settings ([#533](https://github.com/wazuh/wazuh-installation-assistant/issues/533))
+
+## Prior version
+- []()
