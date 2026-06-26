@@ -27,10 +27,12 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Migrate GH runner to codebuild ([#883](https://github.com/wazuh/wazuh-installation-assistant/pull/883))
 - The security of the installation assistant is improved when creating configuration files. ([#707](https://github.com/wazuh/wazuh-installation-assistant/pull/707))
 
 ### Fixed
 
+- Fix password tool generateHash in 4.14.6 version. ([#849](https://github.com/wazuh/wazuh-installation-assistant/pull/849))
 - Prevent curl errors and cascading uninstalls when running with -d flag ([#712](https://github.com/wazuh/wazuh-installation-assistant/pull/712))
 
 ### Deleted
