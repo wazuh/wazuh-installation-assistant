@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Added bump-issue-link input in the 5.x bumper workflow. ([#862](https://github.com/wazuh/wazuh-installation-assistant/pull/862))
 - Add integration test module docs ([#894](https://github.com/wazuh/wazuh-installation-assistant/pull/894))
 - The passwords tool corrupts the admin hash ([#843](https://github.com/wazuh/wazuh-installation-assistant/issues/843))
 - Add open and reopened types for pull requests trigger in check_unit_tests workflow ([#805](https://github.com/wazuh/wazuh-installation-assistant/issues/805))
