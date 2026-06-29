@@ -30,7 +30,7 @@ class TestIndexerInstall:
         ext = "rpm" if sys_type == "yum" else "deb"
         pkg_dir = tmp_path / "packages"
         pkg_dir.mkdir()
-        (pkg_dir / f"wazuh-indexer-5.0.0.x86_64.{ext}").touch()
+        (pkg_dir / f"wazuh-indexer-1.2.3.x86_64.{ext}").touch()
 
         install_result = "0" if pkg_install_success else "1"
         indexer_installed = "1" if pkg_install_success else ""
@@ -50,7 +50,7 @@ class TestIndexerInstall:
             {
                 "sys_type": sys_type,
                 "sep": sep,
-                "indexer_version": "5.0.0",
+                "indexer_version": "1.2.3",
                 "indexer_revision": "1",
                 "base_path": str(tmp_path),
                 "download_packages_directory": "packages",
@@ -67,7 +67,7 @@ class TestIndexerInstall:
             {
                 "sys_type": "yum",
                 "sep": "-",
-                "indexer_version": "5.0.0",
+                "indexer_version": "1.2.3",
                 "indexer_revision": "1",
                 "base_path": str(tmp_path),
                 "download_packages_directory": "packages",
@@ -85,7 +85,7 @@ class TestIndexerInstall:
             {
                 "sys_type": "apt-get",
                 "sep": "=",
-                "indexer_version": "5.0.0",
+                "indexer_version": "1.2.3",
                 "indexer_revision": "1",
                 "base_path": str(tmp_path),
                 "download_packages_directory": "packages",
