@@ -2,7 +2,7 @@ run-name: >-
   ${{ github.event_name == 'workflow_dispatch'
     && format('Test Integration Tools - Manual {0} [{1}] on {2}', inputs.tool_type, inputs.install_mode, inputs.pr_head_ref)
     || format('Test Integration Tools - #{0} {1}', github.event.issue.number, github.event.issue.title) }}
-name: (5.x) PR Check - Test Integration Tools
+name: (1.x) PR Check - Test Integration Tools
 
 on:
   issue_comment:
@@ -16,7 +16,7 @@ on:
       automation_reference:
         description: 'Branch of wazuh-automation to use'
         required: false
-        default: '5.0.0'
+        default: 'v1.2.3-alpha8'
         type: string
       tool_type:
         description: 'Tool to test'
