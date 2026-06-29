@@ -64,7 +64,7 @@ flowchart TD
 | Input | Required | Default | Description |
 |---|---|---|---|
 | `pr_head_ref` | Yes | — | Branch of `wazuh-installation-assistant` to test |
-| `automation_reference` | No | `1.2.3` | Branch of `wazuh-automation` to use |
+| `automation_reference` | No | `5.0.0` | Branch of `wazuh-automation` to use |
 | `tool_type` | Yes | — | `installer`, `cert-tool`, `passwords-tool`, or `all` |
 | `install_mode` | No | `aio` | `aio`, `distributed`, or `offline` — applies to `installer` and `all` only |
 | `package_type` | No | `staging` | `staging` (dev packages) or `production` (official packages) |
