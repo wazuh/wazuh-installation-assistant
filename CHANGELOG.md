@@ -61,6 +61,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fixed bumper including missing tag input ([908](https://github.com/wazuh/wazuh-installation-assistant/pull/908))
 - Fix behavior with -d option when it has an empty parameter ([#830](https://github.com/wazuh/wazuh-installation-assistant/pull/830))
 - Update the OS compatibility matrix and ram specs ([#802](https://github.com/wazuh/wazuh-installation-assistant/pull/802))
 - Removed simple quote from manager.sh. ([#800](https://github.com/wazuh/wazuh-installation-assistant/pull/800))
