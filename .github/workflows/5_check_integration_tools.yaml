@@ -864,7 +864,9 @@ jobs:
       - name: Upload test results
         if: always()
         run: |
-          aws s3 cp "test-results-${{ matrix.system }}.github/" "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/test-results-${{ matrix.system }}.github/" --recursive
+          for f in test-results-${{ matrix.system }}*.github; do
+            [ -f "$f" ] && aws s3 cp "$f" "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/$f"
+          done
 
       # -----------------------------------------------------------------------
       # Cleanup: always deallocate instance with allocator
