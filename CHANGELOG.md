@@ -31,6 +31,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Change upload and download methods ([#909](https://github.com/wazuh/wazuh-installation-assistant/issues/909))
 - PR Revamp 5.0.0 ([#885](https://github.com/wazuh/wazuh-installation-assistant/issues/885))
 - Migrate GH runner to codebuild ([#876](https://github.com/wazuh/wazuh-installation-assistant/issues/876))
 - Minor change in step-by-step AIO documentation ([#855](https://github.com/wazuh/wazuh-installation-assistant/issues/855))
