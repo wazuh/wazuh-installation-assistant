@@ -373,7 +373,7 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Download built tools
         run: |
-          aws s3 cp "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/built-tools/*" "/tmp/built-tools/"
+          aws s3 cp "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/built-tools/" "/tmp/built-tools/" --recursive
 
 
       - name: Set SSH/SCP helper env vars
@@ -864,7 +864,7 @@ jobs:
       - name: Upload test results
         if: always()
         run: |
-          aws s3 cp "test-results-${{ matrix.system }}*.github" "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/"
+          aws s3 cp "test-results-${{ matrix.system }}*.github" "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/" --recursive
 
       # -----------------------------------------------------------------------
       # Cleanup: always deallocate instance with allocator
