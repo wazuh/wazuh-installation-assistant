@@ -75,6 +75,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Bumper script issue when the tag is set to false ([#875](https://github.com/wazuh/wazuh-installation-assistant/issues/875))
 - Incorrect behavior when using the -d option in the Installation Assistant ([#822](https://github.com/wazuh/wazuh-installation-assistant/issues/822))
 - Recommended systems in the installation assistant differ from the compatibility matrix ([#793](https://github.com/wazuh/wazuh-installation-assistant/issues/793))
 - Removed simple quote from manager.sh. ([#799](https://github.com/wazuh/wazuh-installation-assistant/issues/799))
