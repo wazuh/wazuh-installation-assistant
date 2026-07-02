@@ -372,7 +372,6 @@ jobs:
       # Deploy: copy built tools and artifact URLs to remote instance
       # -----------------------------------------------------------------------
       - name: Download built tools
-        uses: actions/download-artifact@v8
         run: |
           aws s3 cp "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/built-tools/*" "/tmp/built-tools/"
 
