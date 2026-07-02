@@ -50,3 +50,9 @@
 - [Tests](ref/tests/tests.md)
   - [Unit Tests](ref/tests/unit-test/unit-tests.md)
   - [Integration Tests](ref/tests/integration-test/integration-tests.md)
+
+---
+
+# Integration Tests
+
+- [Installation Assistant Integration Tests](ref/integration_test/installation_assistant_integration_tests.md)
