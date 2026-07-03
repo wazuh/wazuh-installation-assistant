@@ -31,6 +31,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- The Wazuh indexer heap size was modified for the AIO installation. ([#917](https://github.com/wazuh/wazuh-installation-assistant/pull/917))
 - PR Revamp 5.0.0 ([#885](https://github.com/wazuh/wazuh-installation-assistant/issues/885))
 - Migrate GH runner to codebuild ([#876](https://github.com/wazuh/wazuh-installation-assistant/issues/876))
 - Minor change in step-by-step AIO documentation ([#855](https://github.com/wazuh/wazuh-installation-assistant/issues/855))
