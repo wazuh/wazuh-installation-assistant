@@ -217,11 +217,11 @@ jobs:
         zip -P "${{ secrets.ZIP_ARTIFACTS_PASSWORD }}" -r $ALLOCATOR_PATH.zip $ALLOCATOR_PATH
 
     - name: Upload Allocator VM directory as artifact
+      env:
+        S3_PATH: "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/4_test_installation_assistant/${{ github.run_id }}"
       if: always() && steps.compress_allocator_files.outcome == 'success' && inputs.DESTROY == false && github.event_name != 'pull_request'
-      uses: actions/upload-artifact@v7
-      with:
-        name: allocator-instance-${{ matrix.system }}
-        path: ${{ env.ALLOCATOR_PATH }}.zip
+      run: |
+        aws s3 cp ${{ env.ALLOCATOR_PATH }}.zip "${{ env.S3_PATH }}/allocator-instance-${{ matrix.system }}/"
 
     - name: Delete allocated VM
       if: always() && steps.allocator_instance.outcome == 'success' && (inputs.DESTROY == true || github.event_name == 'pull_request')
