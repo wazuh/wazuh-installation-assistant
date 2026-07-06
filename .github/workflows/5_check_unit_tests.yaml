@@ -188,7 +188,7 @@ jobs:
           while IFS= read -r artifact; do
             [ -z "$artifact" ] && continue
             echo "  Uploading: $artifact"
-            aws s3 cp "${artifact}" "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-virtual-machines/5_check_unit_test/${{ github.run_id }}/${artifact}"
+            aws s3 cp "${artifact}" "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_unit_test/${{ github.run_id }}/${artifact}"
           done <<< "$ARTIFACT_NAMES"
           echo "All artifacts uploaded successfully."
 
