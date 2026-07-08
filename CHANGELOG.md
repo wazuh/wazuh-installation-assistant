@@ -73,6 +73,7 @@
 
 ### Fixed
 
+- Fix typo ([#925](https://github.com/wazuh/wazuh-installation-assistant/issues/925))
 - Fix bumper workflow failure when bump produces no changes ([#922](https://github.com/wazuh/wazuh-installation-assistant/pull/922))
 - Bumper script issue when the tag is set to false ([#875](https://github.com/wazuh/wazuh-installation-assistant/issues/875))
 - Incorrect behavior when using the -d option in the Installation Assistant ([#822](https://github.com/wazuh/wazuh-installation-assistant/issues/822))
