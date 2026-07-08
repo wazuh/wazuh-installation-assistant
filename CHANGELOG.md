@@ -28,6 +28,7 @@
 
 ### Changed
 
+- Add new WF for changelog check ([#930](https://github.com/wazuh/wazuh-installation-assistant/pull/930))
 - PR Revamp 5.0.0 ([#885](https://github.com/wazuh/wazuh-installation-assistant/issues/885))
 - Migrate GH runner to codebuild ([#876](https://github.com/wazuh/wazuh-installation-assistant/issues/876))
 - Minor change in step-by-step AIO documentation ([#855](https://github.com/wazuh/wazuh-installation-assistant/issues/855))
