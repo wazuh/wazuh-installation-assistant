@@ -270,7 +270,7 @@ class TestChecksHealth:
         assert_success(self._run({"indexer": "1", "cores": "1", "ram_gb": "3700"}))
 
     def test_warn_indexer_insufficient_ram(self):
-        assert_success(self._run({"indexer": "1", "cores": "2", "ram_gb": "3700"}))
+        assert_success(self._run({"indexer": "1", "cores": "2", "ram_gb": "3300"}))
 
     def test_success_indexer_2_cores_4gb(self):
         assert_success(self._run({"indexer": "1", "cores": "2", "ram_gb": "3700"}))
@@ -288,7 +288,7 @@ class TestChecksHealth:
         assert_success(self._run({"wazuh": "1", "cores": "1", "ram_gb": "3700"}))
 
     def test_warn_wazuh_insufficient_ram(self):
-        assert_success(self._run({"wazuh": "1", "cores": "2", "ram_gb": "3700"}))
+        assert_success(self._run({"wazuh": "1", "cores": "2", "ram_gb": "3300"}))
 
     def test_success_wazuh_2_cores_4gb(self):
         assert_success(self._run({"wazuh": "1", "cores": "2", "ram_gb": "3700"}))
