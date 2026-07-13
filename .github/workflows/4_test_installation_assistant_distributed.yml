@@ -10,6 +10,7 @@ on:
       - 'install_functions/**'
       - 'passwords_tool/**'
       - 'tests/**'
+      - '.github/workflows/4_test_installation_assistant_distributed.yml'
   workflow_dispatch:
     inputs:
       REPOSITORY:

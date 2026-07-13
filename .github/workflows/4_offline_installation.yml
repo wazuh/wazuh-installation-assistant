@@ -4,6 +4,7 @@ on:
     paths:
       - 'install_functions/wazuh-offline-download.sh'
       - 'install_functions/wazuh-offline-installation.sh'
+      - '.github/workflows/4_offline_installation.yml'
   workflow_dispatch:
     inputs:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
