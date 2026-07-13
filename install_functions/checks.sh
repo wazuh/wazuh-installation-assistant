@@ -264,8 +264,8 @@ function checks_health() {
     common_logger -d "Free RAM memory detected: ${ram_gb}"
 
     if [ -n "${indexer}" ]; then
-        if [ "${cores}" -lt 4 ] || [ "${ram_gb}" -lt 7300 ]; then
-            common_logger -w "Your system does not meet the recommended minimum hardware requirements of 8Gb of RAM and 4 CPU cores. The installation will continue, but it may not work properly."
+        if [ "${cores}" -lt 2 ] || [ "${ram_gb}" -lt 3300 ]; then
+            common_logger -w "Your system does not meet the recommended minimum hardware requirements of 4Gb of RAM and 2 CPU cores. The installation will continue, but it may not work properly."
         fi
     fi
 
@@ -276,14 +276,14 @@ function checks_health() {
     fi
 
     if [ -n "${wazuh}" ]; then
-        if [ "${cores}" -lt 4 ] || [ "${ram_gb}" -lt 7300 ]; then
-            common_logger -w "Your system does not meet the recommended minimum hardware requirements of 8Gb of RAM and 4 CPU cores. The installation will continue, but it may not work properly."
+        if [ "${cores}" -lt 2 ] || [ "${ram_gb}" -lt 3300 ]; then
+            common_logger -w "Your system does not meet the recommended minimum hardware requirements of 4Gb of RAM and 2 CPU cores. The installation will continue, but it may not work properly."
         fi
     fi
 
     if [ -n "${AIO}" ]; then
-        if [ "${cores}" -lt 8 ] || [ "${ram_gb}" -lt 15300 ]; then
-            common_logger -w "Your system does not meet the recommended minimum hardware requirements of 16Gb of RAM and 8 CPU cores. The installation will continue, but it may not work properly."
+        if [ "${cores}" -lt 4 ] || [ "${ram_gb}" -lt 7300 ]; then
+            common_logger -w "Your system does not meet the recommended minimum hardware requirements of 8Gb of RAM and 4 CPU cores. The installation will continue, but it may not work properly."
         fi
     fi
 
