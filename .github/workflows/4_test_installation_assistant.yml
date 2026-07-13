@@ -57,6 +57,7 @@ env:
   TMP_PATH: "/tmp/test"
   LOGS_PATH: "${{ github.workspace }}/assistant_logs"
   PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
+  VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
   TEST_NAME: "test_assistant"
   REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
   ALLOCATOR_PATH: "/tmp/allocator_instance"
@@ -179,7 +180,7 @@ jobs:
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute AIO installation playbook
       run: |
@@ -190,7 +191,7 @@ jobs:
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
         -e "pkg_repository=$PKG_REPOSITORY" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute Python test playbook
       run: |
@@ -201,7 +202,7 @@ jobs:
         -e "tmp_path=$TMP_PATH" \
         -e "logs_path=$LOGS_PATH" \
         -e "test_name=$TEST_NAME" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files

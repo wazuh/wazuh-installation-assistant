@@ -58,6 +58,7 @@ env:
   ANSIBLE_CALLBACK: "yaml"
   RESOURCES_PATH: "${{ github.workspace }}"
   PKG_REPOSITORY: "${{ inputs.REPOSITORY }}"
+  VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
   TEST_NAME: "test_installation_assistant"
   REPOSITORY_URL: "${{ github.server_url }}/${{ github.repository }}.git"
   ALLOCATOR_PATH: "/tmp/allocator_instance"
@@ -233,14 +234,14 @@ jobs:
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute certificates generation playbook
       run: |
         ANSIBLE_STDOUT_CALLBACK=$ANSIBLE_CALLBACK ansible-playbook .github/workflows/ansible-playbooks/distributed_generate_certificates.yml \
         -i $ALLOCATOR_PATH/inventory \
         -e "resources_path=$RESOURCES_PATH" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Copy certificates to nodes
       run: |
@@ -249,7 +250,7 @@ jobs:
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
         -e "resources_path=$RESOURCES_PATH" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute indexer installation playbook
       run: |
@@ -258,7 +259,7 @@ jobs:
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute indexer cluster start playbook
       run: |
@@ -268,7 +269,7 @@ jobs:
         -l indexers \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute server installation playbook
       run: |
@@ -277,7 +278,7 @@ jobs:
         -l managers \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute dashboard installation playbook
       run: |
@@ -286,7 +287,7 @@ jobs:
         -l dashboards \
         -e "tmp_path=$TMP_PATH" \
         -e "pkg_repository=$PKG_REPOSITORY" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Execute Python test playbook
       run: |
@@ -295,7 +296,7 @@ jobs:
         -l managers \
         -e "tmp_path=$TMP_PATH" \
         -e "test_name=$TEST_NAME" \
-        "${{ inputs.VERBOSITY }}"
+        "$VERBOSITY"
 
     - name: Compress Allocator VM directory
       id: compress_allocator_files
