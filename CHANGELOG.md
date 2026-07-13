@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Fix bumper workflow failure when bump produces no changes ([#923](https://github.com/wazuh/wazuh-installation-assistant/pull/923))
 
 ### Deleted
 
