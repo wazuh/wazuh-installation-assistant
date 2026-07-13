@@ -1,6 +1,3 @@
-# Change Log
-All notable changes to this project will be documented in this file.
-
 ## [v5.0.0]
 
 ### Added
@@ -32,6 +29,8 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Change upload and download methods ([#909](https://github.com/wazuh/wazuh-installation-assistant/issues/909))
+- The Wazuh indexer heap size was modified for the AIO installation. ([#917](https://github.com/wazuh/wazuh-installation-assistant/pull/917))
+- Add new WF for changelog check ([#930](https://github.com/wazuh/wazuh-installation-assistant/pull/930))
 - PR Revamp 5.0.0 ([#885](https://github.com/wazuh/wazuh-installation-assistant/issues/885))
 - Migrate GH runner to codebuild ([#876](https://github.com/wazuh/wazuh-installation-assistant/issues/876))
 - Minor change in step-by-step AIO documentation ([#855](https://github.com/wazuh/wazuh-installation-assistant/issues/855))
@@ -76,6 +75,9 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fix typo ([#925](https://github.com/wazuh/wazuh-installation-assistant/issues/925))
+- Fix bumper workflow failure when bump produces no changes ([#922](https://github.com/wazuh/wazuh-installation-assistant/pull/922))
+- Bumper script issue when the tag is set to false ([#875](https://github.com/wazuh/wazuh-installation-assistant/issues/875))
 - Incorrect behavior when using the -d option in the Installation Assistant ([#822](https://github.com/wazuh/wazuh-installation-assistant/issues/822))
 - Recommended systems in the installation assistant differ from the compatibility matrix ([#793](https://github.com/wazuh/wazuh-installation-assistant/issues/793))
 - Removed simple quote from manager.sh. ([#799](https://github.com/wazuh/wazuh-installation-assistant/issues/799))
