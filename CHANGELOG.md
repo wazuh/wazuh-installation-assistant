@@ -74,6 +74,7 @@
 
 ### Fixed
 
+- E2E Documentation issues in Release 5.0.0. ([#933](https://github.com/wazuh/wazuh-installation-assistant/issues/933))
 - Change minimum hardware requirements ([#924](https://github.com/wazuh/wazuh-installation-assistant/issues/924))
 - Fix typo ([#925](https://github.com/wazuh/wazuh-installation-assistant/issues/925))
 - Fix bumper workflow failure when bump produces no changes ([#922](https://github.com/wazuh/wazuh-installation-assistant/pull/922))
