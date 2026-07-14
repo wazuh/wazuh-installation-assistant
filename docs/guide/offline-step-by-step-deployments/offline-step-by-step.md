@@ -52,10 +52,10 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
    - `network.host`: Address of this node for HTTP and transport traffic. Use the same node address set in `config.yml`.
    - `node.name`: Name of the Wazuh indexer node as defined in `config.yml` (for example, `indexer`).
-   - `cluster.initial_master_nodes`: List of master-eligible node names.
+   - `cluster.initial_cluster_manager_nodes`: List of master-eligible node names.
 
         ```yaml
-        cluster.initial_master_nodes:
+        cluster.initial_cluster_manager_nodes:
             - "indexer"
             - "indexer-2"
             - "indexer-3"
