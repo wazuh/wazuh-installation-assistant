@@ -188,10 +188,10 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
   2. `node.name`: Name of the Wazuh indexer node as defined in the `config.yml` file. For example, `indexer`.
 
-  3. `cluster.initial_master_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file.
+  3. `cluster.initial_cluster_manager_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file.
 
       ```yaml
-      cluster.initial_master_nodes:
+      cluster.initial_cluster_manager_nodes:
       - "indexer"
       ```
 
@@ -435,7 +435,7 @@ Deploy the SSL certificates for secure communication between the Wazuh manager a
 NODE_NAME=<MANAGER_NODE_NAME>
 ```
 
-```BASH
+```bash
 mkdir -p /var/wazuh-manager/etc/certs
 cp ./wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem
 mv ./wazuh-certificates/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
@@ -636,12 +636,12 @@ Edit the `/etc/wazuh-dashboard/opensearch_dashboards.yml` file and replace the f
 ```yaml
 server.host: 0.0.0.0
 server.port: 443
-opensearch.hosts: https://localhost:9200
+opensearch.hosts: https://<WAZUH-INDEXER-IP>:9200
 opensearch.ssl.verificationMode: certificate
 ---
 wazuh_core.hosts:
   default:
-    url: https://localhost
+    url: https://<WAZUH-MANAGER-IP>
     port: 55000
     username: wazuh-wui
     password: wazuh-wui
