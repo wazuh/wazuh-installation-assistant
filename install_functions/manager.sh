@@ -61,8 +61,8 @@ function manager_configure(){
     eval "sed -i s/manager-key.pem/${winame}-key.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
     manager_copyCertificates "${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
-    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin
-    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin
+    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
+    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v wazuh-manager
 }
 
 function manager_install() {

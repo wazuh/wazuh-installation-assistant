@@ -190,8 +190,10 @@ Runs after an AIO installation. Changes the passwords for the following users:
 
 ```bash
 sudo bash wazuh-passwords-tool.sh -u admin -p 'T3sting-Password'
-sudo bash wazuh-passwords-tool.sh -u wazuh-server -p 'T3sting-Password'
-sudo bash wazuh-passwords-tool.sh -u wazuh-dashboard -p 'T3sting-Password'
+sudo bash wazuh-passwords-tool.sh -u wazuh-manager -p 'T3sting-Password'
+sudo bash wazuh-passwords-tool.sh -u wazuh-admin -p 'T3sting-Password'
+sudo bash wazuh-passwords-tool.sh -u wazuh-demo -p 'T3sting-Password'
+sudo bash wazuh-passwords-tool.sh -u wazuh-readonly -p 'T3sting-Password'
 sudo bash wazuh-passwords-tool.sh -au wazuh -ap wazuh -u wazuh-wui -p 'T3sting-Password' -A
 ```
 

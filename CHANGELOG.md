@@ -28,6 +28,7 @@
 
 ### Changed
 
+- Update deployment for Wazuh Indexer 5.0.0 RBAC. ([#928](https://github.com/wazuh/wazuh-installation-assistant/issues/928))
 - The Wazuh indexer heap size was modified for the AIO installation. ([#917](https://github.com/wazuh/wazuh-installation-assistant/pull/917))
 - Add new WF for changelog check ([#930](https://github.com/wazuh/wazuh-installation-assistant/pull/930))
 - PR Revamp 5.0.0 ([#885](https://github.com/wazuh/wazuh-installation-assistant/issues/885))
