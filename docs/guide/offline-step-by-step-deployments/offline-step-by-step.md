@@ -169,7 +169,7 @@ On systems with apt as package manager, the following dependencies must be insta
     echo '<INDEXER_PASSWORD>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
     ```
 
-    > Note: The default offline-installation credentials are `admin:admin`.
+    > Note: The default offline-installation credentials are `wazuh-manager:wazuh-manager`.
 
     Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
 

@@ -453,8 +453,8 @@ chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
 Configure the Wazuh manager to connect to the Wazuh indexer using the secure keystore:
 
 ```BASH
-/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin
-/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v wazuh-manager
 ```
 
 Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:

@@ -668,9 +668,13 @@ jobs:
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo bash /tmp/wazuh-passwords-tool.sh -u admin -p '${{ env.WAZUH_NEW_PASSWORD }}'"
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-server -p '${{ env.WAZUH_NEW_PASSWORD }}'"
+            "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-admin -p '${{ env.WAZUH_NEW_PASSWORD }}'"
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-dashboard -p '${{ env.WAZUH_NEW_PASSWORD }}'"
+            "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-manager -p '${{ env.WAZUH_NEW_PASSWORD }}'"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-demo -p '${{ env.WAZUH_NEW_PASSWORD }}'"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-readonly -p '${{ env.WAZUH_NEW_PASSWORD }}'"
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo bash /tmp/wazuh-passwords-tool.sh -au wazuh -ap wazuh -u wazuh-wui -p '${{ env.WAZUH_NEW_PASSWORD }}' -A"
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
