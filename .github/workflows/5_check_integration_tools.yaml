@@ -286,12 +286,8 @@ jobs:
             cp wazuh-installation-assistant/wazuh-passwords-tool.sh /tmp/built-tools/ || true
 
       - name: Upload built tools and artifact URLs
-        uses: actions/upload-artifact@v7
-        with:
-          name: built-tools
-          path: /tmp/built-tools/
-          if-no-files-found: error
-          retention-days: 1
+        run: |
+          aws s3 cp "/tmp/built-tools" "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/built-tools/" --recursive
 
   # -------------------------------------------------------------------------
   # Job 3: For each OS — provision VM, deploy tools, install, test, cleanup.
@@ -376,10 +372,9 @@ jobs:
       # Deploy: copy built tools and artifact URLs to remote instance
       # -----------------------------------------------------------------------
       - name: Download built tools
-        uses: actions/download-artifact@v8
-        with:
-          name: built-tools
-          path: /tmp/built-tools
+        run: |
+          aws s3 cp "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/built-tools/" "/tmp/built-tools/" --recursive
+
 
       - name: Set SSH/SCP helper env vars
         run: |
@@ -872,11 +867,10 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: test-results-${{ needs.build_tools.outputs.tool_type }}-${{ needs.build_tools.outputs.install_mode }}-${{ matrix.system }}
-          path: test-results-${{ matrix.system }}*.github
-          retention-days: 7
+        run: |
+          for f in test-results-${{ matrix.system }}*.github; do
+            [ -f "$f" ] && aws s3 cp "$f" "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/$f"
+          done
 
       # -----------------------------------------------------------------------
       # Cleanup: always deallocate instance with allocator
