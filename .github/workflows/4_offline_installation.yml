@@ -4,13 +4,15 @@ on:
     paths:
       - 'install_functions/wazuh-offline-download.sh'
       - 'install_functions/wazuh-offline-installation.sh'
+      - '.github/workflows/4_offline_installation.yml'
   workflow_dispatch:
     inputs:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
         default: 4.10.5
-
+env:
+  S3_PATH: s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/4_offline_installation
 jobs:
   Build-wazuh-install-script:
     runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -29,11 +31,8 @@ jobs:
       - name: Build wazuh-install script and use staging packages
         run: bash builder.sh -i
 
-      - uses: actions/upload-artifact@v3
-        with:
-          name: script
-          path: ./wazuh-install.sh
-          if-no-files-found: error
+      - name: Upload wazuh-install.sh artifact to S3
+        run: aws s3 cp ./wazuh-install.sh "${{ env.S3_PATH }}/${{ github.run_id }}/scripts/"
 
   Test-offline-installation-debian:
     runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -43,9 +42,8 @@ jobs:
         with:
           ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: script
+      - name: Download wazuh-install.sh artifact to S3
+        run: aws s3 cp "${{ env.S3_PATH }}/${{ github.run_id }}/scripts/wazuh-install.sh" .
 
       - name: Move installation assistant script
         run: cp $GITHUB_WORKSPACE/wazuh-install.sh $GITHUB_WORKSPACE/.github/actions/offline-installation/wazuh-install.sh
@@ -61,9 +59,8 @@ jobs:
         with:
           ref: ${{ inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: script
+      - name: Download wazuh-install.sh artifact to S3
+        run: aws s3 cp "${{ env.S3_PATH }}/${{ github.run_id }}/scripts/wazuh-install.sh" .
 
       - name: Move installation assistant script
         run: cp $GITHUB_WORKSPACE/wazuh-install.sh $GITHUB_WORKSPACE/.github/actions/offline-installation/wazuh-install.sh
