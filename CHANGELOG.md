@@ -29,6 +29,7 @@
 ### Changed
 
 - Change upload and download methods ([#909](https://github.com/wazuh/wazuh-installation-assistant/issues/909))
+- Update deployment for Wazuh Indexer 5.0.0 RBAC. ([#928](https://github.com/wazuh/wazuh-installation-assistant/issues/928))
 - The Wazuh indexer heap size was modified for the AIO installation. ([#917](https://github.com/wazuh/wazuh-installation-assistant/pull/917))
 - Add new WF for changelog check ([#930](https://github.com/wazuh/wazuh-installation-assistant/pull/930))
 - PR Revamp 5.0.0 ([#885](https://github.com/wazuh/wazuh-installation-assistant/issues/885))
@@ -75,6 +76,7 @@
 
 ### Fixed
 
+- E2E Documentation issues in Release 5.0.0. ([#933](https://github.com/wazuh/wazuh-installation-assistant/issues/933))
 - Change minimum hardware requirements ([#924](https://github.com/wazuh/wazuh-installation-assistant/issues/924))
 - Fix typo ([#925](https://github.com/wazuh/wazuh-installation-assistant/issues/925))
 - Fix bumper workflow failure when bump produces no changes ([#922](https://github.com/wazuh/wazuh-installation-assistant/pull/922))
