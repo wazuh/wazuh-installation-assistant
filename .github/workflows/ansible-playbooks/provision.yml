@@ -143,8 +143,16 @@
           when:
             - ansible_os_family == 'Debian'
 
+        - name: Get python3 version for pip bootstrap
+          command: python3 -c "import sys; print('{}.{}'.format(*sys.version_info[:2]))"
+          register: python3_version
+          when:
+            - ansible_os_family == 'Debian'
+            - stat_pip3.stat.exists == False
+            - ansible_distribution_release not in ['bionic']
+
         - name: Install pip Ubuntu\Debian
-          shell: curl https://bootstrap.pypa.io/get-pip.py | python3 -
+          shell: "curl https://bootstrap.pypa.io/pip/{{ python3_version.stdout }}/get-pip.py | python3 -"
           when:
             - ansible_os_family == 'Debian'
             - stat_pip3.stat.exists == False
