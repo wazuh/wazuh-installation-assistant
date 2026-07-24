@@ -211,10 +211,10 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
 
   2. `node.name`: Name of the Wazuh indexer node as defined in the `config.yml` file. For example, `indexer`.
 
-  3. `cluster.initial_master_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file. Uncomment the `indexer-2` and `indexer-3` lines, change the names, or add more lines, according to your `config.yml` definitions.
+  3. `cluster.initial_cluster_manager_nodes`: List of the names of the master-eligible nodes. These names are defined in the `config.yml` file. Uncomment the `indexer-2` and `indexer-3` lines, change the names, or add more lines, according to your `config.yml` definitions.
 
       ```yaml
-      cluster.initial_master_nodes:
+      cluster.initial_cluster_manager_nodes:
       - "indexer"
       - "indexer-2"
       - "indexer-3"
@@ -470,19 +470,19 @@ yum -y install ./wazuh-manager-5.0.1-<STAGE>.aarch64.rpm
 
 Deploy the SSL certificates for secure communication between the Wazuh manager and indexer. These certificates should be extracted from the `wazuh-certificates.tar` file generated during the certificate creation process.
 
-    ```bash
-    NODE_NAME=<MANAGER_NODE_NAME>
-    ```
+```bash
+NODE_NAME=<MANAGER_NODE_NAME>
+```
 
-    ```BASH
-    mkdir -p /var/wazuh-manager/etc/certs
-    tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
-    mv -n /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
-    mv -n /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
-    chmod 500 /var/wazuh-manager/etc/certs
-    chmod 400 /var/wazuh-manager/etc/certs/*
-    chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
-    ```
+```bash
+mkdir -p /var/wazuh-manager/etc/certs
+tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
+mv -n /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
+mv -n /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
+chmod 500 /var/wazuh-manager/etc/certs
+chmod 400 /var/wazuh-manager/etc/certs/*
+chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
+```
 
 > [!NOTE]
 > Replace `<MANAGER_NODE_NAME>` with the name you used when generating the certificates.
@@ -492,8 +492,8 @@ Deploy the SSL certificates for secure communication between the Wazuh manager a
 Configure the Wazuh manager to connect to the Wazuh indexer using the secure keystore:
 
 ```BASH
-/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin
-/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v wazuh-manager
 ```
 
 Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
@@ -746,12 +746,12 @@ Edit the `/etc/wazuh-dashboard/opensearch_dashboards.yml` file and replace the f
 ```yaml
 server.host: 0.0.0.0
 server.port: 443
-opensearch.hosts: https://localhost:9200
+opensearch.hosts: https://<WAZUH-INDEXER-IP>:9200
 opensearch.ssl.verificationMode: certificate
 ---
 wazuh_core.hosts:
   default:
-    url: https://localhost
+    url: https://<WAZUH-MANAGER-IP>
     port: 55000
     username: wazuh-wui
     password: wazuh-wui
@@ -760,19 +760,19 @@ wazuh_core.hosts:
 
 ### Deploying certificates
 
-    ```bash
-    NODE_NAME=<DASHBOARD_NODE_NAME>
-    ```
+```bash
+NODE_NAME=<DASHBOARD_NODE_NAME>
+```
 
-    ```bash
-    mkdir -p /etc/wazuh-dashboard/certs
-    tar -xf wazuh-certificates.tar -C /etc/wazuh-dashboard/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
-    mv -n /etc/wazuh-dashboard/certs/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
-    mv -n /etc/wazuh-dashboard/certs/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
-    chmod 500 /etc/wazuh-dashboard/certs
-    chmod 400 /etc/wazuh-dashboard/certs/*
-    chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
-    ```
+```bash
+mkdir -p /etc/wazuh-dashboard/certs
+tar -xf wazuh-certificates.tar -C /etc/wazuh-dashboard/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
+mv -n /etc/wazuh-dashboard/certs/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
+mv -n /etc/wazuh-dashboard/certs/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
+chmod 500 /etc/wazuh-dashboard/certs
+chmod 400 /etc/wazuh-dashboard/certs/*
+chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
+```
 
 ### Starting the Wazuh dashboard service
 
