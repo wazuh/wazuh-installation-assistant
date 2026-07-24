@@ -14,11 +14,18 @@
       yum: rpm
       dnf: rpm
       apt: deb
+    download_arch_map:
+      rpm:
+        x86_64: x86_64
+        aarch64: aarch64
+      deb:
+        x86_64: amd64
+        aarch64: arm64
 
   tasks:
     - name: Download assets
       shell:
-        cmd: "./wazuh-install.sh -dw {{ pkg_mgr_map[ansible_pkg_mgr] }} -d {{ pkg_repository }}"
+        cmd: "./wazuh-install.sh -dw {{ pkg_mgr_map[ansible_pkg_mgr] }} -d {{ pkg_repository }} -da {{ download_arch_map[pkg_mgr_map[ansible_pkg_mgr]][ansible_architecture] }}"
         chdir: "{{ working_path }}"
       register: install_result
 

@@ -1,0 +1,847 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Clusterized - Wazuh installation assistant technical documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The technical documentation for the Wazuh installation assistant internal process.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../../css/general-0392ca55.css">
+        <link rel="stylesheet" href="../../css/chrome-fc474251.css">
+        <link rel="stylesheet" href="../../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../../searchindex-e2cf2c6b.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../../toc-d1b8e5a3.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Wazuh installation assistant technical documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/wazuh/wazuh-installation-assistant" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="clusterized"><a class="header" href="#clusterized">Clusterized</a></h1>
+<p>Install and configure the Wazuh indexer as a multi-node cluster following step-by-step instructions. Wazuh indexer is a highly scalable full-text search engine and offers advanced security, alerting, index management, deep performance analysis, and several other features.</p>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>You need root user privileges to run all the commands described below.</p>
+</blockquote>
+<h2 id="certificate-creation"><a class="header" href="#certificate-creation">Certificate creation</a></h2>
+<p>Wazuh uses certificates to establish confidentiality and encrypt communications between its central components. Follow these steps to create certificates for the Wazuh central components.</p>
+<ol>
+<li>
+<p>Download the <code>wazuh-certs-tool-5.0.0.sh</code> script and the <code>config.yml</code> configuration file. This creates the certificates that encrypt communications between the Wazuh central components.</p>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-certs-tool-5.0.0.sh
+curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, use the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-certs-tool-5.0.0-&lt;STAGE&gt;.sh
+curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-&lt;STAGE&gt;.yml
+</code></pre>
+</li>
+<li>
+<p>Edit <code>config.yml</code> and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.</p>
+<p>For DNS-based or mixed address configurations, see <a href="../../ref/configuration/configuration-files.html#other-configyml-examples">Other <code>config.yml</code> examples</a>.</p>
+<pre><code class="language-yaml">nodes:
+  # Wazuh indexer nodes
+  indexer:
+    - name: indexer
+      ip: "&lt;indexer-node-ip&gt;"
+    #- name: indexer-2
+    #  ip: "&lt;indexer-node-ip&gt;"
+    #- name: indexer-3
+    #  ip: "&lt;indexer-node-ip&gt;"
+
+  # Wazuh manager nodes
+  # If there is more than one Wazuh manager
+  # node, each one must have a node_type
+  manager:
+    - name: manager
+      ip: "&lt;wazuh-manager-ip&gt;"
+    #  node_type: master
+    #- name: manager-2
+    #  ip: "&lt;wazuh-manager-ip&gt;"
+    #  node_type: worker
+    #- name: manager-3
+    #  ip: "&lt;wazuh-manager-ip&gt;"
+    #  node_type: worker
+
+  # Wazuh dashboard nodes
+  dashboard:
+    - name: dashboard
+      ip: "&lt;dashboard-node-ip&gt;"
+</code></pre>
+</li>
+<li>
+<p>Run <code>wazuh-certs-tool-5.0.0.sh</code> to create the certificates.</p>
+<pre><code class="language-bash">bash wazuh-certs-tool-5.0.0.sh -A
+</code></pre>
+</li>
+<li>
+<p>Compress all the necessary files.</p>
+<pre><code class="language-bash">tar -cvf ./wazuh-certificates.tar -C ./wazuh-certificates/ .
+rm -rf ./wazuh-certificates
+</code></pre>
+</li>
+<li>
+<p>Copy the <code>wazuh-certificates.tar</code> file to all the nodes, including the Wazuh indexer, Wazuh server, and Wazuh dashboard nodes. This can be done by using the <code>scp</code> utility.</p>
+</li>
+</ol>
+<h2 id="wazuh-indexer"><a class="header" href="#wazuh-indexer">Wazuh indexer</a></h2>
+<p>Follow these steps to install and configure a multi-node Wazuh indexer.</p>
+<h3 id="installing-package-dependencies"><a class="header" href="#installing-package-dependencies">Installing package dependencies</a></h3>
+<h4 id="apt"><a class="header" href="#apt">APT</a></h4>
+<pre><code class="language-bash">apt install debconf adduser procps
+</code></pre>
+<h4 id="yum"><a class="header" href="#yum">YUM</a></h4>
+<pre><code class="language-bash">yum install coreutils
+</code></pre>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>You can install Wazuh by adding the Wazuh repository or by downloading the packages directly.</p>
+</blockquote>
+<h3 id="adding-the-wazuh-repository"><a class="header" href="#adding-the-wazuh-repository">Adding the Wazuh repository</a></h3>
+<h4 id="apt-1"><a class="header" href="#apt-1">APT</a></h4>
+<pre><code class="language-bash">apt install gnupg apt-transport-https
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import &amp;&amp; chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">apt install gnupg apt-transport-https
+curl -s https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import &amp;&amp; chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+</code></pre>
+<h4 id="yum-1"><a class="header" href="#yum-1">YUM</a></h4>
+<pre><code class="language-bash">rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages.wazuh.com/production/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">rpm --import https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+</code></pre>
+<h3 id="installing-wazuh-indexer"><a class="header" href="#installing-wazuh-indexer">Installing Wazuh indexer</a></h3>
+<h4 id="apt-2"><a class="header" href="#apt-2">APT</a></h4>
+<pre><code class="language-bash">apt -y install wazuh-indexer
+</code></pre>
+<h4 id="yum-2"><a class="header" href="#yum-2">YUM</a></h4>
+<pre><code class="language-bash">yum -y install wazuh-indexer
+</code></pre>
+<h3 id="download-and-install-wazuh-indexer-package"><a class="header" href="#download-and-install-wazuh-indexer-package">Download and install Wazuh indexer package</a></h3>
+<h4 id="deb-amd64"><a class="header" href="#deb-amd64">DEB amd64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_amd64.deb
+apt -y install ./wazuh-indexer_5.0.0_amd64.deb
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-&lt;STAGE&gt;_amd64.deb
+apt -y install ./wazuh-indexer_5.0.0-&lt;STAGE&gt;_amd64.deb
+</code></pre>
+<h4 id="deb-arm64"><a class="header" href="#deb-arm64">DEB arm64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_arm64.deb
+apt -y install ./wazuh-indexer_5.0.0_arm64.deb
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-&lt;STAGE&gt;_arm64.deb
+apt -y install ./wazuh-indexer_5.0.0-&lt;STAGE&gt;_arm64.deb
+</code></pre>
+<h4 id="rpm-x86_64"><a class="header" href="#rpm-x86_64">RPM x86_64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.x86_64.rpm
+yum -y install ./wazuh-indexer-5.0.0.x86_64.rpm
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0-&lt;STAGE&gt;.x86_64.rpm
+yum -y install ./wazuh-indexer-5.0.0-&lt;STAGE&gt;.x86_64.rpm
+</code></pre>
+<h4 id="rpm-aarch64"><a class="header" href="#rpm-aarch64">RPM aarch64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.aarch64.rpm
+yum -y install ./wazuh-indexer-5.0.0.aarch64.rpm
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0-&lt;STAGE&gt;.aarch64.rpm
+yum -y install ./wazuh-indexer-5.0.0-&lt;STAGE&gt;.aarch64.rpm
+</code></pre>
+<h3 id="configuring-the-wazuh-indexer"><a class="header" href="#configuring-the-wazuh-indexer">Configuring the Wazuh indexer</a></h3>
+<p>Edit <code>/etc/wazuh-indexer/opensearch.yml</code> and replace the following values:</p>
+<ol>
+<li>
+<p><code>network.host</code>: Sets the address of this node for both HTTP and transport traffic. The node will bind to this address and use it as its publish address. Accepts an IP address or a hostname.</p>
+<p>Use the same node address set in <code>config.yml</code> to create the SSL certificates.</p>
+</li>
+<li>
+<p><code>node.name</code>: Name of the Wazuh indexer node as defined in the <code>config.yml</code> file. For example, <code>indexer</code>.</p>
+</li>
+<li>
+<p><code>cluster.initial_master_nodes</code>: List of the names of the master-eligible nodes. These names are defined in the <code>config.yml</code> file. Uncomment the <code>indexer-2</code> and <code>indexer-3</code> lines, change the names, or add more lines, according to your <code>config.yml</code> definitions.</p>
+<pre><code class="language-yaml">cluster.initial_master_nodes:
+- "indexer"
+- "indexer-2"
+- "indexer-3"
+</code></pre>
+</li>
+<li>
+<p><code>discovery.seed_hosts</code>: List of the addresses of the master-eligible nodes. Each element can be either an IP address or a hostname. For multi-node configurations, uncomment this setting and set the IP addresses of each master-eligible node.</p>
+<pre><code class="language-yaml">discovery.seed_hosts:
+  - "10.0.0.1"
+  - "10.0.0.2"
+  - "10.0.0.3"
+</code></pre>
+</li>
+<li>
+<p><code>plugins.security.nodes_dn</code>: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for <code>indexer-2</code> and <code>indexer-3</code> and change the common names (CN) and values according to your settings and your <code>config.yml</code> definitions.</p>
+<pre><code class="language-yaml">plugins.security.nodes_dn:
+- "CN=indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
+- "CN=indexer-2,OU=Wazuh,O=Wazuh,L=California,C=US"
+- "CN=indexer-3,OU=Wazuh,O=Wazuh,L=California,C=US"
+</code></pre>
+</li>
+</ol>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>Firewalls can block communication between Wazuh components on different hosts. Refer to the Required ports section and ensure the necessary ports are open.</p>
+</blockquote>
+<h3 id="deploying-certificates"><a class="header" href="#deploying-certificates">Deploying certificates</a></h3>
+<ol>
+<li>
+<p>Run the following commands, replacing <code>&lt;INDEXER_NODE_NAME&gt;</code> with the name of the Wazuh indexer node you are configuring as defined in <code>config.yml</code>. For example, <code>indexer</code>. This deploys the SSL certificates to encrypt communications between the Wazuh central components.</p>
+<pre><code class="language-bash">NODE_NAME=&lt;INDEXER_NODE_NAME&gt;
+</code></pre>
+<pre><code class="language-bash">tar -xf wazuh-certificates.tar -C /etc/wazuh-indexer/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./admin.pem ./admin-key.pem ./root-ca.pem
+mv -n /etc/wazuh-indexer/certs/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
+mv -n /etc/wazuh-indexer/certs/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
+chmod 500 /etc/wazuh-indexer/certs
+chmod 400 /etc/wazuh-indexer/certs/*
+chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs
+</code></pre>
+</li>
+<li>
+<p><strong>Recommended action</strong>: If no other Wazuh components will be installed on this node, run the following command to remove the <code>wazuh-certificates.tar</code> file.</p>
+<pre><code class="language-bash">rm -f ./wazuh-certificates.tar
+</code></pre>
+</li>
+</ol>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>For Wazuh indexer installation on hardened endpoints with <code>noexec</code> flag on the <code>/tmp</code> directory, additional setup is required. See the Wazuh indexer configuration on hardened endpoints section for necessary configuration.</p>
+</blockquote>
+<h3 id="starting-the-service"><a class="header" href="#starting-the-service">Starting the service</a></h3>
+<p>Enable and start the Wazuh indexer service.</p>
+<h4 id="systemd"><a class="header" href="#systemd">Systemd</a></h4>
+<pre><code class="language-bash">systemctl daemon-reload
+systemctl enable wazuh-indexer
+systemctl start wazuh-indexer
+</code></pre>
+<h4 id="sysv-init"><a class="header" href="#sysv-init">SysV init</a></h4>
+<p>Choose one option according to the operating system used.</p>
+<h5 id="rpm-based-operating-system"><a class="header" href="#rpm-based-operating-system">RPM-based operating system</a></h5>
+<pre><code class="language-bash">chkconfig --add wazuh-indexer
+service wazuh-indexer start
+</code></pre>
+<h5 id="debian-based-operating-system"><a class="header" href="#debian-based-operating-system">Debian-based operating system</a></h5>
+<pre><code class="language-bash">update-rc.d wazuh-indexer defaults 95 10
+service wazuh-indexer start
+</code></pre>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>Repeat this stage of the installation process for every Wazuh indexer node in your multi-node cluster. Then proceed with initializing your multi-node cluster in the next stage.</p>
+</blockquote>
+<h3 id="cluster-initialization"><a class="header" href="#cluster-initialization">Cluster initialization</a></h3>
+<p>The final stage of installing the Wazuh indexer cluster consists of running the security admin script.
+Run the Wazuh <code>indexer indexer-security-init.sh</code> script to load the new certificates information and start the multi-node cluster.</p>
+<pre><code class="language-bash">/usr/share/wazuh-indexer/bin/indexer-security-init.sh
+</code></pre>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>You only have to initialize the cluster once, there is no need to run this command on every node.</p>
+</blockquote>
+<h3 id="testing-the-cluster-installation"><a class="header" href="#testing-the-cluster-installation">Testing the cluster installation</a></h3>
+<ol>
+<li>
+<p>Run the following commands to confirm that the installation is successful. Replace <code>&lt;WAZUH_INDEXER_IP_ADDRESS&gt;</code> with the IP address of the Wazuh indexer:</p>
+<pre><code class="language-bash">curl -k -u admin:admin https://&lt;WAZUH_INDEXER_IP_ADDRESS&gt;:9200
+</code></pre>
+<pre><code class="language-json">{
+  "name" : "indexer",
+  "cluster_name" : "wazuh-cluster",
+  "cluster_uuid" : "095jEW-oRJSFKLz5wmo5PA",
+  "version" : {
+    "number" : "7.10.2",
+    "build_type" : "rpm",
+    "build_hash" : "db90a415ff2fd428b4f7b3f800a51dc229287cb4",
+    "build_date" : "2023-06-03T06:24:25.112415503Z",
+    "build_snapshot" : false,
+    "lucene_version" : "9.6.0",
+    "minimum_wire_compatibility_version" : "7.10.0",
+    "minimum_index_compatibility_version" : "7.0.0"
+  },
+  "tagline" : "The OpenSearch Project: https://opensearch.org/"
+}
+</code></pre>
+</li>
+<li>
+<p>Run the following command to check if the cluster is working correctly. Replace <code>&lt;WAZUH_INDEXER_IP_ADDRESS&gt;</code> with the IP address of the Wazuh indexer:</p>
+<pre><code class="language-bash">curl -k -u admin:admin https://&lt;WAZUH_INDEXER_IP_ADDRESS&gt;:9200/_cat/nodes?v
+</code></pre>
+<pre><code class="language-bash">ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
+192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
+</code></pre>
+</li>
+</ol>
+<h2 id="wazuh-manager"><a class="header" href="#wazuh-manager">Wazuh manager</a></h2>
+<p>Install and configure the Wazuh manager following step-by-step instructions. The Wazuh manager collects and analyzes data from the deployed Wazuh agents. It triggers alerts when threats or anomalies are detected. Wazuh manager securely forwards alerts and archived events to the Wazuh indexer.</p>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>You can install Wazuh by adding the Wazuh repository or by downloading the packages directly.</p>
+</blockquote>
+<h3 id="adding-the-wazuh-repository-1"><a class="header" href="#adding-the-wazuh-repository-1">Adding the Wazuh repository</a></h3>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>If you added the repository on any previous step you can skip this step.</p>
+</blockquote>
+<h4 id="apt-3"><a class="header" href="#apt-3">APT</a></h4>
+<pre><code class="language-bash">apt install gnupg apt-transport-https
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import &amp;&amp; chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">apt install gnupg apt-transport-https
+curl -s https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import &amp;&amp; chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+</code></pre>
+<h4 id="yum-3"><a class="header" href="#yum-3">YUM</a></h4>
+<pre><code class="language-bash">rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages.wazuh.com/production/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">rpm --import https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+</code></pre>
+<h3 id="installing-wazuh-manager"><a class="header" href="#installing-wazuh-manager">Installing Wazuh manager</a></h3>
+<h4 id="apt-4"><a class="header" href="#apt-4">APT</a></h4>
+<pre><code class="language-bash">apt -y install wazuh-manager
+</code></pre>
+<h4 id="yum-4"><a class="header" href="#yum-4">YUM</a></h4>
+<pre><code class="language-bash">yum -y install wazuh-manager
+</code></pre>
+<h3 id="download-and-install-wazuh-manager-package"><a class="header" href="#download-and-install-wazuh-manager-package">Download and install Wazuh manager package</a></h3>
+<h4 id="deb-amd64-1"><a class="header" href="#deb-amd64-1">DEB amd64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_amd64.deb
+apt -y install ./wazuh-manager_5.0.0_amd64.deb
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-&lt;STAGE&gt;_amd64.deb
+apt -y install ./wazuh-manager_5.0.0-&lt;STAGE&gt;_amd64.deb
+</code></pre>
+<h4 id="deb-arm64-1"><a class="header" href="#deb-arm64-1">DEB arm64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_arm64.deb
+apt -y install ./wazuh-manager_5.0.0_arm64.deb
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-&lt;STAGE&gt;_arm64.deb
+apt -y install ./wazuh-manager_5.0.0-&lt;STAGE&gt;_arm64.deb
+</code></pre>
+<h4 id="rpm-x86_64-1"><a class="header" href="#rpm-x86_64-1">RPM x86_64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.x86_64.rpm
+yum -y install ./wazuh-manager-5.0.0.x86_64.rpm
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0-&lt;STAGE&gt;.x86_64.rpm
+yum -y install ./wazuh-manager-5.0.0-&lt;STAGE&gt;.x86_64.rpm
+</code></pre>
+<h4 id="rpm-aarch64-1"><a class="header" href="#rpm-aarch64-1">RPM aarch64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.aarch64.rpm
+yum -y install ./wazuh-manager-5.0.0.aarch64.rpm
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0-&lt;STAGE&gt;.aarch64.rpm
+yum -y install ./wazuh-manager-5.0.0-&lt;STAGE&gt;.aarch64.rpm
+</code></pre>
+<h3 id="deploying-certificates-1"><a class="header" href="#deploying-certificates-1">Deploying certificates</a></h3>
+<p>Deploy the SSL certificates for secure communication between the Wazuh manager and indexer. These certificates should be extracted from the <code>wazuh-certificates.tar</code> file generated during the certificate creation process.</p>
+<pre><code>```bash
+NODE_NAME=&lt;MANAGER_NODE_NAME&gt;
+```
+
+```BASH
+mkdir -p /var/wazuh-manager/etc/certs
+tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
+mv -n /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
+mv -n /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
+chmod 500 /var/wazuh-manager/etc/certs
+chmod 400 /var/wazuh-manager/etc/certs/*
+chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
+```
+</code></pre>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>Replace <code>&lt;MANAGER_NODE_NAME&gt;</code> with the name you used when generating the certificates.</p>
+</blockquote>
+<h3 id="configure-indexer-connection"><a class="header" href="#configure-indexer-connection">Configure indexer connection</a></h3>
+<p>Configure the Wazuh manager to connect to the Wazuh indexer using the secure keystore:</p>
+<pre><code class="language-BASH">/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin
+</code></pre>
+<p>Update the indexer configuration in <code>/var/wazuh-manager/etc/wazuh-manager.conf</code> to specify the indexer IP address:</p>
+<pre><code class="language-xml">&lt;indexer&gt;
+  &lt;hosts&gt;
+    &lt;host&gt;https://127.0.0.1:9200&lt;/host&gt;
+  &lt;/hosts&gt;
+  &lt;ssl&gt;
+    &lt;certificate_authorities&gt;
+      &lt;ca&gt;etc/certs/root-ca.pem&lt;/ca&gt;
+    &lt;/certificate_authorities&gt;
+    &lt;certificate&gt;etc/certs/manager.pem&lt;/certificate&gt;
+    &lt;key&gt;etc/certs/manager-key.pem&lt;/key&gt;
+  &lt;/ssl&gt;
+&lt;/indexer&gt;
+</code></pre>
+<h3 id="start-the-wazuh-manager-service"><a class="header" href="#start-the-wazuh-manager-service">Start the Wazuh manager service</a></h3>
+<p>Start and enable the Wazuh manager service:</p>
+<pre><code class="language-bash">systemctl daemon-reload
+systemctl enable wazuh-manager
+systemctl start wazuh-manager
+</code></pre>
+<p>Verify the Wazuh manager service is running:</p>
+<pre><code class="language-bash">systemctl status wazuh-manager
+</code></pre>
+<h3 id="cluster-configuration"><a class="header" href="#cluster-configuration">Cluster configuration</a></h3>
+<p>The Wazuh manager cluster allows you to scale horizontally by distributing the load across multiple nodes. The cluster comes enabled by default with the following configuration in <code>/var/wazuh-manager/etc/wazuh-manager.conf</code>:</p>
+<pre><code class="language-xml">&lt;cluster&gt;
+  &lt;name&gt;wazuh&lt;/name&gt;
+  &lt;node_name&gt;node01&lt;/node_name&gt;
+  &lt;node_type&gt;master&lt;/node_type&gt;
+  &lt;key&gt;fd3350b86d239654e34866ab3c4988a8&lt;/key&gt;
+  &lt;port&gt;1516&lt;/port&gt;
+  &lt;bind_addr&gt;127.0.0.1&lt;/bind_addr&gt;
+  &lt;nodes&gt;
+      &lt;node&gt;127.0.0.1&lt;/node&gt;
+  &lt;/nodes&gt;
+  &lt;hidden&gt;no&lt;/hidden&gt;
+&lt;/cluster&gt;
+</code></pre>
+<p>For a multi-node cluster deployment, you need to configure one master node and one or more worker nodes. Follow these steps on each node:</p>
+<ol>
+<li>
+<p>On the master node, edit <code>/var/wazuh-manager/etc/wazuh-manager.conf</code>:</p>
+<pre><code class="language-xml">&lt;cluster&gt;
+  &lt;name&gt;wazuh&lt;/name&gt;
+  &lt;node_name&gt;master-node&lt;/node_name&gt;
+  &lt;node_type&gt;master&lt;/node_type&gt;
+  &lt;key&gt;fd3350b86d239654e34866ab3c4988a8&lt;/key&gt;
+  &lt;port&gt;1516&lt;/port&gt;
+  &lt;bind_addr&gt;0.0.0.0&lt;/bind_addr&gt;
+  &lt;nodes&gt;
+      &lt;node&gt;MASTER_NODE_IP&lt;/node&gt;
+  &lt;/nodes&gt;
+  &lt;hidden&gt;no&lt;/hidden&gt;
+&lt;/cluster&gt;
+</code></pre>
+<p>Replace <code>MASTER_NODE_IP</code> with the actual IP address of the master node.</p>
+</li>
+<li>
+<p>On each worker node, edit <code>/var/wazuh-manager/etc/wazuh-manager.conf</code>:</p>
+<pre><code class="language-xml">&lt;cluster&gt;
+  &lt;name&gt;wazuh&lt;/name&gt;
+  &lt;node_name&gt;worker-node-01&lt;/node_name&gt;
+  &lt;node_type&gt;worker&lt;/node_type&gt;
+  &lt;key&gt;fd3350b86d239654e34866ab3c4988a8&lt;/key&gt;
+  &lt;port&gt;1516&lt;/port&gt;
+  &lt;bind_addr&gt;0.0.0.0&lt;/bind_addr&gt;
+  &lt;nodes&gt;
+      &lt;node&gt;MASTER_NODE_IP&lt;/node&gt;
+  &lt;/nodes&gt;
+  &lt;hidden&gt;no&lt;/hidden&gt;
+&lt;/cluster&gt;
+</code></pre>
+<p>Replace <code>MASTER_NODE_IP</code> with the actual IP address of the master node, and use a unique <code>node_name</code> for each worker.</p>
+</li>
+<li>
+<p>Restart the Wazuh manager service on all nodes after making configuration changes:</p>
+<pre><code class="language-bash">systemctl restart wazuh-manager
+</code></pre>
+</li>
+<li>
+<p>Verify the cluster status from any node:</p>
+<pre><code class="language-bash">/var/wazuh-manager/bin/cluster_control -l
+</code></pre>
+</li>
+</ol>
+<h2 id="wazuh-dashboard"><a class="header" href="#wazuh-dashboard">Wazuh dashboard</a></h2>
+<p>Follow these steps to install the Wazuh dashboard.</p>
+<h3 id="installing-package-dependencies-1"><a class="header" href="#installing-package-dependencies-1">Installing package dependencies</a></h3>
+<h4 id="apt-5"><a class="header" href="#apt-5">APT</a></h4>
+<pre><code class="language-bash">apt install debhelper tar curl libcap2-bin # debhelper version 9 or later
+</code></pre>
+<h4 id="yum-5"><a class="header" href="#yum-5">YUM</a></h4>
+<pre><code class="language-bash">yum install libcap
+</code></pre>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>You can install Wazuh by adding the Wazuh repository or by downloading the packages directly.</p>
+</blockquote>
+<h3 id="adding-the-wazuh-repository-2"><a class="header" href="#adding-the-wazuh-repository-2">Adding the Wazuh repository</a></h3>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>If you added the repository on any previous step you can skip this step.</p>
+</blockquote>
+<h4 id="apt-6"><a class="header" href="#apt-6">APT</a></h4>
+<pre><code class="language-bash">apt install gnupg apt-transport-https
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import &amp;&amp; chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">apt install gnupg apt-transport-https
+curl -s https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import &amp;&amp; chmod 644 /usr/share/keyrings/wazuh.gpg
+echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
+apt update
+</code></pre>
+<h4 id="yum-6"><a class="header" href="#yum-6">YUM</a></h4>
+<pre><code class="language-bash">rpm --import https://packages.wazuh.com/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages.wazuh.com/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages.wazuh.com/production/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">rpm --import https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH
+echo -e '[wazuh]\ngpgcheck=1\ngpgkey=https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH\nenabled=1\nname=EL-$releasever - Wazuh\nbaseurl=https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/\npriority=1' | tee /etc/yum.repos.d/wazuh.repo
+</code></pre>
+<h3 id="installing-wazuh-dashboard"><a class="header" href="#installing-wazuh-dashboard">Installing Wazuh dashboard</a></h3>
+<h4 id="apt-7"><a class="header" href="#apt-7">APT</a></h4>
+<pre><code class="language-bash">apt -y install wazuh-dashboard
+</code></pre>
+<h4 id="yum-7"><a class="header" href="#yum-7">YUM</a></h4>
+<pre><code class="language-bash">yum -y install wazuh-dashboard
+</code></pre>
+<h3 id="download-and-install-wazuh-dashboard-package"><a class="header" href="#download-and-install-wazuh-dashboard-package">Download and install Wazuh dashboard package</a></h3>
+<h4 id="deb-amd64-2"><a class="header" href="#deb-amd64-2">DEB amd64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_amd64.deb
+apt -y install ./wazuh-dashboard_5.0.0_amd64.deb
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-&lt;STAGE&gt;_amd64.deb
+apt -y install ./wazuh-dashboard_5.0.0-&lt;STAGE&gt;_amd64.deb
+</code></pre>
+<h4 id="deb-arm64-2"><a class="header" href="#deb-arm64-2">DEB arm64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_arm64.deb
+apt -y install ./wazuh-dashboard_5.0.0_arm64.deb
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-&lt;STAGE&gt;_arm64.deb
+apt -y install ./wazuh-dashboard_5.0.0-&lt;STAGE&gt;_arm64.deb
+</code></pre>
+<h4 id="rpm-x86_64-2"><a class="header" href="#rpm-x86_64-2">RPM x86_64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.x86_64.rpm
+yum -y install ./wazuh-dashboard-5.0.0.x86_64.rpm
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0-&lt;STAGE&gt;.x86_64.rpm
+yum -y install ./wazuh-dashboard-5.0.0-&lt;STAGE&gt;.x86_64.rpm
+</code></pre>
+<h4 id="rpm-aarch64-2"><a class="header" href="#rpm-aarch64-2">RPM aarch64</a></h4>
+<pre><code class="language-bash">curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.aarch64.rpm
+yum -y install ./wazuh-dashboard-5.0.0.aarch64.rpm
+</code></pre>
+<p>To use <code>pre-release</code> packages instead, run the following commands:</p>
+<pre><code class="language-bash">curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0-&lt;STAGE&gt;.aarch64.rpm
+yum -y install ./wazuh-dashboard-5.0.0-&lt;STAGE&gt;.aarch64.rpm
+</code></pre>
+<h3 id="configuring-the-wazuh-dashboard"><a class="header" href="#configuring-the-wazuh-dashboard">Configuring the Wazuh dashboard</a></h3>
+<p>Edit the <code>/etc/wazuh-dashboard/opensearch_dashboards.yml</code> file and replace the following values:</p>
+<ul>
+<li><code>server.host</code>: This setting specifies the host of the Wazuh dashboard server. To allow remote users to connect, set the value to the IP address or DNS name of the Wazuh dashboard server. The value 0.0.0.0 will accept all the available IP addresses of the host.</li>
+<li><code>opensearch.hosts</code>: The URLs of the Wazuh indexer instances to use for all your queries. The Wazuh dashboard can be configured to connect to multiple Wazuh indexer nodes in the same cluster. The addresses of the nodes can be separated by commas. For example, [“https://10.0.0.2:9200”, “https://10.0.0.3:9200”,“https://10.0.0.4:9200”]</li>
+<li><code>wazuh_core.hosts</code>: The Wazuh manager hosts that the dashboard will use to query the Wazuh manager API. At least one host is required. Each host entry defined with an unique ID and must include:
+<ul>
+<li><code>url</code>: The URL to the server API including the protocol and address (DNS or IP).</li>
+<li><code>port</code>: The port where is served.</li>
+<li><code>username</code>: The user that runs the requests.</li>
+<li><code>password</code>: The password for the user.</li>
+<li><code>run_as</code>: This defines how the dashboard requests the data, using the default configured account (false) or the current user’s context (true).</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-yaml">server.host: 0.0.0.0
+server.port: 443
+opensearch.hosts: https://localhost:9200
+opensearch.ssl.verificationMode: certificate
+---
+wazuh_core.hosts:
+  default:
+    url: https://localhost
+    port: 55000
+    username: wazuh-wui
+    password: wazuh-wui
+    run_as: true
+</code></pre>
+<h3 id="deploying-certificates-2"><a class="header" href="#deploying-certificates-2">Deploying certificates</a></h3>
+<pre><code>```bash
+NODE_NAME=&lt;DASHBOARD_NODE_NAME&gt;
+```
+
+```bash
+mkdir -p /etc/wazuh-dashboard/certs
+tar -xf wazuh-certificates.tar -C /etc/wazuh-dashboard/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
+mv -n /etc/wazuh-dashboard/certs/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
+mv -n /etc/wazuh-dashboard/certs/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
+chmod 500 /etc/wazuh-dashboard/certs
+chmod 400 /etc/wazuh-dashboard/certs/*
+chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
+```
+</code></pre>
+<h3 id="starting-the-wazuh-dashboard-service"><a class="header" href="#starting-the-wazuh-dashboard-service">Starting the Wazuh dashboard service</a></h3>
+<h4 id="systemd-1"><a class="header" href="#systemd-1">Systemd</a></h4>
+<pre><code class="language-bash">systemctl daemon-reload
+systemctl enable wazuh-dashboard
+systemctl start wazuh-dashboard
+</code></pre>
+<h4 id="sysv-init-1"><a class="header" href="#sysv-init-1">SysV init</a></h4>
+<h5 id="rpm-based-operating-system-1"><a class="header" href="#rpm-based-operating-system-1">RPM-based operating system</a></h5>
+<pre><code class="language-bash">chkconfig --add wazuh-dashboard
+service wazuh-dashboard start
+</code></pre>
+<h5 id="debian-based-operating-system-1"><a class="header" href="#debian-based-operating-system-1">Debian-based operating system</a></h5>
+<pre><code class="language-bash">update-rc.d wazuh-dashboard defaults 95 10
+service wazuh-dashboard start
+</code></pre>
+<h3 id="access-the-wazuh-web-interface"><a class="header" href="#access-the-wazuh-web-interface">Access the Wazuh web interface</a></h3>
+<p>Access the Wazuh web interface with your <code>admin</code> user credentials. This is the default administrator account for the Wazuh indexer and it allows you to access the Wazuh dashboard.</p>
+<ul>
+<li>URL: https://&lt;WAZUH_DASHBOARD_IP_ADDRESS&gt;</li>
+<li>Username: admin</li>
+<li>Password: admin</li>
+</ul>
+<p>When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, the <code>root-ca.pem</code> file previously generated can be imported to the certificate manager of the browser. Alternatively, you can configure a certificate from a trusted authority.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../guide/step-by-step-deployments/all-in-one.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../../guide/installation-assistant-deployments/installation-assistant-deployments.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../guide/step-by-step-deployments/all-in-one.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../../guide/installation-assistant-deployments/installation-assistant-deployments.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../../mark-09e88c2c.min.js"></script>
+        <script src="../../searcher-09f2665d.js"></script>
+
+        <script src="../../clipboard-1626706a.min.js"></script>
+        <script src="../../highlight-abc7f01d.js"></script>
+        <script src="../../book-c22b7243.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../../mermaid-bf4a4f1d.min.js"></script>
+        <script src="../../mermaid-init-025d9952.js"></script>
+
+
+
+    </div>
+    </body>
+</html>
