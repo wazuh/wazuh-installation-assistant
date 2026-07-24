@@ -52,10 +52,10 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
    - `network.host`: Address of this node for HTTP and transport traffic. Use the same node address set in `config.yml`.
    - `node.name`: Name of the Wazuh indexer node as defined in `config.yml` (for example, `indexer`).
-   - `cluster.initial_master_nodes`: List of master-eligible node names.
+   - `cluster.initial_cluster_manager_nodes`: List of master-eligible node names.
 
         ```yaml
-        cluster.initial_master_nodes:
+        cluster.initial_cluster_manager_nodes:
             - "indexer"
             - "indexer-2"
             - "indexer-3"
@@ -169,7 +169,7 @@ On systems with apt as package manager, the following dependencies must be insta
     echo '<INDEXER_PASSWORD>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
     ```
 
-    > Note: The default offline-installation credentials are `admin:admin`.
+    > Note: The default offline-installation credentials are `wazuh-manager:wazuh-manager`.
 
     Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
 
