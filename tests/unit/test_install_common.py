@@ -300,12 +300,12 @@ class TestInstallCommonDownloadArtifactURLs:
         )
 
     def test_production_mode_constructs_correct_url(self, tmp_path):
-        """Production mode: URL should be https://bucket/production/5.x/artifact-urls/artifact_urls_5.0.0.yaml"""
+        """Production mode: URL should be https://bucket/production/5.x/artifact-urls/artifact_urls_5.1.0.yaml"""
         result = self._run(tmp_path)
         assert_success(result)
 
         # Check that the correct file was created
-        expected_filename = "artifact_urls_5.0.0.yaml"
+        expected_filename = "artifact_urls_5.1.0.yaml"
         expected_file = tmp_path / expected_filename
         assert expected_file.exists(), f"Expected {expected_filename} to be created"
         assert expected_file.read_text() == "mock yaml content\n"
@@ -315,7 +315,7 @@ class TestInstallCommonDownloadArtifactURLs:
         result = self._run(tmp_path, devrepo="")
         assert_success(result)
 
-        expected_filename = "artifact_urls_5.0.0.yaml"
+        expected_filename = "artifact_urls_5.1.0.yaml"
         expected_file = tmp_path / expected_filename
         assert expected_file.exists()
 
@@ -325,17 +325,17 @@ class TestInstallCommonDownloadArtifactURLs:
         assert_success(result)
 
         # Should still use production URL format
-        expected_filename = "artifact_urls_5.0.0.yaml"
+        expected_filename = "artifact_urls_5.1.0.yaml"
         expected_file = tmp_path / expected_filename
         assert expected_file.exists()
 
     def test_prerelease_mode_constructs_correct_url(self, tmp_path):
-        """Pre-release mode: URL should be https://bucket/pre-release/5.x/artifact-urls/artifact_urls_5.0.0-rc1.yaml"""
+        """Pre-release mode: URL should be https://bucket/pre-release/5.x/artifact-urls/artifact_urls_5.1.0-rc1.yaml"""
         result = self._run(tmp_path, devrepo="pre-release", staging_url_stage="rc1")
         assert_success(result)
 
         # Check that the correct file was created
-        expected_filename = "artifact_urls_5.0.0-rc1.yaml"
+        expected_filename = "artifact_urls_5.1.0-rc1.yaml"
         expected_file = tmp_path / expected_filename
         assert expected_file.exists(), f"Expected {expected_filename} to be created"
         assert expected_file.read_text() == "mock yaml content\n"
@@ -345,7 +345,7 @@ class TestInstallCommonDownloadArtifactURLs:
         result = self._run(tmp_path, devrepo="pre-release", staging_url_stage="alpha2")
         assert_success(result)
 
-        expected_filename = "artifact_urls_5.0.0-alpha2.yaml"
+        expected_filename = "artifact_urls_5.1.0-alpha2.yaml"
         expected_file = tmp_path / expected_filename
         assert expected_file.exists()
 
