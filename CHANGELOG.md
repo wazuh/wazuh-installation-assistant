@@ -76,6 +76,7 @@
 
 ### Fixed
 
+- Align the passwords tool minimum length with the 12-character Wazuh server API policy ([#950](https://github.com/wazuh/wazuh-installation-assistant/issues/950))
 - E2E Documentation issues in Release 5.0.0. ([#933](https://github.com/wazuh/wazuh-installation-assistant/issues/933))
 - Change minimum hardware requirements ([#924](https://github.com/wazuh/wazuh-installation-assistant/issues/924))
 - Fix typo ([#925](https://github.com/wazuh/wazuh-installation-assistant/issues/925))
