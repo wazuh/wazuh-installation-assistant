@@ -325,13 +325,13 @@ The `wazuh-passwords-tool-5.0.0.sh` script provides the following options for ma
 | `-v\|--verbose` | Shows the complete script execution output. |
 | `-h\|--help` | Shows help. |
 
-The passwords tool changes passwords by specifying the user whose password you want to change and the new password. The password must have a length between 8 and 64 characters and contain at least one upper case letter, one lower case letter, a number and one of the following symbols: `.*+?-` If no password is specified, the tool will generate a random one.
+The passwords tool changes passwords by specifying the user whose password you want to change and the new password. The password must contain at least one upper case letter, one lower case letter, a number and one of the following symbols: `.*+?-` If no password is specified, the tool will generate a random one.
 
-There are two types of users whose passwords can be changed with this tool: Wazuh indexer users and Wazuh server API users. For the latter, it is necessary to provide an administrator user and their password to authenticate the password change request.
+There are two types of users whose passwords can be changed with this tool: Wazuh indexer users and Wazuh server API users. For the latter, it is necessary to provide an administrator user and their password to authenticate the password change request. The minimum password length differs between the two: 8 characters for Wazuh indexer users, and 12 characters for Wazuh server API users, per the password policy enforced by the Wazuh server API. In both cases, the maximum length is 64 characters.
 
 ### Change Wazuh indexer password
 
-Wazuh Indexer users are defined in `/etc/wazuh-indexer/opensearch-security/internal_users.yml`. To change the password of a Wazuh indexer user, use the following syntax:
+Wazuh Indexer users are defined in `/etc/wazuh-indexer/opensearch-security/internal_users.yml`. Passwords for these users must be between 8 and 64 characters. To change the password of a Wazuh indexer user, use the following syntax:
 
 ```bash
 sudo ./wazuh-passwords-tool-5.0.0.sh -u <USER> [-p <PASSWORD>]
@@ -354,7 +354,7 @@ WARNING: Password changed. Remember to update the password in the Wazuh dashboar
 
 ### Change Wazuh server API password
 
-To change the password of a Wazuh server API user, use the following syntax:
+Passwords for Wazuh server API users must be between 12 and 64 characters. To change the password of a Wazuh server API user, use the following syntax:
 
 ```bash
 sudo ./wazuh-passwords-tool-5.0.0.sh -A -au <ADMIN_USER> -ap <ADMIN_PASSWORD> -u <USER> [-p <PASSWORD>]
