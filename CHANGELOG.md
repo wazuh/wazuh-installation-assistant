@@ -21,6 +21,6 @@
 | Issue | Comment |
 | - | - |
 
-## Prior version
+## Prior versions
 
 - [v5.0.0](https://github.com/wazuh/wazuh-installation-assistant/blob/v5.0.0/CHANGELOG.md)
