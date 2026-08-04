@@ -84,6 +84,7 @@
 
 | Issue | Comment |
 | - | - |
+- Test entry with wrong format (issue 9999)
 | [#956](https://github.com/wazuh/wazuh-installation-assistant/issues/956) | Fixed changelog check workflow to accept Prior versions entries |
 | [#933](https://github.com/wazuh/wazuh-installation-assistant/issues/933) | E2E Documentation issues in Release 5.0.0. |
 | [#924](https://github.com/wazuh/wazuh-installation-assistant/issues/924) | Change minimum hardware requirements |
