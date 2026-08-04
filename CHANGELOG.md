@@ -84,6 +84,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#9999](https://github.com/wazuh/wazuh-installation-assistant/issues/9999) | Test entry to validate changelog check regex (standard entry) |
 | [#956](https://github.com/wazuh/wazuh-installation-assistant/issues/956) | Fixed changelog check workflow to accept Prior versions entries |
 | [#933](https://github.com/wazuh/wazuh-installation-assistant/issues/933) | E2E Documentation issues in Release 5.0.0. |
 | [#924](https://github.com/wazuh/wazuh-installation-assistant/issues/924) | Change minimum hardware requirements |
@@ -103,3 +104,4 @@
 
 ## Prior versions
 - []()
+- [v4.14.99](https://github.com/wazuh/wazuh-installation-assistant/blob/v4.14.99/CHANGELOG.md)
