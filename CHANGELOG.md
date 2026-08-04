@@ -103,3 +103,4 @@
 
 ## Prior versions
 - []()
+- [v4.14.99](https://github.com/wazuh/wazuh-installation-assitant/blob/v4.14.99/CHANGELOG.md)
