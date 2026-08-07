@@ -142,7 +142,11 @@ function main() {
         fi
 
         if [ -n "${nuser}" ] && [ -n "${password}" ]; then
-            passwords_checkPassword "${password}"
+            if [ -n "${api}" ]; then
+                passwords_checkPassword "${password}" 12
+            else
+                passwords_checkPassword "${password}"
+            fi
         fi
 
         if [ -z "${api}" ] && [ -n "${indexer_installed}" ]; then
