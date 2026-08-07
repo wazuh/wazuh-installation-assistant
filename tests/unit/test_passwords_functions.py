@@ -72,6 +72,39 @@ class TestPasswordsCheckPassword:
         assert_failure(result)
 
 
+class TestPasswordsCheckPasswordApiMinLength:
+    """Tests for passwords_checkPassword when called with the Wazuh server
+    API minimum length (12), as used for -A|--api password changes.
+
+    Wazuh Indexer users keep the default 8-64 rule (see
+    TestPasswordsCheckPassword); only the Wazuh server API/manager path
+    raises the minimum to 12, per issue #950.
+    """
+
+    def _run(self, password, min_length=None):
+        args = f'"{password}"' if min_length is None else f'"{password}" {min_length}'
+        return run_bash_function(
+            BASE_SOURCES,
+            f"passwords_checkPassword {args}",
+            {**IGNORE_LOGGER, "installCommon_rollBack": "true"},
+        )
+
+    def test_fail_eleven_chars_with_api_min_length(self):
+        # 11 characters, valid otherwise: rejected once the API path requires 12
+        result = self._run("ValidPass1.", min_length=12)
+        assert_failure(result)
+
+    def test_success_twelve_chars_with_api_min_length(self):
+        # 12 characters, valid otherwise: accepted at the API minimum
+        result = self._run("ValidPass1.a", min_length=12)
+        assert_success(result)
+
+    def test_success_eleven_chars_without_api_min_length(self):
+        # Same 11-character password still passes on the Indexer/default path
+        result = self._run("ValidPass1.")
+        assert_success(result)
+
+
 class TestPasswordsGeneratePassword:
     """Tests for passwords_generatePassword.
 

@@ -99,8 +99,10 @@ function passwords_checkUser() {
 
 function passwords_checkPassword() {
 
-    if ! echo "$1" | grep -q "[A-Z]" || ! echo "$1" | grep -q "[a-z]" || ! echo "$1" | grep -q "[0-9]" || ! echo "$1" | grep -q "[.*+?-]" || [ "${#1}" -lt 8 ] || [ "${#1}" -gt 64 ]; then
-        common_logger -e "The password must have a length between 8 and 64 characters and contain at least one upper and lower case letter, a number and a symbol(.*+?-)."
+    local min_length="${2:-8}"
+
+    if ! echo "$1" | grep -q "[A-Z]" || ! echo "$1" | grep -q "[a-z]" || ! echo "$1" | grep -q "[0-9]" || ! echo "$1" | grep -q "[.*+?-]" || [ "${#1}" -lt "${min_length}" ] || [ "${#1}" -gt 64 ]; then
+        common_logger -e "The password must have a length between ${min_length} and 64 characters and contain at least one upper and lower case letter, a number and a symbol(.*+?-)."
         if [[ $(type -t installCommon_rollBack) == "function" ]]; then
                 installCommon_rollBack
         fi
