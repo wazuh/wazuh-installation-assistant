@@ -530,7 +530,7 @@ jobs:
         run: |
           if [ "${{ env.PKG_TYPE }}" = "deb" ]; then
             ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-              "sudo apt-get update -q && sudo apt-get install -y debconf adduser procps gnupg apt-transport-https debhelper tar curl libcap2-bin gawk"
+              "sudo apt-get update -q && sudo apt-get install -y debconf adduser procps gnupg apt-transport-https tar curl libcap2-bin gawk"
           else
             SYSTEM="${{ matrix.system }}"
             case "$SYSTEM" in

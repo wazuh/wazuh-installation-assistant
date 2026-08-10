@@ -70,6 +70,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#961](https://github.com/wazuh/wazuh-installation-assistant/issues/961) | Remove unnecessary debhelper install-time dependency |
 | [#836](https://github.com/wazuh/wazuh-installation-assistant/issues/836) | Wazuh dashboard initialization message. |
 | [#811](https://github.com/wazuh/wazuh-installation-assistant/issues/811) | Remove -i option from installation assistant |
 | [#787](https://github.com/wazuh/wazuh-installation-assistant/issues/787) | Disable 4.x test triggers in the main branch. |
