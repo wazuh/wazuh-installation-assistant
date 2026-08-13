@@ -2,6 +2,9 @@ name: (4.x) Offline installation test
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - 4.*
     paths:
       - 'install_functions/wazuh-offline-download.sh'
       - 'install_functions/wazuh-offline-installation.sh'
