@@ -146,7 +146,7 @@ Runs once per OS in the matrix. Each instance provisions its own VM and runs ind
 Provisions a dedicated AWS VM using the `deployability` allocator:
 
 ```bash
-python3 wazuh-automation/deployability/modules/allocation/main.py \
+wazuh-allocator \
   --action create \
   --provider aws \
   --size xlarge \
@@ -261,7 +261,7 @@ For details on what each test type validates, see the `Integration Test Module â
 Deallocates the VM:
 
 ```bash
-python3 wazuh-automation/deployability/modules/allocation/main.py \
+wazuh-allocator \
   --action delete \
   --track-output {ALLOCATOR_PATH}/track.yml
 ```
