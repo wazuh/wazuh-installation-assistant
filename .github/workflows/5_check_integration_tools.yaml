@@ -320,7 +320,7 @@ jobs:
 
       - name: Install requirements
         run: |
-          pip install -r wazuh-automation/deployability/deps/requirements.txt
+          pip install ./wazuh-automation/deployability/modules/allocation
           pip install -r wazuh-automation/integration-test-module/requirements.txt
           pip install -e wazuh-automation/integration-test-module/
 
@@ -338,7 +338,7 @@ jobs:
         id: allocate
         run: |
           mkdir -p ${{ env.ALLOCATOR_PATH }}
-          python3 wazuh-automation/deployability/modules/allocation/main.py \
+          wazuh-allocator \
             --action create \
             --provider aws \
             --size xlarge \
@@ -886,7 +886,7 @@ jobs:
       - name: Deallocate instance
         if: always()
         run: |
-          python3 wazuh-automation/deployability/modules/allocation/main.py \
+          wazuh-allocator \
             --action delete \
             --track-output ${{ env.ALLOCATOR_PATH }}/track.yml
 

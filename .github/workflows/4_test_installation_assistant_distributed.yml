@@ -156,7 +156,7 @@ jobs:
         path: wazuh-automation
 
     - name: Install and set allocator requirements
-      run: pip3 install -r wazuh-automation/deployability/deps/requirements.txt
+      run: pip3 install ./wazuh-automation/deployability/modules/allocation
 
     - name: Allocate instances and create inventory
       id: allocator_instance
@@ -179,7 +179,7 @@ jobs:
           instance_name=${instance_names[$i]}
           # Provision instance in parallel
           (
-            python3 wazuh-automation/deployability/modules/allocation/main.py \
+            wazuh-allocator \
               --action create --provider aws --size large \
               --composite-name ${{ env.COMPOSITE_NAME }} \
               --working-dir $ALLOCATOR_PATH --track-output $ALLOCATOR_PATH/track_${instance_name}.yml \
@@ -339,7 +339,7 @@ jobs:
 
           (
             # Delete instance
-            python3 wazuh-automation/deployability/modules/allocation/main.py \
+            wazuh-allocator \
               --action delete --provider aws --track-output $track_file
           ) &
         done
