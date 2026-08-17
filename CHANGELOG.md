@@ -32,6 +32,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#974](https://github.com/wazuh/wazuh-installation-assistant/pull/974) | Adapt Allocator install and invocation to the new installable Python package |
 | [#972](https://github.com/wazuh/wazuh-installation-assistant/issues/972) | Change Codebuild runners to Github runners |
 | [#909](https://github.com/wazuh/wazuh-installation-assistant/issues/909) | Change upload and download methods |
 | [#928](https://github.com/wazuh/wazuh-installation-assistant/issues/928) | Update deployment for Wazuh Indexer 5.0.0 RBAC. |
