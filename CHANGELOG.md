@@ -32,6 +32,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#970](https://github.com/wazuh/wazuh-installation-assistant/issues/970) | Deploy manager indexer certificates as root:wazuh-manager |
 | [#972](https://github.com/wazuh/wazuh-installation-assistant/issues/972) | Change Codebuild runners to Github runners |
 | [#909](https://github.com/wazuh/wazuh-installation-assistant/issues/909) | Change upload and download methods |
 | [#928](https://github.com/wazuh/wazuh-installation-assistant/issues/928) | Update deployment for Wazuh Indexer 5.0.0 RBAC. |
