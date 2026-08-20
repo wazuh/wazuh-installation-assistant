@@ -57,8 +57,8 @@ function manager_configure(){
     if [ "${AIO}" ]; then
         winame="${manager_node_names[0]}"
     fi
-    eval "sed -i s/manager.pem/${winame}.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
-    eval "sed -i s/manager-key.pem/${winame}-key.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
+    eval "sed -i s/manager.pem/indexer-connector.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
+    eval "sed -i s/manager-key.pem/indexer-connector-key.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
     manager_copyCertificates "${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
     /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
@@ -120,10 +120,13 @@ function manager_copyCertificates() {
         eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}.pem --strip-components 1 ${debug}"
         eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}-key.pem --strip-components 1 ${debug}"
         eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
+        eval "mv ${manager_cert_path}/${winame}.pem ${manager_cert_path}/indexer-connector.pem ${debug}"
+        eval "mv ${manager_cert_path}/${winame}-key.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
         eval "rm -rf ${manager_cert_path}/wazuh-install-files/ ${debug}"
-        eval "chown -R wazuh-manager:wazuh-manager ${manager_cert_path} ${debug}"
-        eval "chmod 500 ${manager_cert_path} ${debug}"
-        eval "chmod 400 ${manager_cert_path}/* ${debug}"
+        eval "chown root:wazuh-manager ${manager_cert_path}/root-ca.pem ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
+        eval "chmod 640 ${manager_cert_path}/root-ca.pem ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
+        eval "chown root:wazuh-manager ${manager_cert_path} ${debug}"
+        eval "chmod 1770 ${manager_cert_path} ${debug}"
     else
         common_logger -e "No certificates found. Could not initialize Wazuh manager"
         installCommon_rollBack
