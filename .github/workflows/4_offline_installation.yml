@@ -2,6 +2,9 @@ name: (4.x) Offline installation test
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - 4.*
     paths:
       - 'install_functions/wazuh-offline-download.sh'
       - 'install_functions/wazuh-offline-installation.sh'
@@ -64,7 +67,7 @@ permissions:
 
 jobs:
   Create-allocator-instances:
-    runs-on: codebuild-github-actions-codebuild-runner-devops-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

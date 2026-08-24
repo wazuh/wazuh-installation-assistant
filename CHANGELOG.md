@@ -27,7 +27,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Change Codebuild runners to Github runners ([#971](https://github.com/wazuh/wazuh-installation-assistant/pull/971))
 
 ### Fixed
 
