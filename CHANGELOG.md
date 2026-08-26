@@ -86,6 +86,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#976](https://github.com/wazuh/wazuh-installation-assistant/pull/976) | Report skipped bumps in the repository bumper workflow |
 | [#956](https://github.com/wazuh/wazuh-installation-assistant/issues/956) | Fixed changelog check workflow to accept Prior versions entries |
 | [#933](https://github.com/wazuh/wazuh-installation-assistant/issues/933) | E2E Documentation issues in Release 5.0.0. |
 | [#924](https://github.com/wazuh/wazuh-installation-assistant/issues/924) | Change minimum hardware requirements |
