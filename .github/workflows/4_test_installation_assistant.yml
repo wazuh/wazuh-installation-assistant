@@ -3,6 +3,9 @@ name: (4.x) Test installation assistant
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - 4.*
     paths:
       - 'cert_tool/**'
       - 'common_functions/**'
