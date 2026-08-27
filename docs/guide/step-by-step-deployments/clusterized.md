@@ -477,11 +477,16 @@ NODE_NAME=<MANAGER_NODE_NAME>
 ```bash
 mkdir -p /var/wazuh-manager/etc/certs
 tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
-mv -n /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
-mv -n /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
-chmod 500 /var/wazuh-manager/etc/certs
-chmod 400 /var/wazuh-manager/etc/certs/*
-chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
+mv -n /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/indexer-connector.pem
+mv -n /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+chown root:wazuh-manager /var/wazuh-manager/etc/certs/root-ca.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+chmod 640 /var/wazuh-manager/etc/certs/root-ca.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+chown root:wazuh-manager /var/wazuh-manager/etc/certs
+chmod 1770 /var/wazuh-manager/etc/certs
 ```
 
 > [!NOTE]
@@ -507,8 +512,8 @@ Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` 
     <certificate_authorities>
       <ca>etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>etc/certs/manager.pem</certificate>
-    <key>etc/certs/manager-key.pem</key>
+    <certificate>etc/certs/indexer-connector.pem</certificate>
+    <key>etc/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```

@@ -32,6 +32,8 @@
 
 | Issue | Comment |
 | - | - |
+| [#970](https://github.com/wazuh/wazuh-installation-assistant/issues/970) | Deploy manager indexer certificates as root:wazuh-manager |
+| [#972](https://github.com/wazuh/wazuh-installation-assistant/issues/972) | Change Codebuild runners to Github runners |
 | [#909](https://github.com/wazuh/wazuh-installation-assistant/issues/909) | Change upload and download methods |
 | [#928](https://github.com/wazuh/wazuh-installation-assistant/issues/928) | Update deployment for Wazuh Indexer 5.0.0 RBAC. |
 | [#917](https://github.com/wazuh/wazuh-installation-assistant/pull/917) | The Wazuh indexer heap size was modified for the AIO installation. |
@@ -85,6 +87,8 @@
 
 | Issue | Comment |
 | - | - |
+| [#976](https://github.com/wazuh/wazuh-installation-assistant/pull/976) | Report skipped bumps in the repository bumper workflow |
+| [#956](https://github.com/wazuh/wazuh-installation-assistant/issues/956) | Fixed changelog check workflow to accept Prior versions entries |
 | [#933](https://github.com/wazuh/wazuh-installation-assistant/issues/933) | E2E Documentation issues in Release 5.0.0. |
 | [#924](https://github.com/wazuh/wazuh-installation-assistant/issues/924) | Change minimum hardware requirements |
 | [#925](https://github.com/wazuh/wazuh-installation-assistant/issues/925) | Fix typo |
