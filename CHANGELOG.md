@@ -87,6 +87,8 @@
 
 | Issue | Comment |
 | - | - |
+| [#992](https://github.com/wazuh/wazuh-installation-assistant/issues/992) | Remove test_check_wazuh_manager_monitord, daemon retired in 5.0.0 |
+| [#950](https://github.com/wazuh/wazuh-installation-assistant/issues/950) | Align the passwords tool minimum length with the 12-character Wazuh server API policy |
 | [#976](https://github.com/wazuh/wazuh-installation-assistant/pull/976) | Report skipped bumps in the repository bumper workflow |
 | [#956](https://github.com/wazuh/wazuh-installation-assistant/issues/956) | Fixed changelog check workflow to accept Prior versions entries |
 | [#933](https://github.com/wazuh/wazuh-installation-assistant/issues/933) | E2E Documentation issues in Release 5.0.0. |
