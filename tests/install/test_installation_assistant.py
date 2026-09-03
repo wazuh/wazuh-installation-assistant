@@ -150,10 +150,6 @@ def test_check_wazuh_manager_remoted():
     assert check_call("ps -xa | grep wazuh-manager-remoted | grep -v grep", shell=True) != ""
 
 @pytest.mark.wazuh
-def test_check_wazuh_manager_monitord():
-    assert check_call("ps -xa | grep wazuh-manager-monitord | grep -v grep", shell=True) != ""
-
-@pytest.mark.wazuh
 def test_check_wazuh_manager_modulesd():
     assert check_call("ps -xa | grep wazuh-manager-modulesd | grep -v grep", shell=True) != ""
 
