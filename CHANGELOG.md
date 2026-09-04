@@ -35,7 +35,7 @@ All notable changes to this project will be documented in this file.
 
 ### Deleted
 
-- None
+- Remove unnecessary `debhelper` install-time dependency for the Wazuh dashboard ([#961](https://github.com/wazuh/wazuh-installation-assistant/issues/961))
 
 ## [4.14.7]
 
