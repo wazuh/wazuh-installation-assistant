@@ -1,4 +1,4 @@
-## [v5.0.1]
+## [5.1.0]
 
 ### Added
 
@@ -22,4 +22,5 @@
 
 ## Prior versions
 
+- [v5.0.1](https://github.com/wazuh/wazuh-installation-assistant/blob/v5.0.1/CHANGELOG.md)
 - [v5.0.0](https://github.com/wazuh/wazuh-installation-assistant/blob/v5.0.0/CHANGELOG.md)
