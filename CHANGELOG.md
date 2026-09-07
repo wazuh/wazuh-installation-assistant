@@ -88,7 +88,6 @@
 
 | Issue | Comment |
 | - | - |
-| [#996](https://github.com/wazuh/wazuh-installation-assistant/issues/996) | The passwords tool wrote the admin user password into the Wazuh manager indexer keystore, which authenticates as the wazuh-manager user, breaking manager to indexer connectivity after a password rotation. |
 | [#992](https://github.com/wazuh/wazuh-installation-assistant/issues/992) | Remove test_check_wazuh_manager_monitord, daemon retired in 5.0.0 |
 | [#950](https://github.com/wazuh/wazuh-installation-assistant/issues/950) | Align the passwords tool minimum length with the 12-character Wazuh server API policy |
 | [#976](https://github.com/wazuh/wazuh-installation-assistant/pull/976) | Report skipped bumps in the repository bumper workflow |
