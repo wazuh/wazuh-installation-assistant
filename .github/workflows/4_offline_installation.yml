@@ -10,7 +10,7 @@ on:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: "Branch or tag of the wazuh-installation-assistant repository."
         required: true
-        default: 4.10.5
+        default: 4.10.6
 env:
   S3_PATH: s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/4_offline_installation
 jobs:
