@@ -33,7 +33,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Fix password tool generateHash in 4.10.6 version. ([#850](https://github.com/wazuh/wazuh-installation-assistant/pull/850))
+- Fix password tool generateHash in 4.10.5 version. ([#850](https://github.com/wazuh/wazuh-installation-assistant/pull/850))
 
 ### Deleted
 
