@@ -26,6 +26,12 @@ Certificate files are stored in the following paths on each node:
 
 The installation assistant sets default passwords for internal Wazuh users during installation. It is strongly recommended to change these passwords after installation using the `wazuh-passwords-tool-5.0.0.sh` script.
 
+The recommended procedure is to change all default passwords at once with the `--change-all` option. See the [Change all default passwords](../ref/getting-started/usage.md#change-all-default-passwords) section for details.
+
+```bash
+bash wazuh-passwords-tool-5.0.0.sh --change-all
+```
+
 To change a specific user's password:
 
 ```bash

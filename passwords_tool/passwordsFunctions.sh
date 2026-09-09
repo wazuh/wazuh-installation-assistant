@@ -8,30 +8,54 @@
 
 function passwords_changePassword() {
 
-    if [ -z "${api}" ] && [ -n "${indexer_installed}" ]; then
-        eval "mkdir /etc/wazuh-indexer/backup/ ${debug}"
-        eval "cp /etc/wazuh-indexer/opensearch-security/* /etc/wazuh-indexer/backup/ ${debug}"
-        passwords_createBackUp
-    fi
+    if [ -n "${changeall}" ]; then
+        if [ -n "${indexer_installed}" ]; then
+            eval "mkdir /etc/wazuh-indexer/backup/ ${debug}"
+            eval "cp /etc/wazuh-indexer/opensearch-security/* /etc/wazuh-indexer/backup/ ${debug}"
+            passwords_createBackUp
+        fi
 
-    if [ -n "${indexer_installed}" ] && [ -f "/etc/wazuh-indexer/backup/internal_users.yml" ]; then
-        awk -v new='"'"${hash}"'"' 'prev=="'${nuser}':"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /etc/wazuh-indexer/backup/internal_users.yml > internal_users.yml_tmp && mv -f internal_users.yml_tmp /etc/wazuh-indexer/backup/internal_users.yml
-    fi
+        for i in "${!passwords[@]}"; do
+            if [ -n "${indexer_installed}" ] && [ -f "/etc/wazuh-indexer/backup/internal_users.yml" ]; then
+                awk -v new='"'"${hashes[i]}"'"' 'prev=="'${users[i]}':"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /etc/wazuh-indexer/backup/internal_users.yml > internal_users.yml_tmp && mv -f internal_users.yml_tmp /etc/wazuh-indexer/backup/internal_users.yml
+            fi
 
-    if [ "${nuser}" == "admin" ]; then
-        adminpass=${password}
-    elif [ "${nuser}" == "kibanaserver" ]; then
-        dashpass=${password}
-    fi
+            if [ "${users[i]}" == "wazuh-manager" ]; then
+                managerpass=${passwords[i]}
+            elif [ "${users[i]}" == "kibanaserver" ]; then
+                dashpass=${passwords[i]}
+            fi
+        done
+    else
+        if [ -z "${api}" ] && [ -n "${indexer_installed}" ]; then
+            eval "mkdir /etc/wazuh-indexer/backup/ ${debug}"
+            eval "cp /etc/wazuh-indexer/opensearch-security/* /etc/wazuh-indexer/backup/ ${debug}"
+            passwords_createBackUp
+        fi
 
-    if [ "${nuser}" == "admin" ]; then
-        if [ -n "${wazuh_installed}" ]; then
-            /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v "${adminpass}"
-            passwords_restartService "wazuh-manager"
+        if [ -n "${indexer_installed}" ] && [ -f "/etc/wazuh-indexer/backup/internal_users.yml" ]; then
+            awk -v new='"'"${hash}"'"' 'prev=="'${nuser}':"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /etc/wazuh-indexer/backup/internal_users.yml > internal_users.yml_tmp && mv -f internal_users.yml_tmp /etc/wazuh-indexer/backup/internal_users.yml
+        fi
+
+        if [ "${nuser}" == "wazuh-manager" ]; then
+            managerpass=${password}
+        elif [ "${nuser}" == "kibanaserver" ]; then
+            dashpass=${password}
         fi
     fi
 
-    if [ "${nuser}" == "kibanaserver" ]; then
+    if [ "${nuser}" == "wazuh-manager" ] || [ -n "${changeall}" ]; then
+        if [ -n "${wazuh_installed}" ]; then
+            if [ -n "${managerpass}" ]; then
+                /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v "${managerpass}"
+                passwords_restartService "wazuh-manager"
+            else
+                common_logger -w "Skipping Wazuh manager keystore update: no password available for the wazuh-manager user."
+            fi
+        fi
+    fi
+
+    if [ "${nuser}" == "kibanaserver" ] || [ -n "${changeall}" ]; then
         if [ -n "${dashboard_installed}" ] && [ -n "${dashpass}" ]; then
             if /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root list | grep -q opensearch.password; then
                 echo "${dashpass}" | /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root add -f --stdin opensearch.password ${debug_pass} > /dev/null 2>&1
@@ -54,18 +78,43 @@ function passwords_changePassword() {
 
 function passwords_changePasswordApi() {
     # Change API password tool
-    if [ -n "${wazuh_installed}" ]; then
-        if ! passwords_isServiceActive "wazuh-manager"; then
-            common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
-            exit 1;
+    if [ -n "${changeall}" ]; then
+        if [ -n "${wazuh_installed}" ]; then
+            if ! passwords_isServiceActive "wazuh-manager"; then
+                common_logger -e "wazuh-manager service is not running. Skipping Wazuh API password change."
+                exit 1;
+            fi
         fi
-        passwords_getApiUserId "${nuser}"
-        WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-        common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
-        common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
-    fi
-    if [ "${nuser}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
-        passwords_changeDashboardApiPassword "${password}"
+        for i in "${!api_passwords[@]}"; do
+            if [ -n "${wazuh_installed}" ]; then
+                passwords_getApiUserId "${api_users[i]}"
+                WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
+                common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
+                if [ "${api_users[i]}" == "${adminUser}" ]; then
+                    sleep 1
+                    adminPassword="${api_passwords[i]}"
+                    passwords_getApiToken
+                fi
+                common_logger -nl $"The password for Wazuh API user ${api_users[i]} is ${api_passwords[i]}"
+            fi
+            if [ "${api_users[i]}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
+                passwords_changeDashboardApiPassword "${api_passwords[i]}"
+            fi
+        done
+    else
+        if [ -n "${wazuh_installed}" ]; then
+            if ! passwords_isServiceActive "wazuh-manager"; then
+                common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+                exit 1;
+            fi
+            passwords_getApiUserId "${nuser}"
+            WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
+            common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
+            common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
+        fi
+        if [ "${nuser}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
+            passwords_changeDashboardApiPassword "${password}"
+        fi
     fi
 }
 
@@ -142,16 +191,33 @@ function passwords_createBackUp() {
 
 function passwords_generateHash() {
 
-    common_logger "Generating password hash"
-    hash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${password}" 2>/dev/null)
-    if [  "${PIPESTATUS[0]}" != 0  ]; then
-        common_logger -e "Hash generation failed."
-        if [[ $(type -t installCommon_rollBack) == "function" ]]; then
-            installCommon_rollBack
+    if [ -n "${changeall}" ]; then
+        common_logger -d "Generating password hashes."
+        hashes=()
+        for i in "${!passwords[@]}"; do
+            nhash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${passwords[i]}" 2>/dev/null)
+            if [  "${PIPESTATUS[0]}" != 0  ]; then
+                common_logger -e "Hash generation failed."
+                if [[ $(type -t installCommon_rollBack) == "function" ]]; then
+                    installCommon_rollBack
+                fi
+                exit 1;
+            fi
+            hashes+=("${nhash}")
+        done
+        common_logger -d "Password hashes generated."
+    else
+        common_logger "Generating password hash"
+        hash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${password}" 2>/dev/null)
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "Hash generation failed."
+            if [[ $(type -t installCommon_rollBack) == "function" ]]; then
+                installCommon_rollBack
+            fi
+            exit 1;
         fi
-        exit 1;
+        common_logger -d "Password hash generated."
     fi
-    common_logger -d "Password hash generated."
 
 }
 
@@ -171,12 +237,36 @@ function passwords_generatePassword() {
 
 }
 
+function passwords_generatePasswords() {
+
+    common_logger -d "Generating random passwords."
+    passwords=()
+    api_passwords=()
+
+    for i in "${!users[@]}"; do
+        passwords_generatePassword
+        passwords+=("${password}")
+    done
+
+    for i in "${!api_users[@]}"; do
+        passwords_generatePassword
+        api_passwords+=("${password}")
+    done
+
+    password=""
+
+}
+
 function passwords_getApiToken() {
     retries=0
     max_internal_error_retries=20
 
     if ! passwords_isServiceActive "wazuh-manager"; then
-        common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+        if [ -n "${changeall}" ]; then
+            common_logger -e "wazuh-manager service is not running. Skipping Wazuh API password change."
+        else
+            common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+        fi
         exit 1;
     fi
 
@@ -209,7 +299,11 @@ function passwords_getApiUsers() {
     if passwords_isServiceActive "wazuh-manager"; then
         mapfile -t api_users < <(common_curl -s -k -X GET -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\"  \"https://localhost:55000/security/users?pretty=true\" --max-time 300 --retry 5 --retry-delay 5 | grep username | awk -F': ' '{print $2}' | sed -e "s/[\'\",]//g")
     else
-        common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+        if [ -n "${changeall}" ]; then
+            common_logger -e "wazuh-manager service is not running. Skipping Wazuh API password change."
+        else
+            common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+        fi
         exit 1;
     fi
 
@@ -219,7 +313,7 @@ function passwords_getApiUserId() {
     if passwords_isServiceActive "wazuh-manager"; then
         user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
     else
-        common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
+        common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${1}."
         exit 1;
     fi
 
@@ -390,6 +484,13 @@ function passwords_runSecurityAdmin() {
 
     if [[ -n "${nuser}" ]] && [[ -z ${autopass} ]]; then
         common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
+    fi
+
+    if [ -n "${changeall}" ]; then
+        for i in "${!users[@]}"; do
+            common_logger -nl "The password for user ${users[i]} is ${passwords[i]}"
+        done
+        common_logger -w "Wazuh indexer passwords changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
     fi
 
 }

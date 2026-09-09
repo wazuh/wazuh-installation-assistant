@@ -4,6 +4,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#996](https://github.com/wazuh/wazuh-installation-assistant/issues/996) | Restore the -a\|--change-all option in wazuh-passwords-tool.sh to rotate all Wazuh indexer and Wazuh API passwords in one execution. |
 | [#862](https://github.com/wazuh/wazuh-installation-assistant/pull/862) | Added bump-issue-link input in the 5.x bumper workflow. |
 | [#894](https://github.com/wazuh/wazuh-installation-assistant/pull/894) | Add integration test module docs |
 | [#843](https://github.com/wazuh/wazuh-installation-assistant/issues/843) | The passwords tool corrupts the admin hash |
