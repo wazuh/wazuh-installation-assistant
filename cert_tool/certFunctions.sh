@@ -198,6 +198,8 @@ function cert_cleanFiles() {
     rm -f "${cert_tmp_path}"/*.srl
     rm -f "${cert_tmp_path}"/*.conf
     rm -f "${cert_tmp_path}"/admin-key-temp.pem
+    # Single-use CA workspaces of the remoted leaves, in case one was left behind.
+    rm -rf "${cert_tmp_path}"/*-remoted-ca
 
 }
 
@@ -510,21 +512,93 @@ function cert_generateRemotedcertificateconfiguration() {
 
 }
 
+# Minimal single-use CA workspace for "openssl ca", created under the temporary
+# directory and removed by the caller. Needed because "openssl x509 -req" cannot
+# backdate notBefore before OpenSSL 3.5, newer than the oldest platform supported.
+# The order of the policy section is what lays out the subject, so commonName goes
+# last: that is where the other leaves carry it, and openssl ca would otherwise emit
+# CN first.
+function cert_generateRemotedCAworkspace() {
+
+    local ca_dir="$1"
+
+    rm -rf "${ca_dir}"
+    if ! mkdir -p "${ca_dir}/newcerts"; then
+        common_logger -e "Could not create the temporary CA directory ${ca_dir}."
+        cert_cleanFiles
+        exit 1
+    fi
+    chmod 700 "${ca_dir}"
+    : > "${ca_dir}/index.txt"
+    printf '%s\n' "unique_subject = no" > "${ca_dir}/index.txt.attr"
+    # A random 16-byte serial: each node gets its own workspace, so an incrementing
+    # counter would hand every manager node the same serial from the same CA.
+    openssl rand -hex 16 > "${ca_dir}/serial"
+
+    {
+        printf '%s\n' "[ ca ]"
+        printf '%s\n' "default_ca = CA_remoted"
+        printf '\n'
+        printf '%s\n' "[ CA_remoted ]"
+        printf '%s\n' "dir = ${ca_dir}"
+        printf '%s\n' "database = ${ca_dir}/index.txt"
+        printf '%s\n' "serial = ${ca_dir}/serial"
+        printf '%s\n' "new_certs_dir = ${ca_dir}/newcerts"
+        printf '%s\n' "certificate = ${cert_tmp_path}/root-ca.pem"
+        printf '%s\n' "private_key = ${cert_tmp_path}/root-ca.key"
+        printf '%s\n' "default_md = sha256"
+        printf '%s\n' "preserve = yes"
+        printf '%s\n' "email_in_dn = no"
+        printf '%s\n' "policy = policy_remoted"
+        printf '\n'
+        printf '%s\n' "[ policy_remoted ]"
+        printf '%s\n' "countryName = optional"
+        printf '%s\n' "stateOrProvinceName = optional"
+        printf '%s\n' "localityName = optional"
+        printf '%s\n' "organizationName = optional"
+        printf '%s\n' "organizationalUnitName = optional"
+        printf '%s\n' "commonName = supplied"
+    } > "${ca_dir}/ca.conf"
+
+}
+
 # Issues <name>-remoted.pem / <name>-remoted-key.pem for a manager node (RSA 2048,
-# SHA-256, 3650 days, signed by root-ca) and appends root-ca.pem to the leaf:
-# remoted loads that file as a chain (leaf followed by the CA), which is what agents
-# receive in the TLS handshake.
+# SHA-256, valid for 3650 days, signed by root-ca) and appends root-ca.pem to the
+# leaf: remoted loads that file as a chain (leaf followed by the CA), which is what
+# agents receive in the TLS handshake.
+#
+# notBefore is backdated one day so an agent whose clock lags does not reject a
+# freshly issued certificate. That is why this leaf goes through "openssl ca" instead
+# of "openssl x509 -req" like the others: -startdate has been available since OpenSSL
+# 1.0.2, whereas "x509 -req -not_before" only exists from OpenSSL 3.5 on.
 function cert_generateRemotedcertificate() {
 
     local node_name="$1"
+    local ca_dir="${cert_tmp_path}/${node_name}-remoted-ca"
+    local start_date
+    local end_date
 
     common_logger -d "Creating the remoted (agent listener) certificate for ${node_name}."
 
     cert_generateRemotedcertificateconfiguration "$@"
     common_logger -d "Creating the remoted tmp key pair."
     cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${node_name}-remoted-key.pem" -out "${cert_tmp_path}/${node_name}-remoted.csr" -config "${cert_tmp_path}/${node_name}-remoted.conf"
-    common_logger -d "Creating the remoted certificate."
-    cert_executeAndValidate openssl x509 -req -sha256 -days 3650 -in "${cert_tmp_path}/${node_name}-remoted.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -extfile "${cert_tmp_path}/${node_name}-remoted.conf" -extensions v3_remoted -out "${cert_tmp_path}/${node_name}-remoted.pem"
+
+    # Two-digit years: OpenSSL reads them as 20YY below 50, and the notAfter of a
+    # 3650-day certificate is well before 2049.
+    start_date="$(date -u -d '-1 day' '+%y%m%d%H%M%SZ' 2>/dev/null)"
+    end_date="$(date -u -d '+3650 days' '+%y%m%d%H%M%SZ' 2>/dev/null)"
+    if [[ -z "${start_date}" || -z "${end_date}" ]]; then
+        common_logger -e "Could not compute the validity dates of the remoted certificate."
+        cert_cleanFiles
+        exit 1
+    fi
+
+    common_logger -d "Creating the remoted certificate, valid from ${start_date} to ${end_date}."
+    cert_generateRemotedCAworkspace "${ca_dir}"
+    cert_executeAndValidate openssl ca -batch -notext -md sha256 -config "${ca_dir}/ca.conf" -in "${cert_tmp_path}/${node_name}-remoted.csr" -out "${cert_tmp_path}/${node_name}-remoted.pem" -extfile "${cert_tmp_path}/${node_name}-remoted.conf" -extensions v3_remoted -startdate "${start_date}" -enddate "${end_date}"
+    rm -rf "${ca_dir}"
+
     if ! cat "${cert_tmp_path}/root-ca.pem" >> "${cert_tmp_path}/${node_name}-remoted.pem"; then
         common_logger -e "Could not append root-ca.pem to ${node_name}-remoted.pem."
         cert_cleanFiles

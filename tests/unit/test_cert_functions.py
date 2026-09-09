@@ -8,6 +8,9 @@ Covers: cert_cleanFiles, cert_checkOpenSSL, cert_generateRootCAcertificate,
         cert_readConfig
 """
 
+import subprocess
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from tests.unit.conftest import assert_failure, assert_success, run_bash_function
@@ -213,6 +216,81 @@ class TestCertGenerateManagercertificates:
         )
         assert_success(result)
         assert (tmp_path / "wazuh-master-remoted.pem").read_text() == "root-ca"
+
+
+class TestCertGenerateRemotedcertificateRealOpenSSL:
+    """Issues a real listener leaf and inspects it, no openssl mock.
+
+    The listener certificate is the only one that goes through "openssl ca", so that
+    notBefore can be backdated; these assertions pin what agents end up verifying.
+    """
+
+    def _issue(self, tmp_path, node_name, *san):
+        subprocess.run(
+            [
+                "openssl", "req", "-x509", "-new", "-nodes", "-newkey", "rsa:2048",
+                "-keyout", str(tmp_path / "root-ca.key"),
+                "-out", str(tmp_path / "root-ca.pem"),
+                "-batch", "-subj", "/OU=Wazuh/O=Wazuh/L=California/", "-days", "3650",
+            ],
+            check=True, capture_output=True,
+        )
+        result = run_bash_function(
+            BASE_SOURCES,
+            f"cert_generateRemotedcertificate {node_name} {' '.join(san)}",
+            IGNORE_LOGGER,
+            {"cert_tmp_path": str(tmp_path)},
+        )
+        assert_success(result)
+        return tmp_path / f"{node_name}-remoted.pem"
+
+    def _x509(self, cert, *args):
+        return subprocess.run(
+            ["openssl", "x509", "-in", str(cert), "-noout", *args],
+            check=True, capture_output=True, text=True,
+        ).stdout
+
+    def test_success_not_before_is_backdated(self, tmp_path):
+        """An agent whose clock lags must not reject a freshly issued certificate."""
+        cert = self._issue(tmp_path, "wazuh-master", "1.1.1.1")
+
+        # -checkend counts from now, so -startdate is confirmed through a direct read.
+        not_before = self._x509(cert, "-startdate").strip().split("=", 1)[1]
+        parsed = datetime.strptime(not_before, "%b %d %H:%M:%S %Y %Z").replace(
+            tzinfo=timezone.utc
+        )
+        delta = datetime.now(timezone.utc) - parsed
+        assert timedelta(hours=23) < delta < timedelta(hours=25), not_before
+
+    def test_success_extensions_san_and_chain(self, tmp_path):
+        cert = self._issue(tmp_path, "wazuh-master", "1.1.1.1", "manager.example.com")
+
+        text = self._x509(cert, "-text")
+        assert "CA:FALSE" in text
+        assert "TLS Web Server Authentication" in text
+        assert "IP Address:1.1.1.1" in text
+        assert "DNS:manager.example.com" in text
+        assert "DNS:wazuh-master" in text
+        assert "C=US, L=California, O=Wazuh, OU=Wazuh, CN=wazuh-master" in self._x509(
+            cert, "-subject"
+        )
+        # remoted serves the file as a chain: the leaf followed by the CA.
+        assert cert.read_text().count("BEGIN CERTIFICATE") == 2
+
+    def test_success_verifies_against_the_root_ca(self, tmp_path):
+        cert = self._issue(tmp_path, "wazuh-master", "1.1.1.1")
+
+        verify = subprocess.run(
+            ["openssl", "verify", "-CAfile", str(tmp_path / "root-ca.pem"), str(cert)],
+            capture_output=True, text=True,
+        )
+        assert verify.returncode == 0, verify.stderr
+
+    def test_success_removes_the_temporary_ca_workspace(self, tmp_path):
+        """The workspace would otherwise be packed into the installation tarball."""
+        self._issue(tmp_path, "wazuh-master", "1.1.1.1")
+
+        assert not list(tmp_path.glob("*-remoted-ca"))
 
 
 class TestCertGenerateRemotedcertificateconfiguration:
