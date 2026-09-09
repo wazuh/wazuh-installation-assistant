@@ -542,7 +542,37 @@ function passwords_restartService() {
             fi
             exit 1;
         else
-            common_logger -d "${1} started."
+            # systemctl restart can return success immediately even if the
+            # service later fails to initialize (e.g. under resource
+            # pressure). Poll is-active for a short window to catch that
+            # before moving on, instead of only checking the restart call
+            # itself.
+            restart_check_retries=12
+            restart_check_delay=5
+            restart_check_attempt=0
+            service_is_active=""
+
+            while [ "${restart_check_attempt}" -lt "${restart_check_retries}" ]; do
+                if systemctl is-active --quiet "${1}.service"; then
+                    service_is_active="true"
+                    break
+                fi
+                restart_check_attempt=$((restart_check_attempt+1))
+                sleep "${restart_check_delay}"
+            done
+
+            if [ -z "${service_is_active}" ]; then
+                common_logger -e "${1} restarted but did not stay active (checked for $((restart_check_retries * restart_check_delay))s). It may have failed to initialize, for example due to insufficient resources."
+                if [ -n "$(command -v journalctl)" ]; then
+                    eval "journalctl -u ${1} >> ${logfile}"
+                fi
+                if [[ $(type -t installCommon_rollBack) == "function" ]]; then
+                    installCommon_rollBack
+                fi
+                exit 1;
+            else
+                common_logger -d "${1} started."
+            fi
         fi
     elif ps -p 1 -o comm= | grep "init"; then
         eval "/etc/init.d/${1} restart ${debug}"
