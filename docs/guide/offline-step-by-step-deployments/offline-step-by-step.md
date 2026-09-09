@@ -154,8 +154,8 @@ On systems with apt as package manager, the following dependencies must be insta
     cp ./wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem
     mv ./wazuh-certificates/$NODE_NAME.pem /var/wazuh-manager/etc/certs/indexer-connector.pem
     mv ./wazuh-certificates/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
-    mv ./wazuh-certificates/$NODE_NAME-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem
-    mv ./wazuh-certificates/$NODE_NAME-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem
+    mv -f ./wazuh-certificates/$NODE_NAME-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem
+    mv -f ./wazuh-certificates/$NODE_NAME-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem
     chown root:wazuh-manager /var/wazuh-manager/etc/certs/root-ca.pem \
         /var/wazuh-manager/etc/certs/indexer-connector.pem \
         /var/wazuh-manager/etc/certs/indexer-connector-key.pem
@@ -174,7 +174,7 @@ On systems with apt as package manager, the following dependencies must be insta
     > Replace `<MANAGER_NODE_NAME>` with the name you used when generating the certificates.
 
     > [!NOTE]
-    > The Wazuh manager does not generate any certificate. It will not start until `remoted.pem` and `remoted-key.pem` are present in `/var/wazuh-manager/etc/certs`. That pair is served by the agent listener (`wazuh-manager-remoted` on 1517, reused by `wazuh-manager-authd` on 1515) and is opened after dropping privileges, hence the `wazuh-manager` owner.
+    > The Wazuh manager does not generate any certificate. It will not start until `remoted.pem` and `remoted-key.pem` are present in `/var/wazuh-manager/etc/certs`. The `mv -f` is deliberate: a manager package that still self-signs its own listener certificate at install time leaves one in that directory, and it must be replaced by the pair issued from `root-ca.pem`. That pair is served by the agent listener (`wazuh-manager-remoted` on 1517, reused by `wazuh-manager-authd` on 1515) and is opened after dropping privileges, hence the `wazuh-manager` owner.
 
 3. Save the Wazuh indexer username and password into the Wazuh manager keystore using the `wazuh-manager-keystore` tool:
 
