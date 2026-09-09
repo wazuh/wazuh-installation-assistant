@@ -198,6 +198,8 @@ function cert_cleanFiles() {
     rm -f "${cert_tmp_path}"/*.srl
     rm -f "${cert_tmp_path}"/*.conf
     rm -f "${cert_tmp_path}"/admin-key-temp.pem
+    # Single-use CA workspaces of the remoted leaves, in case one was left behind.
+    rm -rf "${cert_tmp_path}"/*-remoted-ca
 
 }
 
@@ -424,10 +426,211 @@ function cert_generateManagercertificates() {
             cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${manager_name}-key.pem" -out "${cert_tmp_path}/${manager_name}.csr" -config "${cert_tmp_path}/${manager_name}.conf"
             common_logger -d "Creating the Wazuh manager certificates."
             cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${manager_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${manager_name}.pem" -extfile "${cert_tmp_path}/${manager_name}.conf" -extensions v3_req -days 3650
+            # Agent-facing listener leaf for this manager node (same SAN).
+            cert_generateRemotedcertificate "${manager_name}" "${manager_san[@]}"
         done
     else
         return 1
     fi
+
+}
+
+# OpenSSL configuration for the agent-facing listener leaf of a manager node:
+# basicConstraints critical CA:FALSE, keyUsage critical digitalSignature +
+# keyEncipherment, extendedKeyUsage serverAuth, and a SAN with the node's ip/dns
+# entries plus the node name itself when it is a DNS label (agents are usually
+# pointed at that name). CN = <name>.
+function cert_generateRemotedcertificateconfiguration() {
+
+    common_logger -d "Generating remoted certificate configuration."
+
+    local node_name="$1"
+    local conf_file="${cert_tmp_path}/${node_name}-remoted.conf"
+    local ip_counter=0
+    local dns_counter=0
+    local name_listed=""
+    local san
+
+    # Validate cert_tmp_path
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        exit 1
+    fi
+
+    if [ "${#@}" -le 1 ]; then
+        common_logger -e "No IP or DNS specified"
+        exit 1
+    fi
+
+    {
+        printf '%s\n' "[ req ]"
+        printf '%s\n' "prompt = no"
+        printf '%s\n' "default_bits = 2048"
+        printf '%s\n' "default_md = sha256"
+        printf '%s\n' "distinguished_name = req_distinguished_name"
+        printf '%s\n' "x509_extensions = v3_remoted"
+        printf '\n'
+        printf '%s\n' "[req_distinguished_name]"
+        printf '%s\n' "C = US"
+        printf '%s\n' "L = California"
+        printf '%s\n' "O = Wazuh"
+        printf '%s\n' "OU = Wazuh"
+        printf '%s\n' "CN = ${node_name}"
+        printf '\n'
+        printf '%s\n' "[ v3_remoted ]"
+        printf '%s\n' "authorityKeyIdentifier = keyid,issuer"
+        printf '%s\n' "subjectKeyIdentifier = hash"
+        printf '%s\n' "basicConstraints = critical,CA:FALSE"
+        printf '%s\n' "keyUsage = critical,digitalSignature,keyEncipherment"
+        printf '%s\n' "extendedKeyUsage = serverAuth"
+        printf '%s\n' "subjectAltName = @alt_names"
+        printf '\n'
+        printf '%s\n' "[alt_names]"
+    } > "${conf_file}"
+
+    for (( i=2; i<=${#@}; i++ )); do
+        san="${!i}"
+        if cert_isIP "${san}"; then
+            ip_counter=$((ip_counter+1))
+            printf '%s\n' "IP.${ip_counter} = ${san}" >> "${conf_file}"
+        elif cert_isDNS "${san}"; then
+            dns_counter=$((dns_counter+1))
+            printf '%s\n' "DNS.${dns_counter} = ${san}" >> "${conf_file}"
+            if [[ "${san,,}" == "${node_name,,}" ]]; then
+                name_listed=1
+            fi
+        else
+            common_logger -e "Invalid IP or DNS ${san}"
+            exit 1
+        fi
+    done
+
+    if [[ -z "${name_listed}" ]] && cert_isDNS "${node_name}"; then
+        dns_counter=$((dns_counter+1))
+        printf '%s\n' "DNS.${dns_counter} = ${node_name}" >> "${conf_file}"
+    fi
+
+}
+
+# Minimal single-use CA workspace for "openssl ca", created under the temporary
+# directory and removed by the caller. Needed because "openssl x509 -req" cannot
+# backdate notBefore before OpenSSL 3.5, newer than the oldest platform supported.
+# The order of the policy section is what lays out the subject, so commonName goes
+# last: that is where the other leaves carry it, and openssl ca would otherwise emit
+# CN first.
+function cert_generateRemotedCAworkspace() {
+
+    local ca_dir="$1"
+
+    rm -rf "${ca_dir}"
+    if ! mkdir -p "${ca_dir}/newcerts"; then
+        common_logger -e "Could not create the temporary CA directory ${ca_dir}."
+        cert_cleanFiles
+        exit 1
+    fi
+    chmod 700 "${ca_dir}"
+    : > "${ca_dir}/index.txt"
+    printf '%s\n' "unique_subject = no" > "${ca_dir}/index.txt.attr"
+    # A random 16-byte serial: each node gets its own workspace, so an incrementing
+    # counter would hand every manager node the same serial from the same CA.
+    openssl rand -hex 16 > "${ca_dir}/serial"
+
+    {
+        printf '%s\n' "[ ca ]"
+        printf '%s\n' "default_ca = CA_remoted"
+        printf '\n'
+        printf '%s\n' "[ CA_remoted ]"
+        printf '%s\n' "dir = ${ca_dir}"
+        printf '%s\n' "database = ${ca_dir}/index.txt"
+        printf '%s\n' "serial = ${ca_dir}/serial"
+        printf '%s\n' "new_certs_dir = ${ca_dir}/newcerts"
+        printf '%s\n' "certificate = ${cert_tmp_path}/root-ca.pem"
+        printf '%s\n' "private_key = ${cert_tmp_path}/root-ca.key"
+        printf '%s\n' "default_md = sha256"
+        printf '%s\n' "preserve = yes"
+        printf '%s\n' "email_in_dn = no"
+        printf '%s\n' "policy = policy_remoted"
+        printf '\n'
+        printf '%s\n' "[ policy_remoted ]"
+        printf '%s\n' "countryName = optional"
+        printf '%s\n' "stateOrProvinceName = optional"
+        printf '%s\n' "localityName = optional"
+        printf '%s\n' "organizationName = optional"
+        printf '%s\n' "organizationalUnitName = optional"
+        printf '%s\n' "commonName = supplied"
+    } > "${ca_dir}/ca.conf"
+
+}
+
+# Issues <name>-remoted.pem / <name>-remoted-key.pem for a manager node (RSA 2048,
+# SHA-256, valid for 3650 days, signed by root-ca) and appends root-ca.pem to the
+# leaf: remoted loads that file as a chain (leaf followed by the CA), which is what
+# agents receive in the TLS handshake.
+#
+# notBefore is backdated one day so an agent whose clock lags does not reject a
+# freshly issued certificate. That is why this leaf goes through "openssl ca" instead
+# of "openssl x509 -req" like the others: -startdate has been available since OpenSSL
+# 1.0.2, whereas "x509 -req -not_before" only exists from OpenSSL 3.5 on.
+function cert_generateRemotedcertificate() {
+
+    local node_name="$1"
+    local ca_dir="${cert_tmp_path}/${node_name}-remoted-ca"
+    local start_date
+    local end_date
+
+    common_logger -d "Creating the remoted (agent listener) certificate for ${node_name}."
+
+    cert_generateRemotedcertificateconfiguration "$@"
+    common_logger -d "Creating the remoted tmp key pair."
+    cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${node_name}-remoted-key.pem" -out "${cert_tmp_path}/${node_name}-remoted.csr" -config "${cert_tmp_path}/${node_name}-remoted.conf"
+
+    # Two-digit years: OpenSSL reads them as 20YY below 50, and the notAfter of a
+    # 3650-day certificate is well before 2049.
+    start_date="$(date -u -d '-1 day' '+%y%m%d%H%M%SZ' 2>/dev/null)"
+    end_date="$(date -u -d '+3650 days' '+%y%m%d%H%M%SZ' 2>/dev/null)"
+    if [[ -z "${start_date}" || -z "${end_date}" ]]; then
+        common_logger -e "Could not compute the validity dates of the remoted certificate."
+        cert_cleanFiles
+        exit 1
+    fi
+
+    common_logger -d "Creating the remoted certificate, valid from ${start_date} to ${end_date}."
+    cert_generateRemotedCAworkspace "${ca_dir}"
+    cert_executeAndValidate openssl ca -batch -notext -md sha256 -config "${ca_dir}/ca.conf" -in "${cert_tmp_path}/${node_name}-remoted.csr" -out "${cert_tmp_path}/${node_name}-remoted.pem" -extfile "${cert_tmp_path}/${node_name}-remoted.conf" -extensions v3_remoted -startdate "${start_date}" -enddate "${end_date}"
+    rm -rf "${ca_dir}"
+
+    if ! cat "${cert_tmp_path}/root-ca.pem" >> "${cert_tmp_path}/${node_name}-remoted.pem"; then
+        common_logger -e "Could not append root-ca.pem to ${node_name}-remoted.pem."
+        cert_cleanFiles
+        exit 1
+    fi
+
+}
+
+# Every listener leaf must chain to the CA written next to it; a failure here means
+# remoted would serve a bundle agents cannot validate. Takes the directory holding
+# the issued certificates as first argument.
+function cert_verifyRemotedcertificates() {
+
+    local certs_dir="${1}"
+    local manager_name
+
+    if [ ${#manager_node_names[@]} -eq 0 ]; then
+        return 0
+    fi
+
+    if ! cert_validatePath "${certs_dir}" "directory"; then
+        common_logger -e "Invalid certificates directory."
+        exit 1
+    fi
+
+    for manager_name in "${manager_node_names[@]}"; do
+        if ! openssl verify -CAfile "${certs_dir}/root-ca.pem" "${certs_dir}/${manager_name}-remoted.pem" > /dev/null 2>&1; then
+            common_logger -e "The certificate ${certs_dir}/${manager_name}-remoted.pem does not verify against ${certs_dir}/root-ca.pem."
+            exit 1
+        fi
+        common_logger -d "Verified ${manager_name}-remoted.pem against root-ca.pem."
+    done
 
 }
 

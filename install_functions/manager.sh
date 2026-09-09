@@ -125,12 +125,53 @@ function manager_copyCertificates() {
         eval "rm -rf ${manager_cert_path}/wazuh-install-files/ ${debug}"
         eval "chown root:wazuh-manager ${manager_cert_path}/root-ca.pem ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
         eval "chmod 640 ${manager_cert_path}/root-ca.pem ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
+        manager_copyRemotedCertificates
         eval "chown root:wazuh-manager ${manager_cert_path} ${debug}"
         eval "chmod 1770 ${manager_cert_path} ${debug}"
     else
         common_logger -e "No certificates found. Could not initialize Wazuh manager"
         installCommon_rollBack
         exit 1
+    fi
+
+}
+
+# Deploys the certificate of the agent listener (remoted on 1517, reused by authd on
+# 1515). The manager no longer generates it: without etc/certs/remoted.pem and
+# etc/certs/remoted-key.pem it refuses to start. Unlike the indexer connector files,
+# which are read as root, this pair is opened by remoted after dropping privileges,
+# hence the wazuh-manager owner.
+#
+# The pair in the tar file always wins. manager_install() runs before this, and a
+# manager package that still self-signs its own listener certificate at install time
+# leaves one behind; keeping it would serve agents a certificate that chains to
+# nothing they can pin. Not replacing an existing pair is the package's job
+# (CheckListenerCerts() only fixes its ownership), not the assistant's: the assistant
+# always performs a clean install from the tar file.
+function manager_copyRemotedCertificates() {
+
+    if ! tar -tf "${tar_file}" | grep -q -E "^wazuh-install-files/${winame}-remoted.pem$" || ! tar -tf "${tar_file}" | grep -q -E "^wazuh-install-files/${winame}-remoted-key.pem$"; then
+        common_logger -w "There is no agent listener certificate for the node ${winame} in ${tar_file}. The Wazuh manager will not start until ${manager_cert_path}/remoted.pem and ${manager_cert_path}/remoted-key.pem are provisioned."
+        return 0
+    fi
+
+    common_logger -d "Copying the agent listener certificate."
+    eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}-remoted.pem --strip-components 1 ${debug}"
+    eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}-remoted-key.pem --strip-components 1 ${debug}"
+    eval "mv -f ${manager_cert_path}/${winame}-remoted.pem ${manager_cert_path}/remoted.pem ${debug}"
+    eval "mv -f ${manager_cert_path}/${winame}-remoted-key.pem ${manager_cert_path}/remoted-key.pem ${debug}"
+    eval "chown wazuh-manager:wazuh-manager ${manager_cert_path}/remoted.pem ${manager_cert_path}/remoted-key.pem ${debug}"
+    eval "chmod 640 ${manager_cert_path}/remoted.pem ${manager_cert_path}/remoted-key.pem ${debug}"
+
+    # A listener certificate that does not chain to the deployed CA means agents
+    # cannot verify this manager, which is the whole point of deploying the pair.
+    if command -v openssl > /dev/null 2>&1; then
+        if ! openssl verify -CAfile "${manager_cert_path}/root-ca.pem" "${manager_cert_path}/remoted.pem" > /dev/null 2>&1; then
+            common_logger -e "The agent listener certificate ${manager_cert_path}/remoted.pem does not verify against ${manager_cert_path}/root-ca.pem."
+            installCommon_rollBack
+            exit 1
+        fi
+        common_logger -d "Verified remoted.pem against root-ca.pem."
     fi
 
 }

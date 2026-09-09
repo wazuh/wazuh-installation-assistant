@@ -429,7 +429,7 @@ yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
 
 ### Deploying certificates
 
-Deploy the SSL certificates for secure communication between the Wazuh manager and indexer. These certificates should be extracted from the `wazuh-certificates/` dir generated during the certificate creation process.
+Deploy the SSL certificates for secure communication between the Wazuh manager and indexer, and the certificate of the agent listener. These certificates should be extracted from the `wazuh-certificates/` dir generated during the certificate creation process.
 
 ```bash
 NODE_NAME=<MANAGER_NODE_NAME>
@@ -440,15 +440,24 @@ mkdir -p /var/wazuh-manager/etc/certs
 cp ./wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem
 mv ./wazuh-certificates/$NODE_NAME.pem /var/wazuh-manager/etc/certs/indexer-connector.pem
 mv ./wazuh-certificates/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+mv -f ./wazuh-certificates/$NODE_NAME-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem
+mv -f ./wazuh-certificates/$NODE_NAME-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem
 chown root:wazuh-manager /var/wazuh-manager/etc/certs/root-ca.pem \
     /var/wazuh-manager/etc/certs/indexer-connector.pem \
     /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs/remoted.pem \
+    /var/wazuh-manager/etc/certs/remoted-key.pem
 chmod 640 /var/wazuh-manager/etc/certs/root-ca.pem \
     /var/wazuh-manager/etc/certs/indexer-connector.pem \
-    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+    /var/wazuh-manager/etc/certs/indexer-connector-key.pem \
+    /var/wazuh-manager/etc/certs/remoted.pem \
+    /var/wazuh-manager/etc/certs/remoted-key.pem
 chown root:wazuh-manager /var/wazuh-manager/etc/certs
 chmod 1770 /var/wazuh-manager/etc/certs
 ```
+
+> [!NOTE]
+> The Wazuh manager does not generate any certificate. It will not start until `remoted.pem` and `remoted-key.pem` are present in `/var/wazuh-manager/etc/certs`. The `mv -f` is deliberate: a manager package that still self-signs its own listener certificate at install time leaves one in that directory, and it must be replaced by the pair issued from `root-ca.pem`. That pair is served by the agent listener (`wazuh-manager-remoted` on 1517, reused by `wazuh-manager-authd` on 1515) and is opened after dropping privileges, hence the `wazuh-manager` owner.
 
 > [!NOTE]
 > Replace `<MANAGER_NODE_NAME>` with the name you used when generating the certificates.
