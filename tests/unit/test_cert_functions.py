@@ -4,6 +4,7 @@ Unit tests for cert_tool/certFunctions.sh
 Covers: cert_cleanFiles, cert_checkOpenSSL, cert_generateRootCAcertificate,
         cert_generateAdmincertificate, cert_generateIndexercertificates,
         cert_generateManagercertificates, cert_generateDashboardcertificates,
+        cert_generateRemotedcertificateconfiguration, cert_verifyRemotedcertificates,
         cert_readConfig
 """
 
@@ -172,6 +173,7 @@ class TestCertGenerateManagercertificates:
         assert_failure(result)
 
     def test_success_one_node(self, tmp_path):
+        (tmp_path / "root-ca.pem").write_text("root-ca")
         mocks = {
             **IGNORE_LOGGER,
             "openssl": "true",
@@ -189,6 +191,113 @@ class TestCertGenerateManagercertificates:
             },
         )
         assert_success(result)
+
+    def test_success_issues_remoted_certificate(self, tmp_path):
+        """Each manager node also gets the agent listener leaf, CA appended."""
+        (tmp_path / "root-ca.pem").write_text("root-ca")
+        mocks = {
+            **IGNORE_LOGGER,
+            "openssl": "true",
+            "cert_generateCertificateconfiguration": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "cert_generateManagercertificates",
+            mocks,
+            {
+                "manager_node_names": "(wazuh-master)",
+                "manager_node_ip_1": "(1.1.1.1)",
+                "cert_tmp_path": str(tmp_path),
+                "debug_cert": "",
+            },
+        )
+        assert_success(result)
+        assert (tmp_path / "wazuh-master-remoted.pem").read_text() == "root-ca"
+
+
+class TestCertGenerateRemotedcertificateconfiguration:
+    def test_fail_no_san(self, tmp_path):
+        """Exits when no IP or DNS is given."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            "cert_generateRemotedcertificateconfiguration wazuh-master",
+            IGNORE_LOGGER,
+            {"cert_tmp_path": str(tmp_path)},
+        )
+        assert_failure(result)
+
+    def test_fail_invalid_san(self, tmp_path):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "cert_generateRemotedcertificateconfiguration wazuh-master 'not a host'",
+            IGNORE_LOGGER,
+            {"cert_tmp_path": str(tmp_path)},
+        )
+        assert_failure(result)
+
+    def test_success_extensions_and_san(self, tmp_path):
+        """Writes the listener extensions and the node's IP and DNS values."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            "cert_generateRemotedcertificateconfiguration wazuh-master 1.1.1.1 manager.example.com",
+            IGNORE_LOGGER,
+            {"cert_tmp_path": str(tmp_path)},
+        )
+        assert_success(result)
+
+        conf = (tmp_path / "wazuh-master-remoted.conf").read_text()
+        assert "CN = wazuh-master" in conf
+        assert "basicConstraints = critical,CA:FALSE" in conf
+        assert "keyUsage = critical,digitalSignature,keyEncipherment" in conf
+        assert "extendedKeyUsage = serverAuth" in conf
+        assert "IP.1 = 1.1.1.1" in conf
+        assert "DNS.1 = manager.example.com" in conf
+        # The node name is a DNS label agents may dial, so it is added too.
+        assert "DNS.2 = wazuh-master" in conf
+
+    def test_success_node_name_not_duplicated(self, tmp_path):
+        """The node name is not added twice when config.yml already lists it."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            "cert_generateRemotedcertificateconfiguration manager.example.com 1.1.1.1 manager.example.com",
+            IGNORE_LOGGER,
+            {"cert_tmp_path": str(tmp_path)},
+        )
+        assert_success(result)
+
+        conf = (tmp_path / "manager.example.com-remoted.conf").read_text()
+        assert conf.count("manager.example.com") == 2  # CN and DNS.1
+        assert "DNS.2" not in conf
+
+
+class TestCertVerifyRemotedcertificates:
+    def test_success_no_manager_nodes(self, tmp_path):
+        """Nothing to verify when config.yml has no manager node."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            f"cert_verifyRemotedcertificates {tmp_path}",
+            {**IGNORE_LOGGER, "openssl": "false"},
+            {"manager_node_names": "()", "cert_tmp_path": str(tmp_path)},
+        )
+        assert_success(result)
+
+    def test_success_certificate_verifies(self, tmp_path):
+        result = run_bash_function(
+            BASE_SOURCES,
+            f"cert_verifyRemotedcertificates {tmp_path}",
+            {**IGNORE_LOGGER, "openssl": "true"},
+            {"manager_node_names": "(wazuh-master)", "cert_tmp_path": str(tmp_path)},
+        )
+        assert_success(result)
+
+    def test_fail_certificate_does_not_verify(self, tmp_path):
+        result = run_bash_function(
+            BASE_SOURCES,
+            f"cert_verifyRemotedcertificates {tmp_path}",
+            {**IGNORE_LOGGER, "openssl": "false"},
+            {"manager_node_names": "(wazuh-master)", "cert_tmp_path": str(tmp_path)},
+        )
+        assert_failure(result)
 
 
 class TestCertGenerateDashboardcertificates:

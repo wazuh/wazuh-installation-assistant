@@ -4,6 +4,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1009](https://github.com/wazuh/wazuh-installation-assistant/issues/1009) | Issue the agent listener certificate from root-ca in wazuh-certs-tool and deploy it |
 | [#862](https://github.com/wazuh/wazuh-installation-assistant/pull/862) | Added bump-issue-link input in the 5.x bumper workflow. |
 | [#894](https://github.com/wazuh/wazuh-installation-assistant/pull/894) | Add integration test module docs |
 | [#843](https://github.com/wazuh/wazuh-installation-assistant/issues/843) | The passwords tool corrupts the admin hash |

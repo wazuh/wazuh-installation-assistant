@@ -143,7 +143,7 @@ On systems with apt as package manager, the following dependencies must be insta
     apt install ./wazuh-offline/wazuh-packages/wazuh-manager*.deb
     ```
 
-2. Deploy the SSL certificates for secure communication between the Wazuh manager and indexer. These certificates should be extracted from the `wazuh-certificates/` directory generated during the certificate creation process.
+2. Deploy the SSL certificates for secure communication between the Wazuh manager and indexer, and the certificate of the agent listener. These certificates should be extracted from the `wazuh-certificates/` directory generated during the certificate creation process.
 
     ```bash
     NODE_NAME=<MANAGER_NODE_NAME>
@@ -154,18 +154,27 @@ On systems with apt as package manager, the following dependencies must be insta
     cp ./wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem
     mv ./wazuh-certificates/$NODE_NAME.pem /var/wazuh-manager/etc/certs/indexer-connector.pem
     mv ./wazuh-certificates/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+    mv ./wazuh-certificates/$NODE_NAME-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem
+    mv ./wazuh-certificates/$NODE_NAME-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem
     chown root:wazuh-manager /var/wazuh-manager/etc/certs/root-ca.pem \
         /var/wazuh-manager/etc/certs/indexer-connector.pem \
         /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+    chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs/remoted.pem \
+        /var/wazuh-manager/etc/certs/remoted-key.pem
     chmod 640 /var/wazuh-manager/etc/certs/root-ca.pem \
         /var/wazuh-manager/etc/certs/indexer-connector.pem \
-        /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+        /var/wazuh-manager/etc/certs/indexer-connector-key.pem \
+        /var/wazuh-manager/etc/certs/remoted.pem \
+        /var/wazuh-manager/etc/certs/remoted-key.pem
     chown root:wazuh-manager /var/wazuh-manager/etc/certs
     chmod 1770 /var/wazuh-manager/etc/certs
     ```
 
     > [!NOTE]
     > Replace `<MANAGER_NODE_NAME>` with the name you used when generating the certificates.
+
+    > [!NOTE]
+    > The Wazuh manager does not generate any certificate. It will not start until `remoted.pem` and `remoted-key.pem` are present in `/var/wazuh-manager/etc/certs`. That pair is served by the agent listener (`wazuh-manager-remoted` on 1517, reused by `wazuh-manager-authd` on 1515) and is opened after dropping privileges, hence the `wazuh-manager` owner.
 
 3. Save the Wazuh indexer username and password into the Wazuh manager keystore using the `wazuh-manager-keystore` tool:
 

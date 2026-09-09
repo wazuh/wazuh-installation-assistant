@@ -125,6 +125,7 @@ function manager_copyCertificates() {
         eval "rm -rf ${manager_cert_path}/wazuh-install-files/ ${debug}"
         eval "chown root:wazuh-manager ${manager_cert_path}/root-ca.pem ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
         eval "chmod 640 ${manager_cert_path}/root-ca.pem ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
+        manager_copyRemotedCertificates
         eval "chown root:wazuh-manager ${manager_cert_path} ${debug}"
         eval "chmod 1770 ${manager_cert_path} ${debug}"
     else
@@ -132,5 +133,32 @@ function manager_copyCertificates() {
         installCommon_rollBack
         exit 1
     fi
+
+}
+
+# Deploys the certificate of the agent listener (remoted on 1517, reused by authd on
+# 1515). The manager no longer generates it: without etc/certs/remoted.pem and
+# etc/certs/remoted-key.pem it refuses to start. Unlike the indexer connector files,
+# which are read as root, this pair is opened by remoted after dropping privileges,
+# hence the wazuh-manager owner.
+function manager_copyRemotedCertificates() {
+
+    if [ -f "${manager_cert_path}/remoted.pem" ] && [ -f "${manager_cert_path}/remoted-key.pem" ]; then
+        common_logger -d "The agent listener certificate already exists, it will not be replaced."
+        return 0
+    fi
+
+    if ! tar -tf "${tar_file}" | grep -q -E "^wazuh-install-files/${winame}-remoted.pem$" || ! tar -tf "${tar_file}" | grep -q -E "^wazuh-install-files/${winame}-remoted-key.pem$"; then
+        common_logger -w "There is no agent listener certificate for the node ${winame} in ${tar_file}. The Wazuh manager will not start until ${manager_cert_path}/remoted.pem and ${manager_cert_path}/remoted-key.pem are provisioned."
+        return 0
+    fi
+
+    common_logger -d "Copying the agent listener certificate."
+    eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}-remoted.pem --strip-components 1 ${debug}"
+    eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}-remoted-key.pem --strip-components 1 ${debug}"
+    eval "mv ${manager_cert_path}/${winame}-remoted.pem ${manager_cert_path}/remoted.pem ${debug}"
+    eval "mv ${manager_cert_path}/${winame}-remoted-key.pem ${manager_cert_path}/remoted-key.pem ${debug}"
+    eval "chown wazuh-manager:wazuh-manager ${manager_cert_path}/remoted.pem ${manager_cert_path}/remoted-key.pem ${debug}"
+    eval "chmod 640 ${manager_cert_path}/remoted.pem ${manager_cert_path}/remoted-key.pem ${debug}"
 
 }

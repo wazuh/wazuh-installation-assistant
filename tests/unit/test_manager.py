@@ -1,7 +1,7 @@
 """
 Unit tests for install_functions/manager.sh
 
-Covers: manager_install, manager_startCluster
+Covers: manager_install, manager_startCluster, manager_copyRemotedCertificates
 """
 
 import pytest
@@ -164,3 +164,87 @@ class TestManagerStartCluster:
             },
         )
         assert_success(result)
+
+
+class TestManagerCopyRemotedCertificates:
+    """Tests for manager_copyRemotedCertificates.
+
+    The function extracts <winame>-remoted.pem / <winame>-remoted-key.pem from the
+    tar file and installs them as remoted.pem / remoted-key.pem. The manager does
+    not generate them any more and refuses to start without them.
+    """
+
+    def _make_tar(self, tmp_path, members):
+        """Build a wazuh-install-files.tar holding the given file names."""
+        import subprocess
+
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir(exist_ok=True)
+        for name in members:
+            (staging / name).write_text(name)
+        tar_file = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(
+            ["tar", "-cf", str(tar_file), "-C", str(tmp_path), "wazuh-install-files/"],
+            check=True,
+        )
+        return tar_file
+
+    def _run(self, tmp_path, members):
+        cert_path = tmp_path / "certs"
+        cert_path.mkdir(exist_ok=True)
+        tar_file = self._make_tar(tmp_path, members)
+
+        result = run_bash_function(
+            BASE_SOURCES,
+            "manager_copyRemotedCertificates",
+            {**IGNORE_LOGGER, "chown": "true"},
+            {
+                "winame": "wazuh-master",
+                "manager_cert_path": str(cert_path),
+                "tar_file": str(tar_file),
+                "debug": "",
+            },
+        )
+        return result, cert_path
+
+    def test_success_deploys_pair(self, tmp_path):
+        """The listener pair is renamed to remoted.pem and remoted-key.pem."""
+        result, cert_path = self._run(
+            tmp_path,
+            ["wazuh-master.pem", "wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem"],
+        )
+        assert_success(result)
+        assert (cert_path / "remoted.pem").read_text() == "wazuh-master-remoted.pem"
+        assert (cert_path / "remoted-key.pem").read_text() == "wazuh-master-remoted-key.pem"
+        assert not (cert_path / "wazuh-master-remoted.pem").exists()
+
+    def test_success_warns_when_pair_missing(self, tmp_path):
+        """An installation reusing customer certificates is not aborted."""
+        result, cert_path = self._run(tmp_path, ["wazuh-master.pem", "wazuh-master-key.pem"])
+        assert_success(result)
+        assert not (cert_path / "remoted.pem").exists()
+
+    def test_success_does_not_replace_existing_pair(self, tmp_path):
+        """An already provisioned listener certificate is left untouched."""
+        cert_path = tmp_path / "certs"
+        cert_path.mkdir()
+        (cert_path / "remoted.pem").write_text("existing")
+        (cert_path / "remoted-key.pem").write_text("existing-key")
+        tar_file = self._make_tar(
+            tmp_path, ["wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem"]
+        )
+
+        result = run_bash_function(
+            BASE_SOURCES,
+            "manager_copyRemotedCertificates",
+            {**IGNORE_LOGGER, "chown": "true"},
+            {
+                "winame": "wazuh-master",
+                "manager_cert_path": str(cert_path),
+                "tar_file": str(tar_file),
+                "debug": "",
+            },
+        )
+        assert_success(result)
+        assert (cert_path / "remoted.pem").read_text() == "existing"
+        assert (cert_path / "remoted-key.pem").read_text() == "existing-key"
