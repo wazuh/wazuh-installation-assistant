@@ -34,3 +34,6 @@ Access ``https://<WAZUH_DASHBOARD_IP_ADDRESS>`` and using your credentials:
 
 > [!NOTE]
 > When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. This is expected and the user has the option to accept the certificate as an exception or, alternatively, configure the system to use a certificate from a trusted authority.
+
+> [!NOTE]
+> It is highly recommended to change the default passwords after installation. See the [Change all default passwords](../../ref/getting-started/usage.md#change-all-default-passwords) section for details.
