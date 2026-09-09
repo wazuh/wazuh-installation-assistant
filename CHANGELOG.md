@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Fix silent manager restart failures and API user registration race condition causing false "User wazuh is not registered in Wazuh API" errors. ([#1010](https://github.com/wazuh/wazuh-installation-assistant/pull/1010))
 
 ### Deleted
 

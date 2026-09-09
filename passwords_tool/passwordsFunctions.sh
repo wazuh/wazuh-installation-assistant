@@ -351,7 +351,30 @@ function passwords_getApiUsers() {
 }
 
 function passwords_getApiUserId() {
-    user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
+
+    # The manager can respond on the API port right after restarting while
+    # it is still registering its internal users. A single lookup here can
+    # race that registration and report a false "not registered" error
+    # (see external-devel-requests#6840). Poll for a short, bounded window
+    # instead of failing on the first empty response.
+    api_user_lookup_retries=12
+    api_user_lookup_delay=5
+    api_user_lookup_attempt=0
+    user_id=""
+
+    while [ "${api_user_lookup_attempt}" -lt "${api_user_lookup_retries}" ]; do
+        user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
+
+        if [ -n "${user_id}" ]; then
+            break
+        fi
+
+        api_user_lookup_attempt=$((api_user_lookup_attempt+1))
+        if [ "${api_user_lookup_attempt}" -lt "${api_user_lookup_retries}" ]; then
+            common_logger -d "User ${1} not found yet in the Wazuh API (attempt ${api_user_lookup_attempt}/${api_user_lookup_retries}). The API may still be registering internal users, retrying in ${api_user_lookup_delay}s."
+            sleep "${api_user_lookup_delay}"
+        fi
+    done
 
     if [ -z "${user_id}" ]; then
         common_logger -e "User ${1} is not registered in Wazuh API"
