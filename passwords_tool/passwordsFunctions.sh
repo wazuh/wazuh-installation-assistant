@@ -544,6 +544,43 @@ function passwords_readUsers() {
 
 }
 
+function passwords_isServiceActive() {
+
+    # wazuh-manager is Type=forking with RemainAfterExit=yes and no PIDFile,
+    # so systemd (and the equivalent SysV init status action) only require
+    # *some* forked process from the unit's cgroup to still be alive to keep
+    # reporting it as active/running -- e.g. wazuh-apid on its own, even if
+    # the core daemons (analysisd, remoted, etc.) already crashed. Checking
+    # wazuh-control status reflects each daemon's real state instead.
+    if [ "${1}" == "wazuh-manager" ] && [ -x /var/ossec/bin/wazuh-control ]; then
+        # Daemons enabled by default on every install. wazuh-clusterd,
+        # wazuh-maild, wazuh-agentlessd, wazuh-integratord and
+        # wazuh-csyslogd are optional and off by default, so they are
+        # intentionally left out of this check.
+        manager_core_daemons=(wazuh-execd wazuh-db wazuh-analysisd wazuh-syscheckd wazuh-remoted wazuh-logcollector wazuh-monitord wazuh-modulesd wazuh-apid)
+        manager_status=$(/var/ossec/bin/wazuh-control status 2>/dev/null)
+        for manager_daemon in "${manager_core_daemons[@]}"; do
+            if ! echo "${manager_status}" | grep -q "^${manager_daemon} is running"; then
+                return 1
+            fi
+        done
+        return 0
+    fi
+
+    case "${2}" in
+        systemd)
+            systemctl is-active --quiet "${1}.service"
+            ;;
+        initd)
+            eval "/etc/init.d/${1} status ${debug}"
+            ;;
+        rcd)
+            eval "/etc/rc.d/init.d/${1} status ${debug}"
+            ;;
+    esac
+
+}
+
 function passwords_restartService() {
 
     common_logger -d "Restarting ${1} service..."
@@ -576,7 +613,7 @@ function passwords_restartService() {
             service_is_active=""
 
             while [ "${restart_check_attempt}" -lt "${restart_check_retries}" ]; do
-                if systemctl is-active --quiet "${1}.service"; then
+                if passwords_isServiceActive "${1}" systemd; then
                     service_is_active="true"
                     break
                 fi
@@ -619,7 +656,7 @@ function passwords_restartService() {
             service_is_active=""
 
             while [ "${restart_check_attempt}" -lt "${restart_check_retries}" ]; do
-                if eval "/etc/init.d/${1} status ${debug}"; then
+                if passwords_isServiceActive "${1}" initd; then
                     service_is_active="true"
                     break
                 fi
@@ -661,7 +698,7 @@ function passwords_restartService() {
             service_is_active=""
 
             while [ "${restart_check_attempt}" -lt "${restart_check_retries}" ]; do
-                if eval "/etc/rc.d/init.d/${1} status ${debug}"; then
+                if passwords_isServiceActive "${1}" rcd; then
                     service_is_active="true"
                     break
                 fi
