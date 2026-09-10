@@ -24,7 +24,7 @@
             delay: 30
             timeout: 300
           when: hostvars[inventory_hostname].manager_type == 'worker'
-          async: 500
+          async: 800
           poll: 5
 
         - name: Install Wazuh server (Workers)
