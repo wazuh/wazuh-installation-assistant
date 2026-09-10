@@ -554,10 +554,10 @@ function passwords_isServiceActive() {
     # wazuh-control status reflects each daemon's real state instead.
     if [ "${1}" == "wazuh-manager" ] && [ -x /var/ossec/bin/wazuh-control ]; then
         # Daemons enabled by default on every install. wazuh-clusterd,
-        # wazuh-maild, wazuh-agentlessd, wazuh-integratord and
-        # wazuh-csyslogd are optional and off by default, so they are
+        # wazuh-maild, wazuh-agentlessd, wazuh-integratord, wazuh-csyslogd
+        # and wazuh-authd are optional/configurable, so they are
         # intentionally left out of this check.
-        manager_core_daemons=(wazuh-execd wazuh-db wazuh-analysisd wazuh-syscheckd wazuh-remoted wazuh-logcollector wazuh-monitord wazuh-modulesd wazuh-apid wazuh-authd)
+        manager_core_daemons=(wazuh-execd wazuh-db wazuh-analysisd wazuh-syscheckd wazuh-remoted wazuh-logcollector wazuh-monitord wazuh-modulesd wazuh-apid)
         manager_status=$(/var/ossec/bin/wazuh-control status 2>/dev/null)
         for manager_daemon in "${manager_core_daemons[@]}"; do
             if ! echo "${manager_status}" | grep -q "^${manager_daemon} is running"; then
