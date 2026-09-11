@@ -12,4 +12,4 @@ To use `pre-release` packages instead, use the following command:
 curl -so wazuh-passwords-tool-5.0.1.sh https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-passwords-tool-5.0.1-<STAGE>.sh
 ```
 
-To see how to use this tool, see the [Passwords Tool Usage](../../usage/passwords-tool/passwords-tool-usage.md) section.
+To see how to use this tool, see the [Passwords Tool Usage](../../getting-started/usage.md#wazuh-password-tool) section.
