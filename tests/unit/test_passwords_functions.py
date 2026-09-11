@@ -3,7 +3,10 @@ Unit tests for passwords_tool/passwordsFunctions.sh
 
 Covers: passwords_checkPassword, passwords_generatePassword,
         passwords_checkUser, passwords_getApiToken, passwords_isServiceActive,
-        passwords_changePassword, passwords_changePasswordApi
+        passwords_changePassword, passwords_changePasswordApi,
+        passwords_generatePasswords, passwords_generateHash (changeall),
+        passwords_changePassword (changeall), passwords_changePasswordApi
+        (changeall), passwords_runSecurityAdmin (changeall)
 """
 
 from tests.unit.conftest import assert_failure, assert_success, run_bash_function
@@ -446,4 +449,614 @@ class TestPasswordsChangePasswordApi:
         )
         assert_success(result)
         assert "should_not_be_called" not in result.stdout
+
+
+class TestPasswordsGeneratePasswords:
+    """Tests for passwords_generatePasswords (the -a|--change-all batch
+    counterpart of passwords_generatePassword).
+
+    Fills `passwords[]` (one entry per `users[]`) and `api_passwords[]`
+    (one entry per `api_users[]`) by calling passwords_generatePassword in
+    a loop, then clears `password` so it cannot leak into single-user
+    checks that run afterwards.
+    """
+
+    def test_fills_one_password_per_user(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_generatePasswords; echo "counts:${#passwords[@]}:${#api_passwords[@]}"',
+            {**IGNORE_LOGGER},
+            {
+                "users": "(wazuh admin kibanaserver)",
+                "api_users": "(wazuh wazuh-wui)",
+            },
+        )
+        assert_success(result)
+        assert "counts:3:2" in result.stdout
+
+    def test_generated_passwords_satisfy_api_min_length(self):
+        """passwords_generatePassword yields 32 chars, well above the
+        12-char minimum required for Wazuh API users."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            """
+            passwords_generatePasswords
+            for p in "${passwords[@]}" "${api_passwords[@]}"; do
+                passwords_checkPassword "${p}" 12
+            done
+            """,
+            {**IGNORE_LOGGER, "installCommon_rollBack": "true"},
+            {
+                "users": "(wazuh admin)",
+                "api_users": "(wazuh-wui)",
+            },
+        )
+        assert_success(result)
+
+    def test_password_variable_left_empty(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_generatePasswords; echo "final:[${password}]"',
+            {**IGNORE_LOGGER},
+            {
+                "users": "(wazuh)",
+                "api_users": "(wazuh-wui)",
+            },
+        )
+        assert_success(result)
+        assert "final:[]" in result.stdout
+
+
+class TestPasswordsGenerateHashChangeAll:
+    """Tests for passwords_generateHash in changeall (batch) mode.
+
+    Iterates over `passwords[]` and fills `hashes[]`, calling
+    hash.sh once per entry.
+    """
+
+    def test_success_one_hash_per_password(self):
+        mocks = {
+            **IGNORE_LOGGER,
+            "bash": "echo hashed-$$",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_generateHash; echo "count:${#hashes[@]}"',
+            mocks,
+            {
+                "changeall": "1",
+                "passwords": "(PassOne1. PassTwo1. PassThree1.)",
+            },
+        )
+        assert_success(result)
+        assert "count:3" in result.stdout
+
+    def test_fail_when_hash_sh_fails(self):
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_rollBack": "true",
+            "bash": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_generateHash",
+            mocks,
+            {
+                "changeall": "1",
+                "passwords": "(PassOne1.)",
+            },
+        )
+        assert_failure(result)
+
+
+class TestPasswordsChangePasswordChangeAll:
+    """Tests for passwords_changePassword in changeall (batch) mode.
+
+    Runs the real sourced function (not a stand-in), keeping
+    indexer_installed empty so the code never touches the real
+    /etc/wazuh-indexer paths (guarded by `[ -n "${indexer_installed}" ]` /
+    `[ -f ... ]` checks already present in the function).
+    """
+
+    def test_processes_every_user_in_the_array(self):
+        """managerpass/dashpass get set from the matching passwords[]
+        entry for every user in users[], proving the batch loop iterates
+        over the whole array and not just a single user.
+
+        The manager connects to the indexer as 'wazuh-manager' (see
+        install_functions/manager.sh), not as 'admin' — so it is
+        'wazuh-manager', not 'admin', whose password must be captured
+        for the manager keystore.
+        """
+        mocks = {
+            **IGNORE_LOGGER,
+            "passwords_restartService": "true",
+            "passwords_isServiceActive": "return 0",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_changePassword; echo "manager:${managerpass}|dash:${dashpass}"',
+            mocks,
+            {
+                "changeall": "1",
+                "users": "(kibanaserver wazuh-manager)",
+                "passwords": "(DashPass1. ManagerPass1.)",
+            },
+        )
+        assert_success(result)
+        assert "manager:ManagerPass1.|dash:DashPass1." in result.stdout
+
+    def test_invokes_manager_and_dashboard_keystore_without_nuser(self):
+        """Both the manager keystore update and the dashboard keystore
+        update run in batch mode even though nuser is never set."""
+        mocks = {
+            **IGNORE_LOGGER,
+            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_isServiceActive": "return 0",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePassword",
+            mocks,
+            {
+                "changeall": "1",
+                "wazuh_installed": "yes",
+                "dashboard_installed": "yes",
+                "users": "(kibanaserver wazuh-manager)",
+                "passwords": "(DashPass1. ManagerPass1.)",
+            },
+        )
+        assert_success(result)
+        assert "restart_called:wazuh-manager" in result.stdout
+        assert "restart_called:wazuh-dashboard" in result.stdout
+
+    def test_skips_manager_keystore_when_wazuh_manager_missing_from_users_array(self):
+        """If users[] never contained 'wazuh-manager' (e.g. a partial
+        passwords_readUsers result), managerpass stays empty and the
+        manager keystore must NOT be updated with an empty password —
+        doing so would break the manager/indexer connection."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_isServiceActive": "return 0",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePassword",
+            mocks,
+            {
+                "changeall": "1",
+                "wazuh_installed": "yes",
+                "dashboard_installed": "yes",
+                "users": "(kibanaserver logstash)",
+                "passwords": "(DashPass1. LogstashPass1.)",
+            },
+        )
+        assert_success(result)
+        assert "restart_called:wazuh-manager" not in result.stdout
+        assert "LOG:-w Skipping Wazuh manager keystore update: no password available for the wazuh-manager user." in result.stdout
+        # The dashboard path is unaffected by the missing wazuh-manager user.
+        assert "restart_called:wazuh-dashboard" in result.stdout
+
+    def test_rotating_admin_alone_does_not_touch_manager_keystore(self):
+        """'admin' is the indexer/dashboard superuser, not the manager's
+        indexer credential — rotating it in isolation (wazuh-manager not
+        in users[]) must never touch the manager keystore."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_isServiceActive": "return 0",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePassword",
+            mocks,
+            {
+                "changeall": "1",
+                "wazuh_installed": "yes",
+                "users": "(admin)",
+                "passwords": "(AdminPass1.)",
+            },
+        )
+        assert_success(result)
+        assert "restart_called:wazuh-manager" not in result.stdout
+
+
+class TestPasswordsChangePasswordSingleUserManagerKeystore:
+    """Tests for passwords_changePassword's manager-keystore branch on
+    the single-user (-u|--user) path.
+
+    The manager authenticates to the indexer as 'wazuh-manager', not
+    'admin' (see install_functions/manager.sh), so only rotating
+    'wazuh-manager' may touch the manager keystore.
+    """
+
+    def test_wazuh_manager_user_updates_manager_keystore(self):
+        mocks = {
+            **IGNORE_LOGGER,
+            "passwords_restartService": 'echo "restart_called:$1"',
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePassword",
+            mocks,
+            {
+                "nuser": "wazuh-manager",
+                "password": "ManagerPass1.",
+                "wazuh_installed": "yes",
+            },
+        )
+        assert_success(result)
+        assert "restart_called:wazuh-manager" in result.stdout
+
+    def test_admin_user_does_not_update_manager_keystore(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_restartService": 'echo "restart_called:$1"',
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePassword",
+            mocks,
+            {
+                "nuser": "admin",
+                "password": "AdminPass1.",
+                "wazuh_installed": "yes",
+            },
+        )
+        assert_success(result)
+        assert "restart_called:wazuh-manager" not in result.stdout
+
+    def test_kibanaserver_user_still_updates_dashboard_keystore(self):
+        mocks = {
+            **IGNORE_LOGGER,
+            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_isServiceActive": "return 0",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePassword",
+            mocks,
+            {
+                "nuser": "kibanaserver",
+                "password": "DashPass1.",
+                "dashboard_installed": "yes",
+            },
+        )
+        assert_success(result)
+        assert "restart_called:wazuh-dashboard" in result.stdout
+
+
+class TestPasswordsChangePasswordApiChangeAll:
+    """Tests for passwords_changePasswordApi in changeall (batch) mode.
+
+    Iterates over api_passwords[], issuing one PUT per Wazuh API user.
+    """
+
+    def test_one_put_per_api_user(self):
+        mocks = {
+            **IGNORE_LOGGER,
+            "passwords_isServiceActive": "return 0",
+            "passwords_getApiUserId": "user_id=1",
+            "common_curl": 'echo "put_called:$*"',
+            "passwords_getApiToken": "true",
+            "sleep": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePasswordApi",
+            mocks,
+            {
+                "changeall": "1",
+                "wazuh_installed": "yes",
+                "adminUser": "someone-else",
+                "api_users": "(wazuh wazuh-wui)",
+                "api_passwords": "(PassOne1. PassTwo1.)",
+                "TOKEN_API": "test_token",
+            },
+        )
+        assert_success(result)
+        assert result.stdout.count("put_called:") == 2
+
+    def test_fail_when_wazuh_manager_inactive(self):
+        mocks = {
+            **IGNORE_LOGGER,
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePasswordApi",
+            mocks,
+            {
+                "changeall": "1",
+                "wazuh_installed": "yes",
+                "api_users": "(wazuh)",
+                "api_passwords": "(PassOne1.)",
+                "TOKEN_API": "test_token",
+            },
+        )
+        assert_failure(result)
+
+    def test_reauthenticates_when_rotated_user_is_admin_user(self):
+        """Rotating the API admin's own password must re-authenticate,
+        otherwise the following PUTs would 401 against the old token."""
+        mocks = {
+            **IGNORE_LOGGER,
+            "passwords_isServiceActive": "return 0",
+            "passwords_getApiUserId": "user_id=1",
+            "common_curl": "true",
+            "passwords_getApiToken": 'echo "reauth_called"',
+            "sleep": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePasswordApi",
+            mocks,
+            {
+                "changeall": "1",
+                "wazuh_installed": "yes",
+                "adminUser": "wazuh",
+                "adminPassword": "OldPass1.",
+                "api_users": "(wazuh)",
+                "api_passwords": "(NewAdminPass1.)",
+                "TOKEN_API": "test_token",
+            },
+        )
+        assert_success(result)
+        assert "reauth_called" in result.stdout
+
+    def test_calls_dashboard_api_password_change_for_wazuh_wui(self):
+        mocks = {
+            **IGNORE_LOGGER,
+            "passwords_isServiceActive": "return 0",
+            "passwords_getApiUserId": "user_id=1",
+            "common_curl": "true",
+            "passwords_changeDashboardApiPassword": 'echo "dashboard_called:$1"',
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePasswordApi",
+            mocks,
+            {
+                "changeall": "1",
+                "wazuh_installed": "yes",
+                "dashboard_installed": "yes",
+                "adminUser": "admin",
+                "api_users": "(wazuh-wui)",
+                "api_passwords": "(WuiPass1.)",
+                "TOKEN_API": "test_token",
+            },
+        )
+        assert_success(result)
+        assert "dashboard_called:WuiPass1." in result.stdout
+
+
+class TestPasswordsChangePasswordApiInactiveManagerMessage:
+    """The 'wazuh-manager service is not running' message must reference
+    nuser in the single-user path, but nuser is always empty in
+    changeall mode, so that branch must not print an empty user name."""
+
+    def test_single_user_message_includes_nuser(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePasswordApi",
+            mocks,
+            {
+                "wazuh_installed": "yes",
+                "nuser": "testuser",
+                "password": "TestPass1.",
+                "TOKEN_API": "test_token",
+            },
+        )
+        assert_failure(result)
+        assert (
+            "LOG:-e wazuh-manager service is not running. Skipping API password change for user testuser."
+            in result.stdout
+        )
+
+    def test_changeall_message_omits_nuser(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePasswordApi",
+            mocks,
+            {
+                "changeall": "1",
+                "wazuh_installed": "yes",
+                "api_users": "(wazuh)",
+                "api_passwords": "(PassOne1.)",
+                "TOKEN_API": "test_token",
+            },
+        )
+        assert_failure(result)
+        assert (
+            "LOG:-e wazuh-manager service is not running. Skipping Wazuh API password change."
+            in result.stdout
+        )
+        assert "for user" not in result.stdout
+
+
+class TestPasswordsGetApiTokenInactiveManagerMessage:
+    """passwords_getApiToken is also called from main's changeall block
+    (before passwords_changePasswordApi), so its own wazuh-manager-
+    inactive message needs the same nuser/changeall split."""
+
+    def test_single_user_message_includes_nuser(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_getApiToken",
+            mocks,
+            {"nuser": "testuser", "adminUser": "admin", "adminPassword": "pass"},
+        )
+        assert_failure(result)
+        assert (
+            "LOG:-e wazuh-manager service is not running. Skipping API password change for user testuser."
+            in result.stdout
+        )
+
+    def test_changeall_message_omits_nuser(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_getApiToken",
+            mocks,
+            {"changeall": "1", "adminUser": "admin", "adminPassword": "pass"},
+        )
+        assert_failure(result)
+        assert (
+            "LOG:-e wazuh-manager service is not running. Skipping Wazuh API password change."
+            in result.stdout
+        )
+        assert "for user" not in result.stdout
+
+
+class TestPasswordsGetApiUsersInactiveManagerMessage:
+    """passwords_getApiUsers is also called from main's changeall block,
+    so its wazuh-manager-inactive message needs the same split."""
+
+    def test_single_user_message_includes_nuser(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_getApiUsers",
+            mocks,
+            {"nuser": "testuser", "TOKEN_API": "test_token"},
+        )
+        assert_failure(result)
+        assert (
+            "LOG:-e wazuh-manager service is not running. Skipping API password change for user testuser."
+            in result.stdout
+        )
+
+    def test_changeall_message_omits_nuser(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_getApiUsers",
+            mocks,
+            {"changeall": "1", "TOKEN_API": "test_token"},
+        )
+        assert_failure(result)
+        assert (
+            "LOG:-e wazuh-manager service is not running. Skipping Wazuh API password change."
+            in result.stdout
+        )
+        assert "for user" not in result.stdout
+
+
+class TestPasswordsGetApiUserIdInactiveManagerMessage:
+    """passwords_getApiUserId receives the target user as $1 (not nuser),
+    in both the single-user and changeall paths, so its message must
+    name whatever user was passed in, regardless of changeall."""
+
+    def test_single_user_mode_names_the_given_user(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_getApiUserId "testuser"',
+            mocks,
+            {"nuser": "testuser", "TOKEN_API": "test_token"},
+        )
+        assert_failure(result)
+        assert (
+            "LOG:-e wazuh-manager service is not running. Skipping API password change for user testuser."
+            in result.stdout
+        )
+
+    def test_changeall_mode_names_the_given_user_not_nuser(self):
+        """nuser is empty in changeall mode, but the function is called
+        once per api_users[] entry with that user as $1 — the message
+        must name that user, not the (empty) nuser."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_getApiUserId "wazuh-wui"',
+            mocks,
+            {"changeall": "1", "TOKEN_API": "test_token"},
+        )
+        assert_failure(result)
+        assert (
+            "LOG:-e wazuh-manager service is not running. Skipping API password change for user wazuh-wui."
+            in result.stdout
+        )
+        assert "for user ." not in result.stdout
+
+
+class TestPasswordsRunSecurityAdminChangeAll:
+    """Tests for passwords_runSecurityAdmin in changeall (batch) mode.
+
+    `eval` and `cp` are mocked so the real /etc/wazuh-indexer paths (which
+    require root and don't exist in the test environment) are never
+    touched; this isolates the changeall reporting block added at the
+    end of the function.
+    """
+
+    def test_prints_password_for_every_user(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "eval": "return 0",
+            "cp": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_runSecurityAdmin",
+            mocks,
+            {
+                "changeall": "1",
+                "indexer_installed": "yes",
+                "users": "(admin kibanaserver)",
+                "passwords": "(AdminPass1. DashPass1.)",
+            },
+        )
+        assert_success(result)
+        assert "LOG:-nl The password for user admin is AdminPass1." in result.stdout
+        assert "LOG:-nl The password for user kibanaserver is DashPass1." in result.stdout
+
+    def test_does_not_print_single_user_report_in_batch_mode(self):
+        """The nuser-gated report lines must stay silent when nuser is
+        empty, even though changeall's own report block fires."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "eval": "return 0",
+            "cp": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_runSecurityAdmin",
+            mocks,
+            {
+                "changeall": "1",
+                "indexer_installed": "yes",
+                "users": "(admin)",
+                "passwords": "(AdminPass1.)",
+            },
+        )
+        assert_success(result)
+        assert "Password changed. Remember" not in result.stdout
 
