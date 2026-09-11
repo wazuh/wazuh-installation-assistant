@@ -13,5 +13,5 @@
         args:
           chdir: "{{ script_path }}"
         register: install_results
-        async: 500
+        async: 800
         poll: 5
