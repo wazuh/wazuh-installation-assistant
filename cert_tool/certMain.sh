@@ -36,6 +36,8 @@ function getHelp() {
     echo -e ""
     echo -e "        -wm,  --wazuh-manager-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
     echo -e "                Creates the Wazuh manager certificates, add root-ca.pem and root-ca.key."
+    echo -e "                Each manager node also gets <name>-remoted.pem and <name>-remoted-key.pem,"
+    echo -e "                the certificate of the agent listener (remoted and authd)."
     echo -e ""
     echo -e "        -tmp,  --cert_tmp_path </path/to/tmp_dir>"
     echo -e "                Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one."
@@ -217,6 +219,7 @@ function main() {
             else
                 mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
             fi
+            cert_verifyRemotedcertificates "${base_path}/wazuh-certificates"
         fi
 
         if [[ -n "${ca}" ]]; then
@@ -260,6 +263,7 @@ function main() {
                 else
                     mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
                 fi
+                cert_verifyRemotedcertificates "${base_path}/wazuh-certificates"
             else
                 common_logger -e "Manager node not present in config.yml."
                 exit 1

@@ -13,6 +13,9 @@ The certificate bundle (`wazuh-install-files.tar`) is created once and then dist
 - A root CA certificate (`root-ca.pem` and `root-ca.key`)
 - An admin certificate (`admin.pem` and `admin-key.pem`) for cluster security initialization
 - Individual node certificates for each Wazuh Indexer, Manager, and Dashboard node
+- For each Wazuh Manager node, the certificate of the agent listener (`<node>-remoted.pem` and `<node>-remoted-key.pem`), deployed as `remoted.pem` and `remoted-key.pem`
+
+The Wazuh manager does not generate certificates: it will not start until `remoted.pem` and `remoted-key.pem` are present in `/var/wazuh-manager/etc/certs`. That pair is served by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, so agents can verify the manager they dial by pinning `root-ca.pem`. `<node>-remoted.pem` is a chain: the leaf followed by the root CA, and its `notBefore` is backdated one day so an agent whose clock lags does not reject a freshly issued certificate. Unlike the rest of the trust material, which is read as `root`, the listener pair is opened after dropping privileges and is therefore owned by `wazuh-manager:wazuh-manager` with mode `640`.
 
 Certificate files are stored in the following paths on each node:
 
@@ -25,6 +28,12 @@ Certificate files are stored in the following paths on each node:
 ## Password management
 
 The installation assistant sets default passwords for internal Wazuh users during installation. It is strongly recommended to change these passwords after installation using the `wazuh-passwords-tool-5.1.0.sh` script.
+
+The recommended procedure is to change all default passwords at once with the `--change-all` option. See the [Change all default passwords](../ref/getting-started/usage.md#change-all-default-passwords) section for details.
+
+```bash
+bash wazuh-passwords-tool-5.0.0.sh --change-all
+```
 
 To change a specific user's password:
 

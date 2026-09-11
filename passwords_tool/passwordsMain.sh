@@ -16,6 +16,10 @@ function getHelp() {
     echo -e "        $(basename "${0}") [OPTIONS]"
     echo -e ""
     echo -e "DESCRIPTION"
+    echo -e "        -a,  --change-all"
+    echo -e "                Changes all the Wazuh indexer and Wazuh API user passwords and prints them on screen."
+    echo -e "                To change API passwords -au|--admin-user and -ap|--admin-password are required."
+    echo -e ""
     echo -e "        -A,  --api"
     echo -e "                Change the Wazuh API password."
     echo -e "                Requires -u|--user, and -p|--password, -au|--admin-user and -ap|--admin-password."
@@ -29,7 +33,6 @@ function getHelp() {
     echo -e "                Requires -A|--api."
     echo -e ""
     echo -e "        -u,  --user <user>"
-    echo -e "                Required parameter."
     echo -e "                Indicates the name of the user whose password will be changed."
     echo -e "                If no password specified it will generate a random one."
     echo -e ""
@@ -58,6 +61,10 @@ function main() {
             case "${1}" in
             "-v"|"--verbose")
                 verboseenabled=1
+                shift 1
+                ;;
+            "-a"|"--change-all")
+                changeall=1
                 shift 1
                 ;;
             "-A"|"--api")
@@ -117,12 +124,32 @@ function main() {
         common_checkSystem
         common_checkInstalled
 
-        if [ -z "${nuser}" ]; then
-            echo "Error: -u|--user is required"
+        if [ -z "${nuser}" ] && [ -z "${changeall}" ]; then
+            common_logger -e "Either -u|--user or -a|--change-all is required."
             getHelp
         fi
 
-        if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ] && [ -z "${api}" ]; then
+        if [ -n "${nuser}" ] && [ -n "${changeall}" ]; then
+            getHelp
+        fi
+
+        if [ -n "${password}" ] && [ -n "${changeall}" ]; then
+            getHelp
+        fi
+
+        if [ -n "${api}" ] && [ -n "${changeall}" ]; then
+            getHelp
+        fi
+
+        if [ -n "${adminUser}" ] && [ -z "${adminPassword}" ]; then
+            getHelp
+        fi
+
+        if [ -z "${adminUser}" ] && [ -n "${adminPassword}" ]; then
+            getHelp
+        fi
+
+        if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ] && [ -z "${api}" ] && [ -z "${changeall}" ]; then
             getHelp
         fi
 
@@ -134,6 +161,19 @@ function main() {
                 passwords_readUsers
             fi
             passwords_checkUser
+        fi
+
+        if [ -n "${changeall}" ]; then
+            if [ -n "${indexer_installed}" ]; then
+                passwords_readUsers
+            fi
+            if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
+                passwords_getApiToken
+                passwords_getApiUsers
+            else
+                common_logger "Wazuh API admin credentials not provided, Wazuh API passwords not changed."
+            fi
+            passwords_generatePasswords
         fi
 
         if [ -n "${nuser}" ] && [ -z "${password}" ]; then
@@ -156,21 +196,23 @@ function main() {
             passwords_runSecurityAdmin
         fi
 
-        if [ -n "${api}" ]; then
-            if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
-                if passwords_isServiceActive "wazuh-manager"; then
-                    passwords_changePasswordApi
+        if { [ -n "${api}" ] || [ -n "${changeall}" ]; } && [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
+            if passwords_isServiceActive "wazuh-manager"; then
+                passwords_changePasswordApi
+            else
+                if [ -n "${changeall}" ]; then
+                    common_logger -e "wazuh-manager service is not running. Skipping Wazuh API password change."
                 else
                     common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
-                    exit 1
                 fi
+                exit 1
+            fi
 
-                if [ -n "${wazuh_installed}" ]; then
-                    passwords_restartService "wazuh-manager"
-                fi
-                if [ -n "${dashboard_installed}" ] && passwords_isServiceActive "wazuh-dashboard"; then
-                    passwords_restartService "wazuh-dashboard"
-                fi
+            if [ -n "${wazuh_installed}" ]; then
+                passwords_restartService "wazuh-manager"
+            fi
+            if [ -n "${dashboard_installed}" ] && passwords_isServiceActive "wazuh-dashboard"; then
+                passwords_restartService "wazuh-dashboard"
             fi
         fi
 

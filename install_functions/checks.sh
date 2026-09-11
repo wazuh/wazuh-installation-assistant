@@ -357,6 +357,11 @@ function checks_previousCertificate() {
             common_logger -e "There is no certificate for the wazuh manager node ${winame} in ${tar_file}."
             exit 1
         fi
+        # The agent listener certificate is only a warning: an installation that reuses
+        # certificates provisioned by the customer may legitimately not carry it.
+        if ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${winame}"-remoted.pem || ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${winame}"-remoted-key.pem; then
+            common_logger -w "There is no agent listener certificate for the wazuh manager node ${winame} in ${tar_file}. The Wazuh manager will not start until remoted.pem and remoted-key.pem are provisioned in ${manager_cert_path}."
+        fi
     fi
 }
 
