@@ -310,12 +310,30 @@ function passwords_getApiUsers() {
 }
 
 function passwords_getApiUserId() {
-    if passwords_isServiceActive "wazuh-manager"; then
+
+    # The manager can respond on the API port right after restarting while
+    # it is still registering its internal users. A single lookup here can
+    # race that registration and report a false "not registered" error
+    # (see external-devel-requests#6840). Poll for a short, bounded window
+    # instead of failing on the first empty response.
+    api_user_lookup_retries=12
+    api_user_lookup_delay=5
+    api_user_lookup_attempt=0
+    user_id=""
+
+    while [ "${api_user_lookup_attempt}" -lt "${api_user_lookup_retries}" ]; do
         user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
-    else
-        common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${1}."
-        exit 1;
-    fi
+
+        if [ -n "${user_id}" ]; then
+            break
+        fi
+
+        api_user_lookup_attempt=$((api_user_lookup_attempt+1))
+        if [ "${api_user_lookup_attempt}" -lt "${api_user_lookup_retries}" ]; then
+            common_logger -d "User ${1} not found yet in the Wazuh API (attempt ${api_user_lookup_attempt}/${api_user_lookup_retries}). The API may still be registering internal users, retrying in ${api_user_lookup_delay}s."
+            sleep "${api_user_lookup_delay}"
+        fi
+    done
 
     if [ -z "${user_id}" ]; then
         common_logger -e "User ${1} is not registered in Wazuh API"
@@ -364,6 +382,31 @@ function passwords_isServiceActive() {
     fi
 
     local service_name="${1}"
+
+    # wazuh-manager is Type=forking with RemainAfterExit=yes and no PIDFile,
+    # so systemd (and the equivalent SysV init status action) only require
+    # *some* forked process from the unit's cgroup to still be alive to keep
+    # reporting it as active/running -- e.g. wazuh-manager-apid on its own,
+    # even if the core daemons (analysisd, remoted, etc.) already crashed.
+    # Checking wazuh-manager-control status reflects each daemon's real
+    # state instead.
+    if [ "${service_name}" == "wazuh-manager" ] && [ -x /var/wazuh-manager/bin/wazuh-manager-control ]; then
+        # Daemons enabled by default on every install, per the DAEMONS list
+        # in wazuh/wazuh's src/init/wazuh-server.sh on 5.0.0. wazuh-manager-
+        # clusterd and wazuh-manager-authd are optional/configurable, so they
+        # are intentionally left out of this check. wazuh-manager-execd,
+        # wazuh-manager-syscheckd, wazuh-manager-logcollector and
+        # wazuh-manager-monitord no longer exist as separate daemons in
+        # 5.0.0 (#992) -- they are not in that DAEMONS list either.
+        manager_core_daemons=(wazuh-manager-db wazuh-manager-analysisd wazuh-manager-remoted wazuh-manager-modulesd wazuh-manager-apid)
+        manager_status=$(/var/wazuh-manager/bin/wazuh-manager-control status 2>/dev/null)
+        for manager_daemon in "${manager_core_daemons[@]}"; do
+            if ! echo "${manager_status}" | grep -q "^${manager_daemon} is running"; then
+                return 1
+            fi
+        done
+        return 0
+    fi
 
     if [[ -d /run/systemd/system ]]; then
         # Check if service is active using systemctl
@@ -414,7 +457,37 @@ function passwords_restartService() {
             fi
             exit 1;
         else
-            common_logger -d "${1} started."
+            # systemctl restart can return success immediately even if the
+            # service later fails to initialize (e.g. under resource
+            # pressure). Poll is-active for a short window to catch that
+            # before moving on, instead of only checking the restart call
+            # itself.
+            restart_check_retries=12
+            restart_check_delay=5
+            restart_check_attempt=0
+            service_is_active=""
+
+            while [ "${restart_check_attempt}" -lt "${restart_check_retries}" ]; do
+                if passwords_isServiceActive "${1}"; then
+                    service_is_active="true"
+                    break
+                fi
+                restart_check_attempt=$((restart_check_attempt+1))
+                sleep "${restart_check_delay}"
+            done
+
+            if [ -z "${service_is_active}" ]; then
+                common_logger -e "${1} restarted but did not stay active (checked for $((restart_check_retries * restart_check_delay))s). It may have failed to initialize, for example due to insufficient resources."
+                if [ -n "$(command -v journalctl)" ]; then
+                    eval "journalctl -u ${1} >> ${logfile}"
+                fi
+                if [[ $(type -t installCommon_rollBack) == "function" ]]; then
+                    installCommon_rollBack
+                fi
+                exit 1;
+            else
+                common_logger -d "${1} started."
+            fi
         fi
     elif ps -p 1 -o comm= | grep "init"; then
         eval "/etc/init.d/${1} restart ${debug}"
@@ -428,7 +501,36 @@ function passwords_restartService() {
             fi
             exit 1;
         else
-            common_logger -d "${1} started."
+            # Same rationale as the systemd branch above: the restart command
+            # can return success immediately even if the service later fails
+            # to initialize. Poll the init script's own status action for a
+            # short window before considering the restart actually successful.
+            restart_check_retries=12
+            restart_check_delay=5
+            restart_check_attempt=0
+            service_is_active=""
+
+            while [ "${restart_check_attempt}" -lt "${restart_check_retries}" ]; do
+                if passwords_isServiceActive "${1}"; then
+                    service_is_active="true"
+                    break
+                fi
+                restart_check_attempt=$((restart_check_attempt+1))
+                sleep "${restart_check_delay}"
+            done
+
+            if [ -z "${service_is_active}" ]; then
+                common_logger -e "${1} restarted but did not stay active (checked for $((restart_check_retries * restart_check_delay))s). It may have failed to initialize, for example due to insufficient resources."
+                if [ -n "$(command -v journalctl)" ]; then
+                    eval "journalctl -u ${1} >> ${logfile}"
+                fi
+                if [[ $(type -t installCommon_rollBack) == "function" ]]; then
+                    installCommon_rollBack
+                fi
+                exit 1;
+            else
+                common_logger -d "${1} started."
+            fi
         fi
     elif [ -x "/etc/rc.d/init.d/${1}" ] ; then
         eval "/etc/rc.d/init.d/${1} restart ${debug}"
@@ -442,7 +544,35 @@ function passwords_restartService() {
             fi
             exit 1;
         else
-            common_logger -d "${1} started."
+            # Same rationale as the systemd branch above: poll the init
+            # script's own status action for a short window before
+            # considering the restart actually successful.
+            restart_check_retries=12
+            restart_check_delay=5
+            restart_check_attempt=0
+            service_is_active=""
+
+            while [ "${restart_check_attempt}" -lt "${restart_check_retries}" ]; do
+                if passwords_isServiceActive "${1}"; then
+                    service_is_active="true"
+                    break
+                fi
+                restart_check_attempt=$((restart_check_attempt+1))
+                sleep "${restart_check_delay}"
+            done
+
+            if [ -z "${service_is_active}" ]; then
+                common_logger -e "${1} restarted but did not stay active (checked for $((restart_check_retries * restart_check_delay))s). It may have failed to initialize, for example due to insufficient resources."
+                if [ -n "$(command -v journalctl)" ]; then
+                    eval "journalctl -u ${1} >> ${logfile}"
+                fi
+                if [[ $(type -t installCommon_rollBack) == "function" ]]; then
+                    installCommon_rollBack
+                fi
+                exit 1;
+            else
+                common_logger -d "${1} started."
+            fi
         fi
     else
         if [[ $(type -t installCommon_rollBack) == "function" ]]; then
