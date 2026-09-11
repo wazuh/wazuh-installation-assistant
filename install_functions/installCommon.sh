@@ -117,6 +117,7 @@ function installCommon_createCertificates() {
     eval "chmod 400 /tmp/wazuh-certificates/* ${debug}"
     eval "mv /tmp/wazuh-certificates/* /tmp/wazuh-install-files ${debug}"
     eval "rm -rf /tmp/wazuh-certificates/ ${debug}"
+    cert_verifyRemotedcertificates "/tmp/wazuh-install-files"
 
 }
 
