@@ -201,13 +201,15 @@ The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.
 | Option | Description |
 | -------- | ------------- |
 | `-a`, `--admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the admin certificates, add root-ca.pem and root-ca.key. |
-| `-A`, `--all </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates certificates specified in config.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created. |
+| `-A`, `--all </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates certificates specified in config.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created. Includes the `load_balancer` entries when the section is present. |
+| `-as`, `--agent-san <ip\|dns>` | Adds an extra address to the subject alternative name of every agent listener certificate. Repeat it for more than one. Must be used along with `-A` or `-wm`. |
 | `-ca`, `--root-ca-certificates` | Creates the root-ca certificates. |
+| `-lb`, `--load-balancer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the certificates of the `load_balancer` entries of config.yml, add root-ca.pem and root-ca.key. Only needed by a proxy that terminates TLS. |
 | `-v`, `--verbose` | Enables verbose mode. |
 | `-wd`, `--wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh dashboard certificates, add root-ca.pem and root-ca.key. |
 | `-wi`, `--wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh indexer certificates, add root-ca.pem and root-ca.key. |
 | `-ws`, `--wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh server certificates, add root-ca.pem and root-ca.key. |
-| `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws |
+| `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws, -lb |
 
 ### config.yml configuration
 
@@ -314,6 +316,46 @@ You can create only the certificates for a component as well as the CA or admin 
     # or use the short version
     sudo bash wazuh-certs-tool-5.0.0.sh -a </path/to/root-ca.pem> </path/to/root-ca.key>
     ```
+
+#### Name the address agents dial
+
+An agent checks the manager's listener certificate against the address it dialled before
+enrolling, so that address has to be in the certificate. The `ip` and `dns` fields of each
+manager node cover the case where agents dial the node itself. When they dial an address
+no single node owns, add it with `-as`, `--agent-san`, repeated once per value:
+
+```bash
+sudo bash wazuh-certs-tool-5.0.0.sh -A --agent-san wazuh.example.com --agent-san 203.0.113.10
+```
+
+Each value reaches the subject alternative name of the listener certificate of **every**
+manager node, which is what a cluster behind a single address needs, and of no other
+certificate. Use it for a layer 4 (passthrough) load balancer, a published name, or a NAT
+address.
+
+`wazuh-install-5.0.0.sh` takes the same option with `-a` and `-g`. An all-in-one install
+adds the addresses of the host on its own, so `--agent-san` is only needed there when the
+address agents dial is one the host cannot see, such as a NAT or a cloud balancer:
+
+```bash
+sudo bash wazuh-install-5.0.0.sh -a --agent-san wazuh.example.com
+```
+
+#### Create the certificate of a TLS-terminating load balancer
+
+When a proxy terminates the agents' TLS session, it is the proxy's certificate that agents
+validate. Declare it in the `load_balancer` section of `config.yml` and issue it from the
+same root-ca, so the agents' pinned anchor still verifies it:
+
+```bash
+sudo bash wazuh-certs-tool-5.0.0.sh --load-balancer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>
+# or use the short version
+sudo bash wazuh-certs-tool-5.0.0.sh -lb </path/to/root-ca.pem> </path/to/root-ca.key>
+```
+
+This produces `<name>.pem` and `<name>-key.pem`, the leaf followed by the CA, so the proxy
+serves the full chain. A passthrough balancer needs `--agent-san` instead: it terminates
+nothing, and a certificate of its own would never be presented.
 
 All these certificates will be generated in the `wazuh-certificates` directory within the current directory where the script is executed.
 
