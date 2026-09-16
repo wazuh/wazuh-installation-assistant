@@ -1,11 +1,11 @@
 """
 Unit tests for cert_tool/certFunctions.sh
 
-Covers: cert_cleanFiles, cert_checkOpenSSL, cert_generateRootCAcertificate,
-        cert_generateAdmincertificate, cert_generateIndexercertificates,
-        cert_generateManagercertificates, cert_generateDashboardcertificates,
-        cert_generateRemotedcertificateconfiguration, cert_verifyRemotedcertificates,
-        cert_readConfig
+Covers: cert_cleanFiles, cert_setpermisions, cert_checkOpenSSL,
+        cert_generateRootCAcertificate, cert_generateAdmincertificate,
+        cert_generateIndexercertificates, cert_generateManagercertificates,
+        cert_generateDashboardcertificates, cert_generateRemotedcertificateconfiguration,
+        cert_verifyRemotedcertificates, cert_readConfig
 """
 
 import subprocess
@@ -38,6 +38,49 @@ class TestCertCleanFiles:
             {"base_path": str(tmp_path), "debug_cert": ""},
         )
         assert result.returncode in (0, 1)
+
+
+class TestCertSetpermisions:
+    def test_fail_invalid_path(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "cert_setpermisions",
+            IGNORE_LOGGER,
+            {"cert_tmp_path": "/nonexistent/path"},
+        )
+        assert_failure(result)
+
+    def test_success_keys_are_owner_only_and_certs_are_world_readable(self, tmp_path):
+        certs_dir = tmp_path / "wazuh-certificates"
+        certs_dir.mkdir(mode=0o700)
+        (certs_dir / "root-ca.key").touch()
+        (certs_dir / "root-ca.pem").touch()
+        (certs_dir / "admin-key.pem").touch()
+        (certs_dir / "admin.pem").touch()
+        (certs_dir / "wazuh.manager-remoted-key.pem").touch()
+        (certs_dir / "wazuh.manager-remoted.pem").touch()
+
+        result = run_bash_function(
+            BASE_SOURCES,
+            "cert_setpermisions",
+            IGNORE_LOGGER,
+            {"cert_tmp_path": str(certs_dir)},
+        )
+        assert_success(result)
+
+        key_files = ["root-ca.key", "admin-key.pem", "wazuh.manager-remoted-key.pem"]
+        cert_files = ["root-ca.pem", "admin.pem", "wazuh.manager-remoted.pem"]
+
+        for name in key_files:
+            mode = (certs_dir / name).stat().st_mode & 0o777
+            assert mode == 0o600, f"{name} expected 600, got {oct(mode)}"
+
+        for name in cert_files:
+            mode = (certs_dir / name).stat().st_mode & 0o777
+            assert mode == 0o644, f"{name} expected 644, got {oct(mode)}"
+
+        dir_mode = certs_dir.stat().st_mode & 0o777
+        assert dir_mode == 0o700, f"directory expected 700, got {oct(dir_mode)}"
 
 
 class TestCertCheckOpenSSL:
