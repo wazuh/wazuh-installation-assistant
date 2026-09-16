@@ -1172,10 +1172,20 @@ function cert_setpermisions() {
         return 1
     fi
 
+    # Private keys (root CA and every node/admin/remoted key) must stay
+    # owner-only: the umask this tool sets at startup already creates them
+    # at 0600, this only re-asserts it. Public certificates can be 0644 -
+    # they carry no secret. The directory itself must stay 700 so the mode
+    # on the files inside cannot be reached even if a later 'chmod 755' on
+    # a copy of this directory relaxes traversal.
     if [ -n "${debugEnabled}" ]; then
-        chmod -R 744 "${cert_tmp_path}"
+        chmod 700 "${cert_tmp_path}"
+        find "${cert_tmp_path}" -maxdepth 1 -type f \( -name '*-key.pem' -o -name 'root-ca.key' \) -exec chmod 600 {} +
+        find "${cert_tmp_path}" -maxdepth 1 -type f -name '*.pem' ! -name '*-key.pem' -exec chmod 644 {} +
     else
-        chmod -R 744 "${cert_tmp_path}" > /dev/null 2>&1
+        chmod 700 "${cert_tmp_path}" > /dev/null 2>&1
+        find "${cert_tmp_path}" -maxdepth 1 -type f \( -name '*-key.pem' -o -name 'root-ca.key' \) -exec chmod 600 {} + > /dev/null 2>&1
+        find "${cert_tmp_path}" -maxdepth 1 -type f -name '*.pem' ! -name '*-key.pem' -exec chmod 644 {} + > /dev/null 2>&1
     fi
 }
 

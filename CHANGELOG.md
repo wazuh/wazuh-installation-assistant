@@ -89,6 +89,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#6125](https://github.com/wazuh/internal-devel-requests/issues/6125) | wazuh-certs-tool.sh no longer relaxes generated private key permissions to world-readable |
 | [#992](https://github.com/wazuh/wazuh-installation-assistant/issues/992) | Remove test_check_wazuh_manager_monitord, daemon retired in 5.0.0 |
 | [#950](https://github.com/wazuh/wazuh-installation-assistant/issues/950) | Align the passwords tool minimum length with the 12-character Wazuh server API policy |
 | [#976](https://github.com/wazuh/wazuh-installation-assistant/pull/976) | Report skipped bumps in the repository bumper workflow |
