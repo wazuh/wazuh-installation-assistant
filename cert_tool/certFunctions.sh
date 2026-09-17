@@ -99,91 +99,6 @@ function cert_sanitizeNodeName() {
     return 0
 }
 
-# Security validation functions
-
-function cert_validatePath() {
-    local path="$1"
-    local path_type="${2:-file}"
-
-    # Check if path is empty
-    if [[ -z "${path}" ]]; then
-        common_logger -e "Path cannot be empty."
-        return 1
-    fi
-
-    # Prevent path traversal attacks - reject paths with suspicious patterns
-    if [[ "${path}" =~ \.\./|\.\.\\ ]]; then
-        common_logger -e "Path traversal detected in: ${path}"
-        return 1
-    fi
-
-    # Reject paths with newlines, carriage returns, or tabs (specific problematic characters)
-    if [[ "${path}" =~ $'\n'|$'\r'|$'\t' ]]; then
-        common_logger -e "Invalid characters detected in path: ${path}"
-        return 1
-    fi
-
-    # For absolute paths validation
-    if [[ "${path}" == /* ]]; then
-        # Resolve to canonical path to prevent symlink attacks
-        if command -v realpath >/dev/null 2>&1; then
-            local canonical_path
-            canonical_path=$(realpath -m "${path}" 2>/dev/null) || return 1
-
-            # Ensure the canonical path doesn't escape expected boundaries
-            if [[ ! "${canonical_path}" =~ ^/[a-zA-Z0-9/_.\-]+$ ]]; then
-                common_logger -e "Invalid canonical path: ${canonical_path}"
-                return 1
-            fi
-        fi
-    fi
-
-    return 0
-}
-
-function cert_sanitizeFilename() {
-    local filename="$1"
-
-    # Remove any path components
-    filename="${filename##*/}"
-
-    # Only allow alphanumeric, dash, underscore, and dot
-    filename=$(echo "${filename}" | sed 's/[^a-zA-Z0-9._-]/_/g')
-
-    # Prevent hidden files
-    filename="${filename#.}"
-
-    # Limit length to 255 characters
-    if [[ ${#filename} -gt 255 ]]; then
-        filename="${filename:0:255}"
-    fi
-
-    echo "${filename}"
-}
-
-function cert_sanitizeNodeName() {
-    local nodename="$1"
-
-    # Only allow alphanumeric, dash, underscore, and dot (typical for hostnames)
-    if [[ ! "${nodename}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
-        common_logger -e "Invalid node name: ${nodename}. Only alphanumeric characters, dots, dashes, and underscores are allowed."
-        return 1
-    fi
-
-    # Prevent names starting with dash or dot
-    if [[ "${nodename}" =~ ^[-\.] ]]; then
-        common_logger -e "Node name cannot start with dash or dot: ${nodename}"
-        return 1
-    fi
-
-    # Limit length
-    if [[ ${#nodename} -gt 253 ]]; then
-        common_logger -e "Node name too long: ${nodename}"
-        return 1
-    fi
-
-    return 0
-}
 
 function cert_cleanFiles() {
 
@@ -198,8 +113,12 @@ function cert_cleanFiles() {
     rm -f "${cert_tmp_path}"/*.srl
     rm -f "${cert_tmp_path}"/*.conf
     rm -f "${cert_tmp_path}"/admin-key-temp.pem
-    # Single-use CA workspaces of the remoted leaves, in case one was left behind.
-    rm -rf "${cert_tmp_path}"/*-remoted-ca
+    # Single-use CA workspaces of the server leaves, in case one was left behind.
+    for workspace in "${cert_tmp_path}"/*-ca; do
+        if [ -d "${workspace}" ]; then
+            rm -rf "${workspace}"
+        fi
+    done
 
 }
 
@@ -300,20 +219,50 @@ function cert_generateAdmincertificate() {
     cert_executeAndValidate openssl pkcs8 -inform PEM -outform PEM -in "${cert_tmp_path}/admin-key-temp.pem" -topk8 -nocrypt -v1 PBE-SHA1-3DES -out "${cert_tmp_path}/admin-key.pem"
     common_logger -d "Generating Admin CSR."
     cert_executeAndValidate openssl req -new -key "${cert_tmp_path}/admin-key.pem" -out "${cert_tmp_path}/admin.csr" -batch -subj '/C=US/L=California/O=Wazuh/OU=Wazuh/CN=admin'
+
+    # The admin certificate carries no SAN: it is never dialled, it authenticates
+    # against the indexer security API. Hence an extension file of its own rather
+    # than cert_generateCertificateconfiguration, which builds a SAN.
+    cat > "${cert_tmp_path}/admin.conf" <<- EOF
+        [ v3_admin ]
+        authorityKeyIdentifier=keyid,issuer
+        basicConstraints = critical, CA:FALSE
+        keyUsage = critical, digitalSignature, keyEncipherment
+        extendedKeyUsage = clientAuth
+	EOF
+
     common_logger -d "Creating Admin certificate."
-    cert_executeAndValidate openssl x509 -days 3650 -req -in "${cert_tmp_path}/admin.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -sha256 -out "${cert_tmp_path}/admin.pem"
+    cert_executeAndValidate openssl x509 -days 3650 -req -in "${cert_tmp_path}/admin.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -sha256 -out "${cert_tmp_path}/admin.pem" -extfile "${cert_tmp_path}/admin.conf" -extensions v3_admin
 
 }
 
+# OpenSSL configuration for a component certificate. Takes the node name, the
+# extendedKeyUsage the component needs, and the SAN entries.
+#
+# The extendedKeyUsage is not the same for every component, and getting it wrong
+# breaks the link it is meant to secure:
+#
+#   indexer    serverAuth, clientAuth  it answers on the HTTP layer and is both ends
+#                                      of the transport layer inside an indexer cluster
+#   dashboard  serverAuth              it answers browsers
+#   manager    clientAuth              deployed as indexer-connector.pem, it only dials
+#                                      the indexer; the agent listener is a separate leaf
+#   admin      clientAuth              it authenticates against the indexer security API
 function cert_generateCertificateconfiguration() {
 
     common_logger -d "Generating certificate configuration."
 
     local node_name="$1"
+    local extended_key_usage="$2"
 
     # Validate cert_tmp_path
     if ! cert_validatePath "${cert_tmp_path}" "directory"; then
         common_logger -e "Invalid certificate temporary path."
+        exit 1
+    fi
+
+    if [ -z "${extended_key_usage}" ]; then
+        common_logger -e "No extendedKeyUsage specified for ${node_name}."
         exit 1
     fi
 
@@ -334,8 +283,9 @@ function cert_generateCertificateconfiguration() {
 
         [ v3_req ]
         authorityKeyIdentifier=keyid,issuer
-        basicConstraints = CA:FALSE
-        keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+        basicConstraints = critical, CA:FALSE
+        keyUsage = critical, digitalSignature, keyEncipherment
+        extendedKeyUsage = ekusage
         subjectAltName = @alt_names
 
         [alt_names]
@@ -343,14 +293,14 @@ function cert_generateCertificateconfiguration() {
 	EOF
 
 
-    conf="$(awk '{sub("CN = cname", "CN = '"${node_name}"'")}1' "${cert_tmp_path}/${node_name}.conf")"
+    conf="$(awk '{sub("CN = cname", "CN = '"${node_name}"'"); sub("extendedKeyUsage = ekusage", "extendedKeyUsage = '"${extended_key_usage}"'")}1' "${cert_tmp_path}/${node_name}.conf")"
     echo "${conf}" > "${cert_tmp_path}/${node_name}.conf"
 
-    if [ "${#@}" -gt 1 ]; then
+    if [ "${#@}" -gt 2 ]; then
         sed -i '/IP.1/d' "${cert_tmp_path}/${node_name}.conf"
         local ip_counter=0
         local dns_counter=0
-        for (( i=2; i<=${#@}; i++ )); do
+        for (( i=3; i<=${#@}; i++ )); do
             if cert_isIP "${!i}"; then
                 ip_counter=$((ip_counter+1))
                 printf '%s\n' "        IP.${ip_counter} = ${!i}" >> "${cert_tmp_path}/${node_name}.conf"
@@ -389,7 +339,7 @@ function cert_generateIndexercertificates() {
             if [ "${#idx_dns[@]}" -gt 0 ]; then
                 idx_san+=("${idx_dns[@]}")
             fi
-            cert_generateCertificateconfiguration "${indexer_node_name}" "${idx_san[@]}"
+            cert_generateCertificateconfiguration "${indexer_node_name}" "serverAuth, clientAuth" "${idx_san[@]}"
             common_logger -d "Creating the Wazuh indexer tmp key pair."
             cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${indexer_node_name}-key.pem" -out "${cert_tmp_path}/${indexer_node_name}.csr" -config "${cert_tmp_path}/${indexer_node_name}.conf"
             common_logger -d "Creating the Wazuh indexer certificates."
@@ -421,13 +371,15 @@ function cert_generateManagercertificates() {
             if [ "${#mgr_dns[@]}" -gt 0 ]; then
                 manager_san+=("${mgr_dns[@]}")
             fi
-            cert_generateCertificateconfiguration "${manager_name}" "${manager_san[@]}"
+            cert_generateCertificateconfiguration "${manager_name}" "clientAuth" "${manager_san[@]}"
             common_logger -d "Creating the Wazuh manager tmp key pair."
             cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${manager_name}-key.pem" -out "${cert_tmp_path}/${manager_name}.csr" -config "${cert_tmp_path}/${manager_name}.conf"
             common_logger -d "Creating the Wazuh manager certificates."
             cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${manager_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${manager_name}.pem" -extfile "${cert_tmp_path}/${manager_name}.conf" -extensions v3_req -days 3650
-            # Agent-facing listener leaf for this manager node (same SAN).
-            cert_generateRemotedcertificate "${manager_name}" "${manager_san[@]}"
+            # Agent-facing listener leaf for this manager node: the node SAN plus the
+            # addresses given with --agent-san, which every node shares. Only this leaf
+            # gets them; the manager certificate above keeps the node SAN alone.
+            cert_generateRemotedcertificate "${manager_name}" "${manager_san[@]}" "${agent_san[@]}"
         done
     else
         return 1
@@ -435,21 +387,25 @@ function cert_generateManagercertificates() {
 
 }
 
-# OpenSSL configuration for the agent-facing listener leaf of a manager node:
+# OpenSSL configuration for a TLS server leaf, shared by the agent listener of a
+# manager node and by the certificate of a TLS-terminating load balancer:
 # basicConstraints critical CA:FALSE, keyUsage critical digitalSignature +
-# keyEncipherment, extendedKeyUsage serverAuth, and a SAN with the node's ip/dns
-# entries plus the node name itself when it is a DNS label (agents are usually
-# pointed at that name). CN = <name>.
-function cert_generateRemotedcertificateconfiguration() {
+# keyEncipherment, extendedKeyUsage serverAuth, and a SAN with the ip/dns entries
+# given plus the name itself when it is a DNS label (agents are usually pointed at
+# that name). CN = <name>. Takes the configuration file to write and the name.
+#
+# The SAN is de-duplicated: an address reaches this function from the node fields and
+# from --agent-san alike, and openssl would otherwise emit the same name twice.
+function cert_generateServerLeafconfiguration() {
 
-    common_logger -d "Generating remoted certificate configuration."
+    common_logger -d "Generating server leaf certificate configuration."
 
-    local node_name="$1"
-    local conf_file="${cert_tmp_path}/${node_name}-remoted.conf"
+    local conf_file="$1"
+    local node_name="$2"
     local ip_counter=0
     local dns_counter=0
-    local name_listed=""
     local san
+    local -A listed=()
 
     # Validate cert_tmp_path
     if ! cert_validatePath "${cert_tmp_path}" "directory"; then
@@ -457,7 +413,7 @@ function cert_generateRemotedcertificateconfiguration() {
         exit 1
     fi
 
-    if [ "${#@}" -le 1 ]; then
+    if [ "${#@}" -le 2 ]; then
         common_logger -e "No IP or DNS specified"
         exit 1
     fi
@@ -488,27 +444,43 @@ function cert_generateRemotedcertificateconfiguration() {
         printf '%s\n' "[alt_names]"
     } > "${conf_file}"
 
-    for (( i=2; i<=${#@}; i++ )); do
+    for (( i=3; i<=${#@}; i++ )); do
         san="${!i}"
         if cert_isIP "${san}"; then
+            if [ -n "${listed[${san}]+listed}" ]; then
+                continue
+            fi
+            listed["${san}"]=1
             ip_counter=$((ip_counter+1))
             printf '%s\n' "IP.${ip_counter} = ${san}" >> "${conf_file}"
         elif cert_isDNS "${san}"; then
+            if [ -n "${listed[${san,,}]+listed}" ]; then
+                continue
+            fi
+            listed["${san,,}"]=1
             dns_counter=$((dns_counter+1))
             printf '%s\n' "DNS.${dns_counter} = ${san}" >> "${conf_file}"
-            if [[ "${san,,}" == "${node_name,,}" ]]; then
-                name_listed=1
-            fi
         else
             common_logger -e "Invalid IP or DNS ${san}"
             exit 1
         fi
     done
 
-    if [[ -z "${name_listed}" ]] && cert_isDNS "${node_name}"; then
+    if cert_isDNS "${node_name}" && [ -z "${listed[${node_name,,}]+listed}" ]; then
         dns_counter=$((dns_counter+1))
         printf '%s\n' "DNS.${dns_counter} = ${node_name}" >> "${conf_file}"
     fi
+
+}
+
+# Configuration of the agent listener leaf of a manager node. Takes the node name
+# followed by the SAN entries.
+function cert_generateRemotedcertificateconfiguration() {
+
+    local node_name="$1"
+    shift
+
+    cert_generateServerLeafconfiguration "${cert_tmp_path}/${node_name}-remoted.conf" "${node_name}" "$@"
 
 }
 
@@ -562,48 +534,64 @@ function cert_generateRemotedCAworkspace() {
 
 }
 
-# Issues <name>-remoted.pem / <name>-remoted-key.pem for a manager node (RSA 2048,
-# SHA-256, valid for 3650 days, signed by root-ca) and appends root-ca.pem to the
-# leaf: remoted loads that file as a chain (leaf followed by the CA), which is what
-# agents receive in the TLS handshake.
+# Issues <prefix>.pem / <prefix>-key.pem (RSA 2048, SHA-256, valid for 3650 days,
+# signed by root-ca) and appends root-ca.pem to the leaf, so the file holds the chain
+# (leaf followed by the CA) that the server hands its peers in the TLS handshake.
+# Takes the file prefix, the certificate name and the SAN entries.
 #
 # notBefore is backdated one day so an agent whose clock lags does not reject a
 # freshly issued certificate. That is why this leaf goes through "openssl ca" instead
 # of "openssl x509 -req" like the others: -startdate has been available since OpenSSL
 # 1.0.2, whereas "x509 -req -not_before" only exists from OpenSSL 3.5 on.
-function cert_generateRemotedcertificate() {
+function cert_generateServerLeaf() {
 
-    local node_name="$1"
-    local ca_dir="${cert_tmp_path}/${node_name}-remoted-ca"
+    local prefix="$1"
+    local node_name="$2"
+    local ca_dir="${cert_tmp_path}/${prefix}-ca"
     local start_date
     local end_date
 
-    common_logger -d "Creating the remoted (agent listener) certificate for ${node_name}."
+    shift 2
 
-    cert_generateRemotedcertificateconfiguration "$@"
-    common_logger -d "Creating the remoted tmp key pair."
-    cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${node_name}-remoted-key.pem" -out "${cert_tmp_path}/${node_name}-remoted.csr" -config "${cert_tmp_path}/${node_name}-remoted.conf"
+    common_logger -d "Creating the server leaf certificate ${prefix}."
+
+    cert_generateServerLeafconfiguration "${cert_tmp_path}/${prefix}.conf" "${node_name}" "$@"
+    common_logger -d "Creating the ${prefix} tmp key pair."
+    cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${prefix}-key.pem" -out "${cert_tmp_path}/${prefix}.csr" -config "${cert_tmp_path}/${prefix}.conf"
 
     # Two-digit years: OpenSSL reads them as 20YY below 50, and the notAfter of a
     # 3650-day certificate is well before 2049.
     start_date="$(date -u -d '-1 day' '+%y%m%d%H%M%SZ' 2>/dev/null)"
     end_date="$(date -u -d '+3650 days' '+%y%m%d%H%M%SZ' 2>/dev/null)"
     if [[ -z "${start_date}" || -z "${end_date}" ]]; then
-        common_logger -e "Could not compute the validity dates of the remoted certificate."
+        common_logger -e "Could not compute the validity dates of the ${prefix} certificate."
         cert_cleanFiles
         exit 1
     fi
 
-    common_logger -d "Creating the remoted certificate, valid from ${start_date} to ${end_date}."
+    common_logger -d "Creating the ${prefix} certificate, valid from ${start_date} to ${end_date}."
     cert_generateRemotedCAworkspace "${ca_dir}"
-    cert_executeAndValidate openssl ca -batch -notext -md sha256 -config "${ca_dir}/ca.conf" -in "${cert_tmp_path}/${node_name}-remoted.csr" -out "${cert_tmp_path}/${node_name}-remoted.pem" -extfile "${cert_tmp_path}/${node_name}-remoted.conf" -extensions v3_remoted -startdate "${start_date}" -enddate "${end_date}"
+    cert_executeAndValidate openssl ca -batch -notext -md sha256 -config "${ca_dir}/ca.conf" -in "${cert_tmp_path}/${prefix}.csr" -out "${cert_tmp_path}/${prefix}.pem" -extfile "${cert_tmp_path}/${prefix}.conf" -extensions v3_remoted -startdate "${start_date}" -enddate "${end_date}"
     rm -rf "${ca_dir}"
 
-    if ! cat "${cert_tmp_path}/root-ca.pem" >> "${cert_tmp_path}/${node_name}-remoted.pem"; then
-        common_logger -e "Could not append root-ca.pem to ${node_name}-remoted.pem."
+    if ! cat "${cert_tmp_path}/root-ca.pem" >> "${cert_tmp_path}/${prefix}.pem"; then
+        common_logger -e "Could not append root-ca.pem to ${prefix}.pem."
         cert_cleanFiles
         exit 1
     fi
+
+}
+
+# Issues the agent listener pair of a manager node: <name>-remoted.pem and
+# <name>-remoted-key.pem. Takes the node name followed by the SAN entries.
+function cert_generateRemotedcertificate() {
+
+    local node_name="$1"
+    shift
+
+    common_logger -d "Creating the remoted (agent listener) certificate for ${node_name}."
+
+    cert_generateServerLeaf "${node_name}-remoted" "${node_name}" "$@"
 
 }
 
@@ -652,7 +640,7 @@ function cert_generateDashboardcertificates() {
             if [ "${#dash_dns[@]}" -gt 0 ]; then
                 dash_san+=("${dash_dns[@]}")
             fi
-            cert_generateCertificateconfiguration "${dashboard_node_name}" "${dash_san[@]}"
+            cert_generateCertificateconfiguration "${dashboard_node_name}" "serverAuth" "${dash_san[@]}"
             common_logger -d "Creating the Wazuh dashboard tmp key pair."
             cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${dashboard_node_name}-key.pem" -out "${cert_tmp_path}/${dashboard_node_name}.csr" -config "${cert_tmp_path}/${dashboard_node_name}.conf"
             common_logger -d "Creating the Wazuh dashboard certificates."
@@ -661,6 +649,69 @@ function cert_generateDashboardcertificates() {
     else
         return 1
     fi
+
+}
+
+# Issues the certificate a TLS-terminating proxy serves to agents, from the same
+# root-ca.pem the agents pin, so an operator does not have to place a second anchor
+# on every endpoint.
+#
+# This is only for a proxy that terminates TLS. With a layer-4 passthrough load
+# balancer the agent's session ends at the manager, the manager's own listener leaf
+# is what agents validate, and the answer is --agent-san with the balancer address
+# instead of a certificate of its own.
+function cert_generateLoadbalancercertificates() {
+
+    if [ ${#lb_node_names[@]} -gt 0 ]; then
+        common_logger "Generating load balancer certificates."
+
+        for i in "${!lb_node_names[@]}"; do
+            lb_node_name="${lb_node_names[i]}"
+
+            common_logger -d "Creating the certificate for ${lb_node_name} load balancer."
+            j=$((i+1))
+            # Use nameref for safe dynamic array access
+            declare -n lb_ip="lb_node_ip_${j}"
+            declare -n lb_dns="lb_node_dns_${j}"
+            declare -a lb_san=()
+            if [ "${#lb_ip[@]}" -gt 0 ]; then
+                lb_san+=("${lb_ip[@]}")
+            fi
+            if [ "${#lb_dns[@]}" -gt 0 ]; then
+                lb_san+=("${lb_dns[@]}")
+            fi
+            cert_generateServerLeaf "${lb_node_name}" "${lb_node_name}" "${lb_san[@]}"
+        done
+    else
+        return 1
+    fi
+
+}
+
+# Same check as the listener leaves: a load balancer certificate that does not chain
+# to the CA agents pin cannot terminate their connections. Takes the directory
+# holding the issued certificates as first argument.
+function cert_verifyLoadbalancercertificates() {
+
+    local certs_dir="${1}"
+    local lb_name
+
+    if [ ${#lb_node_names[@]} -eq 0 ]; then
+        return 0
+    fi
+
+    if ! cert_validatePath "${certs_dir}" "directory"; then
+        common_logger -e "Invalid certificates directory."
+        exit 1
+    fi
+
+    for lb_name in "${lb_node_names[@]}"; do
+        if ! openssl verify -CAfile "${certs_dir}/root-ca.pem" "${certs_dir}/${lb_name}.pem" > /dev/null 2>&1; then
+            common_logger -e "The certificate ${certs_dir}/${lb_name}.pem does not verify against ${certs_dir}/root-ca.pem."
+            exit 1
+        fi
+        common_logger -d "Verified ${lb_name}.pem against root-ca.pem."
+    done
 
 }
 
@@ -681,8 +732,11 @@ function cert_generateRootCAcertificate() {
 function cert_normalizeYamlFormat() {
 
     # Normalize the certs-tool YAML schema regardless of incoming indentation.
-    # It supports optional node fields (ip, dns, node_type), with dns defined as
-    # either a scalar value or as a list.
+    # It supports optional node fields (ip, dns, node_type). Both ip and dns may be
+    # given as a scalar value or as a list; node_type is always a scalar.
+    #
+    # list_key holds the field whose list is currently being read, so that the items
+    # under it are folded into that field instead of being taken for new nodes.
     awk '
     function ltrim(str) {
         sub(/^[ \t]+/, "", str)
@@ -700,7 +754,7 @@ function cert_normalizeYamlFormat() {
         nodes_indent = 0
         current_section = ""
         in_node = 0
-        in_dns_list = 0
+        list_key = ""
     }
     {
         line = $0
@@ -709,7 +763,7 @@ function cert_normalizeYamlFormat() {
 
         if (match(line, /^[ \t]*$/)) {
             print ""
-            in_dns_list = 0
+            list_key = ""
             next
         }
 
@@ -726,7 +780,7 @@ function cert_normalizeYamlFormat() {
             nodes_indent = indent
             current_section = ""
             in_node = 0
-            in_dns_list = 0
+            list_key = ""
             next
         }
 
@@ -737,24 +791,24 @@ function cert_normalizeYamlFormat() {
                 name_value = trim(substr(list_payload, 6))
                 print "    - name: " name_value
                 in_node = 1
-                in_dns_list = 0
+                list_key = ""
                 next
             }
 
-            if (in_node == 1 && in_dns_list == 1) {
+            if (in_node == 1 && list_key != "") {
                 print "        - " list_payload
                 next
             }
 
             print "    - " list_payload
             in_node = 1
-            in_dns_list = 0
+            list_key = ""
             next
         }
 
-        if (in_nodes == 1 && in_node == 1 && in_dns_list == 1 && match(stripped, /^-[ \t]/)) {
-            dns_value = trim(substr(stripped, 2))
-            print "        - " dns_value
+        if (in_nodes == 1 && in_node == 1 && list_key != "" && match(stripped, /^-[ \t]/)) {
+            item_value = trim(substr(stripped, 2))
+            print "        - " item_value
             next
         }
 
@@ -768,23 +822,23 @@ function cert_normalizeYamlFormat() {
 
             if (in_node == 1 && key_name == "name") {
                 print "    - name: " key_value
-                in_dns_list = 0
+                list_key = ""
                 next
             }
 
-            if (in_node == 1 && (key_name == "ip" || key_name == "node_type")) {
-                print "      " key_name ": " key_value
-                in_dns_list = 0
+            if (in_node == 1 && key_name == "node_type") {
+                print "      node_type: " key_value
+                list_key = ""
                 next
             }
 
-            if (in_node == 1 && key_name == "dns") {
+            if (in_node == 1 && (key_name == "ip" || key_name == "dns")) {
                 if (key_value == "") {
-                    print "      dns:"
-                    in_dns_list = 1
+                    print "      " key_name ":"
+                    list_key = key_name
                 } else {
-                    print "      dns: " key_value
-                    in_dns_list = 0
+                    print "      " key_name ": " key_value
+                    list_key = ""
                 }
                 next
             }
@@ -793,7 +847,7 @@ function cert_normalizeYamlFormat() {
                 print "  " key_name ":"
                 current_section = key_name
                 in_node = 0
-                in_dns_list = 0
+                list_key = ""
                 next
             }
 
@@ -803,13 +857,13 @@ function cert_normalizeYamlFormat() {
                 } else {
                     print "      " key_name ": " key_value
                 }
-                in_dns_list = 0
+                list_key = ""
                 next
             }
         }
 
         if (!match(stripped, /^-[ \t]/)) {
-            in_dns_list = 0
+            list_key = ""
         }
 
         print line
@@ -958,7 +1012,22 @@ function cert_checkPrivateIp() {
 function cert_isIPv4() {
 
     local ip="$1"
-    [[ ${ip} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+    local octet
+
+    [[ ${ip} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+
+    for octet in ${ip//./ }; do
+        # A leading zero is read as octal by some resolvers and as decimal by others,
+        # so 010.0.0.1 is not one address but two. OpenSSL rejects both forms below.
+        if [[ ${#octet} -gt 1 && ${octet:0:1} == "0" ]]; then
+            return 1
+        fi
+        if [ "${octet}" -gt 255 ]; then
+            return 1
+        fi
+    done
+
+    return 0
 
 }
 
@@ -983,6 +1052,134 @@ function cert_isDNS() {
         return 0
     fi
     return 1
+
+}
+
+# Prints, one per line, the addresses this host answers at: its global IP addresses
+# and its host name, loopback left out. On an all-in-one install config.yml names every
+# component 127.0.0.1, which is right for the indexer and dashboard links the manager
+# opens locally, and useless in the certificate agents check. These are the addresses
+# that make that certificate usable.
+function cert_hostAddresses() {
+
+    local address
+    local name
+    local -a addresses=()
+
+    if command -v hostname > /dev/null 2>&1; then
+        mapfile -t addresses < <(hostname -I 2>/dev/null | tr ' ' '\n')
+    fi
+
+    if [ "${#addresses[@]}" -eq 0 ] && command -v ip > /dev/null 2>&1; then
+        mapfile -t addresses < <(ip -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d / -f 1)
+    fi
+
+    for address in "${addresses[@]}"; do
+        if [ -z "${address}" ] || ! cert_isIP "${address}"; then
+            continue
+        fi
+        # Link-local addresses are no more dialable from another host than loopback is.
+        if [[ "${address}" =~ ^127\. ]] || [ "${address}" == "::1" ] || [[ "${address}" =~ ^169\.254\. ]] || [[ "${address}" =~ ^fe[89abAB] ]]; then
+            continue
+        fi
+        printf '%s\n' "${address}"
+    done
+
+    for name in "$(hostname -f 2>/dev/null)" "$(hostname 2>/dev/null)"; do
+        # localhost.localdomain is what a host with no name of its own reports, and it
+        # names this host to every other one.
+        if [ -n "${name}" ] && [[ ! "${name,,}" =~ ^localhost(\..*)?$ ]] && cert_isDNS "${name}"; then
+            printf '%s\n' "${name}"
+        fi
+    done
+
+}
+
+# True when the addresses given name nothing an agent on another host could dial:
+# loopback only, and no name of its own. The node name is appended to every listener
+# SAN, but it is a label from config.yml rather than an address, so it is not counted
+# here: on an all-in-one install it resolves nowhere.
+function cert_listenerSanIsUnreachable() {
+
+    local san
+
+    for san in "$@"; do
+        if cert_isIP "${san}"; then
+            if [[ ! "${san}" =~ ^127\. ]] && [ "${san}" != "::1" ]; then
+                return 1
+            fi
+        elif cert_isDNS "${san}"; then
+            if [ "${san,,}" != "localhost" ]; then
+                return 1
+            fi
+        fi
+    done
+
+    return 0
+
+}
+
+# A listener certificate naming only loopback cannot enroll a single agent, and the
+# failure surfaces much later, on every endpoint at once. Takes the severity: an
+# install is refused, because it is about to produce a manager no agent can reach,
+# while wazuh-certs-tool is warned, since an operator may be issuing certificates for
+# a host whose addresses this one cannot see.
+function cert_checkListenerReachability() {
+
+    local severity="${1:-error}"
+    local i
+    local j
+    local -a listener_san=()
+
+    for i in "${!manager_node_names[@]}"; do
+        j=$((i+1))
+        declare -n manager_ip="manager_node_ip_${j}"
+        declare -n mgr_dns="manager_node_dns_${j}"
+        listener_san=()
+        if [ "${#manager_ip[@]}" -gt 0 ]; then
+            listener_san+=("${manager_ip[@]}")
+        fi
+        if [ "${#mgr_dns[@]}" -gt 0 ]; then
+            listener_san+=("${mgr_dns[@]}")
+        fi
+        if [ "${#agent_san[@]}" -gt 0 ]; then
+            listener_san+=("${agent_san[@]}")
+        fi
+
+        if cert_listenerSanIsUnreachable "${listener_san[@]}"; then
+            if [ "${severity}" == "warning" ]; then
+                common_logger -w "The agent listener certificate of the Wazuh manager node ${manager_node_names[$i]} only names loopback addresses, so no agent on another host can verify it. Set the address agents dial in the ip or dns field of the node in ${config_file}, or pass it with -as|--agent-san."
+            else
+                common_logger -e "The agent listener certificate of the Wazuh manager node ${manager_node_names[$i]} would only name loopback addresses, and no agent could verify it. Set the address agents dial in the ip or dns field of the node in ${config_file}, or pass it with -as|--agent-san."
+                exit 1
+            fi
+        fi
+    done
+
+}
+
+# Validates the addresses given with -as|--agent-san. They are checked here instead of
+# by cert_validateComponentSanValues because they are not node fields: they name an
+# address agents dial that no single node owns, which may legitimately be a public one.
+function cert_validateAgentSan() {
+
+    local san
+
+    if [ "${#agent_san[@]}" -eq 0 ]; then
+        return 0
+    fi
+
+    if [[ -z "${all}" && -z "${cmanager}" && -z "${AIO}" && -z "${configurations}" ]]; then
+        common_logger -e "The option -as|--agent-san must be used along with one of these options: -A, -wm in wazuh-certs-tool.sh, or -a, -g in wazuh-install.sh"
+        exit 1
+    fi
+
+    for san in "${agent_san[@]}"; do
+        if ! cert_isIP "${san}" && ! cert_isDNS "${san}"; then
+            common_logger -e "Invalid IP or DNS in -as|--agent-san: ${san}."
+            exit 1
+        fi
+    done
 
 }
 
@@ -1014,9 +1211,10 @@ function cert_validateComponentSanValues() {
                 common_logger -e "Invalid IP in field ip for ${component_name,,} node ${component_node_names[$i]}: ${ip}."
                 exit 1
             fi
+            # A public address is legitimate: a manager agents reach over the internet,
+            # a node behind a cloud load balancer. It is worth naming, not refusing.
             if ! cert_checkPrivateIp "$ip"; then
-                common_logger -e "The IP ${ip} is public."
-                exit 1
+                common_logger -w "The IP ${ip} of ${component_name,,} node ${component_node_names[$i]} is public. Make sure it is meant to be reachable from outside your network."
             fi
         done
 
@@ -1103,6 +1301,35 @@ function cert_validateManagerNodeTypes() {
 
 }
 
+# Fills a flat array with the first ip of each node, in node order. install_functions
+# reads these arrays by node index — the master's address, the Wazuh API address the
+# dashboard is pointed at, the indexer's network.host — so an entry has to stay at the
+# position of the node it belongs to even when that node lists several addresses.
+# Takes the array to fill, the array of node names and the prefix of the per-node
+# address arrays.
+function cert_firstAddressPerNode() {
+
+    local target_var="$1"
+    local node_names_var="$2"
+    local node_ip_prefix="$3"
+    local i
+    local j
+
+    declare -n target_array="${target_var}"
+    declare -n component_node_names="${node_names_var}"
+
+    target_array=()
+
+    for i in "${!component_node_names[@]}"; do
+        j=$((i+1))
+        declare -n component_ip="${node_ip_prefix}_${j}"
+        if [ "${#component_ip[@]}" -gt 0 ]; then
+            target_array+=("${component_ip[0]}")
+        fi
+    done
+
+}
+
 function cert_readConfig() {
 
     common_logger -d "Reading configuration file."
@@ -1119,42 +1346,60 @@ function cert_readConfig() {
         mapfile -t indexer_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
         mapfile -t manager_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+manager[_]+[0-9]+=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
         mapfile -t dashboard_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+[0-9]+=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
-        mapfile -t indexer_node_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
-        mapfile -t manager_node_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
-        mapfile -t dashboard_node_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
+        mapfile -t lb_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+load_balancer[_]+[0-9]+=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
+        mapfile -t indexer_node_all_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
+        mapfile -t manager_node_all_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+manager[_]+[0-9]+[_]+ip([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
+        mapfile -t dashboard_node_all_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
         mapfile -t manager_node_types < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+manager[_]+[0-9]+[_]+node_type=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
 
         # Parse DNS entries for each indexer node
         for i in "${!indexer_node_names[@]}"; do
             j=$((i+1))
             # Create dynamic arrays using declare and mapfile
-            mapfile -t "indexer_node_ip_${j}" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+${j}[_]+ip=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
+            mapfile -t "indexer_node_ip_${j}" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+${j}[_]+ip([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
             mapfile -t "indexer_node_dns_${j}" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+${j}[_]+dns([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
         done
 
         # Parse DNS entries for each dashboard node
         for i in "${!dashboard_node_names[@]}"; do
             j=$((i+1))
-            mapfile -t "dashboard_node_ip_${j}" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+${j}[_]+ip=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
+            mapfile -t "dashboard_node_ip_${j}" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+${j}[_]+ip([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
             mapfile -t "dashboard_node_dns_${j}" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+${j}[_]+dns([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
         done
 
         for i in $(seq 1 "${#manager_node_names[@]}"); do
-            mapfile -t "manager_node_ip_$i" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+manager[_]+${i}[_]+ip=" | cut -d = -f 2 | sed 's/^"//;s/"$//' | sed -r 's/\s+//g')
+            mapfile -t "manager_node_ip_$i" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+manager[_]+${i}[_]+ip([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//' | sed -r 's/\s+//g')
             mapfile -t "manager_node_dns_$i" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+manager[_]+${i}[_]+dns([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
         done
+
+        # Parse the addresses of each load balancer entry
+        for i in "${!lb_node_names[@]}"; do
+            j=$((i+1))
+            mapfile -t "lb_node_ip_${j}" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+load_balancer[_]+${j}[_]+ip([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
+            mapfile -t "lb_node_dns_${j}" < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+load_balancer[_]+${j}[_]+dns([_]+[0-9]+)?=" | cut -d = -f 2 | sed 's/^"//;s/"$//')
+        done
+
+        # The installer addresses a node by its position in these arrays, so they hold
+        # one entry per node. A node reachable at several addresses puts them all in
+        # its certificate through the per-node arrays above; the first one is the
+        # address the components are configured with.
+        cert_firstAddressPerNode "indexer_node_ips" "indexer_node_names" "indexer_node_ip"
+        cert_firstAddressPerNode "manager_node_ips" "manager_node_names" "manager_node_ip"
+        cert_firstAddressPerNode "dashboard_node_ips" "dashboard_node_names" "dashboard_node_ip"
 
         cert_validateComponentSanValues "Indexer" "indexer_node_names" "indexer_node_ip" "indexer_node_dns"
         cert_validateComponentSanValues "Manager" "manager_node_names" "manager_node_ip" "manager_node_dns"
         cert_validateComponentSanValues "Dashboard" "dashboard_node_names" "dashboard_node_ip" "dashboard_node_dns"
+        cert_validateComponentSanValues "Load balancer" "lb_node_names" "lb_node_ip" "lb_node_dns"
 
         cert_sanitizeNodeName "Indexer" "indexer_node_names"
         cert_sanitizeNodeName "Manager" "manager_node_names"
         cert_sanitizeNodeName "Dashboard" "dashboard_node_names"
+        cert_sanitizeNodeName "Load balancer" "lb_node_names"
 
-        cert_validateComponentDuplicatedValues "Indexer" "indexer_node_names" "indexer_node_ips" "indexer_node_dns"
-        cert_validateComponentDuplicatedValues "Wazuh manager" "manager_node_names" "manager_node_ips" "manager_node_dns"
-        cert_validateComponentDuplicatedValues "Dashboard" "dashboard_node_names" "dashboard_node_ips" "dashboard_node_dns"
+        cert_validateComponentDuplicatedValues "Indexer" "indexer_node_names" "indexer_node_all_ips" "indexer_node_dns"
+        cert_validateComponentDuplicatedValues "Wazuh manager" "manager_node_names" "manager_node_all_ips" "manager_node_dns"
+        cert_validateComponentDuplicatedValues "Dashboard" "dashboard_node_names" "dashboard_node_all_ips" "dashboard_node_dns"
 
         cert_validateManagerNodeTypes
 

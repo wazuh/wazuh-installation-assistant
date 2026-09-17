@@ -19,11 +19,26 @@ function getHelp() {
     echo -e "        -a,  --admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
     echo -e "                Creates the admin certificates, add root-ca.pem and root-ca.key."
     echo -e ""
+    echo -e "        -as, --agent-san <ip|dns>"
+    echo -e "                Adds an extra address to the subject alternative name of every"
+    echo -e "                agent listener certificate, on top of the ip and dns entries of"
+    echo -e "                each manager node in config.yml. Repeat it for more than one."
+    echo -e "                It is how to name an address agents dial that no single node"
+    echo -e "                owns, such as a load balancer shared by every node of a cluster."
+    echo -e "                Must be used along with one of these options: -A, -wm"
+    echo -e ""
     echo -e "        -A, --all </path/to/root-ca.pem> </path/to/root-ca.key>"
     echo -e "                Creates certificates specified in config.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created."
     echo -e ""
     echo -e "        -ca, --root-ca-certificates"
     echo -e "                Creates the root-ca certificates."
+    echo -e ""
+    echo -e "        -lb, --load-balancer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
+    echo -e "                Creates the certificates of the load_balancer entries of config.yml,"
+    echo -e "                add root-ca.pem and root-ca.key. Only needed by a proxy that terminates"
+    echo -e "                TLS: it is then the certificate agents validate, signed by the same"
+    echo -e "                root-ca they pin. A layer 4 passthrough load balancer terminates"
+    echo -e "                nothing and needs -as|--agent-san instead."
     echo -e ""
     echo -e "        -v,  --verbose"
     echo -e "                Enables verbose mode."
@@ -41,7 +56,7 @@ function getHelp() {
     echo -e ""
     echo -e "        -tmp,  --cert_tmp_path </path/to/tmp_dir>"
     echo -e "                Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one."
-    echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm"
+    echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb"
     echo -e ""
 
     exit 1
@@ -55,6 +70,8 @@ function main() {
     umask 0077
 
     cert_checkOpenSSL
+
+    declare -a agent_san=()
 
     if [ -n "${1}" ]; then
         while [ -n "${1}" ]
@@ -73,7 +90,10 @@ function main() {
                 fi
                 ;;
             "-A"|"--all")
-                if  [[ -n "${2}" && "${2}" != "-v" && "${2}" != "-tmp" ]]; then
+                # Any option, not just the two that used to be listed here: -A takes an
+                # optional root CA pair, and a path never starts with a dash, so whatever
+                # does is the next option rather than a file this one was given.
+                if  [[ -n "${2}" && "${2}" != -* ]]; then
                     # Validate that the user has entered the 2 files
                     if [[ -z ${3} ]]; then
                         if [[ ${2} == *".key" ]]; then
@@ -93,9 +113,31 @@ function main() {
                     shift 1
                 fi
                 ;;
+            "-as"|"--agent-san")
+                if [[ -z "${2}" || "${2}" == -* ]]; then
+                    common_logger -e "Error on arguments. Probably missing <ip|dns> after -as|--agent-san"
+                    getHelp
+                    exit 1
+                else
+                    agent_san+=("${2}")
+                    shift 2
+                fi
+                ;;
             "-ca"|"--root-ca-certificate")
                 ca=1
                 shift 1
+                ;;
+            "-lb"|"--load-balancer-certificates")
+                if [[ -z "${2}" || -z "${3}" ]]; then
+                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -lb|--load-balancer-certificates"
+                    getHelp
+                    exit 1
+                else
+                    clb=1
+                    rootca="${2}"
+                    rootcakey="${3}"
+                    shift 3
+                fi
                 ;;
             "-h"|"--help")
                 getHelp
@@ -141,7 +183,7 @@ function main() {
                 fi
                 ;;
             "-tmp"|"--cert_tmp_path")
-                if [[ -n "${3}" || ( "${cadmin}" == 1 || "${all}" == 1 || "${ca}" == 1 || "${cdashboard}" == 1 || "${cindexer}" == 1 || "${cmanager}" == 1 ) ]]; then
+                if [[ -n "${3}" || ( "${cadmin}" == 1 || "${all}" == 1 || "${ca}" == 1 || "${cdashboard}" == 1 || "${cindexer}" == 1 || "${cmanager}" == 1 || "${clb}" == 1 ) ]]; then
                     if [[ -z "${2}" || ! "${2}" == /* ]]; then
                         common_logger -e "Error on arguments. Probably missing </path/to/tmp_dir> or path does not start with '/'."
                         getHelp
@@ -151,7 +193,7 @@ function main() {
                         shift 2
                     fi
                 else
-                    common_logger -e "Error: -tmp must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm"
+                    common_logger -e "Error: -tmp must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb"
                     getHelp
                     exit 1
                 fi
@@ -163,6 +205,8 @@ function main() {
         done
 
         common_logger "Verbose logging redirected to ${logfile}"
+
+        cert_validateAgentSan
 
         if [[ -d "${base_path}"/wazuh-certificates ]]; then
             if [ -n "$(ls -A "${base_path}"/wazuh-certificates)" ]; then
@@ -181,6 +225,10 @@ function main() {
         fi
 
         cert_readConfig
+
+        if [[ -n "${all}" || -n "${cmanager}" ]]; then
+            cert_checkListenerReachability "warning"
+        fi
 
         if [ -n "${debugEnabled}" ]; then
             debug="2>&1 | tee -a ${logfile}"
@@ -212,6 +260,11 @@ function main() {
             if cert_generateDashboardcertificates; then
                 common_logger "Wazuh dashboard certificates created."
             fi
+            # Only when config.yml carries a load_balancer section: it is optional and
+            # its absence is not an error.
+            if cert_generateLoadbalancercertificates; then
+                common_logger "Load balancer certificates created."
+            fi
             cert_cleanFiles
             cert_setpermisions
             if [ -n "${debugEnabled}" ]; then
@@ -220,6 +273,7 @@ function main() {
                 mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
             fi
             cert_verifyRemotedcertificates "${base_path}/wazuh-certificates"
+            cert_verifyLoadbalancercertificates "${base_path}/wazuh-certificates"
         fi
 
         if [[ -n "${ca}" ]]; then
@@ -266,6 +320,25 @@ function main() {
                 cert_verifyRemotedcertificates "${base_path}/wazuh-certificates"
             else
                 common_logger -e "Manager node not present in config.yml."
+                exit 1
+            fi
+        fi
+
+        if [[ -n "${clb}" ]]; then
+            if [ ${#lb_node_names[@]} -gt 0 ]; then
+                cert_checkRootCA
+                cert_generateLoadbalancercertificates
+                common_logger "Load balancer certificates created."
+                cert_cleanFiles
+                cert_setpermisions
+                if [ -n "${debugEnabled}" ]; then
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+                else
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+                fi
+                cert_verifyLoadbalancercertificates "${base_path}/wazuh-certificates"
+            else
+                common_logger -e "Load balancer section not present in config.yml."
                 exit 1
             fi
         fi
