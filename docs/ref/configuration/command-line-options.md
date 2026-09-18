@@ -2,15 +2,19 @@
 
 ## Wazuh installation assistant
 
-The Wazuh Installation Assistant is used by running the previously downloaded `wazuh-install-5.0.0.sh` script. Depending on the type of installation you want to perform (AIO or a specific component), the steps vary.
+The Wazuh Installation Assistant is used by running the previously downloaded `wazuh-install-5.0.1.sh` script. Depending on the type of installation you want to perform (AIO or a specific component), the steps vary.
 
 ### Option list
 
 | Option | Description |
 | -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
+<<<<<<< HEAD
 | `-as`, `--agent-san <ip\|dns>` | Adds an extra address to the subject alternative name of the agent listener certificate of every Wazuh manager node. Repeat it for more than one. Use it for the address agents dial when the host cannot know it: a load balancer shared by a cluster, a published name, a NAT address. Must be used along with `-a` or `-g`. |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0.sh. |
+=======
+| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.1.sh. |
+>>>>>>> bcd7f3425e699b807274a0d2bca1f5d710b08c5e
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
 | `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
@@ -28,7 +32,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 
 ## Wazuh certs tool
 
-The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.0.0.sh` script along with the `config.yml` configuration file. The certs tool generates the necessary certificates for the nodes specified in the configuration file.
+The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.0.1.sh` script along with the `config.yml` configuration file. The certs tool generates the necessary certificates for the nodes specified in the configuration file.
 
 For DNS-based or mixed address configurations, see [Other `config.yml` examples](configuration-files.md#other-configyml-examples).
 
@@ -51,7 +55,7 @@ For DNS-based or mixed address configurations, see [Other `config.yml` examples]
 
 ### Options
 
-The `wazuh-passwords-tool-5.0.0.sh` script provides the following options for managing Wazuh internal user passwords:
+The `wazuh-passwords-tool-5.0.1.sh` script provides the following options for managing Wazuh internal user passwords:
 
 | Options | Purpose |
 | --------- | --------- |
