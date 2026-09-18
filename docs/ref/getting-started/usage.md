@@ -433,17 +433,17 @@ The password for Wazuh API user wazuh-wui is <PASSWORD>
 
 ### Multi-node deployments
 
-The tool only reaches the keystore of the node it runs on, whichever option is used. Every other Wazuh manager node keeps its previous Wazuh indexer credentials and loses the connection to the Wazuh indexer, which the tool reports:
+The tool only reaches the keystore of the node it runs on, whichever option is used. It cannot tell a single-node deployment from a multi-node one, so it prints the note below on every run. Every other Wazuh manager node keeps its previous Wazuh indexer credentials and loses the connection to the Wazuh indexer, which the tool reports:
 
 ```bash
-WARNING: Only the keystore of this Wazuh manager node was updated. On a cluster, update the keystore of every other manager node and restart them.
+WARNING: If this is a multi-node deployment, update the keystore of every other Wazuh manager node and restart them.
 ```
 
 On each of the remaining Wazuh manager nodes, write the new credentials into the keystore and restart the service:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
-/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v <WAZUH_MANAGER_PASSWORD>
+echo 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username
+echo '<WAZUH_MANAGER_PASSWORD>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 systemctl restart wazuh-manager
 ```
 

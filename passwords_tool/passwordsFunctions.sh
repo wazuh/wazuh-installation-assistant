@@ -47,10 +47,13 @@ function passwords_changePassword() {
     if [ "${nuser}" == "wazuh-manager" ] || [ -n "${changeall}" ]; then
         if [ -n "${wazuh_installed}" ]; then
             if [ -n "${managerpass}" ]; then
-                passwords_updateManagerKeystore "${managerpass}"
+                if ! passwords_updateManagerKeystore "${managerpass}"; then
+                    common_logger -e "The new password was not applied to the Wazuh indexer, so the credentials currently in the keystore are still valid."
+                    exit 1;
+                fi
                 manager_keystore_updated=1
                 restart_manager=1
-                common_logger -w "Only the keystore of this Wazuh manager node was updated. On a cluster, update the keystore of every other manager node and restart them."
+                common_logger -w "If this is a multi-node deployment, update the keystore of every other Wazuh manager node and restart them."
             else
                 common_logger -w "Skipping Wazuh manager keystore update: no password available for the wazuh-manager user."
             fi
@@ -61,14 +64,15 @@ function passwords_changePassword() {
         if [ -n "${dashboard_installed}" ] && [ -n "${dashpass}" ]; then
             if /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root list | grep -q opensearch.password; then
                 echo "${dashpass}" | /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root add -f --stdin opensearch.password ${debug_pass} > /dev/null 2>&1
+                dashboard_keystore_updated=1
             else
                 wazuhdashold=$(grep "password:" /etc/wazuh-dashboard/opensearch_dashboards.yml )
                 rk="opensearch.password: "
                 wazuhdashold="${wazuhdashold//$rk}"
                 conf="$(awk '{sub("opensearch.password: .*", "opensearch.password: '"${dashpass}"'")}1' /etc/wazuh-dashboard/opensearch_dashboards.yml)"
                 echo "${conf}" > /etc/wazuh-dashboard/opensearch_dashboards.yml
+                dashboard_config_updated=1
             fi
-            dashboard_keystore_updated=1
             restart_dashboard=1
         fi
     fi
@@ -452,6 +456,8 @@ function passwords_restartPendingServices() {
             passwords_restartService "wazuh-dashboard"
         elif [ -n "${dashboard_keystore_updated}" ]; then
             common_logger -w "The Wazuh dashboard keystore was updated, but the wazuh-dashboard service is not running. The restart is pending: the new Wazuh indexer credentials will be applied when the service starts."
+        elif [ -n "${dashboard_config_updated}" ]; then
+            common_logger -w "The Wazuh dashboard configuration file was updated, but the wazuh-dashboard service is not running. The restart is pending: the new Wazuh indexer credentials will be applied when the service starts."
         else
             common_logger -w "wazuh-dashboard service is not running. Skipping restart."
         fi
@@ -676,7 +682,16 @@ function passwords_updateManagerKeystore() {
         return 1
     fi
 
-    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
-    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v "${1}"
+    printf '%s\n' "wazuh-manager" | "${manager_keystore}" -f indexer -k username
+    if [  "${PIPESTATUS[1]}" != 0  ]; then
+        common_logger -e "Could not write the Wazuh indexer username to the Wazuh manager keystore."
+        return 1
+    fi
+
+    printf '%s\n' "${1}" | "${manager_keystore}" -f indexer -k password
+    if [  "${PIPESTATUS[1]}" != 0  ]; then
+        common_logger -e "Could not write the Wazuh indexer password to the Wazuh manager keystore."
+        return 1
+    fi
 
 }

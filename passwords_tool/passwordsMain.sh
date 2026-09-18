@@ -205,6 +205,7 @@ function main() {
                 else
                     common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
                 fi
+                passwords_restartPendingServices
                 exit 1
             fi
 

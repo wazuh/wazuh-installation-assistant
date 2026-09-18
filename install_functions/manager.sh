@@ -61,8 +61,14 @@ function manager_configure(){
     eval "sed -i s/manager-key.pem/indexer-connector-key.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
     manager_copyCertificates "${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
-    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
-    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v wazuh-manager
+    for keystore_key in username password; do
+        "${manager_keystore}" -f indexer -k "${keystore_key}" -v wazuh-manager
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "Could not write the Wazuh indexer ${keystore_key} to the Wazuh manager keystore."
+            installCommon_rollBack
+            exit 1;
+        fi
+    done
 }
 
 function manager_install() {

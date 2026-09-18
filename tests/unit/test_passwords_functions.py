@@ -435,16 +435,52 @@ class TestPasswordsUpdateManagerKeystore:
     def test_writes_username_and_password(self):
         result = run_bash_function(
             BASE_SOURCES,
-            """
-            eval "$(declare -f passwords_updateManagerKeystore |
-                sed 's#/var/wazuh-manager/bin/wazuh-manager-keystore#echo keystore:#')"
-            passwords_updateManagerKeystore "ManagerPass1."
-            """,
-            IGNORE_LOGGER,
+            'passwords_updateManagerKeystore "ManagerPass1."',
+            {**IGNORE_LOGGER, "keystore_stub": 'echo "keystore:$* value=$(cat)"'},
+            {"manager_keystore": "keystore_stub"},
         )
         assert_success(result)
-        assert "keystore: -f indexer -k username -v wazuh-manager" in result.stdout
-        assert "keystore: -f indexer -k password -v ManagerPass1." in result.stdout
+        assert "keystore:-f indexer -k username value=wazuh-manager" in result.stdout
+        assert "keystore:-f indexer -k password value=ManagerPass1." in result.stdout
+
+    def test_does_not_put_the_password_on_the_command_line(self):
+        """The value travels on standard input: anything on the command
+        line is visible in ps for the duration of the call."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_updateManagerKeystore "ManagerPass1."',
+            {**IGNORE_LOGGER, "keystore_stub": 'echo "args:$*"; cat > /dev/null'},
+            {"manager_keystore": "keystore_stub"},
+        )
+        assert_success(result)
+        assert "ManagerPass1." not in result.stdout
+
+    def test_returns_failure_when_the_keystore_write_fails(self):
+        """A keystore binary that is missing, or that cannot open
+        queue/keystore, must surface as a failure, not as a silent no-op."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_updateManagerKeystore "ManagerPass1."',
+            {"common_logger": 'echo "LOG:$*"', "keystore_stub": "cat > /dev/null; return 1"},
+            {"manager_keystore": "keystore_stub"},
+        )
+        assert_failure(result)
+        assert "LOG:-e Could not write the Wazuh indexer username to the Wazuh manager keystore." in result.stdout
+
+    def test_does_not_write_the_password_after_a_failed_username_write(self):
+        """The password write is skipped once the username write failed, so
+        the keystore is not left holding a password for a username that was
+        never stored."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_updateManagerKeystore "ManagerPass1."',
+            {"common_logger": 'echo "LOG:$*"',
+             "keystore_stub": 'echo "keystore:$*"; cat > /dev/null; return 1'},
+            {"manager_keystore": "keystore_stub"},
+        )
+        assert_failure(result)
+        assert "keystore:-f indexer -k username" in result.stdout
+        assert "keystore:-f indexer -k password" not in result.stdout
 
     def test_fails_without_a_password_argument(self):
         result = run_bash_function(
@@ -735,9 +771,10 @@ class TestPasswordsChangePasswordChangeAll:
         assert "manager_keystore:" not in result.stdout
         assert "pending:|" in result.stdout
 
-    def test_warns_that_only_the_local_node_keystore_was_updated(self):
-        """The tool reaches one manager node. On a cluster the operator
-        has to repeat the keystore update on the rest."""
+    def test_points_at_the_other_manager_nodes_of_a_multi_node_deployment(self):
+        """The tool reaches one manager node. On a multi-node deployment
+        the operator has to repeat the keystore update on the rest. The
+        tool cannot tell the two apart, so the note is conditional."""
         mocks = {
             "common_logger": 'echo "LOG:$*"',
             "passwords_updateManagerKeystore": "true",
@@ -755,8 +792,8 @@ class TestPasswordsChangePasswordChangeAll:
         )
         assert_success(result)
         assert (
-            "LOG:-w Only the keystore of this Wazuh manager node was updated. "
-            "On a cluster, update the keystore of every other manager node and restart them."
+            "LOG:-w If this is a multi-node deployment, update the keystore of every "
+            "other Wazuh manager node and restart them."
         ) in result.stdout
 
 
@@ -788,6 +825,30 @@ class TestPasswordsChangePasswordSingleUserManagerKeystore:
         assert "manager_keystore:ManagerPass1." in result.stdout
         assert "pending:1" in result.stdout
 
+    def test_failed_keystore_write_aborts_before_securityadmin(self):
+        """passwords_changePassword runs before passwords_runSecurityAdmin,
+        so a failed keystore write has to stop the run: otherwise the new
+        password reaches the Wazuh indexer while the manager keystore still
+        holds the old one, and nothing is left that can authenticate."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_updateManagerKeystore": 'echo "manager_keystore:$1"; return 1',
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_changePassword; echo "pending:${restart_manager}"',
+            mocks,
+            {
+                "nuser": "wazuh-manager",
+                "password": "ManagerPass1.",
+                "wazuh_installed": "yes",
+            },
+        )
+        assert_failure(result)
+        assert "manager_keystore:ManagerPass1." in result.stdout
+        assert "pending:1" not in result.stdout
+        assert "multi-node deployment" not in result.stdout
+
     def test_admin_user_does_not_update_manager_keystore(self):
         mocks = {
             "common_logger": 'echo "LOG:$*"',
@@ -807,6 +868,22 @@ class TestPasswordsChangePasswordSingleUserManagerKeystore:
         assert "manager_keystore:" not in result.stdout
         assert "pending:" in result.stdout
         assert "pending:1" not in result.stdout
+
+    def test_configuration_file_path_does_not_claim_the_dashboard_keystore(self):
+        """When opensearch_dashboards.yml is edited instead of the keystore,
+        the pending-restart message must say so."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            'dashboard_config_updated=1; restart_dashboard=1; passwords_restartPendingServices',
+            mocks,
+        )
+        assert_success(result)
+        assert "LOG:-w The Wazuh dashboard configuration file was updated" in result.stdout
+        assert "keystore was updated" not in result.stdout
 
     def test_kibanaserver_user_still_updates_dashboard_keystore(self):
         mocks = {
