@@ -47,8 +47,9 @@ function passwords_changePassword() {
     if [ "${nuser}" == "wazuh-manager" ] || [ -n "${changeall}" ]; then
         if [ -n "${wazuh_installed}" ]; then
             if [ -n "${managerpass}" ]; then
-                /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v "${managerpass}"
-                passwords_restartService "wazuh-manager"
+                passwords_updateManagerKeystore "${managerpass}"
+                restart_manager=1
+                common_logger -w "Only the keystore of this Wazuh manager node was updated. On a cluster, update the keystore of every other manager node and restart them."
             else
                 common_logger -w "Skipping Wazuh manager keystore update: no password available for the wazuh-manager user."
             fi
@@ -66,11 +67,7 @@ function passwords_changePassword() {
                 conf="$(awk '{sub("opensearch.password: .*", "opensearch.password: '"${dashpass}"'")}1' /etc/wazuh-dashboard/opensearch_dashboards.yml)"
                 echo "${conf}" > /etc/wazuh-dashboard/opensearch_dashboards.yml
             fi
-            if passwords_isServiceActive "wazuh-dashboard"; then
-                passwords_restartService "wazuh-dashboard"
-            else
-                common_logger -d "wazuh-dashboard service is not running. Skipping restart."
-            fi
+            restart_dashboard=1
         fi
     fi
 
@@ -436,6 +433,26 @@ function passwords_isServiceActive() {
 
 }
 
+function passwords_restartPendingServices() {
+
+    if [ -n "${restart_manager}" ]; then
+        if passwords_isServiceActive "wazuh-manager"; then
+            passwords_restartService "wazuh-manager"
+        else
+            common_logger -w "wazuh-manager service is not running. Skipping restart: the new credentials will be applied when the service starts."
+        fi
+    fi
+
+    if [ -n "${restart_dashboard}" ]; then
+        if passwords_isServiceActive "wazuh-dashboard"; then
+            passwords_restartService "wazuh-dashboard"
+        else
+            common_logger -w "wazuh-dashboard service is not running. Skipping restart: the new credentials will be applied when the service starts."
+        fi
+    fi
+
+}
+
 function passwords_restartService() {
 
     common_logger -d "Restarting ${1} service..."
@@ -643,5 +660,17 @@ function passwords_updateInternalUsers() {
     eval "cp /etc/wazuh-indexer/backup/internal_users.yml /etc/wazuh-indexer/opensearch-security/internal_users.yml ${debug}"
     eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
     common_logger -d "The internal users have been updated before changing the passwords."
+
+}
+
+function passwords_updateManagerKeystore() {
+
+    if [ "$#" -ne 1 ]; then
+        common_logger -e "passwords_updateManagerKeystore must be called with 1 argument."
+        return 1
+    fi
+
+    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
+    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v "${1}"
 
 }

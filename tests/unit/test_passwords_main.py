@@ -168,6 +168,48 @@ class TestPasswordsMainChangeAllWithAdminCredentials:
         assert "RESTARTSERVICE_CALLED:wazuh-dashboard" in result.stdout
 
 
+class TestPasswordsMainRestartOrdering:
+    """The services must not be restarted until the new passwords have
+    been applied on the Wazuh indexer.
+
+    passwords_runSecurityAdmin is what pushes the new hashes through
+    securityadmin.sh. Restarting before it leaves the manager and the
+    dashboard holding a credential the indexer has not accepted yet.
+    """
+
+    def test_restarts_run_after_security_admin_on_the_batch_path(self):
+        result = _run(
+            "-a -au admin -ap AdminPass1.",
+            checkinstalled="indexer_installed=1; wazuh_installed=1; dashboard_installed=1",
+        )
+        assert_success(result)
+        security_admin = result.stdout.index("RUNSECURITYADMIN_CALLED")
+        assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-manager") > security_admin
+        assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-dashboard") > security_admin
+
+    def test_restarts_run_after_security_admin_on_the_single_user_path(self):
+        result = _run(
+            "-u wazuh-manager -p ManagerPass1.",
+            extra_mocks={
+                "passwords_changePassword": 'echo "CHANGEPASSWORD_CALLED"; restart_manager=1',
+            },
+            checkinstalled="indexer_installed=1; wazuh_installed=1",
+        )
+        assert_success(result)
+        security_admin = result.stdout.index("RUNSECURITYADMIN_CALLED")
+        assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-manager") > security_admin
+
+    def test_no_restart_is_queued_when_nothing_changed_locally(self):
+        """Rotating a user no local component stores, such as admin,
+        leaves both services alone."""
+        result = _run(
+            "-u admin -p AdminPass1.",
+            checkinstalled="indexer_installed=1; wazuh_installed=1; dashboard_installed=1",
+        )
+        assert_success(result)
+        assert "RESTARTSERVICE_CALLED" not in result.stdout
+
+
 class TestPasswordsMainSingleUserPath:
     """-u|--user keeps working exactly as before -a|--change-all was added."""
 

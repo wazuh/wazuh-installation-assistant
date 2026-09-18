@@ -400,7 +400,13 @@ The password for user kibanaserver is <PASSWORD>
 WARNING: Wazuh indexer passwords changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services.
 ```
 
-The tool automatically updates the keystore of the Wazuh manager (`wazuh-manager` user) and the Wazuh dashboard (`kibanaserver` user), and restarts the affected services, so the connectivity between components is preserved without any manual steps.
+The tool updates the keystore of the Wazuh manager (`wazuh-manager` user) and the keystore of the Wazuh dashboard (`kibanaserver` user), and restarts both services once the new passwords have been applied on the Wazuh indexer, so the connectivity between components is preserved on the node where the tool runs.
+
+If a service is stopped when the tool runs, it is not started: the new credentials are already in its keystore and are applied the next time the service starts. The tool reports it:
+
+```bash
+WARNING: wazuh-manager service is not running. Skipping restart: the new credentials will be applied when the service starts.
+```
 
 If the Wazuh server API admin credentials are not provided, the Wazuh server API passwords are not changed, and the tool reports it:
 
@@ -424,6 +430,24 @@ The password for Wazuh API user wazuh-wui is <PASSWORD>
 `-a`, `--change-all` is incompatible with `-u\|--user`, `-p\|--password`, and `-A\|--api`: using any of them together with `-a` shows the help and exits with an error. Since `-a` already covers the Wazuh server API password change through `-au`/`-ap`, there is no need to also specify `-A`.
 
 > **note**: Save the passwords printed by the tool. They cannot be recovered afterwards.
+
+### Multi-node deployments
+
+The tool only reaches the keystore of the node it runs on, whichever option is used. Every other Wazuh manager node keeps its previous Wazuh indexer credentials and loses the connection to the Wazuh indexer, which the tool reports:
+
+```bash
+WARNING: Only the keystore of this Wazuh manager node was updated. On a cluster, update the keystore of every other manager node and restart them.
+```
+
+On each of the remaining Wazuh manager nodes, write the new credentials into the keystore and restart the service:
+
+```bash
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v <WAZUH_MANAGER_PASSWORD>
+systemctl restart wazuh-manager
+```
+
+Where `<WAZUH_MANAGER_PASSWORD>` is the password the tool printed for the `wazuh-manager` user. The same applies to any additional Wazuh dashboard node, whose `opensearch.password` keystore entry holds the `kibanaserver` password.
 
 ### Change Wazuh indexer password
 
