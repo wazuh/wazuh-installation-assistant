@@ -9,15 +9,15 @@
 function manager_startCluster() {
 
     common_logger -d "Starting Wazuh manager cluster."
-    for i in "${!server_node_names[@]}"; do
-        if [[ "${server_node_names[i]}" == "${winame}" ]]; then
+    for i in "${!manager_node_names[@]}"; do
+        if [[ "${manager_node_names[i]}" == "${winame}" ]]; then
             pos="${i}";
         fi
     done
 
-    for i in "${!server_node_types[@]}"; do
-        if [[ "${server_node_types[i],,}" == "master" ]]; then
-            master_address=${server_node_ips[i]}
+    for i in "${!manager_node_types[@]}"; do
+        if [[ "${manager_node_types[i],,}" == "master" ]]; then
+            master_address=${manager_node_ips[i]}
         fi
     done
 
@@ -26,19 +26,19 @@ function manager_startCluster() {
     port="1516"
     hidden="no"
     disabled="no"
-    lstart=$(grep -n "<cluster>" /var/ossec/etc/ossec.conf | cut -d : -f 1)
-    lend=$(grep -n "</cluster>" /var/ossec/etc/ossec.conf | cut -d : -f 1)
+    lstart=$(grep -n "<cluster>" /var/wazuh-manager/etc/wazuh-manager.conf | cut -d : -f 1)
+    lend=$(grep -n "</cluster>" /var/wazuh-manager/etc/wazuh-manager.conf | cut -d : -f 1)
 
     sed -i -e "${lstart},${lend}s/<name>.*<\/name>/<name>wazuh_cluster<\/name>/" \
         -e "${lstart},${lend}s/<node_name>.*<\/node_name>/<node_name>${winame}<\/node_name>/" \
-        -e "${lstart},${lend}s/<node_type>.*<\/node_type>/<node_type>${server_node_types[pos],,}<\/node_type>/" \
+        -e "${lstart},${lend}s/<node_type>.*<\/node_type>/<node_type>${manager_node_types[pos],,}<\/node_type>/" \
         -e "${lstart},${lend}s/<key>.*<\/key>/<key>${key}<\/key>/" \
         -e "${lstart},${lend}s/<port>.*<\/port>/<port>${port}<\/port>/" \
         -e "${lstart},${lend}s/<bind_addr>.*<\/bind_addr>/<bind_addr>${bind_address}<\/bind_addr>/" \
         -e "${lstart},${lend}s/<node>.*<\/node>/<node>${master_address}<\/node>/" \
         -e "${lstart},${lend}s/<hidden>.*<\/hidden>/<hidden>${hidden}<\/hidden>/" \
         -e "${lstart},${lend}s/<disabled>.*<\/disabled>/<disabled>${disabled}<\/disabled>/" \
-        /var/ossec/etc/ossec.conf
+        /var/wazuh-manager/etc/wazuh-manager.conf
 
 }
 
@@ -46,34 +46,50 @@ function manager_configure(){
 
     common_logger -d "Configuring Wazuh manager."
 
-    if [ ${#indexer_node_names[@]} -eq 1 ]; then
-        eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' /var/ossec/etc/ossec.conf ${debug}"
-    else
-        lstart=$(grep -n "<hosts>" /var/ossec/etc/ossec.conf | cut -d : -f 1)
-        lend=$(grep -n "</hosts>" /var/ossec/etc/ossec.conf | cut -d : -f 1)
-        for i in "${!indexer_node_ips[@]}"; do
-            if [ $i -eq 0 ]; then
-                eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' /var/ossec/etc/ossec.conf ${debug}"
-            else
-                eval "sed -i '/<hosts>/a\      <host>https:\/\/${indexer_node_ips[$i]}:9200<\/host>' /var/ossec/etc/ossec.conf ${debug}"
-            fi
-        done
+    for i in "${!indexer_node_ips[@]}"; do
+        if [ $i -eq 0 ]; then
+            eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
+        else
+            sed -i "/<hosts>/a\      <host>https://${indexer_node_ips[$i]}:9200</host>" /var/wazuh-manager/etc/wazuh-manager.conf
+        fi
+    done
+
+    if [ "${AIO}" ]; then
+        winame="${manager_node_names[0]}"
     fi
-    eval "sed -i s/filebeat.pem/${server_node_names[0]}.pem/ /var/ossec/etc/ossec.conf ${debug}"
-    eval "sed -i s/filebeat-key.pem/${server_node_names[0]}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
+    eval "sed -i s/manager.pem/indexer-connector.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
+    eval "sed -i s/manager-key.pem/indexer-connector-key.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
+    manager_copyCertificates "${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
-    /var/ossec/bin/wazuh-keystore -f indexer -k username -v admin
-    /var/ossec/bin/wazuh-keystore -f indexer -k password -v admin
-    common_logger "Wazuh manager vulnerability detection configuration finished."
+    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
+    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v wazuh-manager
 }
 
 function manager_install() {
 
     common_logger "Starting the Wazuh manager installation."
+
+    if [ -n "${offline_install}" ]; then
+        download_dir="${offline_packages_path}"
+    else
+        download_dir="${base_path}/${download_packages_directory}"
+    fi
+
+    # Find the downloaded package file
     if [ "${sys_type}" == "yum" ]; then
-        installCommon_yumInstall "wazuh-manager" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-manager*.rpm 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh manager package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_yumInstall "${package_file}"
     elif [ "${sys_type}" == "apt-get" ]; then
-        installCommon_aptInstall "wazuh-manager" "${wazuh_version}-*"
+        package_file=$(ls "${download_dir}"/wazuh-manager*.deb 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "Wazuh manager package file not found in ${download_dir}."
+            exit 1
+        fi
+        installCommon_aptInstall "${package_file}"
     fi
 
     common_checkInstalled
@@ -84,4 +100,97 @@ function manager_install() {
     else
         common_logger "Wazuh manager installation finished."
     fi
+}
+
+function manager_copyCertificates() {
+
+    common_logger -d "Copying Manager certificates."
+
+    if [ "${AIO}" ]; then
+        winame="${manager_node_names[0]}"
+    fi
+
+    if [ -f "${tar_file}" ]; then
+        if ! tar -tvf "${tar_file}" | grep -q "${winame}" ; then
+            common_logger -e "Tar file does not contain certificate for the node ${winame}."
+            installCommon_rollBack
+            exit 1
+        fi
+        eval "mkdir -p ${manager_cert_path} ${debug}"
+        eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}.pem --strip-components 1 ${debug}"
+        eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}-key.pem --strip-components 1 ${debug}"
+        eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
+        eval "mv ${manager_cert_path}/${winame}.pem ${manager_cert_path}/indexer-connector.pem ${debug}"
+        eval "mv ${manager_cert_path}/${winame}-key.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
+        eval "rm -rf ${manager_cert_path}/wazuh-install-files/ ${debug}"
+        eval "chown root:wazuh-manager ${manager_cert_path}/root-ca.pem ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
+        eval "chmod 640 ${manager_cert_path}/root-ca.pem ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
+        manager_copyRemotedCertificates
+        eval "chown root:wazuh-manager ${manager_cert_path} ${debug}"
+        eval "chmod 1770 ${manager_cert_path} ${debug}"
+    else
+        common_logger -e "No certificates found. Could not initialize Wazuh manager"
+        installCommon_rollBack
+        exit 1
+    fi
+
+}
+
+# Deploys the certificate of the agent listener (remoted on 1517, reused by authd on
+# 1515). The manager no longer generates it: without etc/certs/remoted.pem and
+# etc/certs/remoted-key.pem it refuses to start. Unlike the indexer connector files,
+# which are read as root, this pair is opened by remoted after dropping privileges,
+# hence the wazuh-manager owner.
+#
+# The pair in the tar file always wins. manager_install() runs before this, and a
+# manager package that still self-signs its own listener certificate at install time
+# leaves one behind; keeping it would serve agents a certificate that chains to
+# nothing they can pin. Not replacing an existing pair is the package's job
+# (CheckListenerCerts() only fixes its ownership), not the assistant's: the assistant
+# always performs a clean install from the tar file.
+function manager_copyRemotedCertificates() {
+
+    if ! tar -tf "${tar_file}" | grep -q -E "^wazuh-install-files/${winame}-remoted.pem$" || ! tar -tf "${tar_file}" | grep -q -E "^wazuh-install-files/${winame}-remoted-key.pem$"; then
+        # The operator may have placed their own pair instead. It still has to chain to
+        # the CA agents pin: a certificate that does not surfaces as the manager
+        # answering 503 on GET /cacerts, with every agent bootstrap failing at once and
+        # nothing pointing back at the installation.
+        if [ -f "${manager_cert_path}/remoted.pem" ] && [ -f "${manager_cert_path}/remoted-key.pem" ]; then
+            common_logger -d "Using the agent listener certificate already present in ${manager_cert_path}."
+            manager_verifyRemotedCertificate
+            return 0
+        fi
+        common_logger -w "There is no agent listener certificate for the node ${winame} in ${tar_file}. The Wazuh manager will not start until ${manager_cert_path}/remoted.pem and ${manager_cert_path}/remoted-key.pem are provisioned."
+        return 0
+    fi
+
+    common_logger -d "Copying the agent listener certificate."
+    eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}-remoted.pem --strip-components 1 ${debug}"
+    eval "tar -xf ${tar_file} -C ${manager_cert_path} wazuh-install-files/${winame}-remoted-key.pem --strip-components 1 ${debug}"
+    eval "mv -f ${manager_cert_path}/${winame}-remoted.pem ${manager_cert_path}/remoted.pem ${debug}"
+    eval "mv -f ${manager_cert_path}/${winame}-remoted-key.pem ${manager_cert_path}/remoted-key.pem ${debug}"
+    eval "chown wazuh-manager:wazuh-manager ${manager_cert_path}/remoted.pem ${manager_cert_path}/remoted-key.pem ${debug}"
+    eval "chmod 640 ${manager_cert_path}/remoted.pem ${manager_cert_path}/remoted-key.pem ${debug}"
+
+    manager_verifyRemotedCertificate
+
+}
+
+# A listener certificate that does not chain to the deployed CA means agents cannot
+# verify this manager, which is the whole point of deploying the pair.
+function manager_verifyRemotedCertificate() {
+
+    if ! command -v openssl > /dev/null 2>&1; then
+        common_logger -w "OpenSSL is not installed, so ${manager_cert_path}/remoted.pem was not verified against ${manager_cert_path}/root-ca.pem. Check it before enrolling agents."
+        return 0
+    fi
+
+    if ! openssl verify -CAfile "${manager_cert_path}/root-ca.pem" "${manager_cert_path}/remoted.pem" > /dev/null 2>&1; then
+        common_logger -e "The agent listener certificate ${manager_cert_path}/remoted.pem does not verify against ${manager_cert_path}/root-ca.pem."
+        installCommon_rollBack
+        exit 1
+    fi
+
+    common_logger -d "Verified remoted.pem against root-ca.pem."
+
 }

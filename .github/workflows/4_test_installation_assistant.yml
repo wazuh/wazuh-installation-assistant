@@ -13,6 +13,9 @@ on:
       - 'install_functions/**'
       - 'passwords_tool/**'
       - 'tests/**'
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - 4.*
   workflow_dispatch:
     inputs:
       REPOSITORY:
@@ -26,11 +29,9 @@ on:
       WAZUH_INSTALLATION_ASSISTANT_REFERENCE:
         description: 'Branch or tag of the wazuh-installation-assistant repository'
         required: true
-        default: '4.14.9'
       AUTOMATION_REFERENCE:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
-        default: '4.14.9'
       SYSTEMS:
         description: 'Operating Systems (list of comma-separated quoted strings enclosed in square brackets)'
         required: true
@@ -54,7 +55,7 @@ on:
 
 env:
   WAZUH_INSTALLATION_ASSISTANT_REFERENCE: ${{ github.event_name == 'pull_request' && github.head_ref || inputs.WAZUH_INSTALLATION_ASSISTANT_REFERENCE }}
-  AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && '4.14.9' || inputs.AUTOMATION_REFERENCE }}
+  AUTOMATION_REFERENCE: ${{ github.event_name == 'pull_request' && 'v4.14.5' || inputs.AUTOMATION_REFERENCE }}
   VERBOSITY: ${{ github.event_name == 'pull_request' && '-v' || inputs.VERBOSITY }}
   COMPOSITE_NAME: "linux-SUBNAME-amd64"
   SESSION_NAME: "Installation-Assistant-Test"
