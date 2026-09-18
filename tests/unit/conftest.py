@@ -20,6 +20,7 @@ def run_bash_function(
     func_call: str,
     mock_funcs: dict[str, str] | None = None,
     env_vars: dict[str, str] | None = None,
+    stdin: str | None = None,
 ) -> subprocess.CompletedProcess:
     """Run a bash function with optional command/function mocking.
 
@@ -31,6 +32,8 @@ def run_bash_function(
         env_vars: Additional environment variables to set before the call.
             Values starting with '(' and ending with ')' are treated as bash
             arrays and set with 'declare -a' instead of 'export'.
+        stdin: Text fed to the call's standard input, for the functions that
+            filter it rather than take arguments.
 
     Returns:
         CompletedProcess with returncode, stdout, stderr.
@@ -65,6 +68,7 @@ set +e
 """
     return subprocess.run(
         ["bash", "-c", script],
+        input=stdin,
         capture_output=True,
         text=True,
         cwd=str(PROJECT_ROOT),
