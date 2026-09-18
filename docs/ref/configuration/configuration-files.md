@@ -173,6 +173,80 @@ nodes:
       dns: "dashboard.example.org"
 ```
 
+#### Example 4: using an `ip` list
+
+`ip` accepts a list as `dns` does, for a node reachable at more than one address. Every
+item reaches the subject alternative name of the node's certificate. The first one is the
+address the installation assistant configures the components with.
+
+```yaml
+nodes:
+  indexer:
+    - name: indexer-1
+      ip:
+        - "10.0.0.11"
+        - "192.168.10.11"
+
+  manager:
+    - name: manager-1
+      ip:
+        - "10.0.0.21"
+        - "192.168.10.21"
+      node_type: master
+
+  dashboard:
+    - name: dashboard-1
+      ip: "10.0.0.31"
+```
+
+#### Example 5: a load balancer that terminates TLS
+
+The optional `load_balancer` section issues a certificate for a proxy that terminates the
+agents' TLS session, signed by the same `root-ca.pem` the agents pin, so no second trust
+anchor has to be placed on the endpoints. It is not a deployment node: its absence changes
+nothing, and no install path requires an entry in it.
+
+```yaml
+nodes:
+  indexer:
+    - name: indexer-1
+      ip: "10.0.0.11"
+
+  manager:
+    - name: manager-1
+      ip: "10.0.0.21"
+      node_type: master
+    - name: manager-2
+      ip: "10.0.0.22"
+      node_type: worker
+
+  dashboard:
+    - name: dashboard-1
+      ip: "10.0.0.31"
+
+  load_balancer:
+    - name: lb
+      dns:
+        - "wazuh.example.com"
+      ip:
+        - "203.0.113.10"
+```
+
+Issue it with `-lb`, or with `-A`, which includes the section when it is present:
+
+```bash
+sudo bash wazuh-certs-tool-5.0.0.sh -lb ./root-ca.pem ./root-ca.key
+```
+
+Use this **only when the proxy terminates TLS**. With a layer 4 passthrough load balancer
+the agent's session ends at the manager, the manager's own listener certificate is what
+the agent validates, and the address of the balancer belongs in the listener certificate
+of every manager node instead:
+
+```bash
+sudo bash wazuh-certs-tool-5.0.0.sh -A -as wazuh.example.com
+```
+
 By default, documentation examples use only `ip` values for simplicity.
 
 For the wazuh certs tool to detect the file, it must be located in the same path as the `wazuh-certs-tool-5.0.1.sh` script.

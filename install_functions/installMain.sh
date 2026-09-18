@@ -19,6 +19,13 @@ function getHelp() {
     echo -e "        -a,  --all-in-one"
     echo -e "                Install and configure Wazuh manager, Wazuh indexer, Wazuh dashboard."
     echo -e ""
+    echo -e "        -as, --agent-san <ip|dns>"
+    echo -e "                Adds an extra address to the subject alternative name of the agent"
+    echo -e "                listener certificate of every Wazuh manager node. Repeat it for more"
+    echo -e "                than one. Use it for the address agents dial when the host cannot know"
+    echo -e "                it: a load balancer shared by a cluster, a published name, a NAT"
+    echo -e "                address. Must be used along with one of these options: -a, -g"
+    echo -e ""
     echo -e "        -d [pre-release|local],  --development"
     echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.1.sh."
     echo -e ""
@@ -75,12 +82,24 @@ function main() {
         getHelp
     fi
 
+    declare -a agent_san=()
+
     while [ -n "${1}" ]
     do
         case "${1}" in
             "-a"|"--all-in-one")
                 AIO=1
                 shift 1
+                ;;
+            "-as"|"--agent-san")
+                if [[ -z "${2}" || "${2}" == -* ]]; then
+                    common_logger -e "Error on arguments. Probably missing <ip|dns> after -as|--agent-san"
+                    getHelp
+                    exit 1
+                else
+                    agent_san+=("${2}")
+                    shift 2
+                fi
                 ;;
             "-d"|"--development")
                 development=1
@@ -210,6 +229,7 @@ function main() {
     common_checkSystem
     common_checkInstalled
     checks_arguments
+    cert_validateAgentSan
     check_dist
 
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
