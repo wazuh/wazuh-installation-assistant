@@ -48,6 +48,7 @@ function passwords_changePassword() {
         if [ -n "${wazuh_installed}" ]; then
             if [ -n "${managerpass}" ]; then
                 passwords_updateManagerKeystore "${managerpass}"
+                manager_keystore_updated=1
                 restart_manager=1
                 common_logger -w "Only the keystore of this Wazuh manager node was updated. On a cluster, update the keystore of every other manager node and restart them."
             else
@@ -67,6 +68,7 @@ function passwords_changePassword() {
                 conf="$(awk '{sub("opensearch.password: .*", "opensearch.password: '"${dashpass}"'")}1' /etc/wazuh-dashboard/opensearch_dashboards.yml)"
                 echo "${conf}" > /etc/wazuh-dashboard/opensearch_dashboards.yml
             fi
+            dashboard_keystore_updated=1
             restart_dashboard=1
         fi
     fi
@@ -438,16 +440,20 @@ function passwords_restartPendingServices() {
     if [ -n "${restart_manager}" ]; then
         if passwords_isServiceActive "wazuh-manager"; then
             passwords_restartService "wazuh-manager"
+        elif [ -n "${manager_keystore_updated}" ]; then
+            common_logger -w "The Wazuh manager keystore was updated, but the wazuh-manager service is not running. The restart is pending: the new Wazuh indexer credentials will be applied when the service starts."
         else
-            common_logger -w "wazuh-manager service is not running. Skipping restart: the new credentials will be applied when the service starts."
+            common_logger -w "wazuh-manager service is not running. Skipping restart."
         fi
     fi
 
     if [ -n "${restart_dashboard}" ]; then
         if passwords_isServiceActive "wazuh-dashboard"; then
             passwords_restartService "wazuh-dashboard"
+        elif [ -n "${dashboard_keystore_updated}" ]; then
+            common_logger -w "The Wazuh dashboard keystore was updated, but the wazuh-dashboard service is not running. The restart is pending: the new Wazuh indexer credentials will be applied when the service starts."
         else
-            common_logger -w "wazuh-dashboard service is not running. Skipping restart: the new credentials will be applied when the service starts."
+            common_logger -w "wazuh-dashboard service is not running. Skipping restart."
         fi
     fi
 

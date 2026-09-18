@@ -355,13 +355,14 @@ class TestPasswordsRestartPendingServices:
             BASE_SOURCES,
             "passwords_restartPendingServices",
             mocks,
-            {"restart_manager": "1"},
+            {"restart_manager": "1", "manager_keystore_updated": "1"},
         )
         assert_success(result)
         assert "restart_called:wazuh-manager" not in result.stdout
         assert (
-            "LOG:-w wazuh-manager service is not running. Skipping restart: "
-            "the new credentials will be applied when the service starts."
+            "LOG:-w The Wazuh manager keystore was updated, but the wazuh-manager "
+            "service is not running. The restart is pending: the new Wazuh indexer "
+            "credentials will be applied when the service starts."
         ) in result.stdout
 
     def test_wazuh_dashboard_restart_is_skipped_when_service_is_inactive(self):
@@ -374,14 +375,35 @@ class TestPasswordsRestartPendingServices:
             BASE_SOURCES,
             "passwords_restartPendingServices",
             mocks,
-            {"restart_dashboard": "1"},
+            {"restart_dashboard": "1", "dashboard_keystore_updated": "1"},
         )
         assert_success(result)
         assert "restart_called:wazuh-dashboard" not in result.stdout
         assert (
-            "LOG:-w wazuh-dashboard service is not running. Skipping restart: "
-            "the new credentials will be applied when the service starts."
+            "LOG:-w The Wazuh dashboard keystore was updated, but the wazuh-dashboard "
+            "service is not running. The restart is pending: the new Wazuh indexer "
+            "credentials will be applied when the service starts."
         ) in result.stdout
+
+    def test_message_omits_the_keystore_when_no_keystore_was_updated(self):
+        """The API path (-A) queues a restart without touching any
+        keystore, so the pending-restart message must not claim one was
+        updated."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_restartPendingServices",
+            mocks,
+            {"restart_manager": "1", "restart_dashboard": "1"},
+        )
+        assert_success(result)
+        assert "LOG:-w wazuh-manager service is not running. Skipping restart." in result.stdout
+        assert "LOG:-w wazuh-dashboard service is not running. Skipping restart." in result.stdout
+        assert "keystore was updated" not in result.stdout
 
     def test_each_service_is_checked_on_its_own(self):
         """An inactive dashboard must not hold back an active manager."""

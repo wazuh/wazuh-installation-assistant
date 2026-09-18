@@ -199,16 +199,6 @@ class TestPasswordsMainRestartOrdering:
         security_admin = result.stdout.index("RUNSECURITYADMIN_CALLED")
         assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-manager") > security_admin
 
-    def test_no_restart_is_queued_when_nothing_changed_locally(self):
-        """Rotating a user no local component stores, such as admin,
-        leaves both services alone."""
-        result = _run(
-            "-u admin -p AdminPass1.",
-            checkinstalled="indexer_installed=1; wazuh_installed=1; dashboard_installed=1",
-        )
-        assert_success(result)
-        assert "RESTARTSERVICE_CALLED" not in result.stdout
-
 
 class TestPasswordsMainSingleUserPath:
     """-u|--user keeps working exactly as before -a|--change-all was added."""

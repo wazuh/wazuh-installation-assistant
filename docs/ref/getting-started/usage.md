@@ -405,7 +405,7 @@ The tool updates the keystore of the Wazuh manager (`wazuh-manager` user) and th
 If a service is stopped when the tool runs, it is not started: the new credentials are already in its keystore and are applied the next time the service starts. The tool reports it:
 
 ```bash
-WARNING: wazuh-manager service is not running. Skipping restart: the new credentials will be applied when the service starts.
+WARNING: The Wazuh manager keystore was updated, but the wazuh-manager service is not running. The restart is pending: the new Wazuh indexer credentials will be applied when the service starts.
 ```
 
 If the Wazuh server API admin credentials are not provided, the Wazuh server API passwords are not changed, and the tool reports it:
