@@ -101,6 +101,18 @@ function installCommon_createCertificates() {
 
     cert_readConfig
 
+    # config.yml points every component at 127.0.0.1 on an all-in-one install, which the
+    # manager needs for its local indexer and dashboard links and agents cannot use.
+    # The listener certificate gets the addresses this host actually answers at, on top
+    # of anything given with -as|--agent-san for the cases the host cannot know: NAT, a
+    # published name, a cloud load balancer.
+    if [ -n "${AIO}" ]; then
+        mapfile -t -O "${#agent_san[@]}" agent_san < <(cert_hostAddresses)
+        common_logger -d "Agent listener addresses: ${agent_san[*]}"
+    fi
+
+    cert_checkListenerReachability
+
     if [ -d /tmp/wazuh-certificates/ ]; then
         eval "rm -rf /tmp/wazuh-certificates/ ${debug}"
     fi
