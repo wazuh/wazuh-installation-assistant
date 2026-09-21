@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Accept RFC 6598 shared address space (100.64.0.0/10) as non-routable in the certificates tool ([#PR](https://github.com/wazuh/wazuh-installation-assistant/pull/PR))
 
 ### Deleted
 
