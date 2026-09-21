@@ -90,6 +90,8 @@
 
 | Issue | Comment |
 | - | - |
+| [#1023](https://github.com/wazuh/wazuh-installation-assistant/issues/1023) | Check the Wazuh manager keystore writes in the passwords tool and the installation assistant, and stop before the new password reaches the Wazuh indexer when a write fails |
+| [#999](https://github.com/wazuh/wazuh-installation-assistant/issues/999) | Write both keystore keys for the wazuh-manager user, guard the manager restart with the service state, restart the services after the new passwords reach the Wazuh indexer, and document the multi-node procedure |
 | [#992](https://github.com/wazuh/wazuh-installation-assistant/issues/992) | Remove test_check_wazuh_manager_monitord, daemon retired in 5.0.0 |
 | [#950](https://github.com/wazuh/wazuh-installation-assistant/issues/950) | Align the passwords tool minimum length with the 12-character Wazuh server API policy |
 | [#976](https://github.com/wazuh/wazuh-installation-assistant/pull/976) | Report skipped bumps in the repository bumper workflow |
