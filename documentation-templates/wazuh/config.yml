@@ -26,3 +26,25 @@ nodes:
   dashboard:
     - name: dashboard
       ip: "<dashboard-node-ip>"
+
+  # ip and dns both accept a list, for a node reachable at more than one address.
+  # Every item reaches the certificate of the node; the first one is the address
+  # the components are configured with.
+  #- name: manager-2
+  #  ip:
+  #    - "<wazuh-manager-ip>"
+  #    - "<wazuh-manager-second-ip>"
+  #  dns:
+  #    - "<wazuh-manager-name>"
+
+  # Optional. Only for a proxy that TERMINATES the agents' TLS session: it issues the
+  # certificate that proxy serves, from the same root-ca the agents pin. A layer 4
+  # passthrough load balancer terminates nothing and needs --agent-san with its
+  # address instead, so that address reaches the listener certificate of every
+  # manager node.
+  #load_balancer:
+  #  - name: lb
+  #    dns:
+  #      - "<load-balancer-name>"
+  #    ip:
+  #      - "<load-balancer-ip>"

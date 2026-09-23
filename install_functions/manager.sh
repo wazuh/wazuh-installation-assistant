@@ -61,8 +61,14 @@ function manager_configure(){
     eval "sed -i s/manager-key.pem/indexer-connector-key.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
     manager_copyCertificates "${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
-    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
-    /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v wazuh-manager
+    for keystore_key in username password; do
+        "${manager_keystore}" -f indexer -k "${keystore_key}" -v wazuh-manager
+        if [  "${PIPESTATUS[0]}" != 0  ]; then
+            common_logger -e "Could not write the Wazuh indexer ${keystore_key} to the Wazuh manager keystore."
+            installCommon_rollBack
+            exit 1;
+        fi
+    done
 }
 
 function manager_install() {
@@ -151,6 +157,15 @@ function manager_copyCertificates() {
 function manager_copyRemotedCertificates() {
 
     if ! tar -tf "${tar_file}" | grep -q -E "^wazuh-install-files/${winame}-remoted.pem$" || ! tar -tf "${tar_file}" | grep -q -E "^wazuh-install-files/${winame}-remoted-key.pem$"; then
+        # The operator may have placed their own pair instead. It still has to chain to
+        # the CA agents pin: a certificate that does not surfaces as the manager
+        # answering 503 on GET /cacerts, with every agent bootstrap failing at once and
+        # nothing pointing back at the installation.
+        if [ -f "${manager_cert_path}/remoted.pem" ] && [ -f "${manager_cert_path}/remoted-key.pem" ]; then
+            common_logger -d "Using the agent listener certificate already present in ${manager_cert_path}."
+            manager_verifyRemotedCertificate
+            return 0
+        fi
         common_logger -w "There is no agent listener certificate for the node ${winame} in ${tar_file}. The Wazuh manager will not start until ${manager_cert_path}/remoted.pem and ${manager_cert_path}/remoted-key.pem are provisioned."
         return 0
     fi
@@ -163,15 +178,25 @@ function manager_copyRemotedCertificates() {
     eval "chown wazuh-manager:wazuh-manager ${manager_cert_path}/remoted.pem ${manager_cert_path}/remoted-key.pem ${debug}"
     eval "chmod 640 ${manager_cert_path}/remoted.pem ${manager_cert_path}/remoted-key.pem ${debug}"
 
-    # A listener certificate that does not chain to the deployed CA means agents
-    # cannot verify this manager, which is the whole point of deploying the pair.
-    if command -v openssl > /dev/null 2>&1; then
-        if ! openssl verify -CAfile "${manager_cert_path}/root-ca.pem" "${manager_cert_path}/remoted.pem" > /dev/null 2>&1; then
-            common_logger -e "The agent listener certificate ${manager_cert_path}/remoted.pem does not verify against ${manager_cert_path}/root-ca.pem."
-            installCommon_rollBack
-            exit 1
-        fi
-        common_logger -d "Verified remoted.pem against root-ca.pem."
+    manager_verifyRemotedCertificate
+
+}
+
+# A listener certificate that does not chain to the deployed CA means agents cannot
+# verify this manager, which is the whole point of deploying the pair.
+function manager_verifyRemotedCertificate() {
+
+    if ! command -v openssl > /dev/null 2>&1; then
+        common_logger -w "OpenSSL is not installed, so ${manager_cert_path}/remoted.pem was not verified against ${manager_cert_path}/root-ca.pem. Check it before enrolling agents."
+        return 0
     fi
+
+    if ! openssl verify -CAfile "${manager_cert_path}/root-ca.pem" "${manager_cert_path}/remoted.pem" > /dev/null 2>&1; then
+        common_logger -e "The agent listener certificate ${manager_cert_path}/remoted.pem does not verify against ${manager_cert_path}/root-ca.pem."
+        installCommon_rollBack
+        exit 1
+    fi
+
+    common_logger -d "Verified remoted.pem against root-ca.pem."
 
 }
