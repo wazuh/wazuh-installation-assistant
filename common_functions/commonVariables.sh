@@ -8,3 +8,4 @@
 
 adminpem="/etc/wazuh-indexer/certs/admin.pem"
 adminkey="/etc/wazuh-indexer/certs/admin-key.pem"
+manager_keystore="/var/wazuh-manager/bin/wazuh-manager-keystore"

@@ -168,6 +168,76 @@ class TestPasswordsMainChangeAllWithAdminCredentials:
         assert "RESTARTSERVICE_CALLED:wazuh-dashboard" in result.stdout
 
 
+class TestPasswordsMainRestartOrdering:
+    """The services must not be restarted until the new passwords have
+    been applied on the Wazuh indexer.
+
+    passwords_runSecurityAdmin is what pushes the new hashes through
+    securityadmin.sh. Restarting before it leaves the manager and the
+    dashboard holding a credential the indexer has not accepted yet.
+    """
+
+    def test_restarts_run_after_security_admin_on_the_batch_path(self):
+        result = _run(
+            "-a -au admin -ap AdminPass1.",
+            checkinstalled="indexer_installed=1; wazuh_installed=1; dashboard_installed=1",
+        )
+        assert_success(result)
+        security_admin = result.stdout.index("RUNSECURITYADMIN_CALLED")
+        assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-manager") > security_admin
+        assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-dashboard") > security_admin
+
+    def test_restarts_run_after_security_admin_on_the_single_user_path(self):
+        result = _run(
+            "-u wazuh-manager -p ManagerPass1.",
+            extra_mocks={
+                "passwords_changePassword": 'echo "CHANGEPASSWORD_CALLED"; restart_manager=1',
+            },
+            checkinstalled="indexer_installed=1; wazuh_installed=1",
+        )
+        assert_success(result)
+        security_admin = result.stdout.index("RUNSECURITYADMIN_CALLED")
+        assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-manager") > security_admin
+
+
+class TestPasswordsMainApiAbortStillRestarts:
+    """Giving up on the Wazuh API step must not swallow the restarts that
+    the Wazuh indexer side already earned.
+
+    By the time the API step runs, passwords_changePassword has updated the
+    dashboard keystore and passwords_runSecurityAdmin has rotated the
+    passwords on the Wazuh indexer. Exiting without reaching
+    passwords_restartPendingServices leaves the dashboard authenticating
+    with a password the indexer no longer accepts, and says nothing.
+    """
+
+    def _run_manager_down(self):
+        return _run(
+            "-a -au admin -ap AdminPass1.",
+            extra_mocks={
+                "passwords_changePassword":
+                    'echo "CHANGEPASSWORD_CALLED"; restart_dashboard=1; dashboard_keystore_updated=1',
+                "passwords_isServiceActive":
+                    'echo "ISSERVICEACTIVE_CALLED:$*"; [ "$1" == "wazuh-manager" ] && return 1; return 0',
+            },
+            checkinstalled="indexer_installed=1; wazuh_installed=1; dashboard_installed=1",
+        )
+
+    def test_exits_with_an_error(self):
+        result = self._run_manager_down()
+        assert result.returncode == 1
+
+    def test_the_dashboard_is_still_restarted(self):
+        result = self._run_manager_down()
+        assert "RESTARTSERVICE_CALLED:wazuh-dashboard" in result.stdout
+
+    def test_the_restart_happens_before_the_exit(self):
+        result = self._run_manager_down()
+        assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-dashboard") > result.stdout.index(
+            "RUNSECURITYADMIN_CALLED"
+        )
+
+
 class TestPasswordsMainSingleUserPath:
     """-u|--user keeps working exactly as before -a|--change-all was added."""
 
