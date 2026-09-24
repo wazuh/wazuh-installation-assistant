@@ -4,6 +4,7 @@ Unit tests for passwords_tool/passwordsFunctions.sh
 Covers: passwords_checkPassword, passwords_generatePassword,
         passwords_checkUser, passwords_getApiToken, passwords_isServiceActive,
         passwords_changePassword, passwords_changePasswordApi,
+        passwords_updateManagerKeystore, passwords_restartPendingServices,
         passwords_generatePasswords, passwords_generateHash (changeall),
         passwords_changePassword (changeall), passwords_changePasswordApi
         (changeall), passwords_runSecurityAdmin (changeall)
@@ -302,85 +303,192 @@ class TestPasswordsIsServiceActive:
         assert_failure(result)
 
 
-class TestPasswordsChangePassword:
-    """Tests for passwords_changePassword.
+class TestPasswordsRestartPendingServices:
+    """Tests for passwords_restartPendingServices.
 
-    Validates that the function checks service status before restarting.
+    passwords_changePassword no longer restarts anything: it records
+    restart_manager/restart_dashboard, and the restarts run from here,
+    after passwords_runSecurityAdmin has applied the new hash on the
+    indexer. Each restart is guarded by the service state.
     """
 
-    def test_wazuh_dashboard_restart_when_active(self):
-        """Test that wazuh-dashboard is restarted when service is active."""
+    def test_restarts_both_services_when_both_are_pending_and_active(self):
         mocks = {
             **IGNORE_LOGGER,
-            "passwords_restartService": 'echo "restart_called:$1" >&2',
+            "passwords_restartService": 'echo "restart_called:$1"',
             "passwords_isServiceActive": "return 0",
         }
         result = run_bash_function(
             BASE_SOURCES,
-            """
-            nuser="kibanaserver"
-            dashpass="TestPass1."
-            dashboard_installed="yes"
-            
-            # Mock the dashboard keystore check to return false
-            function check_keystore() {
-                return 1
-            }
-            
-            # Override the specific commands that would fail
-            function passwords_changePassword() {
-                if [ "${nuser}" == "kibanaserver" ]; then
-                    if [ -n "${dashboard_installed}" ] && [ -n "${dashpass}" ]; then
-                        # Simulate the keystore check failure path
-                        if passwords_isServiceActive "wazuh-dashboard"; then
-                            passwords_restartService "wazuh-dashboard"
-                        else
-                            common_logger -d "wazuh-dashboard service is not running. Skipping restart."
-                        fi
-                    fi
-                fi
-            }
-            
-            passwords_changePassword
-            """,
+            "passwords_restartPendingServices",
+            mocks,
+            {"restart_manager": "1", "restart_dashboard": "1"},
+        )
+        assert_success(result)
+        assert "restart_called:wazuh-manager" in result.stdout
+        assert "restart_called:wazuh-dashboard" in result.stdout
+
+    def test_restarts_nothing_when_nothing_is_pending(self):
+        mocks = {
+            **IGNORE_LOGGER,
+            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_isServiceActive": "return 0",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_restartPendingServices",
             mocks,
         )
         assert_success(result)
-        assert "restart_called:wazuh-dashboard" in result.stderr
+        assert "restart_called" not in result.stdout
 
-    def test_wazuh_dashboard_skip_restart_when_inactive(self):
-        """Test that wazuh-dashboard restart is skipped when service is inactive."""
+    def test_wazuh_manager_restart_is_skipped_when_service_is_inactive(self):
+        """A stopped wazuh-manager must not be started by a password
+        change. The keystore already holds the new credentials, so they
+        are applied whenever the operator starts the service."""
         mocks = {
-            **IGNORE_LOGGER,
-            "passwords_restartService": 'echo "restart_called:$1" >&2',
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_restartService": 'echo "restart_called:$1"',
             "passwords_isServiceActive": "return 1",
         }
         result = run_bash_function(
             BASE_SOURCES,
-            """
-            nuser="kibanaserver"
-            dashpass="TestPass1."
-            dashboard_installed="yes"
-            
-            # Override the function to test only the service check logic
-            function passwords_changePassword() {
-                if [ "${nuser}" == "kibanaserver" ]; then
-                    if [ -n "${dashboard_installed}" ] && [ -n "${dashpass}" ]; then
-                        if passwords_isServiceActive "wazuh-dashboard"; then
-                            passwords_restartService "wazuh-dashboard"
-                        else
-                            common_logger -d "wazuh-dashboard service is not running. Skipping restart."
-                        fi
-                    fi
-                fi
-            }
-            
-            passwords_changePassword
-            """,
+            "passwords_restartPendingServices",
             mocks,
+            {"restart_manager": "1", "manager_keystore_updated": "1"},
         )
         assert_success(result)
-        assert "restart_called:wazuh-dashboard" not in result.stderr
+        assert "restart_called:wazuh-manager" not in result.stdout
+        assert (
+            "LOG:-w The Wazuh manager keystore was updated, but the wazuh-manager "
+            "service is not running. The restart is pending: the new Wazuh indexer "
+            "credentials will be applied when the service starts."
+        ) in result.stdout
+
+    def test_wazuh_dashboard_restart_is_skipped_when_service_is_inactive(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_restartPendingServices",
+            mocks,
+            {"restart_dashboard": "1", "dashboard_keystore_updated": "1"},
+        )
+        assert_success(result)
+        assert "restart_called:wazuh-dashboard" not in result.stdout
+        assert (
+            "LOG:-w The Wazuh dashboard keystore was updated, but the wazuh-dashboard "
+            "service is not running. The restart is pending: the new Wazuh indexer "
+            "credentials will be applied when the service starts."
+        ) in result.stdout
+
+    def test_message_omits_the_keystore_when_no_keystore_was_updated(self):
+        """The API path (-A) queues a restart without touching any
+        keystore, so the pending-restart message must not claim one was
+        updated."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_restartPendingServices",
+            mocks,
+            {"restart_manager": "1", "restart_dashboard": "1"},
+        )
+        assert_success(result)
+        assert "LOG:-w wazuh-manager service is not running. Skipping restart." in result.stdout
+        assert "LOG:-w wazuh-dashboard service is not running. Skipping restart." in result.stdout
+        assert "keystore was updated" not in result.stdout
+
+    def test_each_service_is_checked_on_its_own(self):
+        """An inactive dashboard must not hold back an active manager."""
+        mocks = {
+            **IGNORE_LOGGER,
+            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_isServiceActive": '[ "$1" == "wazuh-manager" ]',
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_restartPendingServices",
+            mocks,
+            {"restart_manager": "1", "restart_dashboard": "1"},
+        )
+        assert_success(result)
+        assert "restart_called:wazuh-manager" in result.stdout
+        assert "restart_called:wazuh-dashboard" not in result.stdout
+
+
+class TestPasswordsUpdateManagerKeystore:
+    """Tests for passwords_updateManagerKeystore.
+
+    The manager reads its indexer credentials from the keystore under
+    the 'indexer' column family, keys 'username' and 'password' (see
+    install_functions/manager.sh). Both keys are written, so a keystore
+    left inconsistent by an earlier run repairs itself.
+    """
+
+    def test_writes_username_and_password(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_updateManagerKeystore "ManagerPass1."',
+            {**IGNORE_LOGGER, "keystore_stub": 'echo "keystore:$* value=$(cat)"'},
+            {"manager_keystore": "keystore_stub"},
+        )
+        assert_success(result)
+        assert "keystore:-f indexer -k username value=wazuh-manager" in result.stdout
+        assert "keystore:-f indexer -k password value=ManagerPass1." in result.stdout
+
+    def test_does_not_put_the_password_on_the_command_line(self):
+        """The value travels on standard input: anything on the command
+        line is visible in ps for the duration of the call."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_updateManagerKeystore "ManagerPass1."',
+            {**IGNORE_LOGGER, "keystore_stub": 'echo "args:$*"; cat > /dev/null'},
+            {"manager_keystore": "keystore_stub"},
+        )
+        assert_success(result)
+        assert "ManagerPass1." not in result.stdout
+
+    def test_returns_failure_when_the_keystore_write_fails(self):
+        """A keystore binary that is missing, or that cannot open
+        queue/keystore, must surface as a failure, not as a silent no-op."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_updateManagerKeystore "ManagerPass1."',
+            {"common_logger": 'echo "LOG:$*"', "keystore_stub": "cat > /dev/null; return 1"},
+            {"manager_keystore": "keystore_stub"},
+        )
+        assert_failure(result)
+        assert "LOG:-e Could not write the Wazuh indexer username to the Wazuh manager keystore." in result.stdout
+
+    def test_does_not_write_the_password_after_a_failed_username_write(self):
+        """The password write is skipped once the username write failed, so
+        the keystore is not left holding a password for a username that was
+        never stored."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_updateManagerKeystore "ManagerPass1."',
+            {"common_logger": 'echo "LOG:$*"',
+             "keystore_stub": 'echo "keystore:$*"; cat > /dev/null; return 1'},
+            {"manager_keystore": "keystore_stub"},
+        )
+        assert_failure(result)
+        assert "keystore:-f indexer -k username" in result.stdout
+        assert "keystore:-f indexer -k password" not in result.stdout
+
+    def test_fails_without_a_password_argument(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_updateManagerKeystore",
+            {"common_logger": 'echo "LOG:$*"'},
+        )
+        assert "LOG:-e passwords_updateManagerKeystore must be called with 1 argument." in result.stdout
 
 
 class TestPasswordsChangePasswordApi:
@@ -556,6 +664,10 @@ class TestPasswordsChangePasswordChangeAll:
     indexer_installed empty so the code never touches the real
     /etc/wazuh-indexer paths (guarded by `[ -n "${indexer_installed}" ]` /
     `[ -f ... ]` checks already present in the function).
+
+    The function updates the keystores and records which services need a
+    restart; the restarts themselves happen later, in
+    passwords_restartPendingServices.
     """
 
     def test_processes_every_user_in_the_array(self):
@@ -570,8 +682,7 @@ class TestPasswordsChangePasswordChangeAll:
         """
         mocks = {
             **IGNORE_LOGGER,
-            "passwords_restartService": "true",
-            "passwords_isServiceActive": "return 0",
+            "passwords_updateManagerKeystore": "true",
         }
         result = run_bash_function(
             BASE_SOURCES,
@@ -588,15 +699,15 @@ class TestPasswordsChangePasswordChangeAll:
 
     def test_invokes_manager_and_dashboard_keystore_without_nuser(self):
         """Both the manager keystore update and the dashboard keystore
-        update run in batch mode even though nuser is never set."""
+        update run in batch mode even though nuser is never set, and both
+        services are queued for a restart."""
         mocks = {
             **IGNORE_LOGGER,
-            "passwords_restartService": 'echo "restart_called:$1"',
-            "passwords_isServiceActive": "return 0",
+            "passwords_updateManagerKeystore": 'echo "manager_keystore:$1"',
         }
         result = run_bash_function(
             BASE_SOURCES,
-            "passwords_changePassword",
+            'passwords_changePassword; echo "pending:${restart_manager}|${restart_dashboard}"',
             mocks,
             {
                 "changeall": "1",
@@ -607,8 +718,8 @@ class TestPasswordsChangePasswordChangeAll:
             },
         )
         assert_success(result)
-        assert "restart_called:wazuh-manager" in result.stdout
-        assert "restart_called:wazuh-dashboard" in result.stdout
+        assert "manager_keystore:ManagerPass1." in result.stdout
+        assert "pending:1|1" in result.stdout
 
     def test_skips_manager_keystore_when_wazuh_manager_missing_from_users_array(self):
         """If users[] never contained 'wazuh-manager' (e.g. a partial
@@ -617,12 +728,11 @@ class TestPasswordsChangePasswordChangeAll:
         doing so would break the manager/indexer connection."""
         mocks = {
             "common_logger": 'echo "LOG:$*"',
-            "passwords_restartService": 'echo "restart_called:$1"',
-            "passwords_isServiceActive": "return 0",
+            "passwords_updateManagerKeystore": 'echo "manager_keystore:$1"',
         }
         result = run_bash_function(
             BASE_SOURCES,
-            "passwords_changePassword",
+            'passwords_changePassword; echo "pending:${restart_manager}|${restart_dashboard}"',
             mocks,
             {
                 "changeall": "1",
@@ -633,10 +743,10 @@ class TestPasswordsChangePasswordChangeAll:
             },
         )
         assert_success(result)
-        assert "restart_called:wazuh-manager" not in result.stdout
+        assert "manager_keystore:" not in result.stdout
         assert "LOG:-w Skipping Wazuh manager keystore update: no password available for the wazuh-manager user." in result.stdout
         # The dashboard path is unaffected by the missing wazuh-manager user.
-        assert "restart_called:wazuh-dashboard" in result.stdout
+        assert "pending:|1" in result.stdout
 
     def test_rotating_admin_alone_does_not_touch_manager_keystore(self):
         """'admin' is the indexer/dashboard superuser, not the manager's
@@ -644,12 +754,11 @@ class TestPasswordsChangePasswordChangeAll:
         in users[]) must never touch the manager keystore."""
         mocks = {
             "common_logger": 'echo "LOG:$*"',
-            "passwords_restartService": 'echo "restart_called:$1"',
-            "passwords_isServiceActive": "return 0",
+            "passwords_updateManagerKeystore": 'echo "manager_keystore:$1"',
         }
         result = run_bash_function(
             BASE_SOURCES,
-            "passwords_changePassword",
+            'passwords_changePassword; echo "pending:${restart_manager}|${restart_dashboard}"',
             mocks,
             {
                 "changeall": "1",
@@ -659,7 +768,33 @@ class TestPasswordsChangePasswordChangeAll:
             },
         )
         assert_success(result)
-        assert "restart_called:wazuh-manager" not in result.stdout
+        assert "manager_keystore:" not in result.stdout
+        assert "pending:|" in result.stdout
+
+    def test_points_at_the_other_manager_nodes_of_a_multi_node_deployment(self):
+        """The tool reaches one manager node. On a multi-node deployment
+        the operator has to repeat the keystore update on the rest. The
+        tool cannot tell the two apart, so the note is conditional."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_updateManagerKeystore": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "passwords_changePassword",
+            mocks,
+            {
+                "changeall": "1",
+                "wazuh_installed": "yes",
+                "users": "(wazuh-manager)",
+                "passwords": "(ManagerPass1.)",
+            },
+        )
+        assert_success(result)
+        assert (
+            "LOG:-w If this is a multi-node deployment, update the keystore of every "
+            "other Wazuh manager node and restart them."
+        ) in result.stdout
 
 
 class TestPasswordsChangePasswordSingleUserManagerKeystore:
@@ -674,11 +809,11 @@ class TestPasswordsChangePasswordSingleUserManagerKeystore:
     def test_wazuh_manager_user_updates_manager_keystore(self):
         mocks = {
             **IGNORE_LOGGER,
-            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_updateManagerKeystore": 'echo "manager_keystore:$1"',
         }
         result = run_bash_function(
             BASE_SOURCES,
-            "passwords_changePassword",
+            'passwords_changePassword; echo "pending:${restart_manager}"',
             mocks,
             {
                 "nuser": "wazuh-manager",
@@ -687,16 +822,41 @@ class TestPasswordsChangePasswordSingleUserManagerKeystore:
             },
         )
         assert_success(result)
-        assert "restart_called:wazuh-manager" in result.stdout
+        assert "manager_keystore:ManagerPass1." in result.stdout
+        assert "pending:1" in result.stdout
+
+    def test_failed_keystore_write_aborts_before_securityadmin(self):
+        """passwords_changePassword runs before passwords_runSecurityAdmin,
+        so a failed keystore write has to stop the run: otherwise the new
+        password reaches the Wazuh indexer while the manager keystore still
+        holds the old one, and nothing is left that can authenticate."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_updateManagerKeystore": 'echo "manager_keystore:$1"; return 1',
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            'passwords_changePassword; echo "pending:${restart_manager}"',
+            mocks,
+            {
+                "nuser": "wazuh-manager",
+                "password": "ManagerPass1.",
+                "wazuh_installed": "yes",
+            },
+        )
+        assert_failure(result)
+        assert "manager_keystore:ManagerPass1." in result.stdout
+        assert "pending:1" not in result.stdout
+        assert "multi-node deployment" not in result.stdout
 
     def test_admin_user_does_not_update_manager_keystore(self):
         mocks = {
             "common_logger": 'echo "LOG:$*"',
-            "passwords_restartService": 'echo "restart_called:$1"',
+            "passwords_updateManagerKeystore": 'echo "manager_keystore:$1"',
         }
         result = run_bash_function(
             BASE_SOURCES,
-            "passwords_changePassword",
+            'passwords_changePassword; echo "pending:${restart_manager}"',
             mocks,
             {
                 "nuser": "admin",
@@ -705,17 +865,34 @@ class TestPasswordsChangePasswordSingleUserManagerKeystore:
             },
         )
         assert_success(result)
-        assert "restart_called:wazuh-manager" not in result.stdout
+        assert "manager_keystore:" not in result.stdout
+        assert "pending:" in result.stdout
+        assert "pending:1" not in result.stdout
+
+    def test_configuration_file_path_does_not_claim_the_dashboard_keystore(self):
+        """When opensearch_dashboards.yml is edited instead of the keystore,
+        the pending-restart message must say so."""
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_isServiceActive": "return 1",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            'dashboard_config_updated=1; restart_dashboard=1; passwords_restartPendingServices',
+            mocks,
+        )
+        assert_success(result)
+        assert "LOG:-w The Wazuh dashboard configuration file was updated" in result.stdout
+        assert "keystore was updated" not in result.stdout
 
     def test_kibanaserver_user_still_updates_dashboard_keystore(self):
         mocks = {
             **IGNORE_LOGGER,
-            "passwords_restartService": 'echo "restart_called:$1"',
-            "passwords_isServiceActive": "return 0",
+            "passwords_updateManagerKeystore": "true",
         }
         result = run_bash_function(
             BASE_SOURCES,
-            "passwords_changePassword",
+            'passwords_changePassword; echo "pending:${restart_dashboard}"',
             mocks,
             {
                 "nuser": "kibanaserver",
@@ -724,7 +901,7 @@ class TestPasswordsChangePasswordSingleUserManagerKeystore:
             },
         )
         assert_success(result)
-        assert "restart_called:wazuh-dashboard" in result.stdout
+        assert "pending:1" in result.stdout
 
 
 class TestPasswordsChangePasswordApiChangeAll:

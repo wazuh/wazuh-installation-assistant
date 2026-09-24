@@ -205,16 +205,19 @@ function main() {
                 else
                     common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
                 fi
+                passwords_restartPendingServices
                 exit 1
             fi
 
             if [ -n "${wazuh_installed}" ]; then
-                passwords_restartService "wazuh-manager"
+                restart_manager=1
             fi
-            if [ -n "${dashboard_installed}" ] && passwords_isServiceActive "wazuh-dashboard"; then
-                passwords_restartService "wazuh-dashboard"
+            if [ -n "${dashboard_installed}" ]; then
+                restart_dashboard=1
             fi
         fi
+
+        passwords_restartPendingServices
 
     else
         getHelp
