@@ -69,9 +69,7 @@ function passwords_changePassword() {
                 wazuhdashold=$(grep "password:" /etc/wazuh-dashboard/opensearch_dashboards.yml )
                 rk="opensearch.password: "
                 wazuhdashold="${wazuhdashold//$rk}"
-                # Double-quoted: an unquoted value starting with "@", "%" or "," or ending with ":" is not
-                # valid YAML. The value reaches awk through the environment, not the program text.
-                conf="$(DASHPASS="${dashpass}" awk '{sub("opensearch.password: .*", "opensearch.password: \"" ENVIRON["DASHPASS"] "\"")}1' /etc/wazuh-dashboard/opensearch_dashboards.yml)"
+                conf="$(awk '{sub("opensearch.password: .*", "opensearch.password: '"${dashpass}"'")}1' /etc/wazuh-dashboard/opensearch_dashboards.yml)"
                 echo "${conf}" > /etc/wazuh-dashboard/opensearch_dashboards.yml
                 dashboard_config_updated=1
             fi
@@ -93,10 +91,8 @@ function passwords_changePasswordApi() {
         for i in "${!api_passwords[@]}"; do
             if [ -n "${wazuh_installed}" ]; then
                 passwords_getApiUserId "${api_users[i]}"
-                # Single-quoted for the eval in common_curl, which would otherwise brace-expand a "," in the
-                # password; "'" is outside the password character set.
-                WAZUH_PASS_API="{\"password\":\"${api_passwords[i]}\"}"
-                common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "'${WAZUH_PASS_API}'" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
+                WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
+                common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
                 if [ "${api_users[i]}" == "${adminUser}" ]; then
                     sleep 1
                     adminPassword="${api_passwords[i]}"
@@ -115,8 +111,8 @@ function passwords_changePasswordApi() {
                 exit 1;
             fi
             passwords_getApiUserId "${nuser}"
-            WAZUH_PASS_API="{\"password\":\"${password}\"}"
-            common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "'${WAZUH_PASS_API}'" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
+            WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
+            common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
             common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
         fi
         if [ "${nuser}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
@@ -155,25 +151,10 @@ function passwords_checkUser() {
 
 function passwords_checkPassword() {
 
-    # The same policy as wazuh_password_validate in credentials_lib/wazuh-credentials.sh, written out
-    # again so that this tool keeps working as a standalone script. The character sets are spelled out
-    # rather than given as ranges, so the match does not depend on the locale, and the set is checked
-    # first so that every accepted value is ASCII and its length is counted in characters.
-    local valid="yes"
+    local min_length="${2:-8}"
 
-    case "$1" in
-        *[!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,_+:@%^=~-]*) valid="no" ;;
-    esac
-    if [ "${#1}" -lt 12 ] || [ "${#1}" -gt 64 ]; then
-        valid="no"
-    fi
-    case "$1" in *[abcdefghijklmnopqrstuvwxyz]*) ;; *) valid="no" ;; esac
-    case "$1" in *[ABCDEFGHIJKLMNOPQRSTUVWXYZ]*) ;; *) valid="no" ;; esac
-    case "$1" in *[0123456789]*) ;; *) valid="no" ;; esac
-    case "$1" in *[.,_+:@%^=~-]*) ;; *) valid="no" ;; esac
-
-    if [ "${valid}" != "yes" ]; then
-        common_logger -e "The password must have a length between 12 and 64 characters, use only A-Z a-z 0-9 . , _ + : @ % ^ = ~ - and contain at least one upper and lower case letter, a number and a symbol (. , _ + : @ % ^ = ~ -)."
+    if ! echo "$1" | grep -q "[A-Z]" || ! echo "$1" | grep -q "[a-z]" || ! echo "$1" | grep -q "[0-9]" || ! echo "$1" | grep -q "[.*+?-]" || [ "${#1}" -lt "${min_length}" ] || [ "${#1}" -gt 64 ]; then
+        common_logger -e "The password must have a length between ${min_length} and 64 characters and contain at least one upper and lower case letter, a number and a symbol(.*+?-)."
         if [[ $(type -t installCommon_rollBack) == "function" ]]; then
                 installCommon_rollBack
         fi
@@ -217,9 +198,7 @@ function passwords_generateHash() {
         common_logger -d "Generating password hashes."
         hashes=()
         for i in "${!passwords[@]}"; do
-            # -env, not -p: the hasher reads a value starting with "-p", "-a"... as an option, and the
-            # environment also keeps the password out of the process list.
-            nhash=$(WAZUH_PASSWORD_TO_HASH="${passwords[i]}" bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -env WAZUH_PASSWORD_TO_HASH 2>/dev/null)
+            nhash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${passwords[i]}" 2>/dev/null)
             if [  "${PIPESTATUS[0]}" != 0  ]; then
                 common_logger -e "Hash generation failed."
                 if [[ $(type -t installCommon_rollBack) == "function" ]]; then
@@ -232,7 +211,7 @@ function passwords_generateHash() {
         common_logger -d "Password hashes generated."
     else
         common_logger "Generating password hash"
-        hash=$(WAZUH_PASSWORD_TO_HASH="${password}" bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -env WAZUH_PASSWORD_TO_HASH 2>/dev/null)
+        hash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${password}" 2>/dev/null)
         if [  "${PIPESTATUS[0]}" != 0  ]; then
             common_logger -e "Hash generation failed."
             if [[ $(type -t installCommon_rollBack) == "function" ]]; then
@@ -247,16 +226,13 @@ function passwords_generateHash() {
 
 function passwords_generatePassword() {
 
-    # 32 characters from the same set wazuh_password_generate uses (credentials_lib/wazuh-credentials.sh),
-    # with at least one symbol, lowercase letter, uppercase letter and digit. `-` goes last in the tr
-    # sets so it is literal, and LC_ALL=C keeps the ranges to ASCII.
     common_logger -d "Generating random password."
-    pass=$(< /dev/urandom LC_ALL=C tr -dc 'A-Za-z0-9.,_+:@%^=~-' | head -c "${1:-28}";echo;)
-    special_char=$(< /dev/urandom LC_ALL=C tr -dc '.,_+:@%^=~-' | head -c 1;echo;)
-    minus_char=$(< /dev/urandom LC_ALL=C tr -dc 'a-z' | head -c 1;echo;)
-    mayus_char=$(< /dev/urandom LC_ALL=C tr -dc 'A-Z' | head -c 1;echo;)
-    number_char=$(< /dev/urandom LC_ALL=C tr -dc '0-9' | head -c 1;echo;)
-    password="$(printf '%s' "${pass}${special_char}${minus_char}${mayus_char}${number_char}" | fold -w1 | shuf | tr -d '\n')"
+    pass=$(< /dev/urandom tr -dc "A-Za-z0-9.*+?" | head -c "${1:-28}";echo;)
+    special_char=$(< /dev/urandom tr -dc ".*+?" | head -c "${1:-1}";echo;)
+    minus_char=$(< /dev/urandom tr -dc "a-z" | head -c "${1:-1}";echo;)
+    mayus_char=$(< /dev/urandom tr -dc "A-Z" | head -c "${1:-1}";echo;)
+    number_char=$(< /dev/urandom tr -dc "0-9" | head -c "${1:-1}";echo;)
+    password="$(echo "${pass}${special_char}${minus_char}${mayus_char}${number_char}" | fold -w1 | shuf | tr -d '\n')"
     if [  "${PIPESTATUS[0]}" != 0  ]; then
         common_logger -e "The password could not been generated."
         exit 1;

@@ -221,7 +221,7 @@ Each test should change **exactly one thing** from the valid/happy-path baseline
 
 ```python
 def test_fail_no_uppercase(self):
-    result = self._run("invalidpass1!")   # ! is also outside the allowed set
+    result = self._run("invalidpass1!")   # ! is also not a valid symbol
     assert_failure(result)
 ```
 
@@ -239,17 +239,16 @@ Now every other requirement is satisfied. If the test fails (function exits 0), 
 
 ### Baseline for `passwords_checkPassword`
 
-The allowed characters are exactly `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, and the valid symbols are `. , _ + : @ % ^ = ~ -`. The same policy is checked against `wazuh_password_validate` in `test_password_policy.py`.
+The valid symbol set accepted by the bash function is exactly: `. * + ? -`
 
 | Test | Input | Only condition violated |
 | ---- | ----- | ----------------------- |
-| `test_success_valid_password` | `"ValidPass1.a"` | none — all conditions satisfied |
+| `test_success_valid_password` | `"ValidPass1."` | none — all conditions satisfied |
 | `test_fail_no_uppercase` | `"invalidpass1."` | no uppercase letter |
 | `test_fail_no_lowercase` | `"INVALIDPASS1."` | no lowercase letter |
 | `test_fail_no_digit` | `"InvalidPass."` | no digit |
 | `test_fail_no_symbol` | `"InvalidPass1"` | no valid symbol |
-| `test_fail_symbol_outside_the_set` | `"ValidPass1.*"` | `*` is outside the set |
-| `test_fail_too_short` | `"V1.a"` | length < 12 |
+| `test_fail_too_short` | `"V1.a"` | length < 8 |
 | `test_fail_too_long` | `"A" * 61 + "1.aB"` | length > 64 |
 
 ## Environment variables and bash arrays

@@ -376,9 +376,9 @@ The `wazuh-passwords-tool-5.0.0.sh` script provides the following options for ma
 | `-v\|--verbose` | Shows the complete script execution output. |
 | `-h\|--help` | Shows help. |
 
-The passwords tool changes passwords by specifying the user whose password you want to change and the new password. The password must be between 12 and 64 characters, use only the characters `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, and contain at least one upper case letter, one lower case letter, a number and one of the symbols `. , _ + : @ % ^ = ~ -`. Any other character is rejected. This is the same policy the Wazuh component packages apply to the credentials they generate and accept. If no password is specified, the tool will generate a random one that follows it.
+The passwords tool changes passwords by specifying the user whose password you want to change and the new password. The password must contain at least one upper case letter, one lower case letter, a number and one of the following symbols: `.*+?-` If no password is specified, the tool will generate a random one.
 
-There are two types of users whose passwords can be changed with this tool: Wazuh indexer users and Wazuh server API users. For the latter, it is necessary to provide an administrator user and their password to authenticate the password change request. The same length applies to both: at least 12 and at most 64 characters. Quote the password on the command line, since some of the allowed symbols are special to shells such as zsh.
+There are two types of users whose passwords can be changed with this tool: Wazuh indexer users and Wazuh server API users. For the latter, it is necessary to provide an administrator user and their password to authenticate the password change request. The minimum password length differs between the two: 8 characters for Wazuh indexer users, and 12 characters for Wazuh server API users, per the password policy enforced by the Wazuh server API. In both cases, the maximum length is 64 characters.
 
 The tool requires root privileges to run.
 
@@ -459,10 +459,10 @@ sudo ./wazuh-passwords-tool-5.0.0.sh -u <USER> [-p <PASSWORD>]
 
 Where `<USER>` is the name of the user whose password you want to change and `<PASSWORD>` is the new password. If `<PASSWORD>` is not specified, the tool will generate a random password.
 
-For example, to change the password of the `admin` user to `Secr3t.P4ssword`, run the following command:
+For example, to change the password of the `admin` user to `Secr3tP4ssw*rd`, run the following command:
 
 ```bash
-sudo ./wazuh-passwords-tool-5.0.0.sh -u admin -p 'Secr3t.P4ssword'
+sudo ./wazuh-passwords-tool-5.0.0.sh -u admin -p Secr3tP4ssw*rd
 ```
 
 The command output will be similar to the following:
@@ -481,14 +481,14 @@ sudo ./wazuh-passwords-tool-5.0.0.sh -A -au <ADMIN_USER> -ap <ADMIN_PASSWORD> -u
 ```
 
 Where `<ADMIN_USER>` is the Wazuh server API administrator user, `<ADMIN_PASSWORD>` is the administrator user's password, `<USER>` is the name of the user whose password you want to change, and `<PASSWORD>` is the new password. If `<PASSWORD>` is not specified, the tool will generate a random password.
-For example, to change the password of the `wazuh` user to `N3w.S3cr3tP4ss`, run the following command:
+For example, to change the password of the `wazuh` user to `N3wS3cr3tP4ss*`, run the following command:
 
 ```bash
-sudo ./wazuh-passwords-tool-5.0.0.sh -A -au wazuh -ap wazuh -u wazuh -p 'N3w.S3cr3tP4ss'
+sudo ./wazuh-passwords-tool-5.0.0.sh -A -au wazuh -ap wazuh -u wazuh -p N3wS3cr3tP4ss*
 ```
 
 The command output will be similar to the following:
 
 ```bash
-INFO: The password for Wazuh API user wazuh is N3w.S3cr3tP4ss
+INFO: The password for Wazuh API user wazuh is N3wS3cr3tP4ss*
 ```

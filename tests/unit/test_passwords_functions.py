@@ -23,29 +23,26 @@ IGNORE_LOGGER = {"common_logger": "true"}
 class TestPasswordsCheckPassword:
     """Tests for passwords_checkPassword.
 
-    Validates that a password (same policy as wazuh_password_validate in
-    credentials_lib/wazuh-credentials.sh, see test_password_policy.py):
-    - Has length 12–64, for Wazuh indexer and Wazuh server API users alike
-    - Uses only A-Z a-z 0-9 . , _ + : @ % ^ = ~ -
-    - Contains uppercase, lowercase, digit, and symbol (. , _ + : @ % ^ = ~ -)
+    Validates that a password:
+    - Has length 8–64
+    - Contains uppercase, lowercase, digit, and symbol (.*+?-)
     """
 
     def _run(self, password):
-        # The value travels through the environment, never pasted into the script.
         return run_bash_function(
             BASE_SOURCES,
-            'passwords_checkPassword "$PW"',
+            f'passwords_checkPassword "{password}"',
             {**IGNORE_LOGGER, "installCommon_rollBack": "true"},
-            {"PW": password},
         )
 
     def test_success_valid_password(self):
-        result = self._run("ValidPass1.a")
+        # Valid symbols per bash check: . * + ? -
+        result = self._run("ValidPass1.")
         assert_success(result)
 
     def test_success_valid_with_all_symbols(self):
-        # Exercises each valid symbol: . , _ + : @ % ^ = ~ -
-        result = self._run("Secure.Pass1,_+:@%^=~-")
+        # Exercises each valid symbol: . * + ? -
+        result = self._run("Secure.Pass1*+?-")
         assert_success(result)
 
     def test_fail_no_uppercase(self):
@@ -68,13 +65,8 @@ class TestPasswordsCheckPassword:
         result = self._run("InvalidPass1")
         assert_failure(result)
 
-    def test_fail_symbol_outside_the_set(self):
-        # Every class present, but "*" (a symbol of the previous rule) is not in the set
-        result = self._run("ValidPass1.*")
-        assert_failure(result)
-
     def test_fail_too_short(self):
-        # Has all character types but only 4 characters (minimum is 12)
+        # Has all character types but only 4 characters (minimum is 8)
         result = self._run("V1.a")
         assert_failure(result)
 
@@ -83,38 +75,37 @@ class TestPasswordsCheckPassword:
         result = self._run("A" * 61 + "1.aB")
         assert_failure(result)
 
-    def test_message_names_the_rule(self):
-        result = run_bash_function(
-            BASE_SOURCES,
-            'passwords_checkPassword "$PW"',
-            {"common_logger": 'echo "LOG:$*"', "installCommon_rollBack": "true"},
-            {"PW": "InvalidPass1"},
-        )
-        assert_failure(result)
-        assert "between 12 and 64 characters" in result.stdout
-        assert "A-Z a-z 0-9 . , _ + : @ % ^ = ~ -" in result.stdout
 
+class TestPasswordsCheckPasswordApiMinLength:
+    """Tests for passwords_checkPassword when called with the Wazuh server
+    API minimum length (12), as used for -A|--api password changes.
 
-class TestPasswordsCheckPasswordMinLength:
-    """The minimum length is 12 for every user: the Wazuh indexer users no
-    longer have a lower minimum than the Wazuh server API users (#950)."""
+    Wazuh Indexer users keep the default 8-64 rule (see
+    TestPasswordsCheckPassword); only the Wazuh server API/manager path
+    raises the minimum to 12, per issue #950.
+    """
 
-    def _run(self, password):
+    def _run(self, password, min_length=None):
+        args = f'"{password}"' if min_length is None else f'"{password}" {min_length}'
         return run_bash_function(
             BASE_SOURCES,
-            'passwords_checkPassword "$PW"',
+            f"passwords_checkPassword {args}",
             {**IGNORE_LOGGER, "installCommon_rollBack": "true"},
-            {"PW": password},
         )
 
-    def test_fail_eleven_chars(self):
-        # 11 characters, valid otherwise: rejected on every path
-        result = self._run("ValidPass1.")
+    def test_fail_eleven_chars_with_api_min_length(self):
+        # 11 characters, valid otherwise: rejected once the API path requires 12
+        result = self._run("ValidPass1.", min_length=12)
         assert_failure(result)
 
-    def test_success_twelve_chars(self):
-        # 12 characters, valid otherwise: accepted at the minimum
-        result = self._run("ValidPass1.a")
+    def test_success_twelve_chars_with_api_min_length(self):
+        # 12 characters, valid otherwise: accepted at the API minimum
+        result = self._run("ValidPass1.a", min_length=12)
+        assert_success(result)
+
+    def test_success_eleven_chars_without_api_min_length(self):
+        # Same 11-character password still passes on the Indexer/default path
+        result = self._run("ValidPass1.")
         assert_success(result)
 
 
@@ -144,24 +135,6 @@ class TestPasswordsGeneratePassword:
             {**IGNORE_LOGGER, "installCommon_rollBack": "true"},
         )
         assert_success(result)
-
-    def test_generated_password_uses_only_the_set(self):
-        """32 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ - with every class."""
-        result = run_bash_function(
-            BASE_SOURCES,
-            'for i in 1 2 3 4 5 6 7 8 9 10; do passwords_generatePassword; printf "%s\\n" "${password}"; done',
-            {**IGNORE_LOGGER},
-        )
-        assert_success(result)
-        passwords = result.stdout.split()
-        assert len(passwords) == 10
-        for password in passwords:
-            assert len(password) == 32
-            assert set(password) <= set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,_+:@%^=~-")
-            assert any(c.islower() for c in password)
-            assert any(c.isupper() for c in password)
-            assert any(c.isdigit() for c in password)
-            assert any(c in ".,_+:@%^=~-" for c in password)
 
 
 class TestPasswordsCheckUser:
@@ -585,33 +558,6 @@ class TestPasswordsChangePasswordApi:
         assert_success(result)
         assert "should_not_be_called" not in result.stdout
 
-    def test_request_body_survives_the_eval_in_common_curl(self):
-        """common_curl runs `eval "curl $@"`: the JSON body must reach curl as
-        one argument even when the password holds a ",", which an unquoted
-        eval would brace-expand into two."""
-        password = "Ab,c1:@%^=~_+-.Xyz"
-        mocks = {
-            **IGNORE_LOGGER,
-            "passwords_isServiceActive": "return 0",
-            "passwords_getApiUserId": "user_id=1",
-            "curl": 'for a in "$@"; do printf "ARG<%s>\\n" "$a"; done',
-        }
-        result = run_bash_function(
-            BASE_SOURCES,
-            """
-            wazuh_installed="yes"
-            nuser="testuser"
-            password="$PW"
-            TOKEN_API="test_token"
-            passwords_changePasswordApi
-            """,
-            mocks,
-            {"PW": password},
-        )
-        assert_success(result)
-        args = [line[4:-1] for line in result.stdout.splitlines() if line.startswith("ARG<")]
-        assert args[args.index("-d") + 1] == '{"password":"' + password + '"}'
-
 
 class TestPasswordsGeneratePasswords:
     """Tests for passwords_generatePasswords (the -a|--change-all batch
@@ -709,41 +655,6 @@ class TestPasswordsGenerateHashChangeAll:
             },
         )
         assert_failure(result)
-
-
-class TestPasswordsGenerateHashEnvironment:
-    """hash.sh gets the password through -env, never -p: the hasher reads a
-    value starting with "-p", "-a"... as an option, and argv is public."""
-
-    MOCKS = {
-        **IGNORE_LOGGER,
-        "bash": 'printf "ARGS<%s> ENV<%s>" "$*" "$WAZUH_PASSWORD_TO_HASH"',
-    }
-
-    def test_single_password_goes_through_the_environment(self):
-        password = "-pAbc,1:@%^=~_+-."
-        result = run_bash_function(
-            BASE_SOURCES,
-            'password="$PW"; passwords_generateHash; printf "%s\\n" "${hash}"',
-            self.MOCKS,
-            {"PW": password},
-        )
-        assert_success(result)
-        assert "-env WAZUH_PASSWORD_TO_HASH>" in result.stdout
-        assert f"ENV<{password}>" in result.stdout
-        assert f"ARGS<{password}" not in result.stdout and f" {password}>" not in result.stdout
-
-    def test_changeall_passwords_go_through_the_environment(self):
-        result = run_bash_function(
-            BASE_SOURCES,
-            'passwords_generateHash; printf "%s\\n" "${hashes[@]}"',
-            self.MOCKS,
-            {"changeall": "1", "passwords": "(PassOne1.a PassTwo1.a)"},
-        )
-        assert_success(result)
-        assert "ENV<PassOne1.a>" in result.stdout
-        assert "ENV<PassTwo1.a>" in result.stdout
-        assert "PassOne1.a>" not in result.stdout.split("ENV<")[0]
 
 
 class TestPasswordsChangePasswordChangeAll:

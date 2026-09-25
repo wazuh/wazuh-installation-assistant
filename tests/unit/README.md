@@ -12,7 +12,6 @@ tests/unit/
 ├── test_cert_functions.py       # certFunctions.sh — cert generation, OpenSSL checks, config parsing
 ├── test_passwords_functions.py  # passwordsFunctions.sh — password validation, generation, API token
 ├── test_credentials_lib.py      # credentials_lib/wazuh-credentials.sh — password character set, length, generation
-├── test_password_policy.py      # the password policy both scripts implement, checked against one corpus
 ├── test_install_common.py       # installCommon.sh — config retrieval, prerequisites, service start
 ├── test_manager.py              # manager.sh — install (apt/yum), cluster start
 ├── test_indexer.py              # indexer.sh — install (apt/yum), configure
@@ -121,14 +120,11 @@ subprocess.run(["bash", "-c", script], capture_output=True, text=True)
 
 ```bash
 function passwords_checkPassword() {
-    local valid="yes"
-    case "$1" in
-        *[!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,_+:@%^=~-]*) valid="no" ;;
-    esac
-    if [ "${#1}" -lt 12 ] || [ "${#1}" -gt 64 ]; then valid="no"; fi
-    case "$1" in *[abcdefghijklmnopqrstuvwxyz]*) ;; *) valid="no" ;; esac
-    # ... uppercase, digit and a symbol from . , _ + : @ % ^ = ~ - the same way
-    if [ "${valid}" != "yes" ]; then
+    if ! echo "$1" | grep -q "[A-Z]" || \
+       ! echo "$1" | grep -q "[a-z]" || \
+       ! echo "$1" | grep -q "[0-9]" || \
+       ! echo "$1" | grep -q "[.*+?-]" || \
+       [ "${#1}" -lt 8 ] || [ "${#1}" -gt 64 ]; then
         common_logger -e "The password must have ..."
         installCommon_rollBack
         exit 1
@@ -279,7 +275,7 @@ def test_fail_no_uppercase(self):
     assert_failure(result)
 ```
 
-This passes, but not necessarily because of the missing uppercase. `!` is also outside the allowed character set (`A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`), so the function could be exiting for either reason. If someone later adds `!` to the set, the test still passes — but for the wrong reason.
+This passes, but not necessarily because of the missing uppercase. `!` is also not in the valid symbol set `[.*+?-]`, so the function could be exiting for either reason. If someone later adds `!` to the valid symbols, the test still passes — but for the wrong reason.
 
 ### Correct — only one condition fails
 
@@ -293,17 +289,16 @@ Now every other requirement is satisfied. If the test fails (i.e., the function 
 
 ### Baseline for `passwords_checkPassword`
 
-The allowed characters are exactly `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, and the valid symbols are `. , _ + : @ % ^ = ~ -`. The same policy is checked against `wazuh_password_validate` in `test_password_policy.py`.
+The valid symbol set accepted by bash is exactly: `. * + ? -`
 
 | Test | Input | Only condition violated |
 |---|---|---|
-| `test_success_valid_password` | `"ValidPass1.a"` | none — all valid |
+| `test_success_valid_password` | `"ValidPass1."` | none — all valid |
 | `test_fail_no_uppercase` | `"invalidpass1."` | no uppercase |
 | `test_fail_no_lowercase` | `"INVALIDPASS1."` | no lowercase |
 | `test_fail_no_digit` | `"InvalidPass."` | no digit |
 | `test_fail_no_symbol` | `"InvalidPass1"` | no symbol |
-| `test_fail_symbol_outside_the_set` | `"ValidPass1.*"` | `*` is outside the set |
-| `test_fail_too_short` | `"V1.a"` | length < 12 |
+| `test_fail_too_short` | `"V1.a"` | length < 8 |
 | `test_fail_too_long` | `"A"*61 + "1.aB"` | length > 64 |
 
 ---

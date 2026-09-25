@@ -38,8 +38,6 @@ function getHelp() {
     echo -e ""
     echo -e "        -p,  --password <password>"
     echo -e "                Indicates the new password, must be used with option -u."
-    echo -e "                12 to 64 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one upper"
-    echo -e "                and lower case letter, a number and a symbol. Quote it: 'Secr3t.P4ssword'."
     echo -e ""
     echo -e "        -v,  --verbose"
     echo -e "                Shows the complete script execution output."
@@ -184,7 +182,11 @@ function main() {
         fi
 
         if [ -n "${nuser}" ] && [ -n "${password}" ]; then
-            passwords_checkPassword "${password}"
+            if [ -n "${api}" ]; then
+                passwords_checkPassword "${password}" 12
+            else
+                passwords_checkPassword "${password}"
+            fi
         fi
 
         if [ -z "${api}" ] && [ -n "${indexer_installed}" ]; then
