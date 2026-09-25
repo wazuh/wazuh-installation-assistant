@@ -36,6 +36,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Align wazuh-passwords-tool.sh and wazuh-certs-tool.sh with the shared `wazuh-credentials.sh` library |
 | [#970](https://github.com/wazuh/wazuh-installation-assistant/issues/970) | Deploy manager indexer certificates as root:wazuh-manager |
 | [#972](https://github.com/wazuh/wazuh-installation-assistant/issues/972) | Change Codebuild runners to Github runners |
 | [#909](https://github.com/wazuh/wazuh-installation-assistant/issues/909) | Change upload and download methods |

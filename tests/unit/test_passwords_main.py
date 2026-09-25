@@ -1,28 +1,30 @@
 """
 Unit tests for passwords_tool/passwordsMain.sh
 
-Covers: argument parsing and validation (mutual exclusions introduced by
--a|--change-all), and the two top-level flows driven by `main`:
-- the -a|--change-all batch flow (indexer-only, and indexer+API)
-- the pre-existing single-user (-u|--user) flow, which must keep working
-  unmodified.
+Covers: argument parsing and validation, and the two top-level flows driven
+by `main`:
+- the -a|--change-all batch flow (indexer only, manager only, and both)
+- the single-user (-u|--user) flow, with a password read from the standard
+  input (-p|--password) or generated.
 
 `common_checkRoot`, `common_checkSystem` and `common_checkInstalled` are
 mocked so tests never depend on the real host (root permissions, package
 manager, installed Wazuh components). The `passwords_*` functions that
-would otherwise touch the real filesystem, systemd or the Wazuh API are
-mocked to print a marker on stdout, so each test can assert exactly which
-code path `main` took without executing any real system operation.
+would otherwise touch the real filesystem, systemd, the credentials file or
+the Wazuh components are mocked to print a marker on stdout, so each test
+can assert exactly which code path `main` took without executing any real
+system operation.
 """
 
 from tests.unit.conftest import assert_failure, assert_success, run_bash_function
 
 COMMON_VARS = "common_functions/commonVariables.sh"
 COMMON = "common_functions/common.sh"
+CREDENTIALS = "credentials_lib/wazuh-credentials.sh"
 PASSWORDS_VARS = "passwords_tool/passwordsVariables.sh"
 PASSWORDS_FUNCTIONS = "passwords_tool/passwordsFunctions.sh"
 PASSWORDS_MAIN = "passwords_tool/passwordsMain.sh"
-BASE_SOURCES = [COMMON_VARS, COMMON, PASSWORDS_VARS, PASSWORDS_FUNCTIONS, PASSWORDS_MAIN]
+BASE_SOURCES = [COMMON_VARS, COMMON, CREDENTIALS, PASSWORDS_VARS, PASSWORDS_FUNCTIONS, PASSWORDS_MAIN]
 
 # Base mock set: silences/short-circuits everything main() can call so a
 # test only has to override what it cares about (system checks + the
@@ -31,19 +33,20 @@ BASE_SOURCES = [COMMON_VARS, COMMON, PASSWORDS_VARS, PASSWORDS_FUNCTIONS, PASSWO
 BASE_MOCKS = {
     "common_checkRoot": "true",
     "common_checkSystem": "true",
-    "passwords_readUsers": 'echo "READUSERS_CALLED"',
+    "passwords_checkCredentialsFile": 'echo "CHECKCREDENTIALSFILE_CALLED"',
+    "passwords_readUsers": 'echo "READUSERS_CALLED"; users=(admin kibanaserver wazuh-manager)',
     "passwords_checkUser": 'echo "CHECKUSER_CALLED"',
-    "passwords_getApiToken": 'echo "GETAPITOKEN_CALLED"',
-    "passwords_getApiUsers": 'echo "GETAPIUSERS_CALLED"',
-    "passwords_generatePassword": 'echo "GENERATEPASSWORD_CALLED"; password="AutoGenPass1."',
+    "passwords_readPassword": 'echo "READPASSWORD_CALLED"; password="ValidPass1234"',
+    "passwords_generatePassword": 'echo "GENERATEPASSWORD_CALLED"; password="AutoGenPass1234"',
     "passwords_generatePasswords": 'echo "GENERATEPASSWORDS_CALLED"',
     "passwords_checkPassword": 'echo "CHECKPASSWORD_CALLED:$*"',
     "passwords_getNetworkHost": 'echo "GETNETWORKHOST_CALLED"',
     "passwords_generateHash": 'echo "GENERATEHASH_CALLED"',
     "passwords_changePassword": 'echo "CHANGEPASSWORD_CALLED"',
     "passwords_runSecurityAdmin": 'echo "RUNSECURITYADMIN_CALLED"',
+    "passwords_saveIndexerCredentials": 'echo "SAVEINDEXERCREDENTIALS_CALLED"',
     "passwords_isServiceActive": 'echo "ISSERVICEACTIVE_CALLED:$*"; return 0',
-    "passwords_changePasswordApi": 'echo "CHANGEPASSWORDAPI_CALLED"',
+    "passwords_changePasswordApi": 'echo "CHANGEPASSWORDAPI_CALLED:${api_users[*]}"',
     "passwords_restartService": 'echo "RESTARTSERVICE_CALLED:$1"',
 }
 
@@ -57,238 +60,236 @@ def _run(args, extra_mocks=None, checkinstalled="true"):
     return run_bash_function(BASE_SOURCES, f"main {args}", mocks)
 
 
-class TestPasswordsMainMutualExclusions:
-    """Argument validation added/relaxed for -a|--change-all.
+class TestPasswordsMainArguments:
+    """Argument validation.
 
     Each case changes exactly one condition away from a valid baseline
-    (a valid -a/-au/-ap combo, or a valid -u/-p combo), so a passing test
-    can only be explained by the specific validation under test.
+    ("-a", "-u admin" or "-u admin -p"), so a passing test can only be
+    explained by the specific validation under test.
     """
 
     def test_fail_no_user_and_no_changeall(self):
-        # Baseline would be "-u admin" or "-a"; neither is given.
         result = _run("-v")
         assert_failure(result)
 
     def test_fail_changeall_with_user(self):
-        # Baseline: "-a" alone. Adding -u must be rejected.
         result = _run("-a -u admin")
         assert_failure(result)
 
     def test_fail_changeall_with_password(self):
-        # Baseline: "-a" alone. Adding -p must be rejected.
-        result = _run("-a -p ValidPass1.")
+        result = _run("-a -p")
         assert_failure(result)
 
-    def test_fail_changeall_with_api_flag(self):
-        # Baseline: "-a" alone. Adding -A must be rejected (-a already
-        # rotates API passwords when -au/-ap are given).
-        result = _run("-a -A")
+    def test_fail_password_without_user(self):
+        result = _run("-p", checkinstalled="indexer_installed=1")
         assert_failure(result)
+        assert "READPASSWORD_CALLED" not in result.stdout
 
-    def test_fail_admin_user_without_admin_password(self):
-        # Baseline: "-a -au admin -ap AdminPass1.". Dropping -ap must be
-        # rejected. -a is kept so the earlier "-u xor -a" check does not
-        # also fire, isolating this one condition.
-        result = _run("-a -au admin")
+    def test_fail_password_on_the_command_line(self):
+        """-p takes no value: a password on the command line is visible in ps,
+        so the value left behind is an unknown option and the tool refuses it."""
+        result = _run("-u admin -p ValidPass1234", checkinstalled="indexer_installed=1")
         assert_failure(result)
+        assert "CHANGEPASSWORD_CALLED" not in result.stdout
 
-    def test_fail_admin_password_without_admin_user(self):
-        # Baseline: "-a -au admin -ap AdminPass1.". Dropping -au must be
-        # rejected.
-        result = _run("-a -ap AdminPass1.")
+    def test_fail_removed_api_admin_options(self):
+        """-au/-ap are gone: rbac_control needs no Wazuh API admin credentials."""
+        result = _run("-a -au wazuh -ap AdminPass1234", checkinstalled="wazuh_installed=1")
+        assert_failure(result)
+        assert "CHANGEPASSWORDAPI_CALLED" not in result.stdout
+
+    def test_fail_removed_api_flag(self):
+        """-A is gone: the Wazuh API users are known by name."""
+        result = _run("-A -u wazuh", checkinstalled="wazuh_installed=1")
         assert_failure(result)
 
     def test_success_single_user_baseline_still_works(self):
-        # Sanity check for the baseline itself used above.
-        result = _run("-u admin -p ValidPass1.", checkinstalled="indexer_installed=1")
+        result = _run("-u admin -p", checkinstalled="indexer_installed=1")
         assert_success(result)
 
 
-class TestPasswordsMainChangeAllWithoutAdminCredentials:
-    """-a|--change-all with no -au/-ap: only the indexer batch path runs."""
+class TestPasswordsMainCredentialsFileCheck:
+    """A broken credentials file is reported before anything is changed."""
 
-    def _run_no_creds(self):
+    def test_checked_before_any_change(self):
+        result = _run("-a", checkinstalled="indexer_installed=1")
+        assert_success(result)
+        assert result.stdout.index("CHECKCREDENTIALSFILE_CALLED") < result.stdout.index("READUSERS_CALLED")
+
+    def test_a_failed_check_stops_the_run(self):
+        result = _run(
+            "-a",
+            extra_mocks={"passwords_checkCredentialsFile": 'echo "CHECKCREDENTIALSFILE_CALLED"; exit 1'},
+            checkinstalled="indexer_installed=1",
+        )
+        assert_failure(result)
+        assert "CHANGEPASSWORD_CALLED" not in result.stdout
+
+
+class TestPasswordsMainChangeAllIndexerOnly:
+    """-a|--change-all on a host with only the Wazuh indexer."""
+
+    def _run_indexer(self):
         return _run("-a", checkinstalled="indexer_installed=1")
 
     def test_success_exit_code(self):
-        assert_success(self._run_no_creds())
+        assert_success(self._run_indexer())
 
     def test_takes_indexer_batch_path(self):
-        result = self._run_no_creds()
-        assert "READUSERS_CALLED" in result.stdout
-        assert "GENERATEPASSWORDS_CALLED" in result.stdout
-        assert "GETNETWORKHOST_CALLED" in result.stdout
-        assert "GENERATEHASH_CALLED" in result.stdout
-        assert "CHANGEPASSWORD_CALLED" in result.stdout
-        assert "RUNSECURITYADMIN_CALLED" in result.stdout
+        result = self._run_indexer()
+        for marker in ("READUSERS_CALLED", "GENERATEPASSWORDS_CALLED", "GETNETWORKHOST_CALLED",
+                       "GENERATEHASH_CALLED", "CHANGEPASSWORD_CALLED", "RUNSECURITYADMIN_CALLED",
+                       "SAVEINDEXERCREDENTIALS_CALLED"):
+            assert marker in result.stdout
 
     def test_does_not_take_api_path(self):
-        result = self._run_no_creds()
-        assert "GETAPITOKEN_CALLED" not in result.stdout
-        assert "GETAPIUSERS_CALLED" not in result.stdout
+        result = self._run_indexer()
         assert "CHANGEPASSWORDAPI_CALLED" not in result.stdout
 
-    def test_logs_api_credentials_not_provided_warning(self):
-        result = self._run_no_creds()
-        assert "Wazuh API admin credentials not provided, Wazuh API passwords not changed." in result.stdout
+
+class TestPasswordsMainChangeAllManagerOnly:
+    """-a|--change-all on a host with only the Wazuh manager: the Wazuh API
+    users are changed without any admin credentials."""
+
+    def _run_manager(self):
+        return _run("-a", checkinstalled="wazuh_installed=1")
+
+    def test_success_exit_code(self):
+        assert_success(self._run_manager())
+
+    def test_takes_api_path_for_both_api_users(self):
+        result = self._run_manager()
+        assert "CHANGEPASSWORDAPI_CALLED:wazuh wazuh-wui" in result.stdout
+
+    def test_does_not_take_indexer_path(self):
+        result = self._run_manager()
+        assert "READUSERS_CALLED" not in result.stdout
+        assert "RUNSECURITYADMIN_CALLED" not in result.stdout
 
 
-class TestPasswordsMainChangeAllWithAdminCredentials:
-    """-a|--change-all with -au/-ap: both the indexer and API paths run."""
+class TestPasswordsMainChangeAllEverything:
+    """-a|--change-all on an all-in-one host: both paths run."""
 
-    def _run_with_creds(self):
+    def _run_all(self):
         return _run(
-            "-a -au admin -ap AdminPass1.",
+            "-a",
+            extra_mocks={
+                "passwords_changePassword": 'echo "CHANGEPASSWORD_CALLED"; restart_manager=1; restart_dashboard=1',
+            },
             checkinstalled="indexer_installed=1; wazuh_installed=1; dashboard_installed=1",
         )
 
     def test_success_exit_code(self):
-        assert_success(self._run_with_creds())
+        assert_success(self._run_all())
 
-    def test_takes_indexer_batch_path(self):
-        result = self._run_with_creds()
-        assert "READUSERS_CALLED" in result.stdout
-        assert "GENERATEPASSWORDS_CALLED" in result.stdout
-        assert "GETNETWORKHOST_CALLED" in result.stdout
-        assert "GENERATEHASH_CALLED" in result.stdout
-        assert "CHANGEPASSWORD_CALLED" in result.stdout
+    def test_takes_both_paths(self):
+        result = self._run_all()
         assert "RUNSECURITYADMIN_CALLED" in result.stdout
+        assert "CHANGEPASSWORDAPI_CALLED:wazuh wazuh-wui" in result.stdout
 
-    def test_takes_api_path(self):
-        result = self._run_with_creds()
-        assert "GETAPITOKEN_CALLED" in result.stdout
-        assert "GETAPIUSERS_CALLED" in result.stdout
-        assert "ISSERVICEACTIVE_CALLED:wazuh-manager" in result.stdout
-        assert "CHANGEPASSWORDAPI_CALLED" in result.stdout
-
-    def test_restarts_manager_and_dashboard(self):
-        result = self._run_with_creds()
-        assert "RESTARTSERVICE_CALLED:wazuh-manager" in result.stdout
-        assert "RESTARTSERVICE_CALLED:wazuh-dashboard" in result.stdout
-
-
-class TestPasswordsMainRestartOrdering:
-    """The services must not be restarted until the new passwords have
-    been applied on the Wazuh indexer.
-
-    passwords_runSecurityAdmin is what pushes the new hashes through
-    securityadmin.sh. Restarting before it leaves the manager and the
-    dashboard holding a credential the indexer has not accepted yet.
-    """
-
-    def test_restarts_run_after_security_admin_on_the_batch_path(self):
-        result = _run(
-            "-a -au admin -ap AdminPass1.",
-            checkinstalled="indexer_installed=1; wazuh_installed=1; dashboard_installed=1",
-        )
-        assert_success(result)
+    def test_restarts_run_after_security_admin(self):
+        """The services must not be restarted until the new passwords have
+        been applied on the Wazuh indexer."""
+        result = self._run_all()
         security_admin = result.stdout.index("RUNSECURITYADMIN_CALLED")
         assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-manager") > security_admin
         assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-dashboard") > security_admin
 
-    def test_restarts_run_after_security_admin_on_the_single_user_path(self):
-        result = _run(
-            "-u wazuh-manager -p ManagerPass1.",
-            extra_mocks={
-                "passwords_changePassword": 'echo "CHANGEPASSWORD_CALLED"; restart_manager=1',
-            },
-            checkinstalled="indexer_installed=1; wazuh_installed=1",
-        )
-        assert_success(result)
-        security_admin = result.stdout.index("RUNSECURITYADMIN_CALLED")
-        assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-manager") > security_admin
+    def test_fail_when_nothing_is_installed(self):
+        result = _run("-a")
+        assert_failure(result)
+        assert "GENERATEPASSWORDS_CALLED" not in result.stdout
 
 
 class TestPasswordsMainApiAbortStillRestarts:
     """Giving up on the Wazuh API step must not swallow the restarts that
-    the Wazuh indexer side already earned.
+    the Wazuh indexer side already earned."""
 
-    By the time the API step runs, passwords_changePassword has updated the
-    dashboard keystore and passwords_runSecurityAdmin has rotated the
-    passwords on the Wazuh indexer. Exiting without reaching
-    passwords_restartPendingServices leaves the dashboard authenticating
-    with a password the indexer no longer accepts, and says nothing.
-    """
-
-    def _run_manager_down(self):
+    def _run_api_fails(self):
         return _run(
-            "-a -au admin -ap AdminPass1.",
+            "-a",
             extra_mocks={
                 "passwords_changePassword":
                     'echo "CHANGEPASSWORD_CALLED"; restart_dashboard=1; dashboard_keystore_updated=1',
-                "passwords_isServiceActive":
-                    'echo "ISSERVICEACTIVE_CALLED:$*"; [ "$1" == "wazuh-manager" ] && return 1; return 0',
+                "passwords_changePasswordApi": 'echo "CHANGEPASSWORDAPI_CALLED"; return 1',
             },
             checkinstalled="indexer_installed=1; wazuh_installed=1; dashboard_installed=1",
         )
 
     def test_exits_with_an_error(self):
-        result = self._run_manager_down()
-        assert result.returncode == 1
+        assert self._run_api_fails().returncode == 1
 
     def test_the_dashboard_is_still_restarted(self):
-        result = self._run_manager_down()
+        result = self._run_api_fails()
         assert "RESTARTSERVICE_CALLED:wazuh-dashboard" in result.stdout
-
-    def test_the_restart_happens_before_the_exit(self):
-        result = self._run_manager_down()
         assert result.stdout.index("RESTARTSERVICE_CALLED:wazuh-dashboard") > result.stdout.index(
-            "RUNSECURITYADMIN_CALLED"
+            "CHANGEPASSWORDAPI_CALLED"
         )
 
 
+class TestPasswordsMainSaveFailure:
+    """A password applied but not saved in the credentials file ends in an error."""
+
+    def test_exits_with_an_error_after_the_restarts(self):
+        result = _run(
+            "-u admin",
+            extra_mocks={
+                "passwords_saveIndexerCredentials": 'echo "SAVEINDEXERCREDENTIALS_CALLED"; save_failed=1',
+                "passwords_changePassword": 'echo "CHANGEPASSWORD_CALLED"; restart_dashboard=1',
+            },
+            checkinstalled="indexer_installed=1",
+        )
+        assert result.returncode == 1
+        assert "RESTARTSERVICE_CALLED:wazuh-dashboard" in result.stdout
+
+
 class TestPasswordsMainSingleUserPath:
-    """-u|--user keeps working exactly as before -a|--change-all was added."""
+    """-u|--user with the password read from the standard input."""
 
     def _run_single_user(self):
-        return _run("-u admin -p ValidPass1.", checkinstalled="indexer_installed=1")
+        return _run("-u admin -p", checkinstalled="indexer_installed=1")
 
     def test_success_exit_code(self):
         assert_success(self._run_single_user())
 
     def test_takes_single_user_path(self):
         result = self._run_single_user()
-        assert "READUSERS_CALLED" in result.stdout
-        assert "CHECKUSER_CALLED" in result.stdout
-        assert "CHECKPASSWORD_CALLED:ValidPass1." in result.stdout
-        assert "GETNETWORKHOST_CALLED" in result.stdout
-        assert "GENERATEHASH_CALLED" in result.stdout
-        assert "CHANGEPASSWORD_CALLED" in result.stdout
-        assert "RUNSECURITYADMIN_CALLED" in result.stdout
+        for marker in ("READPASSWORD_CALLED", "CHECKPASSWORD_CALLED:ValidPass1234", "READUSERS_CALLED",
+                       "CHECKUSER_CALLED", "GETNETWORKHOST_CALLED", "GENERATEHASH_CALLED",
+                       "CHANGEPASSWORD_CALLED", "RUNSECURITYADMIN_CALLED", "SAVEINDEXERCREDENTIALS_CALLED"):
+            assert marker in result.stdout
+
+    def test_password_is_read_and_checked_before_any_change(self):
+        result = self._run_single_user()
+        assert result.stdout.index("CHECKPASSWORD_CALLED") < result.stdout.index("READUSERS_CALLED")
 
     def test_does_not_take_batch_or_api_path(self):
         result = self._run_single_user()
         assert "GENERATEPASSWORDS_CALLED" not in result.stdout
-        assert "GETAPITOKEN_CALLED" not in result.stdout
-        assert "GETAPIUSERS_CALLED" not in result.stdout
         assert "CHANGEPASSWORDAPI_CALLED" not in result.stdout
 
     def test_does_not_autogenerate_password_when_provided(self):
         result = self._run_single_user()
         assert "GENERATEPASSWORD_CALLED" not in result.stdout
 
+    def test_generates_password_without_p(self):
+        result = _run("-u admin", checkinstalled="indexer_installed=1")
+        assert_success(result)
+        assert "GENERATEPASSWORD_CALLED" in result.stdout
+        assert "READPASSWORD_CALLED" not in result.stdout
 
-class TestPasswordsMainWazuhManagerInactiveMessage:
-    """main's own wazuh-manager-inactive guard (shared between -A and -a)
-    must keep naming nuser for a single-user API change, but must not
-    print an empty user name in --change-all mode, where nuser is
-    always empty."""
 
-    def test_single_user_message_includes_nuser(self):
+class TestPasswordsMainSingleApiUser:
+    """-u with a Wazuh API user: passwords_checkUser flags it as an API user
+    and only the API path runs."""
+
+    def test_takes_only_the_api_path(self):
         result = _run(
-            "-u wazuh-wui -p ValidPass1. -A -au admin -ap AdminPass1.",
-            extra_mocks={"passwords_isServiceActive": "return 1"},
+            "-u wazuh-wui -p",
+            extra_mocks={"passwords_checkUser": 'echo "CHECKUSER_CALLED"; api=1'},
+            checkinstalled="indexer_installed=1; wazuh_installed=1",
         )
-        assert_failure(result)
-        assert "Skipping API password change for user wazuh-wui." in result.stdout
-
-    def test_changeall_message_omits_nuser(self):
-        result = _run(
-            "-a -au admin -ap AdminPass1.",
-            extra_mocks={"passwords_isServiceActive": "return 1"},
-            checkinstalled="indexer_installed=1",
-        )
-        assert_failure(result)
-        assert "Skipping Wazuh API password change." in result.stdout
-        assert "for user" not in result.stdout
+        assert_success(result)
+        assert "CHANGEPASSWORDAPI_CALLED" in result.stdout
+        assert "READUSERS_CALLED" not in result.stdout
+        assert "RUNSECURITYADMIN_CALLED" not in result.stdout

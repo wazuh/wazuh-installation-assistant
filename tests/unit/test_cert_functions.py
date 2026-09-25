@@ -2,7 +2,8 @@
 Unit tests for cert_tool/certFunctions.sh
 
 Covers: cert_cleanFiles, cert_setpermisions, cert_checkOpenSSL,
-        cert_generateRootCAcertificate, cert_generateAdmincertificate,
+        cert_generateRootCAcertificate, cert_checkRootCA, cert_rejectCAPaths,
+        cert_generateAdmincertificate,
         cert_generateIndexercertificates, cert_generateManagercertificates,
         cert_generateDashboardcertificates, cert_generateRemotedcertificateconfiguration,
         cert_verifyRemotedcertificates, cert_readConfig
@@ -23,6 +24,40 @@ BASE_SOURCES = [COMMON_VARS, COMMON, CERT]
 IGNORE_LOGGER = {"logger_cert": "true", "common_logger": "true"}
 BASE_PATH = "/tmp/wazuh-cert-tool"
 
+# Same OpenSSL settings wazuh_ca_ensure uses in credentials_lib/wazuh-credentials.sh.
+# The library itself only runs as root, so the tests build an equivalent CA here.
+LIBRARY_CA_CONFIG = """[req]
+distinguished_name = dn
+x509_extensions = v3_ca
+prompt = no
+[dn]
+OU = Wazuh
+O = Wazuh
+L = California
+[v3_ca]
+basicConstraints = critical, CA:TRUE
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always
+"""
+
+
+def make_ca(directory):
+    """Creates root-ca.pem and root-ca.key in directory and returns the key path."""
+    config = directory / "ca.cnf"
+    config.write_text(LIBRARY_CA_CONFIG)
+    subprocess.run(
+        [
+            "openssl", "req", "-x509", "-new", "-nodes", "-newkey", "rsa:2048",
+            "-sha256", "-days", "3650", "-batch", "-config", str(config),
+            "-keyout", str(directory / "root-ca.key"),
+            "-out", str(directory / "root-ca.pem"),
+        ],
+        check=True, capture_output=True,
+    )
+    config.unlink()
+    return str(directory / "root-ca.key")
+
 
 class TestCertCleanFiles:
     def test_clean_files_runs(self, tmp_path):
@@ -40,6 +75,18 @@ class TestCertCleanFiles:
         assert result.returncode in (0, 1)
 
 
+    def test_removes_a_root_ca_key(self, tmp_path):
+        """The root CA key never leaves the CA directory."""
+        (tmp_path / "root-ca.key").touch()
+        (tmp_path / "root-ca.pem").touch()
+        result = run_bash_function(
+            BASE_SOURCES, "cert_cleanFiles", IGNORE_LOGGER, {"cert_tmp_path": str(tmp_path)}
+        )
+        assert_success(result)
+        assert not (tmp_path / "root-ca.key").exists()
+        assert (tmp_path / "root-ca.pem").exists()
+
+
 class TestCertSetpermisions:
     def test_fail_invalid_path(self):
         result = run_bash_function(
@@ -53,7 +100,6 @@ class TestCertSetpermisions:
     def test_success_keys_are_owner_only_and_certs_are_world_readable(self, tmp_path):
         certs_dir = tmp_path / "wazuh-certificates"
         certs_dir.mkdir(mode=0o700)
-        (certs_dir / "root-ca.key").touch()
         (certs_dir / "root-ca.pem").touch()
         (certs_dir / "admin-key.pem").touch()
         (certs_dir / "admin.pem").touch()
@@ -68,7 +114,7 @@ class TestCertSetpermisions:
         )
         assert_success(result)
 
-        key_files = ["root-ca.key", "admin-key.pem", "wazuh.manager-remoted-key.pem"]
+        key_files = ["admin-key.pem", "wazuh.manager-remoted-key.pem"]
         cert_files = ["root-ca.pem", "admin.pem", "wazuh.manager-remoted.pem"]
 
         for name in key_files:
@@ -99,25 +145,115 @@ class TestCertCheckOpenSSL:
 
 
 class TestCertGenerateRootCA:
-    def test_success_generates_root_ca(self, tmp_path):
-        mocks = {**IGNORE_LOGGER, "openssl": "true"}
-        result = run_bash_function(
-            BASE_SOURCES,
-            "cert_generateRootCAcertificate",
-            mocks,
-            {"cert_tmp_path": str(tmp_path), "debug_cert": ""},
-        )
-        assert_success(result)
+    """cert_generateRootCAcertificate creates the root CA through wazuh_ca_ensure,
+    in the directory wazuh_ca_get_dir resolves."""
 
-    def test_fail_openssl_error(self, tmp_path):
-        mocks = {**IGNORE_LOGGER, "openssl": "return 1"}
+    def _run(self, tmp_path, ensure="return 0"):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "wazuh_ca_get_dir": f'echo "{tmp_path}/ca"',
+            "wazuh_ca_ensure": f'echo "ENSURE_CALLED"; {ensure}',
+        }
+        return run_bash_function(
+            BASE_SOURCES,
+            'cert_generateRootCAcertificate; echo "ca_dir:${cert_ca_dir}"',
+            mocks,
+            {"cert_tmp_path": str(tmp_path)},
+        )
+
+    def test_success_creates_the_root_ca(self, tmp_path):
+        result = self._run(tmp_path)
+        assert_success(result)
+        assert "ENSURE_CALLED" in result.stdout
+        assert f"ca_dir:{tmp_path}/ca" in result.stdout
+        assert f"Generating the root certificate in {tmp_path}/ca." in result.stdout
+
+    def test_success_reuses_an_existing_root_ca(self, tmp_path):
+        (tmp_path / "ca").mkdir()
+        (tmp_path / "ca" / "root-ca.pem").touch()
+        result = self._run(tmp_path)
+        assert_success(result)
+        assert f"Using the existing root CA in {tmp_path}/ca." in result.stdout
+
+    def test_fail_when_the_library_fails(self, tmp_path):
+        result = self._run(tmp_path, ensure="return 1")
+        assert_failure(result)
+        assert "could not be created or is not valid" in result.stdout
+
+
+class TestCertCheckRootCA:
+    """cert_checkRootCA reads the root CA from the CA directory. The key stays
+    there: only root-ca.pem is copied next to the new certificates."""
+
+    def _run(self, tmp_path, mode="", validate="return 0", with_key=True):
+        ca_dir = tmp_path / "ca"
+        ca_dir.mkdir()
+        (ca_dir / "root-ca.pem").write_text("anchor")
+        if with_key:
+            (ca_dir / "root-ca.key").write_text("key")
+        work = tmp_path / "work"
+        work.mkdir()
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "wazuh_ca_get_dir": f'echo "{ca_dir}"',
+            "wazuh_ca_validate": f'echo "VALIDATE_CALLED"; {validate}',
+            "wazuh_ca_ensure": 'echo "ENSURE_CALLED"',
+        }
         result = run_bash_function(
             BASE_SOURCES,
-            "cert_generateRootCAcertificate",
+            f'cert_checkRootCA {mode}; echo "key:${{rootcakey}}"',
             mocks,
-            {"cert_tmp_path": str(tmp_path), "debug_cert": ""},
+            {"cert_tmp_path": str(work)},
         )
+        return result, ca_dir, work
+
+    def test_success_copies_only_the_anchor(self, tmp_path):
+        result, ca_dir, work = self._run(tmp_path)
+        assert_success(result)
+        assert "VALIDATE_CALLED" in result.stdout
+        assert (work / "root-ca.pem").read_text() == "anchor"
+        assert not (work / "root-ca.key").exists()
+        assert f"key:{ca_dir}/root-ca.key" in result.stdout
+
+    def test_create_mode_ensures_the_root_ca(self, tmp_path):
+        result, _, _ = self._run(tmp_path, mode="create")
+        assert_success(result)
+        assert "ENSURE_CALLED" in result.stdout
+        assert "VALIDATE_CALLED" not in result.stdout
+
+    def test_fail_when_the_library_refuses_the_root_ca(self, tmp_path):
+        result, _, work = self._run(tmp_path, validate="return 1")
         assert_failure(result)
+        assert "There is no valid root CA in" in result.stdout
+        assert not (work / "root-ca.pem").exists()
+
+    def test_fail_without_the_private_key(self, tmp_path):
+        result, _, _ = self._run(tmp_path, with_key=False)
+        assert_failure(result)
+        assert "has no private key (root-ca.key), so it cannot sign certificates" in result.stdout
+
+
+class TestCertRejectCAPaths:
+    """The options no longer take root CA files: the CA directory is used."""
+
+    def _run(self, value):
+        return run_bash_function(
+            BASE_SOURCES,
+            f'cert_rejectCAPaths "-wi|--wazuh-indexer-certificates" {value}',
+            {"common_logger": 'echo "LOG:$*"', "wazuh_ca_get_dir": "echo /etc/wazuh/ca"},
+        )
+
+    def test_fail_with_a_path(self):
+        result = self._run("/root/root-ca.pem")
+        assert_failure(result)
+        assert "does not take root CA files anymore" in result.stdout
+        assert "WAZUH_CA_DIR" in result.stdout
+
+    def test_success_with_the_next_option(self):
+        assert_success(self._run("-v"))
+
+    def test_success_as_the_last_argument(self):
+        assert_success(self._run('""'))
 
 
 class TestCertGenerateAdminCertificate:
@@ -269,20 +405,12 @@ class TestCertGenerateRemotedcertificateRealOpenSSL:
     """
 
     def _issue(self, tmp_path, node_name, *san):
-        subprocess.run(
-            [
-                "openssl", "req", "-x509", "-new", "-nodes", "-newkey", "rsa:2048",
-                "-keyout", str(tmp_path / "root-ca.key"),
-                "-out", str(tmp_path / "root-ca.pem"),
-                "-batch", "-subj", "/OU=Wazuh/O=Wazuh/L=California/", "-days", "3650",
-            ],
-            check=True, capture_output=True,
-        )
+        rootcakey = make_ca(tmp_path)
         result = run_bash_function(
             BASE_SOURCES,
             f"cert_generateRemotedcertificate {node_name} {' '.join(san)}",
             IGNORE_LOGGER,
-            {"cert_tmp_path": str(tmp_path)},
+            {"cert_tmp_path": str(tmp_path), "rootcakey": rootcakey},
         )
         assert_success(result)
         return tmp_path / f"{node_name}-remoted.pem"
@@ -753,6 +881,7 @@ class TestCertExtensionMatrixRealOpenSSL:
     def issued(self, tmp_path):
         env = {
             "cert_tmp_path": str(tmp_path),
+            "rootcakey": make_ca(tmp_path),
             "indexer_node_names": "(indexer-1)",
             "indexer_node_ip_1": "(10.0.0.11)",
             "indexer_node_dns_1": "()",
@@ -765,7 +894,7 @@ class TestCertExtensionMatrixRealOpenSSL:
             "agent_san": "()",
         }
         call = (
-            "cert_generateRootCAcertificate && cert_generateAdmincertificate && "
+            "cert_generateAdmincertificate && "
             "cert_generateIndexercertificates && cert_generateManagercertificates && "
             "cert_generateDashboardcertificates"
         )
@@ -811,6 +940,7 @@ class TestCertGenerateLoadbalancercertificates:
     def _issue(self, tmp_path, extra_env=None):
         env = {
             "cert_tmp_path": str(tmp_path),
+            "rootcakey": make_ca(tmp_path),
             "lb_node_names": "(lb)",
             "lb_node_ip_1": "(203.0.113.10)",
             "lb_node_dns_1": "(wazuh.example.com)",
@@ -818,7 +948,7 @@ class TestCertGenerateLoadbalancercertificates:
         env.update(extra_env or {})
         return run_bash_function(
             BASE_SOURCES,
-            "cert_generateRootCAcertificate && cert_generateLoadbalancercertificates",
+            "cert_generateLoadbalancercertificates",
             IGNORE_LOGGER,
             env,
         )

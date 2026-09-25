@@ -17,7 +17,7 @@ function passwords_changePassword() {
 
         for i in "${!passwords[@]}"; do
             if [ -n "${indexer_installed}" ] && [ -f "/etc/wazuh-indexer/backup/internal_users.yml" ]; then
-                awk -v new='"'"${hashes[i]}"'"' 'prev=="'${users[i]}':"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /etc/wazuh-indexer/backup/internal_users.yml > internal_users.yml_tmp && mv -f internal_users.yml_tmp /etc/wazuh-indexer/backup/internal_users.yml
+                passwords_replaceHash "${users[i]}" "${hashes[i]}"
             fi
 
             if [ "${users[i]}" == "wazuh-manager" ]; then
@@ -34,7 +34,7 @@ function passwords_changePassword() {
         fi
 
         if [ -n "${indexer_installed}" ] && [ -f "/etc/wazuh-indexer/backup/internal_users.yml" ]; then
-            awk -v new='"'"${hash}"'"' 'prev=="'${nuser}':"{sub(/\042.*/,""); $0=$0 new} {prev=$1} 1' /etc/wazuh-indexer/backup/internal_users.yml > internal_users.yml_tmp && mv -f internal_users.yml_tmp /etc/wazuh-indexer/backup/internal_users.yml
+            passwords_replaceHash "${nuser}" "${hash}"
         fi
 
         if [ "${nuser}" == "wazuh-manager" ]; then
@@ -62,17 +62,11 @@ function passwords_changePassword() {
 
     if [ "${nuser}" == "kibanaserver" ] || [ -n "${changeall}" ]; then
         if [ -n "${dashboard_installed}" ] && [ -n "${dashpass}" ]; then
-            if /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root list | grep -q opensearch.password; then
-                echo "${dashpass}" | /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore --allow-root add -f --stdin opensearch.password ${debug_pass} > /dev/null 2>&1
-                dashboard_keystore_updated=1
-            else
-                wazuhdashold=$(grep "password:" /etc/wazuh-dashboard/opensearch_dashboards.yml )
-                rk="opensearch.password: "
-                wazuhdashold="${wazuhdashold//$rk}"
-                conf="$(awk '{sub("opensearch.password: .*", "opensearch.password: '"${dashpass}"'")}1' /etc/wazuh-dashboard/opensearch_dashboards.yml)"
-                echo "${conf}" > /etc/wazuh-dashboard/opensearch_dashboards.yml
-                dashboard_config_updated=1
+            if ! passwords_updateDashboardKeystore "opensearch.password" "${dashpass}"; then
+                common_logger -e "The new password was not applied to the Wazuh indexer, so the credentials currently in the Wazuh dashboard keystore are still valid."
+                exit 1;
             fi
+            dashboard_keystore_updated=1
             restart_dashboard=1
         fi
     fi
@@ -80,70 +74,95 @@ function passwords_changePassword() {
 }
 
 function passwords_changePasswordApi() {
-    # Change API password tool
+
     if [ -n "${changeall}" ]; then
-        if [ -n "${wazuh_installed}" ]; then
-            if ! passwords_isServiceActive "wazuh-manager"; then
-                common_logger -e "wazuh-manager service is not running. Skipping Wazuh API password change."
-                exit 1;
-            fi
-        fi
-        for i in "${!api_passwords[@]}"; do
-            if [ -n "${wazuh_installed}" ]; then
-                passwords_getApiUserId "${api_users[i]}"
-                WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
-                common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
-                if [ "${api_users[i]}" == "${adminUser}" ]; then
-                    sleep 1
-                    adminPassword="${api_passwords[i]}"
-                    passwords_getApiToken
-                fi
-                common_logger -nl $"The password for Wazuh API user ${api_users[i]} is ${api_passwords[i]}"
-            fi
-            if [ "${api_users[i]}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
-                passwords_changeDashboardApiPassword "${api_passwords[i]}"
+        for i in "${!api_users[@]}"; do
+            if ! passwords_changeApiUserPassword "${api_users[i]}" "${api_passwords[i]}" 1; then
+                return 1
             fi
         done
     else
-        if [ -n "${wazuh_installed}" ]; then
-            if ! passwords_isServiceActive "wazuh-manager"; then
-                common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
-                exit 1;
-            fi
-            passwords_getApiUserId "${nuser}"
-            WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-            common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
-            common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
-        fi
-        if [ "${nuser}" == "wazuh-wui" ] && [ -n "${dashboard_installed}" ]; then
-            passwords_changeDashboardApiPassword "${password}"
+        if ! passwords_changeApiUserPassword "${nuser}" "${password}" "${autopass}"; then
+            return 1
         fi
     fi
+
 }
 
-function passwords_changeDashboardApiPassword() {
+function passwords_changeApiUserPassword() {
 
-    eval "sed -i 's|password: .*|password: \"${1}\"|g' /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
+    local user="${1}"
+    local new_password="${2}"
+    local generated="${3}"
+    local rbac_output
+    local rbac_status
+
+    if [ ! -x "${rbac_control}" ]; then
+        common_logger -e "Cannot find ${rbac_control}. The password of the Wazuh API user ${user} was not changed."
+        return 1
+    fi
+
+    # rbac_control reads the new password from the standard input and never prints it.
+    rbac_output=$(printf '%s\n' "${new_password}" | "${rbac_control}" change-password -u "${user}" -p - 2>&1)
+    rbac_status=$?
+    if [ "${rbac_status}" -ne 0 ] || ! grep -Eq "^[[:space:]]*${user}: UPDATED$" <<< "${rbac_output}"; then
+        common_logger -e "The password of the Wazuh API user ${user} could not be changed: $(echo "${rbac_output}" | tr -s '\n\t' '  ')"
+        return 1
+    fi
+    common_logger "The password of the Wazuh API user ${user} was changed."
+
+    passwords_saveCredential "${user}" "${new_password}" "${generated}"
+
+    if [ "${user}" == "wazuh-wui" ]; then
+        if [ -n "${dashboard_installed}" ]; then
+            if ! passwords_updateDashboardKeystore "wazuh_core.hosts.default.password" "${new_password}"; then
+                return 1
+            fi
+            dashboard_keystore_updated=1
+            restart_dashboard=1
+        else
+            common_logger -w "The Wazuh dashboard is not installed on this host. Update wazuh_core.hosts.default.password in the keystore of every Wazuh dashboard node and restart them."
+        fi
+    fi
+
 }
 
 function passwords_checkUser() {
 
-    if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
-        for i in "${!api_users[@]}"; do
-            if [ "${api_users[i]}" == "${nuser}" ]; then
-                exists=1
-            fi
-        done
-    else
-        for i in "${!users[@]}"; do
-            if [ "${users[i]}" == "${nuser}" ]; then
-                exists=1
-            fi
-        done
+    if passwords_isInList "${nuser}" "${api_accounts[@]}"; then
+        if [ -z "${wazuh_installed}" ]; then
+            common_logger -e "The Wazuh manager is not installed on this host, so the password of the Wazuh API user ${nuser} cannot be changed here."
+            exit 1;
+        fi
+        api=1
+        return 0
     fi
 
-    if [ -z "${exists}" ]; then
-        common_logger -e "The given user does not exist"
+    if passwords_isInList "${nuser}" "${indexer_accounts[@]}"; then
+        if [ -z "${indexer_installed}" ]; then
+            common_logger -e "The Wazuh indexer is not installed on this host, so the password of the Wazuh indexer user ${nuser} cannot be changed here."
+            exit 1;
+        fi
+        if ! passwords_isInList "${nuser}" "${users[@]}"; then
+            common_logger -e "The given user does not exist"
+            exit 1;
+        fi
+        return 0
+    fi
+
+    common_logger -e "The user ${nuser} is not supported. Supported users: ${indexer_accounts[*]} ${api_accounts[*]}."
+    exit 1;
+
+}
+
+function passwords_checkCredentialsFile() {
+
+    local env_status=0
+
+    # A broken or insecure credentials file is reported before any password is changed.
+    wazuh_env_get WAZUH_INDEXER_ADMIN_PASSWORD > /dev/null || env_status=$?
+    if [ "${env_status}" -eq 2 ]; then
+        common_logger -e "The credentials file $(wazuh_env_get_file 2>/dev/null) cannot be used, so no password was changed. Fix the problem shown above and run the tool again."
         exit 1;
     fi
 
@@ -151,13 +170,24 @@ function passwords_checkUser() {
 
 function passwords_checkPassword() {
 
-    local min_length="${2:-8}"
+    local invalid_chars
+    local validation_error
 
-    if ! echo "$1" | grep -q "[A-Z]" || ! echo "$1" | grep -q "[a-z]" || ! echo "$1" | grep -q "[0-9]" || ! echo "$1" | grep -q "[.*+?-]" || [ "${#1}" -lt "${min_length}" ] || [ "${#1}" -gt 64 ]; then
-        common_logger -e "The password must have a length between ${min_length} and 64 characters and contain at least one upper and lower case letter, a number and a symbol(.*+?-)."
-        if [[ $(type -t installCommon_rollBack) == "function" ]]; then
-                installCommon_rollBack
-        fi
+    # Same rule as the Wazuh packages: only these characters, so every component accepts the password.
+    invalid_chars=$(printf '%s' "${1}" | LC_ALL=C tr -d 'A-Za-z0-9.,_+:@%^=~-')
+    if [ -n "${invalid_chars}" ]; then
+        common_logger -e "The password can only contain these characters: A-Z a-z 0-9 . , _ + : @ % ^ = ~ -"
+        exit 1
+    fi
+
+    # The Wazuh dashboard keystore would store a value that looks like a number as a number.
+    if printf '%s' "${1}" | LC_ALL=C grep -Eqx -- '-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?'; then
+        common_logger -e "The password cannot be a number."
+        exit 1
+    fi
+
+    if ! validation_error=$(wazuh_password_validate "${1}" 2>&1); then
+        common_logger -e "Invalid password: ${validation_error#wazuh-credentials: }."
         exit 1
     fi
 
@@ -198,8 +228,8 @@ function passwords_generateHash() {
         common_logger -d "Generating password hashes."
         hashes=()
         for i in "${!passwords[@]}"; do
-            nhash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${passwords[i]}" 2>/dev/null)
-            if [  "${PIPESTATUS[0]}" != 0  ]; then
+            nhash=$(passwords_hashPassword "${passwords[i]}")
+            if [ -z "${nhash}" ]; then
                 common_logger -e "Hash generation failed."
                 if [[ $(type -t installCommon_rollBack) == "function" ]]; then
                     installCommon_rollBack
@@ -211,8 +241,8 @@ function passwords_generateHash() {
         common_logger -d "Password hashes generated."
     else
         common_logger "Generating password hash"
-        hash=$(bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "${password}" 2>/dev/null)
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        hash=$(passwords_hashPassword "${password}")
+        if [ -z "${hash}" ]; then
             common_logger -e "Hash generation failed."
             if [[ $(type -t installCommon_rollBack) == "function" ]]; then
                 installCommon_rollBack
@@ -227,13 +257,7 @@ function passwords_generateHash() {
 function passwords_generatePassword() {
 
     common_logger -d "Generating random password."
-    pass=$(< /dev/urandom tr -dc "A-Za-z0-9.*+?" | head -c "${1:-28}";echo;)
-    special_char=$(< /dev/urandom tr -dc ".*+?" | head -c "${1:-1}";echo;)
-    minus_char=$(< /dev/urandom tr -dc "a-z" | head -c "${1:-1}";echo;)
-    mayus_char=$(< /dev/urandom tr -dc "A-Z" | head -c "${1:-1}";echo;)
-    number_char=$(< /dev/urandom tr -dc "0-9" | head -c "${1:-1}";echo;)
-    password="$(echo "${pass}${special_char}${minus_char}${mayus_char}${number_char}" | fold -w1 | shuf | tr -d '\n')"
-    if [  "${PIPESTATUS[0]}" != 0  ]; then
+    if ! password=$(wazuh_password_generate); then
         common_logger -e "The password could not been generated."
         exit 1;
     fi
@@ -260,94 +284,19 @@ function passwords_generatePasswords() {
 
 }
 
-function passwords_getApiToken() {
-    retries=0
-    max_internal_error_retries=20
+# Prints the credentials.env key of a user, the same key the Wazuh packages use.
+function passwords_getEnvKey() {
 
-    if ! passwords_isServiceActive "wazuh-manager"; then
-        if [ -n "${changeall}" ]; then
-            common_logger -e "wazuh-manager service is not running. Skipping Wazuh API password change."
-        else
-            common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
-        fi
-        exit 1;
-    fi
-
-    TOKEN_API=$(curl -s -u "${adminUser}":"${adminPassword}" -k -X POST "https://localhost:55000/security/user/authenticate?raw=true" --max-time 300 --retry 5 --retry-delay 5)
-    while [[ "${TOKEN_API}" =~ "Wazuh Internal Error" ]] && [ "${retries}" -lt "${max_internal_error_retries}" ]
-    do
-        common_logger "There was an error accessing the API. Retrying..."
-        TOKEN_API=$(curl -s -u "${adminUser}":"${adminPassword}" -k -X POST "https://localhost:55000/security/user/authenticate?raw=true" --max-time 300 --retry 5 --retry-delay 5)
-        retries=$((retries+1))
-        sleep 10
-    done
-    if [[ ${TOKEN_API} =~ "Wazuh Internal Error" ]]; then
-        common_logger -e "There was an error while trying to get the API token."
-        if [[ $(type -t installCommon_rollBack) == "function" ]]; then
-            installCommon_rollBack
-        fi
-        exit 1
-    elif [[ ${TOKEN_API} =~ "Invalid credentials" ]]; then
-        common_logger -e "Invalid admin user credentials"
-        if [[ $(type -t installCommon_rollBack) == "function" ]]; then
-            installCommon_rollBack
-        fi
-        exit 1
-    fi
+    case "${1}" in
+        "admin") echo "WAZUH_INDEXER_ADMIN_PASSWORD" ;;
+        "kibanaserver") echo "WAZUH_INDEXER_KIBANASERVER_PASSWORD" ;;
+        "wazuh-manager") echo "WAZUH_INDEXER_MANAGER_PASSWORD" ;;
+        "wazuh") echo "WAZUH_MANAGER_API_PASSWORD" ;;
+        "wazuh-wui") echo "WAZUH_MANAGER_WUI_PASSWORD" ;;
+        *) return 1 ;;
+    esac
 
 }
-
-function passwords_getApiUsers() {
-
-    if passwords_isServiceActive "wazuh-manager"; then
-        mapfile -t api_users < <(common_curl -s -k -X GET -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\"  \"https://localhost:55000/security/users?pretty=true\" --max-time 300 --retry 5 --retry-delay 5 | grep username | awk -F': ' '{print $2}' | sed -e "s/[\'\",]//g")
-    else
-        if [ -n "${changeall}" ]; then
-            common_logger -e "wazuh-manager service is not running. Skipping Wazuh API password change."
-        else
-            common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
-        fi
-        exit 1;
-    fi
-
-}
-
-function passwords_getApiUserId() {
-
-    # The manager can respond on the API port right after restarting while
-    # it is still registering its internal users. A single lookup here can
-    # race that registration and report a false "not registered" error
-    # (see external-devel-requests#6840). Poll for a short, bounded window
-    # instead of failing on the first empty response.
-    api_user_lookup_retries=12
-    api_user_lookup_delay=5
-    api_user_lookup_attempt=0
-    user_id=""
-
-    while [ "${api_user_lookup_attempt}" -lt "${api_user_lookup_retries}" ]; do
-        user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
-
-        if [ -n "${user_id}" ]; then
-            break
-        fi
-
-        api_user_lookup_attempt=$((api_user_lookup_attempt+1))
-        if [ "${api_user_lookup_attempt}" -lt "${api_user_lookup_retries}" ]; then
-            common_logger -d "User ${1} not found yet in the Wazuh API (attempt ${api_user_lookup_attempt}/${api_user_lookup_retries}). The API may still be registering internal users, retrying in ${api_user_lookup_delay}s."
-            sleep "${api_user_lookup_delay}"
-        fi
-    done
-
-    if [ -z "${user_id}" ]; then
-        common_logger -e "User ${1} is not registered in Wazuh API"
-        if [[ $(type -t installCommon_rollBack) == "function" ]]; then
-                installCommon_rollBack
-        fi
-        exit 1
-    fi
-
-}
-
 
 function passwords_getNetworkHost() {
 
@@ -369,11 +318,38 @@ function passwords_getNetworkHost() {
     fi
 }
 
+# Prints the bcrypt hash of a password. The password reaches hash.sh through its
+# environment, never through the command line.
+function passwords_hashPassword() {
+
+    WAZUH_PASSWORDS_TOOL_SECRET="${1}" OPENSEARCH_JAVA_HOME="/usr/share/wazuh-indexer/jdk" bash "${hash_tool}" -env WAZUH_PASSWORDS_TOOL_SECRET 2>/dev/null | grep -Eo '^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$' | tail -n 1
+
+}
+
+function passwords_isInList() {
+
+    local item="${1}"
+    local element
+    shift
+
+    for element in "$@"; do
+        if [ "${element}" == "${item}" ]; then
+            return 0
+        fi
+    done
+    return 1
+
+}
+
 function passwords_readUsers() {
 
     passwords_updateInternalUsers
-    susers=$(grep '^[a-z-]*:$' /etc/wazuh-indexer/opensearch-security/internal_users.yml | sed 's/:$//')
-    mapfile -t users <<< "${susers[@]}"
+    users=()
+    for account in "${indexer_accounts[@]}"; do
+        if grep -q "^${account}:$" /etc/wazuh-indexer/opensearch-security/internal_users.yml; then
+            users+=("${account}")
+        fi
+    done
 
 }
 
@@ -439,6 +415,39 @@ function passwords_isServiceActive() {
 
 }
 
+# Reads the new password from the standard input, so it never shows up in the process list.
+function passwords_readPassword() {
+
+    local password_confirmation
+
+    if [ -t 0 ]; then
+        IFS= read -r -s -p "New password for user ${nuser}: " password
+        echo >&2
+        IFS= read -r -s -p "Repeat the new password: " password_confirmation
+        echo >&2
+        if [ "${password}" != "${password_confirmation}" ]; then
+            common_logger -e "The passwords do not match."
+            exit 1;
+        fi
+    else
+        IFS= read -r password
+    fi
+
+    if [ -z "${password}" ]; then
+        common_logger -e "No password was given on the standard input."
+        exit 1;
+    fi
+
+}
+
+# Writes the hash of a user in the internal_users.yml backup. The hash reaches awk
+# through its environment.
+function passwords_replaceHash() {
+
+    WAZUH_PASSWORDS_TOOL_HASH="${2}" awk -v user="${1}:" 'prev==user{sub(/\042.*/,""); $0=$0 "\"" ENVIRON["WAZUH_PASSWORDS_TOOL_HASH"] "\""} {prev=$1} 1' /etc/wazuh-indexer/backup/internal_users.yml > internal_users.yml_tmp && mv -f internal_users.yml_tmp /etc/wazuh-indexer/backup/internal_users.yml
+
+}
+
 function passwords_restartPendingServices() {
 
     if [ -n "${restart_manager}" ]; then
@@ -455,9 +464,7 @@ function passwords_restartPendingServices() {
         if passwords_isServiceActive "wazuh-dashboard"; then
             passwords_restartService "wazuh-dashboard"
         elif [ -n "${dashboard_keystore_updated}" ]; then
-            common_logger -w "The Wazuh dashboard keystore was updated, but the wazuh-dashboard service is not running. The restart is pending: the new Wazuh indexer credentials will be applied when the service starts."
-        elif [ -n "${dashboard_config_updated}" ]; then
-            common_logger -w "The Wazuh dashboard configuration file was updated, but the wazuh-dashboard service is not running. The restart is pending: the new Wazuh indexer credentials will be applied when the service starts."
+            common_logger -w "The Wazuh dashboard keystore was updated, but the wazuh-dashboard service is not running. The restart is pending: the new credentials will be applied when the service starts."
         else
             common_logger -w "wazuh-dashboard service is not running. Skipping restart."
         fi
@@ -636,20 +643,61 @@ function passwords_runSecurityAdmin() {
     cp /etc/wazuh-indexer/backup/internal_users.yml /etc/wazuh-indexer/opensearch-security/internal_users.yml
     eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
 
-    if [[ -n "${nuser}" ]] && [[ -n ${autopass} ]]; then
-        common_logger -nl "The password for user ${nuser} is ${password}"
-        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
-    fi
-
-    if [[ -n "${nuser}" ]] && [[ -z ${autopass} ]]; then
+    if [[ -n "${nuser}" ]]; then
         common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
     fi
 
     if [ -n "${changeall}" ]; then
-        for i in "${!users[@]}"; do
-            common_logger -nl "The password for user ${users[i]} is ${passwords[i]}"
-        done
         common_logger -w "Wazuh indexer passwords changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
+    fi
+
+}
+
+# Records a new password in credentials.env, as the Wazuh packages do. A generated
+# password is always recorded, because it is not shown anywhere else. A password
+# given by the operator only updates a credentials file that already exists.
+function passwords_saveCredential() {
+
+    local user="${1}"
+    local new_password="${2}"
+    local generated="${3}"
+    local key
+    local env_file
+
+    if ! key=$(passwords_getEnvKey "${user}"); then
+        return 0
+    fi
+    if ! env_file=$(wazuh_env_get_file); then
+        save_failed=1
+        return 1
+    fi
+
+    if [ -z "${generated}" ] && [ ! -e "${env_file}" ]; then
+        return 0
+    fi
+
+    if ! wazuh_env_set "${key}" "${new_password}"; then
+        common_logger -e "The new password of user ${user} was applied, but it could not be saved in ${env_file}. Run the tool again for this user with -p to set a password you know."
+        save_failed=1
+        return 1
+    fi
+
+    if [ -n "${generated}" ]; then
+        common_logger "The new password of user ${user} was saved in ${env_file} as ${key}."
+    else
+        common_logger "${key} was updated in ${env_file}."
+    fi
+
+}
+
+function passwords_saveIndexerCredentials() {
+
+    if [ -n "${changeall}" ]; then
+        for i in "${!users[@]}"; do
+            passwords_saveCredential "${users[i]}" "${passwords[i]}" 1
+        done
+    else
+        passwords_saveCredential "${nuser}" "${password}" "${autopass}"
     fi
 
 }
@@ -672,6 +720,27 @@ function passwords_updateInternalUsers() {
     eval "cp /etc/wazuh-indexer/backup/internal_users.yml /etc/wazuh-indexer/opensearch-security/internal_users.yml ${debug}"
     eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
     common_logger -d "The internal users have been updated before changing the passwords."
+
+}
+
+# Writes a value in the Wazuh dashboard keystore. The keystore belongs to the dashboard
+# service user, so it is written as that user, and the value goes through the standard input.
+function passwords_updateDashboardKeystore() {
+
+    if [ "$#" -ne 2 ]; then
+        common_logger -e "passwords_updateDashboardKeystore must be called with 2 arguments."
+        return 1
+    fi
+
+    if [ ! -x "${dashboard_keystore}" ]; then
+        common_logger -e "Cannot find ${dashboard_keystore}. ${1} was not written to the Wazuh dashboard keystore."
+        return 1
+    fi
+
+    if ! printf '%s' "${2}" | (cd / && runuser -u "${dashboard_user}" -- "${dashboard_keystore}" add -f --stdin "${1}") > /dev/null 2>&1; then
+        common_logger -e "Could not write ${1} to the Wazuh dashboard keystore."
+        return 1
+    fi
 
 }
 

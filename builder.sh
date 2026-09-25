@@ -15,6 +15,9 @@ readonly resources_config="${base_path_builder}/config"
 readonly resources_certs="${base_path_builder}/cert_tool"
 readonly resources_passwords="${base_path_builder}/passwords_tool"
 readonly resources_common="${base_path_builder}/common_functions"
+readonly resources_credentials="${base_path_builder}/credentials_lib/wazuh-credentials.sh"
+readonly credentials_begin_marker="# ------------ wazuh-credentials.sh ------------ "
+readonly credentials_end_marker="# ------------ end of wazuh-credentials.sh ------------ "
 readonly resources_download="${base_path_builder}/downloader"
 source_branch="v5.0.0"
 
@@ -110,6 +113,29 @@ function buildInstaller() {
     echo "main \"\$@\"" >> "${output_script_path}"
 }
 
+# Copies the shared credentials library into the tool byte for byte, between two
+# marker lines, and checks that the embedded copy matches the original file.
+function embedCredentialsLibrary() {
+
+    echo "${credentials_begin_marker}" >> "${output_script_path}"
+    cat "${resources_credentials}" >> "${output_script_path}"
+    echo "${credentials_end_marker}" >> "${output_script_path}"
+    echo >> "${output_script_path}"
+
+    original_checksum=$(sha512sum "${resources_credentials}" | awk '{print $1}')
+    embedded_checksum=$(awk -v begin="${credentials_begin_marker}" -v end="${credentials_end_marker}" '
+        $0 == end { inside = 0 }
+        inside { print }
+        $0 == begin { inside = 1 }
+    ' "${output_script_path}" | sha512sum | awk '{print $1}')
+
+    if [ "${original_checksum}" != "${embedded_checksum}" ]; then
+        echo "Error: The embedded wazuh-credentials.sh does not match ${resources_credentials}."
+        exit 1
+    fi
+
+}
+
 function buildPasswordsTool() {
     output_script_path="${base_path_builder}/wazuh-passwords-tool.sh"
 
@@ -131,6 +157,9 @@ function buildPasswordsTool() {
     grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
     grep -Ev '^#|^\s*$' "${resources_passwords}/passwordsVariables.sh" >> "${output_script_path}"
     echo >> "${output_script_path}"
+
+    ## Shared credentials library
+    embedCredentialsLibrary
 
     ## Functions for all passwords tool function modules
     passwords_modules=($(find "${resources_passwords}" -type f))
@@ -176,6 +205,9 @@ function buildCertsTool() {
     grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
     grep -Ev '^#|^\s*$' "${resources_certs}/certVariables.sh" >> "${output_script_path}"
     echo >> "${output_script_path}"
+
+    ## Shared credentials library
+    embedCredentialsLibrary
 
     ## Functions for all certs tool function modules
     certs_modules=($(find "${resources_certs}" -type f))
