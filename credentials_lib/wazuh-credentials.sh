@@ -45,11 +45,15 @@
 #       Removes NAME from the Wazuh-managed block only.
 #
 #   wazuh_password_generate
-#       Prints a 32-character password generated from /dev/urandom.
+#       Prints a 32-character password generated from /dev/urandom, drawn from
+#       the password character set below, with at least one character of each
+#       of its four classes.
 #
 #   wazuh_password_validate VALUE
-#       Enforces 12-64 characters containing at least one ASCII letter and one
-#       digit. The rejected value is never included in diagnostics.
+#       Enforces 12-64 characters drawn only from the password character set
+#       A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one uppercase letter,
+#       one lowercase letter, one digit and one symbol. The rejected value is
+#       never included in diagnostics.
 #
 # The library deliberately uses flock(1), GNU stat(1), OpenSSL, awk, and the
 # usual Linux userland (including ln -T) on Debian- and RPM-based systems.
@@ -798,6 +802,7 @@ _wazuh_replace_char() (
 )
 
 wazuh_password_generate() (
+    # The password character set; wazuh_password_validate accepts exactly this.
     _wazuh_alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,_+:@%^=~-'
 
     # Finite entropy reads avoid SIGPIPE under a caller's pipefail. Rejection
@@ -828,6 +833,15 @@ wazuh_password_generate() (
             break
         fi
     done
+    while :; do
+        _wazuh_index=$(_wazuh_random_below 32) || return 1
+        _wazuh_pos_symbol=$((_wazuh_index + 1))
+        if [ "$_wazuh_pos_symbol" -ne "$_wazuh_pos_lower" ] &&
+           [ "$_wazuh_pos_symbol" -ne "$_wazuh_pos_upper" ] &&
+           [ "$_wazuh_pos_symbol" -ne "$_wazuh_pos_digit" ]; then
+            break
+        fi
+    done
 
     _wazuh_char=$(_wazuh_random_char 'abcdefghijklmnopqrstuvwxyz') || return 1
     _wazuh_password=$(_wazuh_replace_char "$_wazuh_password" "$_wazuh_pos_lower" "$_wazuh_char") || return 1
@@ -835,6 +849,8 @@ wazuh_password_generate() (
     _wazuh_password=$(_wazuh_replace_char "$_wazuh_password" "$_wazuh_pos_upper" "$_wazuh_char") || return 1
     _wazuh_char=$(_wazuh_random_char '0123456789') || return 1
     _wazuh_password=$(_wazuh_replace_char "$_wazuh_password" "$_wazuh_pos_digit" "$_wazuh_char") || return 1
+    _wazuh_char=$(_wazuh_random_char '.,_+:@%^=~-') || return 1
+    _wazuh_password=$(_wazuh_replace_char "$_wazuh_password" "$_wazuh_pos_symbol" "$_wazuh_char") || return 1
 
     wazuh_password_validate "$_wazuh_password" >/dev/null || return 1
     printf '%s\n' "$_wazuh_password"
@@ -846,16 +862,37 @@ wazuh_password_validate() (
         return 1
     fi
     _wazuh_password=$1
-    _wazuh_length=${#_wazuh_password}
 
+    # Only the generator's character set, spelled out rather than as ranges so
+    # the match does not depend on the locale. It is checked first because it
+    # makes every accepted value ASCII: the length below then means the same
+    # under dash (bytes) as under bash and the consumers (characters). It also
+    # excludes whitespace, control characters (newline and carriage return
+    # included), quotes and the characters that need escaping in the file, in
+    # a shell or in an HTTP Basic credential.
+    case $_wazuh_password in
+        *[!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,_+:@%^=~-]*)
+            _wazuh_error 'password must only contain characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -'
+            return 1
+            ;;
+    esac
+
+    _wazuh_length=${#_wazuh_password}
     if [ "$_wazuh_length" -lt 12 ] || [ "$_wazuh_length" -gt 64 ]; then
         _wazuh_error 'password must contain between 12 and 64 characters'
         return 1
     fi
     case $_wazuh_password in
-        *[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]*) ;;
+        *[abcdefghijklmnopqrstuvwxyz]*) ;;
         *)
-            _wazuh_error 'password must contain at least one ASCII letter'
+            _wazuh_error 'password must contain at least one lowercase letter'
+            return 1
+            ;;
+    esac
+    case $_wazuh_password in
+        *[ABCDEFGHIJKLMNOPQRSTUVWXYZ]*) ;;
+        *)
+            _wazuh_error 'password must contain at least one uppercase letter'
             return 1
             ;;
     esac
@@ -867,16 +904,9 @@ wazuh_password_validate() (
             ;;
     esac
     case $_wazuh_password in
-        *"
-"*)
-            _wazuh_error 'password must not contain a newline'
-            return 1
-            ;;
-    esac
-    _wazuh_cr=$(printf '\r')
-    case $_wazuh_password in
-        *"$_wazuh_cr"*)
-            _wazuh_error 'password must not contain a carriage return'
+        *[.,_+:@%^=~-]*) ;;
+        *)
+            _wazuh_error 'password must contain at least one symbol from . , _ + : @ % ^ = ~ -'
             return 1
             ;;
     esac
