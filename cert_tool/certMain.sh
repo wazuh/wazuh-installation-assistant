@@ -16,8 +16,8 @@ function getHelp() {
     echo -e "        wazuh-certs-tool.sh [OPTIONS]"
     echo -e ""
     echo -e "DESCRIPTION"
-    echo -e "        -a,  --admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates the admin certificates, add root-ca.pem and root-ca.key."
+    echo -e "        -a,  --admin-certificates"
+    echo -e "                Creates the admin certificates."
     echo -e ""
     echo -e "        -as, --agent-san <ip|dns>"
     echo -e "                Adds an extra address to the subject alternative name of every"
@@ -27,15 +27,16 @@ function getHelp() {
     echo -e "                owns, such as a load balancer shared by every node of a cluster."
     echo -e "                Must be used along with one of these options: -A, -wm"
     echo -e ""
-    echo -e "        -A, --all </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates certificates specified in config.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created."
+    echo -e "        -A, --all"
+    echo -e "                Creates certificates specified in config.yml and admin certificates."
+    echo -e "                If there is no root CA in the CA directory, a new one is created there."
     echo -e ""
     echo -e "        -ca, --root-ca-certificates"
-    echo -e "                Creates the root-ca certificates."
+    echo -e "                Creates the root CA in the CA directory, if it does not exist yet."
     echo -e ""
-    echo -e "        -lb, --load-balancer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates the certificates of the load_balancer entries of config.yml,"
-    echo -e "                add root-ca.pem and root-ca.key. Only needed by a proxy that terminates"
+    echo -e "        -lb, --load-balancer-certificates"
+    echo -e "                Creates the certificates of the load_balancer entries of config.yml."
+    echo -e "                Only needed by a proxy that terminates"
     echo -e "                TLS: it is then the certificate agents validate, signed by the same"
     echo -e "                root-ca they pin. A layer 4 passthrough load balancer terminates"
     echo -e "                nothing and needs -as|--agent-san instead."
@@ -43,20 +44,25 @@ function getHelp() {
     echo -e "        -v,  --verbose"
     echo -e "                Enables verbose mode."
     echo -e ""
-    echo -e "        -wd,  --wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates the Wazuh dashboard certificates, add root-ca.pem and root-ca.key."
+    echo -e "        -wd,  --wazuh-dashboard-certificates"
+    echo -e "                Creates the Wazuh dashboard certificates."
     echo -e ""
-    echo -e "        -wi,  --wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates the Wazuh indexer certificates, add root-ca.pem and root-ca.key."
+    echo -e "        -wi,  --wazuh-indexer-certificates"
+    echo -e "                Creates the Wazuh indexer certificates."
     echo -e ""
-    echo -e "        -wm,  --wazuh-manager-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates the Wazuh manager certificates, add root-ca.pem and root-ca.key."
+    echo -e "        -wm,  --wazuh-manager-certificates"
+    echo -e "                Creates the Wazuh manager certificates."
     echo -e "                Each manager node also gets <name>-remoted.pem and <name>-remoted-key.pem,"
     echo -e "                the certificate of the agent listener (remoted and authd)."
     echo -e ""
     echo -e "        -tmp,  --cert_tmp_path </path/to/tmp_dir>"
     echo -e "                Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one."
     echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb"
+    echo -e ""
+    echo -e "ROOT CA"
+    echo -e "        The root CA is read from $(wazuh_ca_get_dir 2>/dev/null), or from the directory set in WAZUH_CA_DIR."
+    echo -e "        Its private key, root-ca.key, stays there and is never copied to the wazuh-certificates directory."
+    echo -e "        The tool must be run as root."
     echo -e ""
 
     exit 1
@@ -69,6 +75,8 @@ function main() {
     # limiting access to the current user.
     umask 0077
 
+    # The shared credentials library only creates and reads the root CA as root.
+    common_checkRoot
     cert_checkOpenSSL
 
     declare -a agent_san=()
@@ -78,40 +86,14 @@ function main() {
         do
             case "${1}" in
             "-a"|"--admin-certificates")
-                if [[ -z "${2}" || -z "${3}" ]]; then
-                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -a|--admin-certificates"
-                    getHelp
-                    exit 1
-                else
-                    cadmin=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                fi
+                cert_rejectCAPaths "-a|--admin-certificates" "${2}"
+                cadmin=1
+                shift 1
                 ;;
             "-A"|"--all")
-                # Any option, not just the two that used to be listed here: -A takes an
-                # optional root CA pair, and a path never starts with a dash, so whatever
-                # does is the next option rather than a file this one was given.
-                if  [[ -n "${2}" && "${2}" != -* ]]; then
-                    # Validate that the user has entered the 2 files
-                    if [[ -z ${3} ]]; then
-                        if [[ ${2} == *".key" ]]; then
-                            common_logger -e "You have not entered a root-ca.pem"
-                            exit 1
-                        else
-                            common_logger -e "You have not entered a root-ca.key"
-                            exit 1
-                        fi
-                    fi
-                    all=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                else
-                    all=1
-                    shift 1
-                fi
+                cert_rejectCAPaths "-A|--all" "${2}"
+                all=1
+                shift 1
                 ;;
             "-as"|"--agent-san")
                 if [[ -z "${2}" || "${2}" == -* ]]; then
@@ -128,16 +110,9 @@ function main() {
                 shift 1
                 ;;
             "-lb"|"--load-balancer-certificates")
-                if [[ -z "${2}" || -z "${3}" ]]; then
-                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -lb|--load-balancer-certificates"
-                    getHelp
-                    exit 1
-                else
-                    clb=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                fi
+                cert_rejectCAPaths "-lb|--load-balancer-certificates" "${2}"
+                clb=1
+                shift 1
                 ;;
             "-h"|"--help")
                 getHelp
@@ -147,40 +122,19 @@ function main() {
                 shift 1
                 ;;
             "-wd"|"--wazuh-dashboard-certificates")
-                if [[ -z "${2}" || -z "${3}" ]]; then
-                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -wd|--wazuh-dashboard-certificates"
-                    getHelp
-                    exit 1
-                else
-                    cdashboard=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                fi
+                cert_rejectCAPaths "-wd|--wazuh-dashboard-certificates" "${2}"
+                cdashboard=1
+                shift 1
                 ;;
             "-wi"|"--wazuh-indexer-certificates")
-                if [[ -z "${2}" || -z "${3}" ]]; then
-                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -wi|--wazuh-indexer-certificates"
-                    getHelp
-                    exit 1
-                else
-                    cindexer=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                fi
+                cert_rejectCAPaths "-wi|--wazuh-indexer-certificates" "${2}"
+                cindexer=1
+                shift 1
                 ;;
             "-wm"|"--wazuh-manager-certificates")
-                if [[ -z "${2}" || -z "${3}" ]]; then
-                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -wm|--wazuh-manager-certificates"
-                    getHelp
-                    exit 1
-                else
-                    cmanager=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                fi
+                cert_rejectCAPaths "-wm|--wazuh-manager-certificates" "${2}"
+                cmanager=1
+                shift 1
                 ;;
             "-tmp"|"--cert_tmp_path")
                 if [[ -n "${3}" || ( "${cadmin}" == 1 || "${all}" == 1 || "${ca}" == 1 || "${cdashboard}" == 1 || "${cindexer}" == 1 || "${cmanager}" == 1 || "${clb}" == 1 ) ]]; then
@@ -248,7 +202,7 @@ function main() {
         fi
 
         if [[ -n "${all}" ]]; then
-            cert_checkRootCA
+            cert_checkRootCA "create"
             cert_generateAdmincertificate
             common_logger "Admin certificates created."
             if cert_generateIndexercertificates; then
@@ -278,8 +232,10 @@ function main() {
 
         if [[ -n "${ca}" ]]; then
             cert_generateRootCAcertificate
-            common_logger "Authority certificates created."
+            cp "${cert_ca_dir}/root-ca.pem" "${cert_tmp_path}/root-ca.pem"
+            common_logger "The root CA is in ${cert_ca_dir}. Its private key, root-ca.key, stays there."
             cert_cleanFiles
+            cert_setpermisions
             if [ -n "${debugEnabled}" ]; then
                 mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
             else

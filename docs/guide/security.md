@@ -35,17 +35,15 @@ The recommended procedure is to change all default passwords at once with the `-
 bash wazuh-passwords-tool-5.0.0.sh --change-all
 ```
 
-To change a specific user's password:
+To change a specific user's password, reading the new one from the standard input so it never shows up in the process list:
 
 ```bash
-bash wazuh-passwords-tool-5.0.0.sh -u <USER> -p <NEW_PASSWORD>
+bash wazuh-passwords-tool-5.0.0.sh -u <USER> -p
 ```
 
-To change the Wazuh API password:
+`<USER>` is a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh API user (`wazuh`, `wazuh-wui`). The Wazuh API passwords are changed with `rbac_control`, so no admin credentials are needed. Without `-p`, a random password is generated.
 
-```bash
-bash wazuh-passwords-tool-5.0.0.sh -A -u <API_USER> -p <NEW_PASSWORD> -au <ADMIN_USER> -ap <ADMIN_PASSWORD>
-```
+The tool never prints a password. Generated passwords are saved in `/etc/wazuh/credentials.env` (mode `0600`), the same file the Wazuh packages use.
 
 Passwords for internal users are stored hashed in `/etc/wazuh-indexer/opensearch-security/internal_users.yml`.
 

@@ -10,40 +10,38 @@ function getHelp() {
 
     echo -e ""
     echo -e "NAME"
-    echo -e "        $(basename "${0}") - Manage passwords for Wazuh indexer users."
+    echo -e "        $(basename "${0}") - Manage passwords for Wazuh indexer and Wazuh API users."
     echo -e ""
     echo -e "SYNOPSIS"
     echo -e "        $(basename "${0}") [OPTIONS]"
     echo -e ""
     echo -e "DESCRIPTION"
     echo -e "        -a,  --change-all"
-    echo -e "                Changes all the Wazuh indexer and Wazuh API user passwords and prints them on screen."
-    echo -e "                To change API passwords -au|--admin-user and -ap|--admin-password are required."
-    echo -e ""
-    echo -e "        -A,  --api"
-    echo -e "                Change the Wazuh API password."
-    echo -e "                Requires -u|--user, and -p|--password, -au|--admin-user and -ap|--admin-password."
-    echo -e ""
-    echo -e "        -au,  --admin-user <adminUser>"
-    echo -e "                Admin user for Wazuh API, Required to change Wazuh API passwords."
-    echo -e "                Requires -A|--api."
-    echo -e ""
-    echo -e "        -ap,  --admin-password <adminPassword>"
-    echo -e "                Password for Wazuh API admin user, Required to change Wazuh API passwords."
-    echo -e "                Requires -A|--api."
+    echo -e "                Changes the passwords of all the Wazuh indexer and Wazuh API users installed on this host."
+    echo -e "                The new passwords are generated and saved in the credentials file."
     echo -e ""
     echo -e "        -u,  --user <user>"
     echo -e "                Indicates the name of the user whose password will be changed."
-    echo -e "                If no password specified it will generate a random one."
+    echo -e "                Wazuh indexer users: ${indexer_accounts[*]}."
+    echo -e "                Wazuh API users: ${api_accounts[*]}."
+    echo -e "                If -p|--password is not used, a random password is generated and saved in the credentials file."
     echo -e ""
-    echo -e "        -p,  --password <password>"
-    echo -e "                Indicates the new password, must be used with option -u."
+    echo -e "        -p,  --password"
+    echo -e "                Reads the new password from the standard input, must be used with option -u."
+    echo -e "                The password must have between 12 and 64 characters, at least one letter and one digit,"
+    echo -e "                and only these characters: A-Z a-z 0-9 . , _ + : @ % ^ = ~ -"
     echo -e ""
     echo -e "        -v,  --verbose"
     echo -e "                Shows the complete script execution output."
     echo -e ""
     echo -e "        -h,  --help"
     echo -e "                Shows help."
+    echo -e ""
+    echo -e "FILES"
+    echo -e "        $(wazuh_env_get_file 2>/dev/null)"
+    echo -e "                Credentials file. Generated passwords are always saved here. A password given with"
+    echo -e "                -p|--password only updates it when the file already exists. The directory can be"
+    echo -e "                changed with WAZUH_BASE_DIR."
     echo -e ""
     exit 1
 
@@ -67,28 +65,6 @@ function main() {
                 changeall=1
                 shift 1
                 ;;
-            "-A"|"--api")
-                api=1
-                shift 1
-                ;;
-            "-au"|"--admin-user")
-                if [ -z "${2}" ]; then
-                    echo "Argument au|--admin-user needs a second argument"
-                    getHelp
-                    exit 1
-                fi
-                adminUser=${2}
-                shift 2
-                ;;
-            "-ap"|"--admin-password")
-                if [ -z "${2}" ]; then
-                    echo "Argument -ap|--admin-password needs a second argument"
-                    getHelp
-                    exit 1
-                fi
-                adminPassword=${2}
-                shift 2
-                ;;
             "-u"|"--user")
                 if [ -z "${2}" ]; then
                     echo "Argument --user needs a second argument"
@@ -99,13 +75,8 @@ function main() {
                 shift 2
                 ;;
             "-p"|"--password")
-                if [ -z "${2}" ]; then
-                    echo "Argument --password needs a second argument"
-                    getHelp
-                    exit 1
-                fi
-                password=${2}
-                shift 2
+                readpassword=1
+                shift 1
                 ;;
             "-h"|"--help")
                 getHelp
@@ -133,31 +104,19 @@ function main() {
             getHelp
         fi
 
-        if [ -n "${password}" ] && [ -n "${changeall}" ]; then
+        if [ -n "${readpassword}" ] && [ -z "${nuser}" ]; then
             getHelp
         fi
 
-        if [ -n "${api}" ] && [ -n "${changeall}" ]; then
-            getHelp
+        if [ -n "${readpassword}" ]; then
+            passwords_readPassword
+            passwords_checkPassword "${password}"
         fi
 
-        if [ -n "${adminUser}" ] && [ -z "${adminPassword}" ]; then
-            getHelp
-        fi
-
-        if [ -z "${adminUser}" ] && [ -n "${adminPassword}" ]; then
-            getHelp
-        fi
-
-        if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ] && [ -z "${api}" ] && [ -z "${changeall}" ]; then
-            getHelp
-        fi
+        passwords_checkCredentialsFile
 
         if [ -n "${nuser}" ]; then
-            if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
-                passwords_getApiToken
-                passwords_getApiUsers
-            elif [ -n "${indexer_installed}" ]; then
+            if passwords_isInList "${nuser}" "${indexer_accounts[@]}" && [ -n "${indexer_installed}" ]; then
                 passwords_readUsers
             fi
             passwords_checkUser
@@ -167,26 +126,19 @@ function main() {
             if [ -n "${indexer_installed}" ]; then
                 passwords_readUsers
             fi
-            if [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
-                passwords_getApiToken
-                passwords_getApiUsers
-            else
-                common_logger "Wazuh API admin credentials not provided, Wazuh API passwords not changed."
+            if [ -n "${wazuh_installed}" ]; then
+                api_users=("${api_accounts[@]}")
+            fi
+            if [ "${#users[@]}" -eq 0 ] && [ "${#api_users[@]}" -eq 0 ]; then
+                common_logger -e "No Wazuh indexer or Wazuh API user to change on this host."
+                exit 1
             fi
             passwords_generatePasswords
         fi
 
-        if [ -n "${nuser}" ] && [ -z "${password}" ]; then
+        if [ -n "${nuser}" ] && [ -z "${readpassword}" ]; then
             autopass=1
             passwords_generatePassword
-        fi
-
-        if [ -n "${nuser}" ] && [ -n "${password}" ]; then
-            if [ -n "${api}" ]; then
-                passwords_checkPassword "${password}" 12
-            else
-                passwords_checkPassword "${password}"
-            fi
         fi
 
         if [ -z "${api}" ] && [ -n "${indexer_installed}" ]; then
@@ -194,30 +146,21 @@ function main() {
             passwords_generateHash
             passwords_changePassword
             passwords_runSecurityAdmin
+            passwords_saveIndexerCredentials
         fi
 
-        if { [ -n "${api}" ] || [ -n "${changeall}" ]; } && [ -n "${adminUser}" ] && [ -n "${adminPassword}" ]; then
-            if passwords_isServiceActive "wazuh-manager"; then
-                passwords_changePasswordApi
-            else
-                if [ -n "${changeall}" ]; then
-                    common_logger -e "wazuh-manager service is not running. Skipping Wazuh API password change."
-                else
-                    common_logger -e "wazuh-manager service is not running. Skipping API password change for user ${nuser}."
-                fi
+        if [ -n "${api}" ] || [ "${#api_users[@]}" -gt 0 ]; then
+            if ! passwords_changePasswordApi; then
                 passwords_restartPendingServices
                 exit 1
-            fi
-
-            if [ -n "${wazuh_installed}" ]; then
-                restart_manager=1
-            fi
-            if [ -n "${dashboard_installed}" ]; then
-                restart_dashboard=1
             fi
         fi
 
         passwords_restartPendingServices
+
+        if [ -n "${save_failed}" ]; then
+            exit 1
+        fi
 
     else
         getHelp
