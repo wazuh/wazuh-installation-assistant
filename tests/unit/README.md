@@ -11,6 +11,7 @@ tests/unit/
 ├── test_common.py               # common.sh — system detection, package manager checks
 ├── test_cert_functions.py       # certFunctions.sh — cert generation, OpenSSL checks, config parsing
 ├── test_passwords_functions.py  # passwordsFunctions.sh — password validation, generation, API token
+├── test_credentials_lib.py      # credentials_lib/wazuh-credentials.sh — password character set, length, generation
 ├── test_install_common.py       # installCommon.sh — config retrieval, prerequisites, service start
 ├── test_manager.py              # manager.sh — install (apt/yum), cluster start
 ├── test_indexer.py              # indexer.sh — install (apt/yum), configure
