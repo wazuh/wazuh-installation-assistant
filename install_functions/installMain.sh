@@ -309,13 +309,14 @@ function main() {
 
 # -------------- Configuration creation case  -----------------------
 
-    # Creation certificate case: Only AIO and -g option can create certificates.
-    if [ -z "${offline_install}" ] && { [ -n "${configurations}" ] || [ -n "${AIO}" ]; }; then
+    # Creation certificate case: only -g creates certificates. On an all-in-one install
+    # the packages create the CA, their certificates and their passwords.
+    if [ -z "${offline_install}" ] && [ -n "${configurations}" ]; then
         common_logger "--- Configuration files ---"
         installCommon_createInstallFiles
     fi
 
-    if [ -z "${configurations}" ] && [ -z "${download}" ]; then
+    if [ -z "${configurations}" ] && [ -z "${AIO}" ] && [ -z "${download}" ]; then
         installCommon_extractConfig
         config_file="/tmp/wazuh-install-files/config.yml"
         cert_readConfig
@@ -389,13 +390,12 @@ function main() {
         indexer_startCluster
         common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
+        manager_setRemotedSans
         manager_install
-        manager_configure
         installCommon_startService "wazuh-manager"
         common_logger "--- Wazuh dashboard ---"
         installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install
-        dashboard_configure
         installCommon_startService "wazuh-dashboard"
         dashboard_displaySummary
         installCommon_removeDownloadPackagesDirectory

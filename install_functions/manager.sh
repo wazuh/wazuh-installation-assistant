@@ -60,15 +60,34 @@ function manager_configure(){
     eval "sed -i s/manager.pem/indexer-connector.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
     eval "sed -i s/manager-key.pem/indexer-connector-key.pem/ /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
     manager_copyCertificates "${debug}"
-    common_logger -d "Setting provisional Wazuh indexer password."
-    for keystore_key in username password; do
-        "${manager_keystore}" -f indexer -k "${keystore_key}" -v wazuh-manager
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
-            common_logger -e "Could not write the Wazuh indexer ${keystore_key} to the Wazuh manager keystore."
-            installCommon_rollBack
-            exit 1;
+}
+
+# The manager package issues remoted.pem on an all-in-one install, with the addresses it finds
+# on the host. Addresses given with -as|--agent-san (NAT, a published name, a load balancer)
+# reach it through WAZUH_MANAGER_REMOTED_CERT_SANS, which replaces the discovered list, so the
+# host addresses go in too.
+function manager_setRemotedSans() {
+
+    local san
+    local -a sans=()
+
+    if [ "${#agent_san[@]}" -eq 0 ]; then
+        return 0
+    fi
+
+    while IFS= read -r san; do
+        [ -n "${san}" ] || continue
+        if cert_isIP "${san}"; then
+            sans+=("IP:${san}")
+        else
+            sans+=("DNS:${san}")
         fi
-    done
+    done < <(printf '%s\n' "${agent_san[@]}"; cert_hostAddresses)
+
+    WAZUH_MANAGER_REMOTED_CERT_SANS=$(printf '%s\n' "${sans[@]}" | awk '!seen[$0]++' | paste -sd, -)
+    export WAZUH_MANAGER_REMOTED_CERT_SANS
+    common_logger -d "Agent listener addresses: ${WAZUH_MANAGER_REMOTED_CERT_SANS}"
+
 }
 
 function manager_install() {

@@ -274,3 +274,30 @@ class TestManagerCopyRemotedCertificates:
             },
         )
         assert_failure(result)
+
+
+class TestManagerSetRemotedSans:
+    """Tests for manager_setRemotedSans.
+
+    On an all-in-one install the manager package issues remoted.pem. Addresses given
+    with -as|--agent-san reach it through WAZUH_MANAGER_REMOTED_CERT_SANS, together
+    with the host addresses, because the variable replaces the discovered list.
+    """
+
+    def _run(self, agent_san):
+        return run_bash_function(
+            [*BASE_SOURCES, "cert_tool/certFunctions.sh"],
+            'manager_setRemotedSans; echo "SANS=${WAZUH_MANAGER_REMOTED_CERT_SANS-unset}"',
+            {**IGNORE_LOGGER, "cert_hostAddresses": "printf '%s\\n' 10.0.0.5 host.example.com"},
+            {"agent_san": f"({' '.join(agent_san)})"},
+        )
+
+    def test_success_unset_without_agent_san(self):
+        result = self._run([])
+        assert_success(result)
+        assert "SANS=unset" in result.stdout
+
+    def test_success_types_and_dedups_addresses(self):
+        result = self._run(["203.0.113.7", "wazuh.example.com", "10.0.0.5"])
+        assert_success(result)
+        assert "SANS=IP:203.0.113.7,DNS:wazuh.example.com,IP:10.0.0.5,DNS:host.example.com" in result.stdout

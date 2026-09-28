@@ -25,22 +25,22 @@ function indexer_configure() {
     eval "sed -i "s/-Xms1g/-Xms${ram}m/" /etc/wazuh-indexer/jvm.options ${debug}"
     eval "sed -i "s/-Xmx1g/-Xmx${ram}m/" /etc/wazuh-indexer/jvm.options ${debug}"
 
+    # On an all-in-one install the package already configured a single node with its own
+    # certificates and nodes_dn. Only keep the indexer off the network, as before.
     if [ "${AIO}" ]; then
-        indexer_ip="${indexer_node_ips[0]}"
-        indxname="${indexer_node_names[0]}"
-        # This variables are used to not overwrite the indexer_node* arrays
-        indexer_configuration_ips=("${indexer_node_ips[0]}") # I'll take only the first ip
-        indexer_configuration_names=("${indexer_node_names[0]}") # I'll take only the first name
-    else
-        for i in "${!indexer_node_names[@]}"; do
-            if [[ "${indexer_node_names[i]}" == "${indxname}" ]]; then
-                indexer_ip=${indexer_node_ips[i]};
-                break
-            fi
-        done
-        indexer_configuration_ips=("${indexer_node_ips[@]}") # I'll take all the ips
-        indexer_configuration_names=("${indexer_node_names[@]}") # I'll take all the names
+        eval "sed -i 's|network.host:.*|network.host: \"127.0.0.1\"|' /etc/wazuh-indexer/opensearch.yml ${debug}"
+        common_logger "Wazuh indexer post-install configuration finished."
+        return 0
     fi
+
+    for i in "${!indexer_node_names[@]}"; do
+        if [[ "${indexer_node_names[i]}" == "${indxname}" ]]; then
+            indexer_ip=${indexer_node_ips[i]};
+            break
+        fi
+    done
+    indexer_configuration_ips=("${indexer_node_ips[@]}") # I'll take all the ips
+    indexer_configuration_names=("${indexer_node_names[@]}") # I'll take all the names
 
     eval "sed -i 's|node.name:.*|node.name: ${indxname}|' /etc/wazuh-indexer/opensearch.yml ${debug}"
     eval "sed -i 's|network.host:.*|network.host: ${indexer_ip}|' /etc/wazuh-indexer/opensearch.yml ${debug}"
@@ -163,8 +163,9 @@ function indexer_startCluster() {
 
     common_logger -d "Starting Wazuh indexer cluster."
 
-    wazuh_indexer_ip=$(grep "network.host" /etc/wazuh-indexer/opensearch.yml | sed 's/network.host:\s//')
-    eval "JAVA_HOME=/usr/share/wazuh-indexer/jdk/ OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -cd /etc/wazuh-indexer/opensearch-security -icl -p 9200 -nhnv -cacert ${indexer_cert_path}/root-ca.pem -cert ${indexer_cert_path}/admin.pem -key ${indexer_cert_path}/admin-key.pem -h ${wazuh_indexer_ip} ${debug}"
+    # The package leaves loading the security configuration to the operator, once, from one
+    # indexer node. Its wrapper finds the host, port and admin certificate by itself.
+    eval "bash /usr/share/wazuh-indexer/bin/indexer-security-init.sh ${debug}"
     if [  "${PIPESTATUS[0]}" != 0  ]; then
         common_logger -e "The Wazuh indexer cluster security configuration could not be initialized."
         installCommon_rollBack

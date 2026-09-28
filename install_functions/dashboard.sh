@@ -81,7 +81,7 @@ function dashboard_copyCertificates() {
 function dashboard_displaySummary() {
 
     common_logger -nl "--- Summary ---"
-    common_logger -nl "You can access the web interface https://<wazuh_dashboard_ip>:${http_port}\n    User: admin\n    Password: admin"
+    common_logger -nl "You can access the web interface https://<wazuh_dashboard_ip>:${http_port}\n    User: admin\n    Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env\n    Store the passwords in /etc/wazuh/credentials.env somewhere safe, then remove the file."
 
 }
 
