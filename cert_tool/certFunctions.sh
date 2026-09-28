@@ -180,6 +180,17 @@ function cert_checkRootCA() {
             exit 1
         fi
     else
+        # No root CA path was given. Warn before silently minting a new one:
+        # every manager's listener certificate must chain to the same CA
+        # (docs/ref/getting-started/installation.md, cluster checklist in
+        # docs/ref/modules/cluster/lb.md), and a pinned enrollment token only
+        # trusts the CA that signed the master it was minted against. A new
+        # CA here means any node issued from it will not match an existing
+        # deployment's certificates. See #1049.
+        if [[ -e "${base_path}/wazuh-certificates/root-ca.pem" ]]; then
+            common_logger -e "A root CA already exists at ${base_path}/wazuh-certificates/root-ca.pem from a previous run. Generating a new one now would issue certificates that do not chain to it, breaking enrollment for any node in that existing deployment. If you are adding a node to an existing cluster, pass the existing CA explicitly: -A ${base_path}/wazuh-certificates/root-ca.pem ${base_path}/wazuh-certificates/root-ca.key"
+            exit 1
+        fi
         cert_generateRootCAcertificate
     fi
 

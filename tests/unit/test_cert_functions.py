@@ -120,6 +120,72 @@ class TestCertGenerateRootCA:
         assert_failure(result)
 
 
+class TestCertCheckRootCA:
+    def test_success_uses_provided_root_ca(self, tmp_path):
+        rootca = tmp_path / "root-ca.pem"
+        rootcakey = tmp_path / "root-ca.key"
+        rootca.write_text("fake cert")
+        rootcakey.write_text("fake key")
+        cert_tmp_path = tmp_path / "tmp"
+        cert_tmp_path.mkdir()
+        result = run_bash_function(
+            BASE_SOURCES,
+            "cert_checkRootCA",
+            IGNORE_LOGGER,
+            {
+                "rootca": str(rootca),
+                "rootcakey": str(rootcakey),
+                "cert_tmp_path": str(cert_tmp_path),
+                "base_path": str(tmp_path / "nonexistent"),
+            },
+        )
+        assert_success(result)
+        assert (cert_tmp_path / "root-ca.pem").read_text() == "fake cert"
+        assert (cert_tmp_path / "root-ca.key").read_text() == "fake key"
+
+    def test_success_generates_new_ca_when_no_prior_deployment(self, tmp_path):
+        cert_tmp_path = tmp_path / "tmp"
+        cert_tmp_path.mkdir()
+        mocks = {**IGNORE_LOGGER, "cert_generateRootCAcertificate": "true"}
+        result = run_bash_function(
+            BASE_SOURCES,
+            "cert_checkRootCA",
+            mocks,
+            {
+                "rootca": "",
+                "rootcakey": "",
+                "cert_tmp_path": str(cert_tmp_path),
+                "base_path": str(tmp_path / "nonexistent"),
+            },
+        )
+        assert_success(result)
+
+    def test_fail_refuses_new_ca_when_prior_deployment_exists(self, tmp_path):
+        # Reproduces #1049: a root-ca.pem from a previous run is present at
+        # base_path/wazuh-certificates, but no CA path was given this time
+        # (e.g. -A with no arguments to add a worker later). The function
+        # must refuse instead of silently minting a second, different CA.
+        certs_dir = tmp_path / "wazuh-certificates"
+        certs_dir.mkdir()
+        (certs_dir / "root-ca.pem").write_text("prior deployment's CA")
+        cert_tmp_path = tmp_path / "tmp"
+        cert_tmp_path.mkdir()
+        mocks = {**IGNORE_LOGGER, "cert_generateRootCAcertificate": "echo SHOULD_NOT_RUN; exit 1"}
+        result = run_bash_function(
+            BASE_SOURCES,
+            "cert_checkRootCA",
+            mocks,
+            {
+                "rootca": "",
+                "rootcakey": "",
+                "cert_tmp_path": str(cert_tmp_path),
+                "base_path": str(tmp_path),
+            },
+        )
+        assert_failure(result)
+        assert "SHOULD_NOT_RUN" not in result.stdout
+
+
 class TestCertGenerateAdminCertificate:
     def test_success_generates_admin_cert(self, tmp_path):
         mocks = {**IGNORE_LOGGER, "openssl": "true"}
