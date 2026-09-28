@@ -26,6 +26,7 @@ readonly download_packages_directory="wazuh-install-packages"
 readonly dashboard_cert_path="/etc/wazuh-dashboard/certs"
 readonly manager_cert_path="/var/wazuh-manager/etc/certs"
 readonly indexer_cert_path="/etc/wazuh-indexer/certs"
+readonly credential_keys=( WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD )
 
 readonly logfile="/var/log/wazuh-install.log"
 debug=">> ${logfile} 2>&1"

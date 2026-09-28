@@ -60,15 +60,14 @@ function indexer_configure() {
     done
     eval "sed -i 's|#discovery.seed_hosts:.*|${indexer_seed_hosts}|' /etc/wazuh-indexer/opensearch.yml ${debug}"
 
-    # CN configuration
-    eval "sed -i '/.*- \"CN=node-.*/d' /etc/wazuh-indexer/opensearch.yml ${debug}"
+    # nodes_dn configuration. The package only lists the DN of this node; the cluster needs
+    # every node, in the subject format of the certificates (RFC 2253, as the package writes it).
+    eval "sed -i '/^plugins.security.nodes_dn:/,/^[^-]/{/^- /d;}' /etc/wazuh-indexer/opensearch.yml ${debug}"
     indexer_cn_nodes="plugins.security.nodes_dn:\n"
     for node_name in "${indexer_configuration_names[@]}"; do
-        indexer_cn_nodes+="- \"CN=${node_name},OU=Wazuh,O=Wazuh,L=California,C=US\"\n"
+        indexer_cn_nodes+="- \"C=US,L=California,O=Wazuh,OU=Wazuh,CN=${node_name}\"\n"
     done
     eval "sed -i 's|plugins.security.nodes_dn:.*|${indexer_cn_nodes}|' /etc/wazuh-indexer/opensearch.yml ${debug}"
-
-    indexer_copyCertificates
 
     jv=$(java -version 2>&1 | grep -o -m1 '1.8.0' )
     if [ "$jv" == "1.8.0" ]; then
@@ -84,38 +83,17 @@ function indexer_configure() {
     common_logger "Wazuh indexer post-install configuration finished."
 }
 
+# Places the pair of this node and the admin pair from the tar before the package is
+# installed, with the names the package expects. The package uses them instead of issuing
+# its own, gives them to wazuh-indexer and writes their DNs in opensearch.yml.
 function indexer_copyCertificates() {
 
-    common_logger -d "Copying Wazuh indexer certificates."
-    eval "rm -f ${indexer_cert_path}/* ${debug}"
-
-    if [ "${AIO}" ]; then
-        indxname="${indexer_node_names[0]}"
-    fi
-
-    if [ -f "${tar_file}" ]; then
-        if ! tar -tvf "${tar_file}" | grep -q "${indxname}" ; then
-            common_logger -e "Tar file does not contain certificate for the node ${indxname}."
-            installCommon_rollBack
-            exit 1;
-        fi
-        eval "mkdir ${indexer_cert_path} ${debug}"
-        eval "sed -i s/indexer.pem/${indxname}.pem/ /etc/wazuh-indexer/opensearch.yml ${debug}"
-        eval "sed -i s/indexer-key.pem/${indxname}-key.pem/ /etc/wazuh-indexer/opensearch.yml ${debug}"
-        eval "tar -xf ${tar_file} -C ${indexer_cert_path} wazuh-install-files/${indxname}.pem --strip-components 1 ${debug}"
-        eval "tar -xf ${tar_file} -C ${indexer_cert_path} wazuh-install-files/${indxname}-key.pem --strip-components 1 ${debug}"
-        eval "tar -xf ${tar_file} -C ${indexer_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
-        eval "tar -xf ${tar_file} -C ${indexer_cert_path} wazuh-install-files/admin.pem --strip-components 1 ${debug}"
-        eval "tar -xf ${tar_file} -C ${indexer_cert_path} wazuh-install-files/admin-key.pem --strip-components 1 ${debug}"
-        eval "rm -rf ${indexer_cert_path}/wazuh-install-files/ ${debug}"
-        eval "chown -R wazuh-indexer:wazuh-indexer ${indexer_cert_path} ${debug}"
-        eval "chmod 500 ${indexer_cert_path} ${debug}"
-        eval "chmod 400 ${indexer_cert_path}/* ${debug}"
-    else
-        common_logger -e "No certificates found. Could not initialize Wazuh indexer"
-        installCommon_rollBack
-        exit 1;
-    fi
+    common_logger -d "Placing the Wazuh indexer certificates."
+    eval "mkdir -p ${indexer_cert_path} ${debug}"
+    installCommon_placeFromTar "${indxname}.pem" "${indexer_cert_path}/indexer.pem" root root 0400
+    installCommon_placeFromTar "${indxname}-key.pem" "${indexer_cert_path}/indexer-key.pem" root root 0400
+    installCommon_placeFromTar "admin.pem" "${indexer_cert_path}/admin.pem" root root 0400
+    installCommon_placeFromTar "admin-key.pem" "${indexer_cert_path}/admin-key.pem" root root 0400
 
 }
 

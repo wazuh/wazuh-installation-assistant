@@ -374,3 +374,88 @@ class TestInstallCommonDownloadArtifactURLs:
             'echo "mock yaml content" > "$output_file"\n'
             'echo "mock yaml content" > "$filename"'
         )
+
+
+class TestInstallCommonPlaceFromTar:
+    """Tests for installCommon_placeFromTar.
+
+    A file of the tar is placed where it does not exist, kept when an identical one is
+    already there (the -g host), and refused when a different one is there.
+    """
+
+    def _run(self, tmp_path, existing=None):
+        import subprocess
+
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        (staging / "root-ca.pem").write_text("the-ca")
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        destination = tmp_path / "ca" / "root-ca.pem"
+        destination.parent.mkdir()
+        if existing is not None:
+            destination.write_text(existing)
+        result = run_bash_function(
+            BASE_SOURCES,
+            f'installCommon_placeFromTar root-ca.pem "{destination}" "$(id -un)" "$(id -gn)" 0644',
+            IGNORE_LOGGER,
+            {"tar_file": str(tar), "debug": ""},
+        )
+        return result, destination
+
+    def test_success_places_file(self, tmp_path):
+        result, destination = self._run(tmp_path)
+        assert_success(result)
+        assert destination.read_text() == "the-ca"
+        assert oct(destination.stat().st_mode & 0o777) == "0o644"
+
+    def test_success_keeps_identical_file(self, tmp_path):
+        result, destination = self._run(tmp_path, existing="the-ca")
+        assert_success(result)
+
+    def test_fail_on_different_file(self, tmp_path):
+        result, destination = self._run(tmp_path, existing="another-ca")
+        assert_failure(result)
+        assert destination.read_text() == "another-ca"
+
+
+class TestInstallCommonCreatePasswords:
+    """Tests for installCommon_createPasswords.
+
+    -g writes the five passwords in the credentials file of the host, keeps any already
+    there, and adds a copy of the file to the install files. The library is replaced by
+    a flat file: it refuses a base directory under the world-writable /tmp.
+    """
+
+    KEYS = [
+        "WAZUH_INDEXER_ADMIN_PASSWORD",
+        "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
+        "WAZUH_INDEXER_MANAGER_PASSWORD",
+        "WAZUH_MANAGER_API_PASSWORD",
+        "WAZUH_MANAGER_WUI_PASSWORD",
+    ]
+
+    def test_success_generates_missing_and_keeps_existing(self, tmp_path):
+        env_file = tmp_path / "credentials.env"
+        env_file.write_text('WAZUH_MANAGER_API_PASSWORD="Kept.Password1"\n')
+        copy = tmp_path / "copy.env"
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installVariables.sh"],
+            "installCommon_createPasswords",
+            {
+                **IGNORE_LOGGER,
+                "wazuh_env_get": f'grep -q "^$1=" "{env_file}"',
+                "wazuh_env_set": f'printf \'%s="%s"\\n\' "$1" "$2" >> "{env_file}"',
+                "wazuh_env_get_file": f'echo "{env_file}"',
+                "wazuh_password_generate": "echo Generated.Pass1",
+                "cp": f'command cp "$1" "{copy}"',
+                "chmod": "true",
+            },
+            {"debug": ""},
+        )
+        assert_success(result)
+        lines = copy.read_text().splitlines()
+        assert 'WAZUH_MANAGER_API_PASSWORD="Kept.Password1"' in lines
+        for key in self.KEYS:
+            assert sum(line.startswith(f"{key}=") for line in lines) == 1
+        assert 'WAZUH_INDEXER_ADMIN_PASSWORD="Generated.Pass1"' in lines

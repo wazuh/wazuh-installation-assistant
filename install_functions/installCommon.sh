@@ -89,6 +89,91 @@ function installCommon_createCertificates() {
 
 }
 
+# Generates the passwords of every component in the credentials file of this host, where
+# the indexer package reads them when it is installed here, and adds a copy to the tar.
+# A password already in the file is kept, so running -g again gives the same ones.
+function installCommon_createPasswords() {
+
+    local key
+
+    common_logger -d "Generating the Wazuh passwords."
+    for key in "${credential_keys[@]}"; do
+        if wazuh_env_get "${key}" > /dev/null 2>&1; then
+            continue
+        fi
+        if ! wazuh_env_set "${key}" "$(wazuh_password_generate)"; then
+            common_logger -e "Could not write ${key} to the credentials file."
+            exit 1
+        fi
+    done
+
+    if ! eval "cp '$(wazuh_env_get_file)' /tmp/wazuh-install-files/credentials.env ${debug}"; then
+        common_logger -e "Could not copy the credentials file."
+        exit 1
+    fi
+    eval "chmod 600 /tmp/wazuh-install-files/credentials.env ${debug}"
+
+}
+
+# Places the credentials file and the root CA certificate from the tar before a component
+# is installed, where its package reads them. The CA private key is never placed: without
+# it, a package that finds no certificate pair fails instead of issuing its own.
+function installCommon_placeCredentials() {
+
+    local base_dir ca_dir
+
+    common_logger -d "Placing the credentials file and the root CA certificate."
+    if ! base_dir=$(wazuh_base_get_dir); then
+        common_logger -e "Could not resolve the Wazuh base directory."
+        exit 1
+    fi
+    eval "install -d -o root -g root -m 0700 '${base_dir}' ${debug}"
+    installCommon_placeFromTar "credentials.env" "${base_dir}/credentials.env" root root 0600
+
+    if ! ca_dir=$(wazuh_ca_get_dir); then
+        common_logger -e "Could not resolve the root CA directory."
+        exit 1
+    fi
+    eval "install -d -o root -g root -m 0700 '${ca_dir}' ${debug}"
+    installCommon_placeFromTar "root-ca.pem" "${ca_dir}/root-ca.pem" root root 0644
+
+}
+
+# Copies one file of the tar to its place with the given owner, group and mode. A file
+# already there is kept when it is identical (the -g host already holds the credentials
+# file and the CA), and is an error when it is not: it belongs to another deployment.
+function installCommon_placeFromTar() {
+
+    local member="${1}" destination="${2}" owner="${3}" group="${4}" mode="${5}"
+    local staged
+
+    staged=$(mktemp)
+    if ! tar -xOf "${tar_file}" "wazuh-install-files/${member}" > "${staged}" 2>/dev/null; then
+        rm -f "${staged}"
+        common_logger -e "Could not extract ${member} from ${tar_file}."
+        exit 1
+    fi
+
+    if [ -e "${destination}" ]; then
+        if cmp -s "${staged}" "${destination}"; then
+            rm -f "${staged}"
+            common_logger -d "${destination} is already in place."
+            return 0
+        fi
+        rm -f "${staged}"
+        common_logger -e "${destination} already exists and is not the one in ${tar_file}. Remove it, or use the tar file of this deployment."
+        exit 1
+    fi
+
+    if ! install -o "${owner}" -g "${group}" -m "${mode}" "${staged}" "${destination}"; then
+        rm -f "${staged}"
+        common_logger -e "Could not place ${destination}."
+        exit 1
+    fi
+    rm -f "${staged}"
+
+}
+
 function installCommon_createClusterKey() {
 
     openssl rand -hex 16 >> "/tmp/wazuh-install-files/clusterkey"
@@ -111,12 +196,16 @@ function installCommon_createInstallFiles() {
         if [ -n "${manager_node_types[*]}" ]; then
             installCommon_createClusterKey
         fi
+        installCommon_createPasswords
+        # root-ca.key stays in the CA directory of this host and is not added to the tar:
+        # with it, any node could issue a CN=admin certificate for the indexer.
         eval "cp '${config_file}' '/tmp/wazuh-install-files/config.yml' ${debug}"
         eval "chown root:root /tmp/wazuh-install-files/* ${debug}"
         eval "tar -zcf '${tar_file}' -C '/tmp/' wazuh-install-files/ ${debug}"
         eval "rm -rf '/tmp/wazuh-install-files' ${debug}"
 	    eval "rm -rf ${config_file} ${debug}"
-        common_logger "Created ${tar_file_name}. It contains the Wazuh cluster key and the certificates necessary for installation."
+        common_logger "Created ${tar_file_name}. It contains the Wazuh cluster key, the passwords and the certificates necessary for installation. Remove it from every node once the installation finishes."
+        common_logger "The root CA and its private key are in $(wazuh_ca_get_dir). Back them up: they are needed to add nodes or renew certificates."
     else
         common_logger -e "Unable to create /tmp/wazuh-install-files"
         exit 1
