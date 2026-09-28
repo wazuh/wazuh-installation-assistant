@@ -237,8 +237,6 @@ plugins.security.nodes_dn:
 
 When you replace the certificate of a Wazuh indexer node, put its node name in `nodes_dn`.
 
-The tool writes its log to `/var/log/wazuh-certificates-tool.log`.
-
 ### config.yml configuration
 
 The `config.yml` file is a YAML format configuration file that contains the necessary information to generate certificates for Wazuh nodes.
@@ -500,8 +498,11 @@ The command output will be similar to the following:
 
 ```bash
 INFO: Generating password hash
-WARNING: Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services.
+INFO: The password of the Wazuh indexer user admin was changed.
+INFO: WAZUH_INDEXER_ADMIN_PASSWORD was updated in /etc/wazuh/credentials.env.
 ```
+
+The tool only warns about what it cannot do on this host: after changing `wazuh-manager`, `kibanaserver` or `wazuh-wui`, it reminds you to update the keystore of the Wazuh manager or Wazuh dashboard nodes on other hosts.
 
 ### Change a Wazuh server API password
 

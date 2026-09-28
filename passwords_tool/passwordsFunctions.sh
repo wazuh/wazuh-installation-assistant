@@ -57,6 +57,8 @@ function passwords_changePassword() {
             else
                 common_logger -w "Skipping Wazuh manager keystore update: no password available for the wazuh-manager user."
             fi
+        elif [ -n "${managerpass}" ]; then
+            common_logger -w "The Wazuh manager is not installed on this host. Update the indexer password in the keystore of every Wazuh manager node and restart them."
         fi
     fi
 
@@ -68,6 +70,9 @@ function passwords_changePassword() {
             fi
             dashboard_keystore_updated=1
             restart_dashboard=1
+            common_logger -w "If this is a multi-node deployment, update opensearch.password in the keystore of every other Wazuh dashboard node and restart them."
+        elif [ -n "${dashpass}" ]; then
+            common_logger -w "The Wazuh dashboard is not installed on this host. Update opensearch.password in the keystore of every Wazuh dashboard node and restart them."
         fi
     fi
 
@@ -120,6 +125,7 @@ function passwords_changeApiUserPassword() {
             fi
             dashboard_keystore_updated=1
             restart_dashboard=1
+            common_logger -w "If this is a multi-node deployment, update wazuh_core.hosts.default.password in the keystore of every other Wazuh dashboard node and restart them."
         else
             common_logger -w "The Wazuh dashboard is not installed on this host. Update wazuh_core.hosts.default.password in the keystore of every Wazuh dashboard node and restart them."
         fi
@@ -634,11 +640,11 @@ function passwords_runSecurityAdmin() {
     eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
 
     if [[ -n "${nuser}" ]]; then
-        common_logger -w "Password changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
+        common_logger "The password of the Wazuh indexer user ${nuser} was changed."
     fi
 
     if [ -n "${changeall}" ]; then
-        common_logger -w "Wazuh indexer passwords changed. Remember to update the password in the Wazuh dashboard and the Wazuh manager nodes if necessary, and restart the services."
+        common_logger "The passwords of the Wazuh indexer users were changed."
     fi
 
 }

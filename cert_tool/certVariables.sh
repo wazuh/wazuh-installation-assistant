@@ -8,7 +8,7 @@
 
 readonly base_path="$(dirname "$(readlink -f "$0")")"
 readonly config_file="${base_path}/config.yml"
-readonly logfile="/var/log/wazuh-certificates-tool.log"
+readonly logfile="${base_path}/wazuh-certificates-tool.log"
 cert_tmp_path="/tmp/wazuh-certificates"
 debug=">> ${logfile} 2>&1"
 readonly cert_tool_script_name=".*certs.*\.sh"

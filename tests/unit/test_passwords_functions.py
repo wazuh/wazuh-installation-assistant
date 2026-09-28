@@ -836,18 +836,20 @@ class TestPasswordsRunSecurityAdmin:
         assert_success(result)
         assert "AdminPass1234" not in result.stdout
         assert "DashPass12345" not in result.stdout
-        assert "Wazuh indexer passwords changed." in result.stdout
+        assert "LOG:The passwords of the Wazuh indexer users were changed." in result.stdout
+        assert "Remember to update" not in result.stdout
 
     def test_single_user_prints_no_password(self):
         result = self._run({"nuser": "admin", "password": "AdminPass1234", "autopass": "1"})
         assert_success(result)
         assert "AdminPass1234" not in result.stdout
-        assert "Password changed." in result.stdout
+        assert "LOG:The password of the Wazuh indexer user admin was changed." in result.stdout
+        assert "Remember to update" not in result.stdout
 
     def test_does_not_print_single_user_report_in_batch_mode(self):
         result = self._run({"changeall": "1", "users": "(admin)", "passwords": "(AdminPass1234)"})
         assert_success(result)
-        assert "Password changed. Remember" not in result.stdout
+        assert "The password of the Wazuh indexer user" not in result.stdout
 
 
 class TestPasswordsChangePasswordChangeAll:
@@ -1130,3 +1132,92 @@ class TestPasswordsBackupDirectoryCleanup:
         assert_failure(result)
         assert "LOG:-e Could not load the changes." in result.stdout
         assert "EVAL:rm -rf /etc/wazuh-indexer/backup/" in result.stdout
+
+
+class TestPasswordsOtherHostsMessages:
+    """The tool updates the keystores of the host it runs on. It only warns about
+    the credentials that other hosts may hold, and names where each one goes."""
+
+    MANAGER_OTHER = ("LOG:-w If this is a multi-node deployment, update the keystore of every "
+                     "other Wazuh manager node and restart them.")
+    MANAGER_ABSENT = ("LOG:-w The Wazuh manager is not installed on this host. Update the indexer "
+                      "password in the keystore of every Wazuh manager node and restart them.")
+    DASHBOARD_OTHER = ("LOG:-w If this is a multi-node deployment, update opensearch.password in the "
+                       "keystore of every other Wazuh dashboard node and restart them.")
+    DASHBOARD_ABSENT = ("LOG:-w The Wazuh dashboard is not installed on this host. Update "
+                        "opensearch.password in the keystore of every Wazuh dashboard node and restart them.")
+
+    def _run(self, env):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_updateManagerKeystore": "true",
+            "passwords_updateDashboardKeystore": "true",
+        }
+        return run_bash_function(BASE_SOURCES, "passwords_changePassword", mocks, env)
+
+    def test_admin_gets_no_warning(self):
+        result = self._run({"nuser": "admin", "password": "Admin.Pass123",
+                            "wazuh_installed": "1", "dashboard_installed": "1"})
+        assert_success(result)
+        assert "LOG:-w" not in result.stdout
+
+    def test_wazuh_manager_with_local_manager(self):
+        result = self._run({"nuser": "wazuh-manager", "password": "Manager.Pass1", "wazuh_installed": "1"})
+        assert self.MANAGER_OTHER in result.stdout
+        assert self.MANAGER_ABSENT not in result.stdout
+
+    def test_wazuh_manager_without_local_manager(self):
+        result = self._run({"nuser": "wazuh-manager", "password": "Manager.Pass1"})
+        assert self.MANAGER_ABSENT in result.stdout
+        assert self.MANAGER_OTHER not in result.stdout
+
+    def test_kibanaserver_with_local_dashboard(self):
+        result = self._run({"nuser": "kibanaserver", "password": "Kibana.Pass12", "dashboard_installed": "1"})
+        assert self.DASHBOARD_OTHER in result.stdout
+        assert self.DASHBOARD_ABSENT not in result.stdout
+
+    def test_kibanaserver_without_local_dashboard(self):
+        result = self._run({"nuser": "kibanaserver", "password": "Kibana.Pass12"})
+        assert self.DASHBOARD_ABSENT in result.stdout
+        assert self.DASHBOARD_OTHER not in result.stdout
+
+    def test_changeall_on_an_indexer_only_host(self):
+        result = self._run({"changeall": "1", "users": "(admin kibanaserver wazuh-manager)",
+                            "passwords": "(Admin.Pass123 Kibana.Pass12 Manager.Pass1)"})
+        assert self.MANAGER_ABSENT in result.stdout
+        assert self.DASHBOARD_ABSENT in result.stdout
+
+    def test_wazuh_wui_with_local_dashboard(self):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "passwords_saveCredential": "true",
+            "passwords_updateDashboardKeystore": "true",
+        }
+        script = """
+            rbac_control="$(mktemp)"; chmod +x "${rbac_control}"
+            cat > "${rbac_control}" <<'STUB'
+#!/bin/bash
+cat > /dev/null
+printf '\t%s: UPDATED\n' "$3"
+STUB
+            passwords_changeApiUserPassword wazuh-wui "Wui.Pass12345" ""
+        """
+        result = run_bash_function(BASE_SOURCES, script, mocks, {"dashboard_installed": "1"})
+        assert_success(result)
+        assert ("LOG:-w If this is a multi-node deployment, update wazuh_core.hosts.default.password "
+                "in the keystore of every other Wazuh dashboard node and restart them.") in result.stdout
+
+    def test_wazuh_gets_no_warning(self):
+        mocks = {"common_logger": 'echo "LOG:$*"', "passwords_saveCredential": "true"}
+        script = """
+            rbac_control="$(mktemp)"; chmod +x "${rbac_control}"
+            cat > "${rbac_control}" <<'STUB'
+#!/bin/bash
+cat > /dev/null
+printf '\t%s: UPDATED\n' "$3"
+STUB
+            passwords_changeApiUserPassword wazuh "Api.Pass12345" ""
+        """
+        result = run_bash_function(BASE_SOURCES, script, mocks, {"dashboard_installed": "1"})
+        assert_success(result)
+        assert "LOG:-w" not in result.stdout
