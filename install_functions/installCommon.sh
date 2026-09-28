@@ -120,7 +120,7 @@ function installCommon_createCertificates() {
 
     cert_tmp_path="/tmp/wazuh-certificates/"
 
-    cert_generateRootCAcertificate
+    cert_checkRootCA "create"
     cert_generateAdmincertificate
     cert_generateIndexercertificates
     cert_generateManagercertificates

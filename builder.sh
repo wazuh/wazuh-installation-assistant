@@ -102,6 +102,9 @@ function buildInstaller() {
     curl -s "https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/src/init/dist-detect.sh" | sed '/^#/d' >> "${output_script_path}"
     echo "}" >> "${output_script_path}"
 
+    ## Shared credentials library, used by the certificate functions
+    embedCredentialsLibrary
+
     ## Common functions
     sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_common}/common.sh" >> "${output_script_path}"
 
