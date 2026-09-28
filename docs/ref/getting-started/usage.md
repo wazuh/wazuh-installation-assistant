@@ -224,6 +224,21 @@ The tool must be run as root. An existing root CA is validated and reused, never
 sudo WAZUH_CA_DIR=/path/to/ca bash wazuh-certs-tool-5.0.0.sh -A
 ```
 
+### Certificate subjects
+
+The Wazuh indexer node and admin certificates have the same subject as the ones the Wazuh indexer package creates, so the `plugins.security.nodes_dn` and `plugins.security.authcz.admin_dn` values it writes in `opensearch.yml` keep their format:
+
+```yaml
+plugins.security.authcz.admin_dn:
+- "C=US,L=California,O=Wazuh,OU=Wazuh,CN=admin"
+plugins.security.nodes_dn:
+- "C=US,L=California,O=Wazuh,OU=Wazuh,CN=<indexer node name>"
+```
+
+When you replace the certificate of a Wazuh indexer node, put its node name in `nodes_dn`.
+
+The tool writes its log to `/var/log/wazuh-certificates-tool.log`.
+
 ### config.yml configuration
 
 The `config.yml` file is a YAML format configuration file that contains the necessary information to generate certificates for Wazuh nodes.
@@ -397,11 +412,10 @@ The tool requires root privileges to run.
 The tool uses the same rules as the Wazuh packages, through the shared `wazuh-credentials.sh` library:
 
 - Between 12 and 64 characters.
-- At least one letter and one digit.
 - Only these characters: `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`
-- It cannot be a number, such as `123456789e10`, because the Wazuh dashboard keystore would store it as a number.
+- At least one upper case letter, one lower case letter, one digit and one symbol from `. , _ + : @ % ^ = ~ -`.
 
-A generated password has 32 characters, with at least one lower case letter, one upper case letter and one digit.
+A generated password has 32 characters and follows the same rules.
 
 ### Where the passwords are saved
 

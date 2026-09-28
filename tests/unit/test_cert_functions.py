@@ -934,6 +934,27 @@ class TestCertExtensionMatrixRealOpenSSL:
             assert "TLS Web Server Authentication" not in text
 
 
+    @pytest.mark.parametrize(
+        "name,expected_subject",
+        [
+            # The Wazuh indexer package issues its certificates with the CN first and writes this
+            # DN in nodes_dn and admin_dn, so the certs tool issues the same subject.
+            ("admin", "C=US,L=California,O=Wazuh,OU=Wazuh,CN=admin"),
+            ("indexer-1", "C=US,L=California,O=Wazuh,OU=Wazuh,CN=indexer-1"),
+            # The Wazuh manager and dashboard packages use the other order.
+            ("manager-1", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
+            ("manager-1-remoted", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
+            ("dashboard-1", "CN=dashboard-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
+        ],
+    )
+    def test_success_subject_matches_the_package(self, issued, name, expected_subject):
+        subject = subprocess.run(
+            ["openssl", "x509", "-in", str(issued / f"{name}.pem"), "-noout", "-subject", "-nameopt", "RFC2253"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        assert subject == f"subject={expected_subject}"
+
+
 class TestCertGenerateLoadbalancercertificates:
     """The leaf a TLS-terminating proxy serves, from the same root-ca agents pin."""
 

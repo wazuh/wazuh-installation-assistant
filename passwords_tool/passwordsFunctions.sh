@@ -170,22 +170,9 @@ function passwords_checkCredentialsFile() {
 
 function passwords_checkPassword() {
 
-    local invalid_chars
     local validation_error
 
-    # Same rule as the Wazuh packages: only these characters, so every component accepts the password.
-    invalid_chars=$(printf '%s' "${1}" | LC_ALL=C tr -d 'A-Za-z0-9.,_+:@%^=~-')
-    if [ -n "${invalid_chars}" ]; then
-        common_logger -e "The password can only contain these characters: A-Z a-z 0-9 . , _ + : @ % ^ = ~ -"
-        exit 1
-    fi
-
-    # The Wazuh dashboard keystore would store a value that looks like a number as a number.
-    if printf '%s' "${1}" | LC_ALL=C grep -Eqx -- '-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?'; then
-        common_logger -e "The password cannot be a number."
-        exit 1
-    fi
-
+    # Same rule as the Wazuh packages, from the shared credentials library.
     if ! validation_error=$(wazuh_password_validate "${1}" 2>&1); then
         common_logger -e "Invalid password: ${validation_error#wazuh-credentials: }."
         exit 1
@@ -213,6 +200,8 @@ function passwords_createBackUp() {
     eval "JAVA_HOME=/usr/share/wazuh-indexer/jdk/ OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -backup /etc/wazuh-indexer/backup -icl -p 9200 -nhnv -cacert ${capem} -cert ${adminpem} -key ${adminkey} -h ${IP} ${debug}"
     if [ "${PIPESTATUS[0]}" != 0 ]; then
         common_logger -e "The backup could not be created"
+        # A root-owned backup directory left behind stops the Wazuh indexer from starting.
+        eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
         if [[ $(type -t installCommon_rollBack) == "function" ]]; then
             installCommon_rollBack
         fi
@@ -638,6 +627,7 @@ function passwords_runSecurityAdmin() {
     eval "OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -f /etc/wazuh-indexer/backup/internal_users.yml -t internalusers -p 9200 -nhnv -cacert ${capem} -cert ${adminpem} -key ${adminkey} -icl -h ${IP} ${debug}"
     if [  "${PIPESTATUS[0]}" != 0  ]; then
         common_logger -e "Could not load the changes."
+        eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
         exit 1;
     fi
     cp /etc/wazuh-indexer/backup/internal_users.yml /etc/wazuh-indexer/opensearch-security/internal_users.yml

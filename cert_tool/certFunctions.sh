@@ -210,7 +210,8 @@ function cert_generateAdmincertificate() {
     common_logger -d "Converting Admin private key to PKCS8 format."
     cert_executeAndValidate openssl pkcs8 -inform PEM -outform PEM -in "${cert_tmp_path}/admin-key-temp.pem" -topk8 -nocrypt -v1 PBE-SHA1-3DES -out "${cert_tmp_path}/admin-key.pem"
     common_logger -d "Generating Admin CSR."
-    cert_executeAndValidate openssl req -new -key "${cert_tmp_path}/admin-key.pem" -out "${cert_tmp_path}/admin.csr" -batch -subj '/C=US/L=California/O=Wazuh/OU=Wazuh/CN=admin'
+    # Same subject order as the Wazuh indexer package, which writes this DN in admin_dn.
+    cert_executeAndValidate openssl req -new -key "${cert_tmp_path}/admin-key.pem" -out "${cert_tmp_path}/admin.csr" -batch -subj '/CN=admin/OU=Wazuh/O=Wazuh/L=California/C=US'
 
     # The admin certificate carries no SAN: it is never dialled, it authenticates
     # against the indexer security API. Hence an extension file of its own rather
@@ -258,6 +259,21 @@ function cert_generateCertificateconfiguration() {
         exit 1
     fi
 
+    # Subject order of the Wazuh manager and dashboard packages. With cert_cn_first set, the
+    # order of the Wazuh indexer package, which writes that DN in nodes_dn and admin_dn.
+    local subject="C = US
+        L = California
+        O = Wazuh
+        OU = Wazuh
+        CN = cname"
+    if [ -n "${cert_cn_first}" ]; then
+        subject="CN = cname
+        OU = Wazuh
+        O = Wazuh
+        L = California
+        C = US"
+    fi
+
     cat > "${cert_tmp_path}/${node_name}.conf" <<- EOF
         [ req ]
         prompt = no
@@ -267,11 +283,7 @@ function cert_generateCertificateconfiguration() {
         x509_extensions = v3_req
 
         [req_distinguished_name]
-        C = US
-        L = California
-        O = Wazuh
-        OU = Wazuh
-        CN = cname
+        ${subject}
 
         [ v3_req ]
         authorityKeyIdentifier=keyid,issuer
@@ -331,7 +343,7 @@ function cert_generateIndexercertificates() {
             if [ "${#idx_dns[@]}" -gt 0 ]; then
                 idx_san+=("${idx_dns[@]}")
             fi
-            cert_generateCertificateconfiguration "${indexer_node_name}" "serverAuth, clientAuth" "${idx_san[@]}"
+            cert_cn_first=1 cert_generateCertificateconfiguration "${indexer_node_name}" "serverAuth, clientAuth" "${idx_san[@]}"
             common_logger -d "Creating the Wazuh indexer tmp key pair."
             cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${indexer_node_name}-key.pem" -out "${cert_tmp_path}/${indexer_node_name}.csr" -config "${cert_tmp_path}/${indexer_node_name}.conf"
             common_logger -d "Creating the Wazuh indexer certificates."

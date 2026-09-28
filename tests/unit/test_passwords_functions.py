@@ -12,7 +12,10 @@ Covers: passwords_checkPassword, passwords_generatePassword,
         passwords_runSecurityAdmin
 """
 
+import pytest
+
 from tests.unit.conftest import assert_failure, assert_success, run_bash_function
+from tests.unit.test_credentials_lib import CHARSET, OUTSIDE_CHARSET
 
 PASSWORDS = "passwords_tool/passwordsFunctions.sh"
 PASSWORDS_VARS = "passwords_tool/passwordsVariables.sh"
@@ -27,13 +30,32 @@ IGNORE_LOGGER = {"common_logger": "true"}
 BCRYPT = "$2y$12$" + "a" * 53
 
 
-class TestPasswordsCheckPassword:
-    """Tests for passwords_checkPassword.
+SYMBOLS = ".,_+:@%^=~-"
 
-    Same rule as the Wazuh packages: 12-64 characters from
-    A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one letter and one
-    digit (wazuh_password_validate), and not a JSON number, which the Wazuh
-    dashboard keystore would store as a number.
+# The same corpus as the shared library tests (#1047): the tool must give the
+# same answer as wazuh_password_validate.
+ACCEPTED = (
+    ["Abcdefghij1.", "Aa1." + "b" * 60, "Aa1.,_+:@%^=~-"]
+    + [f"Abcdefghij1{symbol}" for symbol in SYMBOLS]
+)
+REJECTED = (
+    [
+        "Abcdefghi1.",          # 11 characters
+        "Aa1." + "b" * 61,      # 65 characters
+        "ABCDEFGHIJ1.",         # no lowercase letter
+        "abcdefghij1.",         # no uppercase letter
+        "Abcdefghijk.",         # no digit
+        "Abcdefghij12",         # no symbol
+    ]
+    # Every class present: the only violation is the character outside the set.
+    + [f"Abcdefghij1.{character}" for character in OUTSIDE_CHARSET]
+)
+
+
+class TestPasswordsCheckPassword:
+    """Tests for passwords_checkPassword, which applies wazuh_password_validate:
+    12-64 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one
+    uppercase letter, one lowercase letter, one digit and one symbol.
     """
 
     def _run(self, password):
@@ -44,45 +66,29 @@ class TestPasswordsCheckPassword:
             {"CHECKED": password},
         )
 
-    def test_success_letters_and_digits_only(self):
-        # No symbol needed any more: package generated passwords may have none.
-        assert_success(self._run("abcdefghij12"))
+    @pytest.mark.parametrize("password", ACCEPTED)
+    def test_success(self, password):
+        assert_success(self._run(password))
 
-    def test_success_every_allowed_symbol(self):
-        assert_success(self._run("Secure1.,_+:@%^=~-"))
+    @pytest.mark.parametrize("password", REJECTED, ids=lambda p: p.encode("unicode_escape").decode())
+    def test_fail(self, password):
+        assert_failure(self._run(password))
 
-    def test_success_sixty_four_chars(self):
-        assert_success(self._run("a1" * 32))
-
-    def test_fail_eleven_chars(self):
-        assert_failure(self._run("abcdefghi12"))
-
-    def test_fail_sixty_five_chars(self):
-        assert_failure(self._run("a1" * 32 + "b"))
-
-    def test_fail_no_letter(self):
-        assert_failure(self._run("123456789012"))
-
-    def test_fail_no_digit(self):
-        assert_failure(self._run("abcdefghijkl"))
-
-    def test_fail_symbol_the_manager_refuses(self):
-        for password in ("ValidPass12*", "ValidPass12?", "Valid Pass12", "ValidPass12$", "ValidPäss123"):
-            assert_failure(self._run(password))
-
-    def test_fail_json_number(self):
-        result = self._run("123456789e10")
-        assert_failure(result)
-        assert "cannot be a number" in result.stdout
+    @pytest.mark.parametrize("password", ACCEPTED + REJECTED, ids=lambda p: p.encode("unicode_escape").decode())
+    def test_same_answer_as_the_library(self, password):
+        library = run_bash_function([CREDENTIALS], 'wazuh_password_validate "${CHECKED}"', None,
+                                    {"CHECKED": password})
+        assert (self._run(password).returncode == 0) == (library.returncode == 0)
 
     def test_error_names_the_rule_not_the_value(self):
-        result = self._run("Short1")
+        result = self._run("Short1.")
         assert_failure(result)
-        assert "Short1" not in result.stdout
-        assert "between 12 and 64 characters" in result.stdout
+        assert "Short1." not in result.stdout
+        assert "LOG:-e Invalid password: password must contain between 12 and 64 characters." in result.stdout
 
-    def test_fail_line_break(self):
-        assert_failure(self._run("ValidPass1234\nx"))
+    def test_error_names_the_missing_class(self):
+        result = self._run("Abcdefghij12")
+        assert "password must contain at least one symbol" in result.stdout
 
 
 class TestPasswordsGeneratePassword:
@@ -100,9 +106,8 @@ class TestPasswordsGeneratePassword:
         assert any(c.islower() for c in generated)
         assert any(c.isupper() for c in generated)
         assert any(c.isdigit() for c in generated)
-        assert set(generated) <= set(
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,_+:@%^=~-"
-        )
+        assert any(c in SYMBOLS for c in generated)
+        assert set(generated) <= set(CHARSET)
 
     def test_generated_password_passes_check(self):
         result = run_bash_function(
@@ -1099,3 +1104,29 @@ class TestPasswordsChangePasswordSingleUserManagerKeystore:
         )
         assert_failure(result)
         assert "pending:1" not in result.stdout
+
+
+class TestPasswordsBackupDirectoryCleanup:
+    """A failed run must not leave /etc/wazuh-indexer/backup behind: it is
+    created by root, and the Wazuh indexer cannot start while it exists."""
+
+    def _run(self, call):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "installCommon_rollBack": "true",
+            "grep": "true",
+            "eval": 'echo "EVAL:$*"; case "$*" in *securityadmin*) return 1 ;; esac',
+        }
+        return run_bash_function(BASE_SOURCES, call, mocks, {"indexer_installed": "yes"})
+
+    def test_failed_backup_removes_the_directory(self):
+        result = self._run("passwords_createBackUp")
+        assert_failure(result)
+        assert "LOG:-e The backup could not be created" in result.stdout
+        assert "EVAL:rm -rf /etc/wazuh-indexer/backup/" in result.stdout
+
+    def test_failed_load_removes_the_directory(self):
+        result = self._run("passwords_runSecurityAdmin")
+        assert_failure(result)
+        assert "LOG:-e Could not load the changes." in result.stdout
+        assert "EVAL:rm -rf /etc/wazuh-indexer/backup/" in result.stdout
