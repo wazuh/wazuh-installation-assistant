@@ -52,7 +52,9 @@ function dashboard_configure() {
 function dashboard_copyCertificates() {
 
     common_logger -d "Placing the Wazuh dashboard certificates."
-    eval "mkdir -p ${dashboard_cert_path} ${debug}"
+    # The installer umask would leave the directory without the search bit; the package
+    # sets its owner.
+    eval "(umask 022 && mkdir -p ${dashboard_cert_path}) ${debug}"
     installCommon_placeFromTar "${dashname}.pem" "${dashboard_cert_path}/dashboard.pem" root root 0400
     installCommon_placeFromTar "${dashname}-key.pem" "${dashboard_cert_path}/dashboard-key.pem" root root 0400
 

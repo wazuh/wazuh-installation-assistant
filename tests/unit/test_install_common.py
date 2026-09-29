@@ -515,3 +515,47 @@ class TestInstallCommonScanDependencies:
         deps = self._all_deps({"wazuh": "1"})
         for dep in ["openssl", "diffutils", "gawk", "iproute"]:
             assert dep in deps
+
+
+class TestInstallCommonMergeCredentials:
+    """installCommon_mergeCredentials completes a credentials file already on the host.
+
+    The file can miss keys (a failed install whose package removed its own) but a
+    different value means the file belongs to another deployment.
+    """
+
+    PASSWORD = "Aa1.aaaaaaaaaaaa"
+
+    def _run(self, tmp_path, existing):
+        import subprocess
+
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        keys = TestInstallCommonCreatePasswords.KEYS
+        (staging / "credentials.env").write_text("".join(f'{k}="{self.PASSWORD}"\n' for k in keys))
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        env_file = tmp_path / "credentials.env"
+        env_file.write_text(existing)
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installVariables.sh"],
+            "installCommon_mergeCredentials",
+            {
+                **IGNORE_LOGGER,
+                "wazuh_env_get": f'sed -n "s/^$1=\\"\\(.*\\)\\"$/\\1/p" "{env_file}" | grep .',
+                "wazuh_env_set": f'printf \'%s="%s"\\n\' "$1" "$2" >> "{env_file}"',
+                "wazuh_env_get_file": f'echo "{env_file}"',
+            },
+            {"tar_file": str(tar)},
+        )
+        return result, env_file.read_text()
+
+    def test_success_adds_missing_keys(self, tmp_path):
+        result, content = self._run(tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n')
+        assert_success(result)
+        for key in TestInstallCommonCreatePasswords.KEYS:
+            assert content.count(f'{key}="{self.PASSWORD}"') == 1
+
+    def test_fail_on_a_different_password(self, tmp_path):
+        result, _ = self._run(tmp_path, 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n')
+        assert_failure(result)

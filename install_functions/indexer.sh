@@ -89,7 +89,10 @@ function indexer_configure() {
 function indexer_copyCertificates() {
 
     common_logger -d "Placing the Wazuh indexer certificates."
-    eval "mkdir -p ${indexer_cert_path} ${debug}"
+    # The modes the package ships. The installer umask would leave the directories without
+    # the search bit, and the DEB package keeps the mode of a directory that already exists.
+    eval "install -d -m 0750 ${indexer_cert_path%/*} ${debug}"
+    eval "install -d -m 0500 ${indexer_cert_path} ${debug}"
     installCommon_placeFromTar "${indxname}.pem" "${indexer_cert_path}/indexer.pem" root root 0400
     installCommon_placeFromTar "${indxname}-key.pem" "${indexer_cert_path}/indexer-key.pem" root root 0400
     installCommon_placeFromTar "admin.pem" "${indexer_cert_path}/admin.pem" root root 0400

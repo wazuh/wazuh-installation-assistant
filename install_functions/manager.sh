@@ -127,7 +127,9 @@ function manager_install() {
 function manager_copyCertificates() {
 
     common_logger -d "Placing the Wazuh manager certificates."
-    eval "mkdir -p ${manager_cert_path} ${debug}"
+    # The installer umask would leave the directory without the search bit; the package
+    # sets its owner.
+    eval "(umask 022 && mkdir -p ${manager_cert_path}) ${debug}"
     installCommon_placeFromTar "${winame}.pem" "${manager_cert_path}/indexer-connector.pem" root root 0640
     installCommon_placeFromTar "${winame}-key.pem" "${manager_cert_path}/indexer-connector-key.pem" root root 0640
     installCommon_placeFromTar "${winame}-remoted.pem" "${manager_cert_path}/remoted.pem" root root 0640
