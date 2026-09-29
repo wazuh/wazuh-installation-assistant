@@ -216,8 +216,19 @@ class TestDashboardCopyCertificates:
 
 class TestDashboardDisplaySummary:
     def test_points_to_the_credentials_file_without_printing_a_password(self):
-        result = run_bash_function(BASE_SOURCES, "dashboard_displaySummary", {"common_logger": 'echo "$*"'}, {"http_port": "443"})
+        result = run_bash_function(BASE_SOURCES, "dashboard_displaySummary", {"common_logger": 'echo "$*"'}, {"http_port": "443", "AIO": "1"})
         assert_success(result)
         assert "Password: admin" not in result.stdout
-        assert "WAZUH_INDEXER_ADMIN_PASSWORD" in result.stdout
-        assert "/etc/wazuh/credentials.env" in result.stdout
+        assert "WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env" in result.stdout
+
+    def test_distributed_node_points_to_the_tar_file(self):
+        """A dashboard node does not receive the admin password, so it is read elsewhere."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            "dashboard_displaySummary",
+            {"common_logger": 'echo "$*"'},
+            {"http_port": "443", "tar_file_name": "wazuh-install-files.tar"},
+        )
+        assert_success(result)
+        assert "credentials.env file of wazuh-install-files.tar" in result.stdout
+        assert "of a Wazuh indexer node" in result.stdout

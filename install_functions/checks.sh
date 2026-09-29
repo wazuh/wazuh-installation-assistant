@@ -348,17 +348,17 @@ function checks_previousCertificate() {
 
     if [ -n "${indxname}" ]; then
         checks_tarFiles "${indxname}.pem" "${indxname}-key.pem" "admin.pem" "admin-key.pem"
-        checks_tarPasswords WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD
+        checks_tarPasswords "${indexer_credential_keys[@]}"
     fi
 
     if [ -n "${dashname}" ]; then
         checks_tarFiles "${dashname}.pem" "${dashname}-key.pem"
-        checks_tarPasswords WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_MANAGER_WUI_PASSWORD
+        checks_tarPasswords "${dashboard_credential_keys[@]}"
     fi
 
     if [ -n "${winame}" ]; then
         checks_tarFiles "${winame}.pem" "${winame}-key.pem" "${winame}-remoted.pem" "${winame}-remoted-key.pem"
-        checks_tarPasswords WAZUH_INDEXER_MANAGER_PASSWORD WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD
+        checks_tarPasswords "${manager_credential_keys[@]}"
     fi
 }
 

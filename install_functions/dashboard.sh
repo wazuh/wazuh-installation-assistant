@@ -62,8 +62,14 @@ function dashboard_copyCertificates() {
 
 function dashboard_displaySummary() {
 
+    # A distributed dashboard node only receives its own passwords, not the admin one.
+    local location="/etc/wazuh/credentials.env"
+    if [ -z "${AIO}" ]; then
+        location="the credentials.env file of ${tar_file_name}, or in /etc/wazuh/credentials.env of a Wazuh indexer node"
+    fi
+
     common_logger -nl "--- Summary ---"
-    common_logger -nl "You can access the web interface https://<wazuh_dashboard_ip>:${http_port}\n    User: admin\n    Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env"
+    common_logger -nl "You can access the web interface https://<wazuh_dashboard_ip>:${http_port}\n    User: admin\n    Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in ${location}"
 
 }
 

@@ -334,7 +334,7 @@ class TestChecksPreviousCertificate:
 
     def _run(self, tar, **names):
         return run_bash_function(
-            [*BASE_SOURCES, "credentials_lib/wazuh-credentials.sh"],
+            [*BASE_SOURCES, "install_functions/installVariables.sh", "credentials_lib/wazuh-credentials.sh"],
             "checks_previousCertificate",
             IGNORE_LOGGER,
             {"tar_file": str(tar), **names},
@@ -366,6 +366,10 @@ class TestChecksPreviousCertificate:
         passwords = {k: self.PASSWORD for k in self.KEYS}
         passwords["WAZUH_INDEXER_ADMIN_PASSWORD"] = "onlylowercaseletters"
         assert_failure(self._run(self._tar(tmp_path, passwords=passwords), indxname="indexer1"))
+
+    def test_fail_manager_password_missing(self, tmp_path):
+        passwords = {k: self.PASSWORD for k in self.KEYS if k != "WAZUH_MANAGER_API_PASSWORD"}
+        assert_failure(self._run(self._tar(tmp_path, passwords=passwords), winame="wazuh1"))
 
     def test_success_ignores_passwords_other_components_use(self, tmp_path):
         passwords = {"WAZUH_INDEXER_KIBANASERVER_PASSWORD": self.PASSWORD, "WAZUH_MANAGER_WUI_PASSWORD": self.PASSWORD}

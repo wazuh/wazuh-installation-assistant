@@ -11,7 +11,7 @@ For DNS-based or mixed address configurations in `config.yml`, see [Other `confi
 The installation bundle (`wazuh-install-files.tar`) is created once with `wazuh-install-5.0.0.sh --generate-config-files` on the first Wazuh indexer node and then distributed to each node. It contains:
 
 - The root CA certificate (`root-ca.pem`)
-- The passwords of the Wazuh users (`credentials.env`), which each node places in `/etc/wazuh/credentials.env` before its package is installed
+- The passwords of the Wazuh users (`credentials.env`). Before a package is installed, each node writes in `/etc/wazuh/credentials.env` only the passwords of the components installed on it: `WAZUH_INDEXER_ADMIN_PASSWORD`, `WAZUH_INDEXER_KIBANASERVER_PASSWORD` and `WAZUH_INDEXER_MANAGER_PASSWORD` on a Wazuh indexer node, `WAZUH_INDEXER_MANAGER_PASSWORD`, `WAZUH_MANAGER_API_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD` on a Wazuh manager node, and `WAZUH_INDEXER_KIBANASERVER_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD` on a Wazuh dashboard node. The node where the bundle was generated keeps all of them
 - An admin certificate (`admin.pem` and `admin-key.pem`) for cluster security initialization
 - Individual node certificates for each Wazuh Indexer, Manager, and Dashboard node
 - For each Wazuh Manager node, the certificate of the agent listener (`<node>-remoted.pem` and `<node>-remoted-key.pem`), deployed as `remoted.pem` and `remoted-key.pem`

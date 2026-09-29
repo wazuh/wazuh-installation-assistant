@@ -336,7 +336,7 @@ function main() {
     if [ -n "${indexer}" ]; then
         common_logger "--- Wazuh indexer ---"
         installCommon_downloadComponent "wazuh_indexer"
-        installCommon_placeCredentials
+        installCommon_placeCredentials "${indexer_credential_keys[@]}"
         indexer_copyCertificates
         indexer_install
         indexer_configure
@@ -357,7 +357,7 @@ function main() {
     if [ -n "${dashboard}" ]; then
         common_logger "--- Wazuh dashboard ----"
         installCommon_downloadComponent "wazuh_dashboard"
-        installCommon_placeCredentials
+        installCommon_placeCredentials "${dashboard_credential_keys[@]}"
         dashboard_copyCertificates
         dashboard_install
         dashboard_configure
@@ -373,7 +373,7 @@ function main() {
     if [ -n "${wazuh}" ]; then
         common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
-        installCommon_placeCredentials
+        installCommon_placeCredentials "${manager_credential_keys[@]}"
         manager_copyCertificates
         manager_install
         manager_configure

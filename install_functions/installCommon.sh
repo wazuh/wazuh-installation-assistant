@@ -115,14 +115,21 @@ function installCommon_createPasswords() {
 
 }
 
-# Places the credentials file and the root CA certificate from the tar before a component
-# is installed, where its package reads them. The CA private key is never placed: without
-# it, a package that finds no certificate pair fails instead of issuing its own.
+# Places the passwords given as arguments (the ones of the component being installed) and
+# the root CA certificate from the tar before a component is installed, where its package
+# reads them. The other passwords of the tar are never written, so a node only holds the
+# passwords of its components. The CA private key is never placed: without it, a package
+# that finds no certificate pair fails instead of issuing its own.
 function installCommon_placeCredentials() {
 
     local base_dir ca_dir
 
-    common_logger -d "Placing the credentials file and the root CA certificate."
+    if [ "$#" -eq 0 ]; then
+        common_logger -e "installCommon_placeCredentials needs the credential keys of the component."
+        exit 1
+    fi
+
+    common_logger -d "Placing the credentials of the component and the root CA certificate."
     if ! base_dir=$(wazuh_base_get_dir); then
         common_logger -e "Could not resolve the Wazuh base directory."
         exit 1
@@ -142,30 +149,42 @@ function installCommon_placeCredentials() {
     fi
 
     eval "install -d -o root -g root -m 0700 '${base_dir}' ${debug}"
-    if [ -e "${base_dir}/credentials.env" ]; then
-        installCommon_mergeCredentials
-    else
-        installCommon_placeFromTar "credentials.env" "${base_dir}/credentials.env" root root 0600
-    fi
+    installCommon_mergeCredentials merge "$@"
 
     eval "install -d -o root -g root -m 0700 '${ca_dir}' ${debug}"
     installCommon_placeFromTar "root-ca.pem" "${ca_dir}/root-ca.pem" root root 0644
 
 }
 
-# A credentials file already on the host (the -g host, another component of this node, or
-# one a failed install left behind after its package removed its own keys) is completed
-# with the passwords of the tar. A password that differs belongs to another deployment.
-# With "check", it only compares and writes nothing.
+# With "check", compares every password of the tar that is already in the credentials file
+# of the host (the -g host, another component of this node, or one a failed install left
+# behind after its package removed its own keys) and writes nothing: a password that
+# differs belongs to another deployment. With "merge", followed by the keys of the
+# component, adds to the file, creating it if needed, those keys it does not have yet, and
+# never any other.
 function installCommon_mergeCredentials() {
 
     local mode="${1:-merge}"
     local key value current credentials
+    local -a keys
+
+    [ "$#" -gt 0 ] && shift
+    if [ "${mode}" = "check" ]; then
+        keys=("${credential_keys[@]}")
+    else
+        keys=("$@")
+    fi
 
     credentials=$(tar -xOf "${tar_file}" wazuh-install-files/credentials.env 2>/dev/null)
-    for key in "${credential_keys[@]}"; do
+    for key in "${keys[@]}"; do
         value=$(sed -n "s/^${key}=\"\(.*\)\"$/\1/p" <<< "${credentials}" | tail -n 1)
-        [ -n "${value}" ] || continue
+        if [ -z "${value}" ]; then
+            if [ "${mode}" = "check" ]; then
+                continue
+            fi
+            common_logger -e "There is no ${key} in the credentials.env file of ${tar_file}."
+            exit 1
+        fi
         if current=$(wazuh_env_get "${key}" 2>/dev/null); then
             if [ "${current}" != "${value}" ]; then
                 common_logger -e "${key} in $(wazuh_env_get_file) is not the one in ${tar_file}. Remove the file, or use the tar file of this deployment."
