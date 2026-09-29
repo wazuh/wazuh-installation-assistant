@@ -292,7 +292,7 @@ Follow these steps on the master node and on every worker node.
     apt install ./wazuh-offline/wazuh-packages/wazuh-dashboard*.deb
     ```
 
-4. The package uses the certificate you placed, but it does not give it to the service user. Do it now, or the Wazuh dashboard fails to start with `EACCES`:
+4. Give the certificates to the service user and restrict their directory. Some versions of the package leave a pair placed before installing as `root`, and the Wazuh dashboard then fails to start with `EACCES`:
 
     ```bash
     chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs

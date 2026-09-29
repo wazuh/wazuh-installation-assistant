@@ -832,7 +832,7 @@ yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
 
 ### Configuring the Wazuh dashboard
 
-1. The package uses the certificates you placed, but it does not give them to the service user. Do it after installing the package, or the Wazuh dashboard fails to start with `EACCES`:
+1. After installing the package, give the certificates to the service user and restrict their directory. Some versions of the package leave a pair placed before installing as `root`, and the Wazuh dashboard then fails to start with `EACCES`:
 
     ```bash
     chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
