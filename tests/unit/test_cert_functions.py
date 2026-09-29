@@ -442,9 +442,9 @@ class TestCertGenerateRemotedcertificateRealOpenSSL:
         assert "IP Address:1.1.1.1" in text
         assert "DNS:manager.example.com" in text
         assert "DNS:wazuh-master" in text
-        assert "C=US, L=California, O=Wazuh, OU=Wazuh, CN=wazuh-master" in self._x509(
-            cert, "-subject"
-        )
+        # Some OpenSSL versions print "C = US" and others "C=US".
+        subject = self._x509(cert, "-subject").replace(" = ", "=")
+        assert "C=US, L=California, O=Wazuh, OU=Wazuh, CN=wazuh-master" in subject
         # remoted serves the file as a chain: the leaf followed by the CA.
         assert cert.read_text().count("BEGIN CERTIFICATE") == 2
 
