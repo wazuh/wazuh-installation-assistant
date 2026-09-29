@@ -33,7 +33,7 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
       curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
       ```
 
-  2. Edit `./config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
+  2. Edit `./config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed. Use the IP addresses the nodes use to reach each other.
 
   For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
 
@@ -72,6 +72,12 @@ nodes:
 
       ```bash
       bash wazuh-install-5.0.0.sh --generate-config-files
+      ```
+
+      If agents will connect to a Wazuh manager through a different address, such as a public IP, a NAT address, or a load balancer, add it with `-as|--agent-san <address>`. Agent enrollment tokens can only be created for an address that is in the listener certificate of the Wazuh manager. See [Name the address agents dial](../../ref/getting-started/usage.md#name-the-address-agents-dial).
+
+      ```bash
+      bash wazuh-install-5.0.0.sh --generate-config-files -as <address>
       ```
 
   4. Copy the `wazuh-install-files.tar` file and the `wazuh-install-5.0.0.sh` script to all the servers of the distributed deployment, including the Wazuh manager, the Wazuh indexer, and the Wazuh dashboard nodes. This can be done by using the `scp` utility.
@@ -179,6 +185,20 @@ Install the Wazuh manager as a multi-node cluster on a 64-bit (x86_64/AMD64 or A
 
 Your Wazuh manager is now successfully installed, repeat this process on every Wazuh manager node.
 
+  2. On the master node, check that every Wazuh manager node is listed in the cluster:
+
+      ```bash
+      /var/wazuh-manager/bin/cluster_control -l
+      ```
+
+  3. Check that the Wazuh server API answers. Replace `<MASTER_IP>` with the IP address of the master node and `<WAZUH_MANAGER_API_PASSWORD>` with the `WAZUH_MANAGER_API_PASSWORD` value of `/etc/wazuh/credentials.env`:
+
+      ```bash
+      curl -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://<MASTER_IP>:55000/security/user/authenticate?raw=true"
+      ```
+
+The Wazuh server API only runs on the master node. The Wazuh dashboard connects to the master.
+
 ## Wazuh dashboard
 
 Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/ARM64) architecture using the assisted installation method. Wazuh dashboard is a flexible and intuitive web interface for mining and visualizing security events and archives.
@@ -220,4 +240,18 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
 When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, the `root-ca.pem` file previously generated can be imported to the certificate manager of the browser instead. Alternatively, you can configure a certificate from a trusted authority.
 
 > [!NOTE]
-> `/etc/wazuh/credentials.env` holds the passwords of the Wazuh users, generated during the installation. Once you have stored them in a safe place, remove the file from every node: the Wazuh components do not read it after the installation. To change a password later, see [Change all default passwords](../../ref/getting-started/usage.md#change-all-default-passwords).
+> `/etc/wazuh/credentials.env` holds the passwords of the Wazuh users, generated during the installation. Once you have stored them in a safe place, remove the file from every node: the Wazuh components do not read it after the installation. To change a password later, see [Multi-node and distributed deployments](../../ref/getting-started/usage.md#multi-node-and-distributed-deployments).
+
+## Next step: enroll the Wazuh agents
+
+Agents enroll with an enrollment token created on the master node. Replace `<MANAGER_ADDRESS>` with the address agents use to reach the Wazuh manager. It must be in the listener certificate of the Wazuh manager.
+
+```bash
+sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <MANAGER_ADDRESS>
+```
+
+Then install the agent with the token in `WAZUH_ENROLLMENT_TOKEN`, for example:
+
+```bash
+sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='<NAME>' dpkg -i wazuh-agent_*.deb
+```

@@ -239,7 +239,7 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
       ```
 
 > [!NOTE]
-> Firewalls can block communication between Wazuh components on different hosts. Refer to the Required ports section and ensure the necessary ports are open.
+> Firewalls can block communication between Wazuh components on different hosts. Refer to the [Required ports](../../ref/getting-started/requirements.md#required-ports) section and ensure the necessary ports are open.
 
 ### Deploying certificates
 
