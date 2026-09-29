@@ -476,7 +476,15 @@ systemctl restart wazuh-manager
 
 Where `<WAZUH_MANAGER_PASSWORD>` is the `WAZUH_INDEXER_MANAGER_PASSWORD` value saved in `/etc/wazuh/credentials.env` on the node where the tool ran.
 
-The same applies to any additional Wazuh dashboard node: its `opensearch.password` keystore entry holds the `kibanaserver` password, and its `wazuh_core.hosts.default.password` entry holds the `wazuh-wui` password.
+The same applies to any additional Wazuh dashboard node: its `opensearch.password` keystore entry holds the `kibanaserver` password, and its `wazuh_core.hosts.default.password` entry holds the `wazuh-wui` password. The keystore belongs to the `wazuh-dashboard` user, so write it as that user:
+
+```bash
+echo '<KIBANASERVER_PASSWORD>' | runuser -u wazuh-dashboard -- /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore add opensearch.password --stdin --force
+echo '<WAZUH_WUI_PASSWORD>' | runuser -u wazuh-dashboard -- /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore add wazuh_core.hosts.default.password --stdin --force
+systemctl restart wazuh-dashboard
+```
+
+The tool updates `/etc/wazuh/credentials.env` only on the node where it runs; the file on the other nodes keeps the previous values.
 
 ### Change a Wazuh indexer password
 
