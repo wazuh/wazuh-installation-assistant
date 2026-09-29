@@ -124,12 +124,32 @@ function cert_cleanFiles() {
 
 }
 
+# Checks OpenSSL and the commands the shared credentials library needs to create and
+# validate the root CA. Without them the CA check fails with a misleading error.
 function cert_checkOpenSSL() {
 
-    common_logger -d "Checking if OpenSSL is installed."
+    local missing=()
+
+    common_logger -d "Checking if OpenSSL and the commands the root CA needs are installed."
 
     if [ -z "$(command -v openssl)" ]; then
-        common_logger -e "OpenSSL not installed."
+        missing+=("openssl (package openssl)")
+    fi
+    if [ -z "$(command -v cmp)" ]; then
+        missing+=("cmp (package diffutils)")
+    fi
+    if [ -z "$(command -v flock)" ]; then
+        missing+=("flock (package util-linux)")
+    fi
+    if ! stat -c '%a' / > /dev/null 2>&1; then
+        missing+=("GNU stat (package coreutils)")
+    fi
+    if ! ln --help 2>&1 | grep -q -- '-T'; then
+        missing+=("GNU ln (package coreutils)")
+    fi
+
+    if [ "${#missing[@]}" -gt 0 ]; then
+        common_logger -e "The following commands are required and could not be found: $(IFS=','; echo "${missing[*]}" | sed 's/,/, /g'). Install them and run the tool again."
         exit 1
     fi
 

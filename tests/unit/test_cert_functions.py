@@ -130,18 +130,44 @@ class TestCertSetpermisions:
 
 
 class TestCertCheckOpenSSL:
-    def test_fail_no_openssl(self):
-        mocks = {**IGNORE_LOGGER, "command": "return 1"}
-        result = run_bash_function(BASE_SOURCES, "cert_checkOpenSSL", mocks)
-        assert_failure(result)
+    """cert_checkOpenSSL checks OpenSSL and what the shared credentials library
+    needs for the root CA: cmp, flock, GNU stat and ln -T. A missing one used
+    to surface later as "root-ca.key does not match root-ca.pem"."""
 
-    def test_success_openssl_present(self):
-        mocks = {
-            **IGNORE_LOGGER,
-            "command": 'case "$2" in openssl) echo /bin/openssl ;; *) return 1 ;; esac',
-        }
-        result = run_bash_function(BASE_SOURCES, "cert_checkOpenSSL", mocks)
-        assert_success(result)
+    ALL_PRESENT = 'case "$2" in openssl|cmp|flock) echo "/usr/bin/$2" ;; *) return 1 ;; esac'
+
+    def _run(self, extra_mocks):
+        mocks = {"common_logger": 'echo "LOG:$*"', "command": self.ALL_PRESENT, **extra_mocks}
+        return run_bash_function(BASE_SOURCES, "cert_checkOpenSSL", mocks)
+
+    def test_fail_no_openssl(self):
+        result = self._run({"command": "return 1"})
+        assert_failure(result)
+        assert "openssl (package openssl)" in result.stdout
+
+    def test_success_all_commands_present(self):
+        assert_success(self._run({}))
+
+    @pytest.mark.parametrize("name, package", [("cmp", "diffutils"), ("flock", "util-linux")])
+    def test_fail_names_the_package_of_a_missing_command(self, name, package):
+        result = self._run({"command": f'[ "$2" != "{name}" ] && echo "/usr/bin/$2"'})
+        assert_failure(result)
+        assert f"LOG:-e The following commands are required and could not be found: {name} (package {package})." in result.stdout
+
+    def test_fail_without_gnu_stat(self):
+        result = self._run({"stat": "return 1"})
+        assert_failure(result)
+        assert "GNU stat (package coreutils)" in result.stdout
+
+    def test_fail_without_ln_t(self):
+        result = self._run({"ln": 'echo "Usage: ln [-s] TARGET LINK"'})
+        assert_failure(result)
+        assert "GNU ln (package coreutils)" in result.stdout
+
+    def test_lists_every_missing_command(self):
+        result = self._run({"command": 'case "$2" in openssl) echo /usr/bin/openssl ;; *) return 1 ;; esac'})
+        assert_failure(result)
+        assert "cmp (package diffutils), flock (package util-linux)." in result.stdout
 
 
 class TestCertMainRootCAOption:
