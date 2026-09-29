@@ -235,7 +235,7 @@ nodes:
 Issue it with `-lb`, or with `-A`, which includes the section when it is present:
 
 ```bash
-sudo bash wazuh-certs-tool-5.0.0.sh -lb ./root-ca.pem ./root-ca.key
+sudo bash wazuh-certs-tool-5.0.0.sh -lb
 ```
 
 Use this **only when the proxy terminates TLS**. With a layer 4 passthrough load balancer

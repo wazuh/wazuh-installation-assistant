@@ -86,9 +86,7 @@ The steps to perform the installation are as follows:
 
 ### Change the default passwords
 
-The installation assistant is designed to facilitate the initial installation of Wazuh, so a freshly completed installation leaves several Wazuh indexer internal users with their password set to the same value as their username, some of them with high privileges. Therefore, it is highly recommended to change them to more secure ones right after installation.
-
-The recommended procedure is to change all default passwords in a single command using the `--change-all` option of the passwords tool. See the [Change all default passwords](#change-all-default-passwords) section for details.
+A freshly completed installation has no default passwords: the passwords of the Wazuh indexer and Wazuh server API users are generated during the installation and saved in `/etc/wazuh/credentials.env`. To rotate them, for example if that file was exposed, the recommended procedure is to change all the passwords in a single command using the `--change-all` option of the passwords tool. See the [Change all default passwords](#change-all-default-passwords) section for details.
 
 This same command also rotates the Wazuh server API users (`wazuh` and `wazuh-wui`) on the host where the Wazuh manager is installed, so there is no need to change them separately. The new passwords are saved in `/etc/wazuh/credentials.env`, never printed.
 

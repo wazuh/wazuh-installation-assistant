@@ -628,8 +628,10 @@ jobs:
         timeout-minutes: 5
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            ADMIN_PW=\$(sudo sed -n 's/^WAZUH_INDEXER_ADMIN_PASSWORD=\"\\(.*\\)\"\$/\\1/p' /etc/wazuh/credentials.env)
+            [ -n \"\$ADMIN_PW\" ] || { echo 'ERROR: WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh/credentials.env'; exit 1; }
             for i in \$(seq 1 30); do
-              code=\$(curl -sk -u 'admin:admin' -o /dev/null -w '%{http_code}' 'https://localhost/status')
+              code=\$(curl -sk -u \"admin:\${ADMIN_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost/status')
               [ \"\$code\" = '200' ] && { echo 'wazuh-dashboard is ready'; exit 0; }
               echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
               sleep 10
@@ -660,18 +662,17 @@ jobs:
         env:
           WAZUH_NEW_PASSWORD: "T3sting-Password"
         run: |
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-passwords-tool.sh -u admin -p '${{ env.WAZUH_NEW_PASSWORD }}'"
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-admin -p '${{ env.WAZUH_NEW_PASSWORD }}'"
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-manager -p '${{ env.WAZUH_NEW_PASSWORD }}'"
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-demo -p '${{ env.WAZUH_NEW_PASSWORD }}'"
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-passwords-tool.sh -u wazuh-readonly -p '${{ env.WAZUH_NEW_PASSWORD }}'"
-          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-passwords-tool.sh -au wazuh -ap wazuh -u wazuh-wui -p '${{ env.WAZUH_NEW_PASSWORD }}' -A"
+          # Keep the admin password set by the installer, the tests check that it is rejected afterwards
+          OLD_ADMIN_PW=$(ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+            "sudo sed -n 's/^WAZUH_INDEXER_ADMIN_PASSWORD=\"\\(.*\\)\"\$/\\1/p' /etc/wazuh/credentials.env")
+          [ -n "$OLD_ADMIN_PW" ] || { echo 'ERROR: WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh/credentials.env'; exit 1; }
+          echo "::add-mask::${OLD_ADMIN_PW}"
+          echo "WAZUH_OLD_PASSWORD=${OLD_ADMIN_PW}" >> "$GITHUB_ENV"
+          # The passwords tool reads the new password from the standard input with -p
+          for user in admin kibanaserver wazuh-manager wazuh wazuh-wui; do
+            printf '%s\n' "$WAZUH_NEW_PASSWORD" | ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+              "sudo bash /tmp/wazuh-passwords-tool.sh -u ${user} -p"
+          done
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
             "sudo systemctl restart wazuh-indexer wazuh-dashboard wazuh-manager"
 
