@@ -17,14 +17,14 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | `-h`, `--help` | Display this help and exit. |
 | `-id`, `--install-dependencies` | Installs automatically the necessary dependencies for the installation. |
 | `-o`, `--overwrite` | Overwrites previously installed components. This will erase all the existing configuration and data. |
-| `-of`, `--offline-installation` | Perform an offline installation. This option must be used with -a, -ws, -s, -wi, or -wd. |
+| `-of`, `--offline-installation` | Perform an offline installation. This option must be used with -a, -wm, -s, -wi, or -wd. |
 | `-s`, `--start-cluster` | Initialize Wazuh indexer cluster security settings. |
 | `-u`, `--uninstall` | Uninstalls all Wazuh components. This will erase all the existing configuration and data. |
 | `-v`, `--verbose` | Shows the complete installation output. |
 | `-V`, `--version` | Shows the version of the script and Wazuh packages. |
 | `-wd`, `--wazuh-dashboard <dashboard-node-name>` | Install and configure Wazuh dashboard, used for distributed deployments. |
 | `-wi`, `--wazuh-indexer <indexer-node-name>` | Install and configure Wazuh indexer, used for distributed deployments. |
-| `-ws`, `--wazuh-server <server-node-name>` | Install and configure Wazuh manager, used for distributed deployments. |
+| `-wm`, `--wazuh-manager <manager-node-name>` | Install and configure Wazuh manager, used for distributed deployments. |
 
 ## Wazuh certs tool
 

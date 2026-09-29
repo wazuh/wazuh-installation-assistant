@@ -188,7 +188,7 @@ Command-line option to install only the Wazuh Indexer component on the current m
 
 Command-line option to install only the Wazuh Dashboard component on the current machine, using the node name specified in `config.yml`.
 
-### --wazuh-server <NODE_NAME>
+### --wazuh-manager <NODE_NAME>
 
 Command-line option to install only the Wazuh Manager (server) component on the current machine, using the node name specified in `config.yml`.
 
