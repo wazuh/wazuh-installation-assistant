@@ -127,6 +127,20 @@ function installCommon_placeCredentials() {
         common_logger -e "Could not resolve the Wazuh base directory."
         exit 1
     fi
+    if ! ca_dir=$(wazuh_ca_get_dir); then
+        common_logger -e "Could not resolve the root CA directory."
+        exit 1
+    fi
+
+    # Nothing is written until both files are known to belong to this deployment.
+    if [ -e "${ca_dir}/root-ca.pem" ] && ! tar -xOf "${tar_file}" wazuh-install-files/root-ca.pem 2>/dev/null | cmp -s - "${ca_dir}/root-ca.pem"; then
+        common_logger -e "${ca_dir}/root-ca.pem already exists and is not the one in ${tar_file}. Remove it, or use the tar file of this deployment."
+        exit 1
+    fi
+    if [ -e "${base_dir}/credentials.env" ]; then
+        installCommon_mergeCredentials check
+    fi
+
     eval "install -d -o root -g root -m 0700 '${base_dir}' ${debug}"
     if [ -e "${base_dir}/credentials.env" ]; then
         installCommon_mergeCredentials
@@ -134,10 +148,6 @@ function installCommon_placeCredentials() {
         installCommon_placeFromTar "credentials.env" "${base_dir}/credentials.env" root root 0600
     fi
 
-    if ! ca_dir=$(wazuh_ca_get_dir); then
-        common_logger -e "Could not resolve the root CA directory."
-        exit 1
-    fi
     eval "install -d -o root -g root -m 0700 '${ca_dir}' ${debug}"
     installCommon_placeFromTar "root-ca.pem" "${ca_dir}/root-ca.pem" root root 0644
 
@@ -146,8 +156,10 @@ function installCommon_placeCredentials() {
 # A credentials file already on the host (the -g host, another component of this node, or
 # one a failed install left behind after its package removed its own keys) is completed
 # with the passwords of the tar. A password that differs belongs to another deployment.
+# With "check", it only compares and writes nothing.
 function installCommon_mergeCredentials() {
 
+    local mode="${1:-merge}"
     local key value current credentials
 
     credentials=$(tar -xOf "${tar_file}" wazuh-install-files/credentials.env 2>/dev/null)
@@ -159,7 +171,7 @@ function installCommon_mergeCredentials() {
                 common_logger -e "${key} in $(wazuh_env_get_file) is not the one in ${tar_file}. Remove the file, or use the tar file of this deployment."
                 exit 1
             fi
-        elif ! wazuh_env_set "${key}" "${value}"; then
+        elif [ "${mode}" != "check" ] && ! wazuh_env_set "${key}" "${value}"; then
             common_logger -e "Could not write ${key} to the credentials file."
             exit 1
         fi

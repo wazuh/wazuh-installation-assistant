@@ -527,6 +527,9 @@ class TestInstallCommonMergeCredentials:
     PASSWORD = "Aa1.aaaaaaaaaaaa"
 
     def _run(self, tmp_path, existing):
+        return self._run_mode(tmp_path, existing, "")
+
+    def _run_mode(self, tmp_path, existing, mode):
         import subprocess
 
         staging = tmp_path / "wazuh-install-files"
@@ -539,7 +542,7 @@ class TestInstallCommonMergeCredentials:
         env_file.write_text(existing)
         result = run_bash_function(
             [*BASE_SOURCES, "install_functions/installVariables.sh"],
-            "installCommon_mergeCredentials",
+            f"installCommon_mergeCredentials {mode}",
             {
                 **IGNORE_LOGGER,
                 "wazuh_env_get": f'sed -n "s/^$1=\\"\\(.*\\)\\"$/\\1/p" "{env_file}" | grep .',
@@ -559,3 +562,14 @@ class TestInstallCommonMergeCredentials:
     def test_fail_on_a_different_password(self, tmp_path):
         result, _ = self._run(tmp_path, 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n')
         assert_failure(result)
+
+    def test_check_mode_writes_nothing(self, tmp_path):
+        """Checking a file from another deployment leaves it as it was."""
+        result, content = self._run_mode(tmp_path, 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n', "check")
+        assert_failure(result)
+        assert content == 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n'
+
+    def test_check_mode_accepts_a_compatible_file(self, tmp_path):
+        result, content = self._run_mode(tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n', "check")
+        assert_success(result)
+        assert content == f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n'
