@@ -76,6 +76,9 @@ nodes:
 
   4. Copy the `wazuh-install-files.tar` file and the `wazuh-install-5.0.0.sh` script to all the servers of the distributed deployment, including the Wazuh manager, the Wazuh indexer, and the Wazuh dashboard nodes. This can be done by using the `scp` utility.
 
+      > [!NOTE]
+      > The file holds the passwords generated with it. If a password is changed later, update the file before using it to add or reinstall a node. See [Security](../security.md).
+
 ### Wazuh indexer node installation
 
 Follow these steps to install and configure a multi-node Wazuh indexer.

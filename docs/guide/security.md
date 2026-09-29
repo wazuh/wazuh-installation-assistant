@@ -20,6 +20,8 @@ The Wazuh manager does not generate certificates: it will not start until `remot
 
 The root CA private key (`root-ca.key`) is not in the bundle: it stays in `/etc/wazuh/ca` of the node where the bundle was generated. Anyone holding it can issue a certificate with `CN=admin`, which the Wazuh indexer accepts as its superuser without a password, and a certificate issued that way cannot be revoked. Keeping it on one node, instead of on every node, limits that exposure to a single host. Back up `/etc/wazuh/ca` of that node in a safe place: the key is only needed to add nodes or renew certificates with `wazuh-certs-tool-5.0.0.sh`.
 
+The passwords in the bundle are the ones generated with it. After a password is changed with `wazuh-passwords-tool-5.0.0.sh`, the bundle no longer matches the deployment: a node installed or reinstalled from it gets the previous password and cannot connect. Before adding or reinstalling a node, update `credentials.env` inside the bundle with the current passwords, or install the node and then write the current passwords into its keystores as described in [Change all default passwords](../ref/getting-started/usage.md#change-all-default-passwords). Keep in mind that removing a component with `-u|--uninstall` also removes `/etc/wazuh/credentials.env` from that node.
+
 Certificate files are stored in the following paths on each node:
 
 | Component | Certificate path |
