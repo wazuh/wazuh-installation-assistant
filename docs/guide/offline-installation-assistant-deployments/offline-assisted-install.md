@@ -101,10 +101,10 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
 ### Testing the cluster installation
 
-1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the configured Wazuh indexer IP address:
+1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the configured Wazuh indexer IP address. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
     ```bash
-    curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
+    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
     ```
 
     **Output example:**
@@ -129,10 +129,10 @@ The following dependencies must be installed on the Wazuh indexer nodes:
     }
 ```
 
-2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command, then execute it:
+2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command, then execute it. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
     ```bash
-    curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
     ```
 
 ### Installing the Wazuh manager

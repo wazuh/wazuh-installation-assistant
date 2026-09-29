@@ -95,10 +95,10 @@ The following dependencies must be installed on the Wazuh indexer nodes:
     /usr/share/wazuh-indexer/bin/indexer-security-init.sh
     ```
 
-7. Run the following command to check that the installation is successful. This command uses `127.0.0.1`; set your Wazuh indexer address if necessary.
+7. Run the following command to check that the installation is successful. This command uses `127.0.0.1`; set your Wazuh indexer address if necessary. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
     ```bash
-    curl -XGET https://127.0.0.1:9200 -u admin:admin -k
+    curl -XGET https://127.0.0.1:9200 -u admin -k
     ```
 
     Example output:

@@ -314,10 +314,10 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
 
 ### Testing the cluster installation
 
-  1. Run the following commands to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer:
+  1. Run the following commands to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
       ```bash
-      curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
+      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
       ```
 
       ```json
@@ -339,10 +339,10 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
       }
       ```
 
-  2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer:
+  2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
       ```bash
-      curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
       ```
 
       ```bash
