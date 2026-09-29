@@ -239,7 +239,7 @@ Edit `/etc/wazuh-indexer/opensearch.yml` and replace the following values:
       ```
 
 > [!NOTE]
-> Firewalls can block communication between Wazuh components on different hosts. Refer to the Required ports section and ensure the necessary ports are open.
+> Firewalls can block communication between Wazuh components on different hosts. Refer to the [Required ports](../../ref/getting-started/requirements.md#required-ports) section and ensure the necessary ports are open.
 
 ### Deploying certificates
 
@@ -314,10 +314,10 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
 
 ### Testing the cluster installation
 
-  1. Run the following commands to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer:
+  1. Run the following commands to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
       ```bash
-      curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
+      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
       ```
 
       ```json
@@ -339,10 +339,10 @@ Run the Wazuh `indexer indexer-security-init.sh` script to load the new certific
       }
       ```
 
-  2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer:
+  2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
       ```bash
-      curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
       ```
 
       ```bash
@@ -820,6 +820,6 @@ Access the Wazuh web interface with your `admin` user credentials. This is the d
 
 - URL: https://<WAZUH_DASHBOARD_IP_ADDRESS>
 - Username: admin
-- Password: admin
+- Password: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `/etc/wazuh/credentials.env`
 
 When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, the `root-ca.pem` file previously generated can be imported to the certificate manager of the browser. Alternatively, you can configure a certificate from a trusted authority.

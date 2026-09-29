@@ -33,7 +33,7 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
       curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
       ```
 
-  2. Edit `./config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed.
+  2. Edit `./config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed. Use the IP addresses the nodes use to reach each other.
 
   For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
 
@@ -68,13 +68,22 @@ nodes:
       ip: "<dashboard-node-ip>"
 ```
 
-  3. Run the Wazuh installation assistant with the option `--generate-config-files` to generate the Wazuh cluster key, certificates, and passwords necessary for installation. You can find these files in `./wazuh-install-files.tar`.
+  3. On the first Wazuh indexer node, run the Wazuh installation assistant with the option `--generate-config-files` to generate the Wazuh cluster key, certificates, and passwords necessary for installation. You can find these files in `./wazuh-install-files.tar`. The root CA and its private key stay in `/etc/wazuh/ca` of this node and are not added to the file; back them up in a safe place, they are needed to add nodes or renew certificates later.
 
       ```bash
       bash wazuh-install-5.0.0.sh --generate-config-files
       ```
 
+      If agents will connect to a Wazuh manager through a different address, such as a public IP, a NAT address, or a load balancer, add it with `-as|--agent-san <address>`. Agent enrollment tokens can only be created for an address that is in the listener certificate of the Wazuh manager. See [Name the address agents dial](../../ref/getting-started/usage.md#name-the-address-agents-dial).
+
+      ```bash
+      bash wazuh-install-5.0.0.sh --generate-config-files -as <address>
+      ```
+
   4. Copy the `wazuh-install-files.tar` file and the `wazuh-install-5.0.0.sh` script to all the servers of the distributed deployment, including the Wazuh manager, the Wazuh indexer, and the Wazuh dashboard nodes. This can be done by using the `scp` utility.
+
+      > [!NOTE]
+      > The file holds the passwords generated with it. If a password is changed later, update the file before using it to add or reinstall a node. See [Security](../security.md).
 
 ### Wazuh indexer node installation
 
@@ -117,10 +126,10 @@ bash wazuh-install-5.0.0.sh --start-cluster
 
 Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster is functioning as expected by following the steps below.
 
-  1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer and use the password gotten from the output of the previous command:
+  1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
       ```bash
-      curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
+      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
       ```
 
       ```json
@@ -142,10 +151,10 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
       }
       ```
 
-  2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer and enter the password for the Wazuh indexer admin user when it prompts for password:
+  2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
       ```bash
-      curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
       ```
 
       ```bash
@@ -176,6 +185,20 @@ Install the Wazuh manager as a multi-node cluster on a 64-bit (x86_64/AMD64 or A
 
 Your Wazuh manager is now successfully installed, repeat this process on every Wazuh manager node.
 
+  2. On the master node, check that every Wazuh manager node is listed in the cluster:
+
+      ```bash
+      /var/wazuh-manager/bin/cluster_control -l
+      ```
+
+  3. Check that the Wazuh server API answers. Replace `<MASTER_IP>` with the IP address of the master node and `<WAZUH_MANAGER_API_PASSWORD>` with the `WAZUH_MANAGER_API_PASSWORD` value of `/etc/wazuh/credentials.env`:
+
+      ```bash
+      curl -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://<MASTER_IP>:55000/security/user/authenticate?raw=true"
+      ```
+
+The Wazuh server API only runs on the master node. The Wazuh dashboard connects to the master.
+
 ## Wazuh dashboard
 
 Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/ARM64) architecture using the assisted installation method. Wazuh dashboard is a flexible and intuitive web interface for mining and visualizing security events and archives.
@@ -203,7 +226,7 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
         INFO: --- Summary ---
         INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>
         User: admin
-        Password: admin
+        Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in the credentials.env file of wazuh-install-files.tar, or in /etc/wazuh/credentials.env of a Wazuh indexer node
 
         INFO: Installation finished.
       ```
@@ -212,9 +235,23 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
 
 - URL: `https://<WAZUH_DASHBOARD_IP_ADDRESS>`
 - Username: `admin`
-- Password: `admin`
+- Password: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in the `credentials.env` file of `wazuh-install-files.tar`, or in `/etc/wazuh/credentials.env` of a Wazuh indexer node. The Wazuh dashboard node does not receive it.
 
 When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, the `root-ca.pem` file previously generated can be imported to the certificate manager of the browser instead. Alternatively, you can configure a certificate from a trusted authority.
 
 > [!NOTE]
-> It is highly recommended to change the default passwords after installation. See the [Change all default passwords](../../ref/getting-started/usage.md#change-all-default-passwords) section for details.
+> `/etc/wazuh/credentials.env` holds the passwords of the Wazuh users, generated during the installation. Each node only receives the passwords of the components installed on it; the node where `wazuh-install-files.tar` was generated keeps all of them. Once you have stored them in a safe place, remove the file from every node: the Wazuh components do not read it after the installation. To change a password later, see [Multi-node and distributed deployments](../../ref/getting-started/usage.md#multi-node-and-distributed-deployments).
+
+## Next step: enroll the Wazuh agents
+
+Agents enroll with an enrollment token created on the master node. Replace `<MANAGER_ADDRESS>` with the address agents use to reach the Wazuh manager. It must be in the listener certificate of the Wazuh manager.
+
+```bash
+sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <MANAGER_ADDRESS>
+```
+
+Then install the agent with the token in `WAZUH_ENROLLMENT_TOKEN`, for example:
+
+```bash
+sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='<NAME>' dpkg -i wazuh-agent_*.deb
+```

@@ -10,8 +10,10 @@ function dashboard_configure() {
 
     common_logger -d "Configuring Wazuh dashboard."
 
-    # dashboard configuration itself
-    dashboard_copyCertificates "${debug}"
+    # The package keeps a pair placed before it was installed as it is, and the service runs
+    # as wazuh-dashboard, which did not exist yet when the pair and its directory were placed.
+    eval "chown -R wazuh-dashboard:wazuh-dashboard ${dashboard_cert_path} ${debug}"
+    eval "chmod 500 ${dashboard_cert_path} ${debug}"
 
     # dashboard configuration to connect to the indexer cluster
     if [ "${#indexer_node_names[@]}" -eq 1 ]; then
@@ -45,43 +47,29 @@ function dashboard_configure() {
 
 }
 
+# Places the pair of this node from the tar before the package is installed, with the
+# names the package expects. The package uses it instead of issuing its own.
 function dashboard_copyCertificates() {
 
-    common_logger -d "Copying Wazuh dashboard certificates."
-    eval "rm -f ${dashboard_cert_path}/* ${debug}"
-    if [ "${AIO}" ]; then
-        dashname="${dashboard_node_names[0]}"
-    fi
-    # else we assume that dashname is already set
-
-    if [ -f "${tar_file}" ]; then
-        if ! tar -tvf "${tar_file}" | grep -q "${dashname}" ; then
-            common_logger -e "Tar file does not contain certificate for the node ${dashname}."
-            installCommon_rollBack
-            exit 1;
-        fi
-        eval "mkdir ${dashboard_cert_path} ${debug}"
-        eval "sed -i s/dashboard.pem/${dashname}.pem/ /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
-        eval "sed -i s/dashboard-key.pem/${dashname}-key.pem/ /etc/wazuh-dashboard/opensearch_dashboards.yml ${debug}"
-        eval "tar -xf ${tar_file} -C ${dashboard_cert_path} wazuh-install-files/${dashname}.pem --strip-components 1 ${debug}"
-        eval "tar -xf ${tar_file} -C ${dashboard_cert_path} wazuh-install-files/${dashname}-key.pem --strip-components 1 ${debug}"
-        eval "tar -xf ${tar_file} -C ${dashboard_cert_path} wazuh-install-files/root-ca.pem --strip-components 1 ${debug}"
-        eval "chown -R wazuh-dashboard:wazuh-dashboard ${dashboard_cert_path} ${debug}"
-        eval "chmod 500 ${dashboard_cert_path} ${debug}"
-        eval "chmod 400 ${dashboard_cert_path}/* ${debug}"
-        common_logger -d "Wazuh dashboard certificate setup finished."
-    else
-        common_logger -e "No certificates found. Wazuh dashboard  could not be initialized."
-        installCommon_rollBack
-        exit 1
-    fi
+    common_logger -d "Placing the Wazuh dashboard certificates."
+    # The installer umask would leave the directory without the search bit; the package
+    # sets its owner.
+    eval "(umask 022 && mkdir -p ${dashboard_cert_path}) ${debug}"
+    installCommon_placeFromTar "${dashname}.pem" "${dashboard_cert_path}/dashboard.pem" root root 0400
+    installCommon_placeFromTar "${dashname}-key.pem" "${dashboard_cert_path}/dashboard-key.pem" root root 0400
 
 }
 
 function dashboard_displaySummary() {
 
+    # A distributed dashboard node only receives its own passwords, not the admin one.
+    local location="/etc/wazuh/credentials.env"
+    if [ -z "${AIO}" ]; then
+        location="the credentials.env file of ${tar_file_name}, or in /etc/wazuh/credentials.env of a Wazuh indexer node"
+    fi
+
     common_logger -nl "--- Summary ---"
-    common_logger -nl "You can access the web interface https://<wazuh_dashboard_ip>:${http_port}\n    User: admin\n    Password: admin"
+    common_logger -nl "You can access the web interface https://<wazuh_dashboard_ip>:${http_port}\n    User: admin\n    Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in ${location}"
 
 }
 

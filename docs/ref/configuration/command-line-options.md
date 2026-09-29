@@ -17,14 +17,14 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | `-h`, `--help` | Display this help and exit. |
 | `-id`, `--install-dependencies` | Installs automatically the necessary dependencies for the installation. |
 | `-o`, `--overwrite` | Overwrites previously installed components. This will erase all the existing configuration and data. |
-| `-of`, `--offline-installation` | Perform an offline installation. This option must be used with -a, -ws, -s, -wi, or -wd. |
+| `-of`, `--offline-installation` | Perform an offline installation. This option must be used with -a, -wm, -s, -wi, or -wd. |
 | `-s`, `--start-cluster` | Initialize Wazuh indexer cluster security settings. |
 | `-u`, `--uninstall` | Uninstalls all Wazuh components. This will erase all the existing configuration and data. |
 | `-v`, `--verbose` | Shows the complete installation output. |
 | `-V`, `--version` | Shows the version of the script and Wazuh packages. |
 | `-wd`, `--wazuh-dashboard <dashboard-node-name>` | Install and configure Wazuh dashboard, used for distributed deployments. |
 | `-wi`, `--wazuh-indexer <indexer-node-name>` | Install and configure Wazuh indexer, used for distributed deployments. |
-| `-ws`, `--wazuh-server <server-node-name>` | Install and configure Wazuh manager, used for distributed deployments. |
+| `-wm`, `--wazuh-manager <manager-node-name>` | Install and configure Wazuh manager, used for distributed deployments. |
 
 ## Wazuh certs tool
 
@@ -36,16 +36,18 @@ For DNS-based or mixed address configurations, see [Other `config.yml` examples]
 
 | Option | Description |
 | -------- | ------------- |
-| `-a`, `--admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the admin certificates, add root-ca.pem and root-ca.key. |
-| `-A`, `--all </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates certificates specified in config.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created. Includes the `load_balancer` entries when the section is present. |
+| `-a`, `--admin-certificates` | Creates the admin certificates, signed by the root CA of the CA directory. |
+| `-A`, `--all` | Creates certificates specified in config.yml and admin certificates. If there is no root CA in the CA directory, a new one is created there. Includes the `load_balancer` entries when the section is present. |
 | `-as`, `--agent-san <ip\|dns>` | Adds an extra address to the subject alternative name of every agent listener certificate, on top of the `ip` and `dns` entries of each manager node in config.yml. Repeat it for more than one. It names an address agents dial that no single node owns, such as a load balancer shared by every node of a cluster. Must be used along with `-A` or `-wm`. |
-| `-ca`, `--root-ca-certificates` | Creates the root-ca certificates. |
-| `-lb`, `--load-balancer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the certificates of the `load_balancer` entries of config.yml, add root-ca.pem and root-ca.key. Only needed by a proxy that terminates TLS. |
+| `-ca`, `--root-ca-certificates` | Creates the root CA in the CA directory, if it does not exist yet. |
+| `-lb`, `--load-balancer-certificates` | Creates the certificates of the `load_balancer` entries of config.yml. Only needed by a proxy that terminates TLS. |
 | `-v`, `--verbose` | Enables verbose mode. |
-| `-wd`, `--wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh dashboard certificates, add root-ca.pem and root-ca.key. |
-| `-wi`, `--wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh indexer certificates, add root-ca.pem and root-ca.key. |
-| `-ws`, `--wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>` | Creates the Wazuh server certificates, add root-ca.pem and root-ca.key. |
-| `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws, -lb |
+| `-wd`, `--wazuh-dashboard-certificates` | Creates the Wazuh dashboard certificates. |
+| `-wi`, `--wazuh-indexer-certificates` | Creates the Wazuh indexer certificates. |
+| `-wm`, `--wazuh-manager-certificates` | Creates the Wazuh manager certificates. Each manager node also gets `<name>-remoted.pem` and `<name>-remoted-key.pem`, the certificate of the agent listener. |
+| `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb |
+
+The tool must be run as root. The root CA is read from `/etc/wazuh/ca`, or from the directory set in `WAZUH_CA_DIR`. Its private key, `root-ca.key`, stays there and is never copied to the `wazuh-certificates` directory. See [Root CA](../getting-started/usage.md#root-ca).
 
 ## Wazuh password tool
 
@@ -55,11 +57,9 @@ The `wazuh-passwords-tool-5.0.0.sh` script provides the following options for ma
 
 | Options | Purpose |
 | --------- | --------- |
-| `-A\|--api` | Change the Wazuh server API password given the current password. Requires `-u\|--user <USER>`, `-p\|--password <PASSWORD>`, `-au\|--admin-user <ADMIN_USER>`, and `-ap\|--admin-password <ADMIN_PASSWORD>`. |
-| `-au\|--admin-user <ADMIN_USER>` | Admin user for the Wazuh server API. Required for changing the Wazuh server API passwords. Requires `-A\|--api`. |
-| `-ap\|--admin-password <ADMIN_PASSWORD>` | Password for the Wazuh server API admin user. Required for changing the Wazuh server API passwords. Requires `-A\|--api`. |
-| `-u\|--user <USER>` | Indicates the name of the user whose password will be changed. If no password is specified, it will generate a random one. |
-| `-p\|--password <PASSWORD>` | Indicates the new password. Must be used with option `-u\|--user <USER>`. |
+| `-a\|--change-all` | Changes the passwords of all the Wazuh indexer and Wazuh server API users installed on the host. The new passwords are generated and saved in `/etc/wazuh/credentials.env`. |
+| `-u\|--user <USER>` | Indicates the name of the user whose password will be changed: a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh server API user (`wazuh`, `wazuh-wui`). If `-p\|--password` is not used, a random password is generated and saved in `/etc/wazuh/credentials.env`. |
+| `-p\|--password` | Reads the new password from the standard input. Takes no value. Must be used with option `-u\|--user <USER>`. For example: `printf '%s\n' "$NEW_PASSWORD" \| sudo bash wazuh-passwords-tool-5.0.0.sh -u admin -p`. |
 | `-v\|--verbose` | Shows the complete script execution output. |
 | `-h\|--help` | Shows help. |
 

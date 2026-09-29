@@ -16,6 +16,7 @@ tests/unit/
 ├── test_manager.py              # manager.sh — install (apt/yum), cluster start
 ├── test_indexer.py              # indexer.sh — install (apt/yum), configure
 ├── test_dashboard.py            # dashboard.sh — install (apt/yum), configure
+├── test_offline.py              # wazuh-offline-installation.sh — offline package checks
 └── legacy/                      # Preserved Bach/Docker tests (not executed, kept as reference)
 ```
 

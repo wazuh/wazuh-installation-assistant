@@ -330,7 +330,9 @@ function checks_names() {
 
 }
 
-# This function checks if the target certificates are created before to start the installation.
+# Checks, before anything changes on the node, that the tar file has everything the
+# component of this node needs: the credentials file with valid passwords for it, the
+# root CA certificate and the certificate pairs of the node.
 function checks_previousCertificate() {
     common_logger -d "Checking previous certificate existence."
     if [ ! -f "${tar_file}" ]; then
@@ -338,31 +340,61 @@ function checks_previousCertificate() {
         exit 1
     fi
 
+    if [ -z "${indxname}" ] && [ -z "${dashname}" ] && [ -z "${winame}" ]; then
+        return 0
+    fi
+
+    checks_tarFiles "config.yml" "credentials.env" "root-ca.pem"
+
     if [ -n "${indxname}" ]; then
-        if ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${indxname}".pem  || ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${indxname}"-key.pem; then
-            common_logger -e "There is no certificate for the indexer node ${indxname} in ${tar_file}."
-            exit 1
-        fi
+        checks_tarFiles "${indxname}.pem" "${indxname}-key.pem" "admin.pem" "admin-key.pem"
+        checks_tarPasswords "${indexer_credential_keys[@]}"
     fi
 
     if [ -n "${dashname}" ]; then
-        if ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${dashname}".pem || ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${dashname}"-key.pem; then
-            common_logger -e "There is no certificate for the Wazuh dashboard node ${dashname} in ${tar_file}."
-            exit 1
-        fi
+        checks_tarFiles "${dashname}.pem" "${dashname}-key.pem"
+        checks_tarPasswords "${dashboard_credential_keys[@]}"
     fi
 
     if [ -n "${winame}" ]; then
-        if ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${winame}".pem || ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${winame}"-key.pem; then
-            common_logger -e "There is no certificate for the wazuh manager node ${winame} in ${tar_file}."
+        checks_tarFiles "${winame}.pem" "${winame}-key.pem" "${winame}-remoted.pem" "${winame}-remoted-key.pem"
+        checks_tarPasswords "${manager_credential_keys[@]}"
+    fi
+}
+
+function checks_tarFiles() {
+
+    local file members
+
+    members=$(tar -tf "${tar_file}" 2>/dev/null)
+    for file in "$@"; do
+        if ! grep -q -x -F "wazuh-install-files/${file}" <<< "${members}"; then
+            common_logger -e "There is no ${file} in ${tar_file}. Create the file again with -g|--generate-config-files."
             exit 1
         fi
-        # The agent listener certificate is only a warning: an installation that reuses
-        # certificates provisioned by the customer may legitimately not carry it.
-        if ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${winame}"-remoted.pem || ! tar -tf "${tar_file}" | grep -q -E ^wazuh-install-files/"${winame}"-remoted-key.pem; then
-            common_logger -w "There is no agent listener certificate for the wazuh manager node ${winame} in ${tar_file}. The Wazuh manager will not start until remoted.pem and remoted-key.pem are provisioned in ${manager_cert_path}."
+    done
+
+}
+
+# The packages validate the passwords again when they are installed; this only makes a bad
+# tar fail before the node is changed.
+function checks_tarPasswords() {
+
+    local key value credentials
+
+    credentials=$(tar -xOf "${tar_file}" wazuh-install-files/credentials.env 2>/dev/null)
+    for key in "$@"; do
+        value=$(sed -n "s/^${key}=\"\(.*\)\"$/\1/p" <<< "${credentials}" | tail -n 1)
+        if [ -z "${value}" ]; then
+            common_logger -e "There is no ${key} in the credentials.env file of ${tar_file}."
+            exit 1
         fi
-    fi
+        if ! wazuh_password_validate "${value}" > /dev/null 2>&1; then
+            common_logger -e "The ${key} in the credentials.env file of ${tar_file} does not follow the password policy."
+            exit 1
+        fi
+    done
+
 }
 
 # Manages the special dependencies in case of AL2023
