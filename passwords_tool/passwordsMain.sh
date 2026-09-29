@@ -147,7 +147,12 @@ function main() {
             passwords_generateHash
             passwords_changePassword
             passwords_runSecurityAdmin
+            # Save the passwords the Wazuh indexer already uses before writing any keystore.
             passwords_saveIndexerCredentials
+            if ! passwords_updateKeystores; then
+                passwords_restartPendingServices
+                exit 1
+            fi
         fi
 
         if [ -n "${api}" ] || [ "${#api_users[@]}" -gt 0 ]; then

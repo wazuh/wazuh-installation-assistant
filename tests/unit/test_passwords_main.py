@@ -45,6 +45,7 @@ BASE_MOCKS = {
     "passwords_changePassword": 'echo "CHANGEPASSWORD_CALLED"',
     "passwords_runSecurityAdmin": 'echo "RUNSECURITYADMIN_CALLED"',
     "passwords_saveIndexerCredentials": 'echo "SAVEINDEXERCREDENTIALS_CALLED"',
+    "passwords_updateKeystores": 'echo "UPDATEKEYSTORES_CALLED"',
     "passwords_isServiceActive": 'echo "ISSERVICEACTIVE_CALLED:$*"; return 0',
     "passwords_changePasswordApi": 'echo "CHANGEPASSWORDAPI_CALLED:${api_users[*]}"',
     "passwords_restartService": 'echo "RESTARTSERVICE_CALLED:$1"',
@@ -241,6 +242,45 @@ class TestPasswordsMainSaveFailure:
         )
         assert result.returncode == 1
         assert "RESTARTSERVICE_CALLED:wazuh-dashboard" in result.stdout
+
+
+class TestPasswordsMainKeystoreOrder:
+    """The keystores of the Wazuh manager and the Wazuh dashboard are written
+    only after the Wazuh indexer uses the new passwords and they are saved,
+    so no keystore ever holds a password that nobody has."""
+
+    def test_keystores_are_written_after_the_credentials_are_saved(self):
+        result = _run("-a", checkinstalled="indexer_installed=1; wazuh_installed=1; dashboard_installed=1")
+        assert_success(result)
+        order = [result.stdout.index(marker) for marker in (
+            "CHANGEPASSWORD_CALLED", "RUNSECURITYADMIN_CALLED",
+            "SAVEINDEXERCREDENTIALS_CALLED", "UPDATEKEYSTORES_CALLED")]
+        assert order == sorted(order)
+
+    def test_keystores_are_not_written_when_securityadmin_fails(self):
+        result = _run(
+            "-u wazuh-manager",
+            extra_mocks={"passwords_runSecurityAdmin": 'echo "RUNSECURITYADMIN_CALLED"; exit 1'},
+            checkinstalled="indexer_installed=1; wazuh_installed=1",
+        )
+        assert_failure(result)
+        assert "SAVEINDEXERCREDENTIALS_CALLED" not in result.stdout
+        assert "UPDATEKEYSTORES_CALLED" not in result.stdout
+
+    def test_keystore_failure_exits_with_an_error_after_the_restarts(self):
+        """A keystore that could not be written ends the run with an error,
+        but the service whose keystore was written is still restarted."""
+        result = _run(
+            "-a",
+            extra_mocks={
+                "passwords_updateKeystores":
+                    'echo "UPDATEKEYSTORES_CALLED"; restart_dashboard=1; dashboard_keystore_updated=1; return 1',
+            },
+            checkinstalled="indexer_installed=1; wazuh_installed=1; dashboard_installed=1",
+        )
+        assert result.returncode == 1
+        assert "RESTARTSERVICE_CALLED:wazuh-dashboard" in result.stdout
+        assert "CHANGEPASSWORDAPI_CALLED" not in result.stdout
 
 
 class TestPasswordsMainSingleUserPath:

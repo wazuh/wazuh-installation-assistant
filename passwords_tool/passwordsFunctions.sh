@@ -44,16 +44,26 @@ function passwords_changePassword() {
         fi
     fi
 
+}
+
+# Writes the new passwords of wazuh-manager and kibanaserver to the keystores of this
+# host. It runs once the Wazuh indexer uses the new passwords and they are saved, so a
+# failed write only leaves a keystore to update by hand. Both keystores are tried.
+function passwords_updateKeystores() {
+
+    local keystore_failed=""
+
     if [ "${nuser}" == "wazuh-manager" ] || [ -n "${changeall}" ]; then
         if [ -n "${wazuh_installed}" ]; then
             if [ -n "${managerpass}" ]; then
-                if ! passwords_updateManagerKeystore "${managerpass}"; then
-                    common_logger -e "The new password was not applied to the Wazuh indexer, so the credentials currently in the keystore are still valid."
-                    exit 1;
+                if passwords_updateManagerKeystore "${managerpass}"; then
+                    manager_keystore_updated=1
+                    restart_manager=1
+                    common_logger -w "If this is a multi-node deployment, update the keystore of every other Wazuh manager node and restart them."
+                else
+                    common_logger -e "The Wazuh indexer already uses the new password of user wazuh-manager, but the Wazuh manager keystore still holds the previous one. Write the new password (WAZUH_INDEXER_MANAGER_PASSWORD in credentials.env, or the one you set with -p) with: echo 'wazuh-manager' | ${manager_keystore} -f indexer -k username; echo '<WAZUH_INDEXER_MANAGER_PASSWORD>' | ${manager_keystore} -f indexer -k password. Then restart the Wazuh manager."
+                    keystore_failed=1
                 fi
-                manager_keystore_updated=1
-                restart_manager=1
-                common_logger -w "If this is a multi-node deployment, update the keystore of every other Wazuh manager node and restart them."
             else
                 common_logger -w "Skipping Wazuh manager keystore update: no password available for the wazuh-manager user."
             fi
@@ -64,16 +74,21 @@ function passwords_changePassword() {
 
     if [ "${nuser}" == "kibanaserver" ] || [ -n "${changeall}" ]; then
         if [ -n "${dashboard_installed}" ] && [ -n "${dashpass}" ]; then
-            if ! passwords_updateDashboardKeystore "opensearch.password" "${dashpass}"; then
-                common_logger -e "The new password was not applied to the Wazuh indexer, so the credentials currently in the Wazuh dashboard keystore are still valid."
-                exit 1;
+            if passwords_updateDashboardKeystore "opensearch.password" "${dashpass}"; then
+                dashboard_keystore_updated=1
+                restart_dashboard=1
+                common_logger -w "If this is a multi-node deployment, update opensearch.password in the keystore of every other Wazuh dashboard node and restart them."
+            else
+                common_logger -e "The Wazuh indexer already uses the new password of user kibanaserver, but the Wazuh dashboard keystore still holds the previous one. Write the new password (WAZUH_INDEXER_KIBANASERVER_PASSWORD in credentials.env, or the one you set with -p) with: echo '<WAZUH_INDEXER_KIBANASERVER_PASSWORD>' | runuser -u ${dashboard_user} -- ${dashboard_keystore} add opensearch.password --stdin --force. Then restart the Wazuh dashboard."
+                keystore_failed=1
             fi
-            dashboard_keystore_updated=1
-            restart_dashboard=1
-            common_logger -w "If this is a multi-node deployment, update opensearch.password in the keystore of every other Wazuh dashboard node and restart them."
         elif [ -n "${dashpass}" ]; then
             common_logger -w "The Wazuh dashboard is not installed on this host. Update opensearch.password in the keystore of every Wazuh dashboard node and restart them."
         fi
+    fi
+
+    if [ -n "${keystore_failed}" ]; then
+        return 1
     fi
 
 }
@@ -190,6 +205,7 @@ function passwords_createBackUp() {
 
     if [ -z "${indexer_installed}" ] && [ -z "${dashboard_installed}" ]; then
         common_logger -e "Cannot find Wazuh indexer or Wazuh dashboard on the system."
+        passwords_removeBackUp
         exit 1;
     else
         if [ -n "${indexer_installed}" ]; then
@@ -206,14 +222,20 @@ function passwords_createBackUp() {
     eval "JAVA_HOME=/usr/share/wazuh-indexer/jdk/ OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -backup /etc/wazuh-indexer/backup -icl -p 9200 -nhnv -cacert ${capem} -cert ${adminpem} -key ${adminkey} -h ${IP} ${debug}"
     if [ "${PIPESTATUS[0]}" != 0 ]; then
         common_logger -e "The backup could not be created"
-        # A root-owned backup directory left behind stops the Wazuh indexer from starting.
-        eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
+        passwords_removeBackUp
         if [[ $(type -t installCommon_rollBack) == "function" ]]; then
             installCommon_rollBack
         fi
         exit 1;
     fi
     common_logger -d "Passwords backup created in /etc/wazuh-indexer/backup."
+
+}
+
+# A root-owned backup directory left behind stops the Wazuh indexer from starting.
+function passwords_removeBackUp() {
+
+    eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
 
 }
 
@@ -620,6 +642,7 @@ function passwords_runSecurityAdmin() {
     common_logger -d "Running security admin tool."
     if [ -z "${indexer_installed}" ] && [ -z "${dashboard_installed}" ]; then
         common_logger -e "Cannot find Wazuh indexer or Wazuh dashboard on the system."
+        passwords_removeBackUp
         exit 1;
     else
         if [ -n "${indexer_installed}" ]; then
@@ -633,11 +656,11 @@ function passwords_runSecurityAdmin() {
     eval "OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -f /etc/wazuh-indexer/backup/internal_users.yml -t internalusers -p 9200 -nhnv -cacert ${capem} -cert ${adminpem} -key ${adminkey} -icl -h ${IP} ${debug}"
     if [  "${PIPESTATUS[0]}" != 0  ]; then
         common_logger -e "Could not load the changes."
-        eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
+        passwords_removeBackUp
         exit 1;
     fi
     cp /etc/wazuh-indexer/backup/internal_users.yml /etc/wazuh-indexer/opensearch-security/internal_users.yml
-    eval "rm -rf /etc/wazuh-indexer/backup/ ${debug}"
+    passwords_removeBackUp
 
     if [[ -n "${nuser}" ]]; then
         common_logger "The password of the Wazuh indexer user ${nuser} was changed."
