@@ -144,6 +144,35 @@ class TestCertCheckOpenSSL:
         assert_success(result)
 
 
+class TestCertMainRootCAOption:
+    """-ca is documented as --root-ca-certificates, and the singular spelling
+    was the only one the parser accepted. Both are accepted now."""
+
+    @pytest.mark.parametrize("option", ["-ca", "--root-ca-certificates", "--root-ca-certificate"])
+    def test_every_spelling_creates_the_root_ca(self, tmp_path, option):
+        mocks = {
+            **IGNORE_LOGGER,
+            "common_checkRoot": "true",
+            "cert_checkOpenSSL": "true",
+            "cert_validateAgentSan": "true",
+            "cert_readConfig": "true",
+            "cert_generateRootCAcertificate": 'echo "ROOTCA_CALLED"',
+            "cert_cleanFiles": "true",
+            "cert_setpermisions": "true",
+            "cp": "true",
+            "mv": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES + ["cert_tool/certMain.sh"],
+            f"main {option}",
+            mocks,
+            {"base_path": str(tmp_path), "cert_tmp_path": str(tmp_path / "tmp")},
+        )
+        assert_success(result)
+        assert "Unknown option" not in result.stdout
+        assert "ROOTCA_CALLED" in result.stdout
+
+
 class TestCertGenerateRootCA:
     """cert_generateRootCAcertificate creates the root CA through wazuh_ca_ensure,
     in the directory wazuh_ca_get_dir resolves."""

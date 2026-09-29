@@ -154,7 +154,7 @@ function cert_checkRootCA() {
             exit 1
         fi
         if ! wazuh_ca_validate; then
-            common_logger -e "There is no valid root CA in ${cert_ca_dir}. Create it with -ca|--root-ca-certificate, or set WAZUH_CA_DIR to the directory of an existing one."
+            common_logger -e "There is no valid root CA in ${cert_ca_dir}. Create it with -ca|--root-ca-certificates, or set WAZUH_CA_DIR to the directory of an existing one."
             cert_cleanFiles
             exit 1
         fi

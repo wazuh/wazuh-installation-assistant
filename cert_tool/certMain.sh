@@ -105,7 +105,7 @@ function main() {
                     shift 2
                 fi
                 ;;
-            "-ca"|"--root-ca-certificate")
+            "-ca"|"--root-ca-certificates"|"--root-ca-certificate")
                 ca=1
                 shift 1
                 ;;
