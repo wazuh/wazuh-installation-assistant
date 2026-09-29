@@ -44,7 +44,7 @@ Once the assistant finishes the installation, the output shows the access creden
 INFO: --- Summary ---
 INFO: You can access the web interface https://<wazuh_dashboard_ip>:443
    User: admin
-   Password: admin
+   Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env
 
 INFO: Installation finished.
 ```
@@ -189,7 +189,7 @@ Once the assistant finishes the installation, the output shows the access creden
 INFO: --- Summary ---
 INFO: You can access the web interface https://<wazuh_dashboard_ip>:443
    User: admin
-   Password: admin
+   Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env
 
 INFO: Installation finished.
 ```

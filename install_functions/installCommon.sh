@@ -198,7 +198,8 @@ function installCommon_createInstallFiles() {
         fi
         installCommon_createPasswords
         # root-ca.key stays in the CA directory of this host and is not added to the tar:
-        # with it, any node could issue a CN=admin certificate for the indexer.
+        # with it, any node could issue a CN=admin certificate, which the indexer takes as
+        # its superuser without a password and which cannot be revoked.
         eval "cp '${config_file}' '/tmp/wazuh-install-files/config.yml' ${debug}"
         eval "chown root:root /tmp/wazuh-install-files/* ${debug}"
         eval "tar -zcf '${tar_file}' -C '/tmp/' wazuh-install-files/ ${debug}"
