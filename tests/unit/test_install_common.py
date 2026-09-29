@@ -2,7 +2,9 @@
 Unit tests for install_functions/installCommon.sh
 
 Covers: installCommon_getConfig, installCommon_installPrerequisites,
-        installCommon_startService
+        installCommon_startService, installCommon_placeFromTar,
+        installCommon_placeCredentials, installCommon_createPasswords,
+        installCommon_scanDependencies
 """
 
 from tests.unit.conftest import assert_failure, assert_success, run_bash_function
@@ -459,3 +461,57 @@ class TestInstallCommonCreatePasswords:
         for key in self.KEYS:
             assert sum(line.startswith(f"{key}=") for line in lines) == 1
         assert 'WAZUH_INDEXER_ADMIN_PASSWORD="Generated.Pass1"' in lines
+
+
+class TestInstallCommonPlaceCredentials:
+    """installCommon_placeCredentials places the credentials file and root-ca.pem, never the CA key."""
+
+    def test_success_places_anchor_without_key(self, tmp_path):
+        import subprocess
+
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        for name in ["credentials.env", "root-ca.pem", "root-ca.key"]:
+            (staging / name).write_text(name)
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        base = tmp_path / "etc-wazuh"
+        result = run_bash_function(
+            BASE_SOURCES,
+            "installCommon_placeCredentials",
+            {
+                **IGNORE_LOGGER,
+                "wazuh_base_get_dir": f'echo "{base}"',
+                "wazuh_ca_get_dir": f'echo "{base}/ca"',
+                "install": 'if [ "$1" = -d ]; then mkdir -p "${@: -1}"; else cp "${@: -2:1}" "${@: -1}"; fi',
+            },
+            {"tar_file": str(tar), "debug": ""},
+        )
+        assert_success(result)
+        assert (base / "credentials.env").read_text() == "credentials.env"
+        assert (base / "ca" / "root-ca.pem").read_text() == "root-ca.pem"
+        assert not (base / "ca" / "root-ca.key").exists()
+
+
+class TestInstallCommonScanDependencies:
+    """-g needs what the credentials library uses; the other options do not."""
+
+    def _all_deps(self, env):
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installVariables.sh"],
+            'installCommon_scanDependencies; printf "%s\\n" "${all_deps[@]}"',
+            {**IGNORE_LOGGER, "rpm": "return 0"},
+            {"sys_type": "yum", **env},
+        )
+        assert_success(result)
+        return result.stdout.split()
+
+    def test_generate_config_adds_library_dependencies(self):
+        deps = self._all_deps({"configurations": "1"})
+        for dep in ["openssl", "diffutils", "util-linux"]:
+            assert dep in deps
+
+    def test_manager_node_includes_package_requirements(self):
+        deps = self._all_deps({"wazuh": "1"})
+        for dep in ["openssl", "diffutils", "gawk", "iproute"]:
+            assert dep in deps

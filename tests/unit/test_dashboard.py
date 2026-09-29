@@ -1,7 +1,8 @@
 """
 Unit tests for install_functions/dashboard.sh
 
-Covers: dashboard_install, dashboard_configure
+Covers: dashboard_install, dashboard_configure, dashboard_copyCertificates,
+        dashboard_displaySummary
 """
 
 import pytest
@@ -14,6 +15,23 @@ COMMON_VARS = "common_functions/commonVariables.sh"
 BASE_SOURCES = [COMMON_VARS, COMMON, DASHBOARD]
 
 IGNORE_LOGGER = {"common_logger": "true"}
+
+
+def make_tar(tmp_path, members):
+    """Build a wazuh-install-files.tar holding files named after themselves."""
+    import subprocess
+
+    staging = tmp_path / "wazuh-install-files"
+    staging.mkdir()
+    for name in members:
+        (staging / name).write_text(name)
+    tar = tmp_path / "wazuh-install-files.tar"
+    subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+    return tar
+
+
+# install -o root needs root; the owner of a pre-placed pair is the package's job anyway.
+FAKE_INSTALL = 'if [ "$1" = -d ]; then mkdir -p "${@: -1}"; else cp "${@: -2:1}" "${@: -1}"; fi'
 
 
 class TestDashboardInstall:
@@ -120,7 +138,8 @@ class TestDashboardConfigure:
     def _run(self, extra_env=None, extra_mocks=None):
         mocks = {
             **IGNORE_LOGGER,
-            "dashboard_copyCertificates": "true",
+            "chown": "true",
+            "chmod": "true",
             "installCommon_getConfig": "true",
             "sed": "true",
             **(extra_mocks or {}),
@@ -164,3 +183,41 @@ class TestDashboardConfigure:
             }
         )
         assert_success(result)
+
+    def test_success_gives_the_certificates_to_the_service_user(self, tmp_path):
+        """The package keeps a pre-placed pair as it is, owned by root."""
+        log = tmp_path / "perm.log"
+        result = self._run(
+            extra_env={"dashboard_cert_path": "/certs"},
+            extra_mocks={"chown": f'echo "chown $*" >> "{log}"', "chmod": f'echo "chmod $*" >> "{log}"'},
+        )
+        assert_success(result)
+        calls = log.read_text().splitlines()
+        assert "chown -R wazuh-dashboard:wazuh-dashboard /certs" in calls
+        assert "chmod 500 /certs" in calls
+
+
+class TestDashboardCopyCertificates:
+    """dashboard_copyCertificates places the node pair before the install."""
+
+    def test_success_places_pair_with_package_names(self, tmp_path):
+        tar = make_tar(tmp_path, ["dashboard1.pem", "dashboard1-key.pem"])
+        cert_path = tmp_path / "certs"
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installCommon.sh"],
+            "dashboard_copyCertificates",
+            {**IGNORE_LOGGER, "install": FAKE_INSTALL},
+            {"dashname": "dashboard1", "dashboard_cert_path": str(cert_path), "tar_file": str(tar), "debug": ""},
+        )
+        assert_success(result)
+        assert (cert_path / "dashboard.pem").read_text() == "dashboard1.pem"
+        assert (cert_path / "dashboard-key.pem").read_text() == "dashboard1-key.pem"
+
+
+class TestDashboardDisplaySummary:
+    def test_points_to_the_credentials_file_without_printing_a_password(self):
+        result = run_bash_function(BASE_SOURCES, "dashboard_displaySummary", {"common_logger": 'echo "$*"'}, {"http_port": "443"})
+        assert_success(result)
+        assert "Password: admin" not in result.stdout
+        assert "WAZUH_INDEXER_ADMIN_PASSWORD" in result.stdout
+        assert "/etc/wazuh/credentials.env" in result.stdout
