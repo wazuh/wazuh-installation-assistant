@@ -88,7 +88,7 @@ function offline_extractFiles() {
 
     if [ "${sys_type}" == "apt-get" ]; then
         required_files+=("${offline_packages_path}/wazuh-dashboard*.deb" "${offline_packages_path}/wazuh-indexer*.deb" "${offline_packages_path}/wazuh-manager*.deb")
-    elif [ "${sys_type}" == "rpm" ]; then
+    elif [ "${sys_type}" == "yum" ]; then
         required_files+=("${offline_packages_path}/wazuh-dashboard*.rpm" "${offline_packages_path}/wazuh-indexer*.rpm" "${offline_packages_path}/wazuh-manager*.rpm")
     fi
 
