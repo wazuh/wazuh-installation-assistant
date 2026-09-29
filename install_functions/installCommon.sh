@@ -560,6 +560,12 @@ function installCommon_scanDependencies() {
         command='! rpm -q ${dep} --quiet'
     fi
 
+    # -g creates the CA and the passwords with the credentials library, which needs openssl,
+    # cmp (diffutils) and flock (util-linux).
+    if [ -n "${configurations}" ]; then
+        assistant_deps+=( openssl diffutils util-linux )
+    fi
+
     # Remove openssl dependency if not necessary
     if [ -z "${configurations}" ] && [ -z "${AIO}" ]; then
         assistant_deps=( "${assistant_deps[@]/openssl}" )
@@ -750,7 +756,7 @@ function installCommon_yumRemoveWIADependencies(){
         fi
 
         for dep in "${wia_dependencies_installed[@]}"; do
-            if [ "${dep}" != "systemd" ]; then
+            if [ "${dep}" != "systemd" ] && [ "${dep}" != "util-linux" ]; then
                 if [[ " ${wazuh_deps[*]} " == *" ${dep} "* ]]; then
                     common_logger -d "Skipping removal of ${dep}: it is also a Wazuh component dependency."
                     continue
@@ -795,7 +801,7 @@ function installCommon_aptRemoveWIADependencies(){
         fi
 
         for dep in "${wia_dependencies_installed[@]}"; do
-            if [ "${dep}" != "systemd" ]; then
+            if [ "${dep}" != "systemd" ] && [ "${dep}" != "util-linux" ]; then
                 if [[ " ${wazuh_deps[*]} " == *" ${dep} "* ]]; then
                     common_logger -d "Skipping removal of ${dep}: it is also a Wazuh component dependency."
                     continue
