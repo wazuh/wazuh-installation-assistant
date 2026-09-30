@@ -7,7 +7,7 @@ Install and configure a distributed Wazuh deployment following step-by-step inst
 
 ## Before you start
 
-Check the hardware, operating system and network requirements in [Requirements](../../ref/getting-started/requirements.md). Firewalls can block communication between Wazuh components on different hosts: open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports).
+Firewalls can block communication between Wazuh components on different hosts: open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports).
 
 ### How the passwords and certificates are shared
 
@@ -414,14 +414,8 @@ When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` valu
         "cluster_name" : "wazuh-cluster",
         "cluster_uuid" : "095jEW-oRJSFKLz5wmo5PA",
         "version" : {
-          "number" : "7.10.2",
-          "build_type" : "rpm",
-          "build_hash" : "db90a415ff2fd428b4f7b3f800a51dc229287cb4",
-          "build_date" : "2023-06-03T06:24:25.112415503Z",
-          "build_snapshot" : false,
-          "lucene_version" : "9.6.0",
-          "minimum_wire_compatibility_version" : "7.10.0",
-          "minimum_index_compatibility_version" : "7.0.0"
+          "number" : "3.6.0",
+          ...
         },
         "tagline" : "The OpenSearch Project: https://opensearch.org/"
       }
@@ -436,8 +430,8 @@ When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` valu
 
       ```bash
       ip       heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
-      10.0.0.1           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer-1
-      10.0.0.2           17          93   3    0.18    0.20     0.19 dimr      data,ingest,master,remote_cluster_client -               indexer-2
+      10.0.0.1           19          94   4    0.22    0.21     0.20 dimr      cluster_manager,data,ingest,remote_cluster_client *               indexer-1
+      10.0.0.2           17          93   3    0.18    0.20     0.19 dimr      cluster_manager,data,ingest,remote_cluster_client -               indexer-2
       ```
 
 ## Wazuh manager
@@ -849,14 +843,13 @@ yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
       - `username`: The user that runs the requests.
       - `run_as`: This defines how the dashboard requests the data, using the default configured account (`false`) or the current user's context (`true`).
 
-    Do not set a `password` in this file. The package stored the `wazuh-wui` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it.
+    These settings are already in the file: change their values, and do not paste the block over it. Do not set a `password` in this file. The package stored the `wazuh-wui` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it.
 
     ```yaml
     server.host: 0.0.0.0
     server.port: 443
     opensearch.hosts: ["https://<WAZUH_INDEXER_1_IP_ADDRESS>:9200", "https://<WAZUH_INDEXER_2_IP_ADDRESS>:9200"]
     opensearch.ssl.verificationMode: certificate
-    ---
     wazuh_core.hosts:
       default:
         url: https://<MASTER_NODE_IP>

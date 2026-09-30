@@ -5,7 +5,7 @@ Install the Wazuh central components on hosts without Internet access, from the 
 > [!NOTE]
 > You need root user privileges to run all the commands described below.
 
-Check the hardware, operating system and network requirements in [Requirements](../../ref/getting-started/requirements.md). Firewalls can block communication between Wazuh components on different hosts: open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports).
+Firewalls can block communication between Wazuh components on different hosts: open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports).
 
 ## All-in-one deployment
 
@@ -310,7 +310,6 @@ Follow these steps on the master node and on every worker node.
     server.port: 443
     opensearch.hosts: ["https://<WAZUH_INDEXER_1_IP_ADDRESS>:9200", "https://<WAZUH_INDEXER_2_IP_ADDRESS>:9200"]
     opensearch.ssl.verificationMode: certificate
-    ---
     wazuh_core.hosts:
       default:
         url: https://<MASTER_NODE_IP>

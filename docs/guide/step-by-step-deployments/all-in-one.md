@@ -7,7 +7,7 @@ Install and configure the Wazuh indexer, the Wazuh manager and the Wazuh dashboa
 
 ## Before you start
 
-Check the hardware, operating system and network requirements in [Requirements](../../ref/getting-started/requirements.md), and open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports) that the agents and the users of the Wazuh dashboard must reach.
+Open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports) that the agents and the users of the Wazuh dashboard must reach.
 
 There are no default passwords and no default certificates, and there is nothing to create by hand. When they are installed on the same host, the Wazuh packages share what they generate through `/etc/wazuh`:
 
@@ -150,10 +150,10 @@ yum -y install ./wazuh-indexer-5.0.0-<STAGE>.aarch64.rpm
 
 The package configures a single node with its own certificates. Only two settings need a change:
 
-1. Keep the Wazuh indexer off the network. The other components reach it on this host. In `/etc/wazuh-indexer/opensearch.yml`, set `network.host`:
+1. Keep the Wazuh indexer off the network. The other components reach it on this host. In `/etc/wazuh-indexer/opensearch.yml`, set `network.host` to `127.0.0.1`:
 
-    ```yaml
-    network.host: "127.0.0.1"
+    ```bash
+    sed -i 's|^network.host:.*|network.host: "127.0.0.1"|' /etc/wazuh-indexer/opensearch.yml
     ```
 
 2. Set the Java heap of the Wazuh indexer. The package sets 1 GB, which is not enough: the Wazuh dashboard fails on its first start with `circuit_breaking_exception`. On a host shared with the other components, use a quarter of the memory of the host:
@@ -220,14 +220,8 @@ When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` valu
         "cluster_name" : "wazuh-cluster",
         "cluster_uuid" : "095jEW-oRJSFKLz5wmo5PA",
         "version" : {
-          "number" : "7.10.2",
-          "build_type" : "rpm",
-          "build_hash" : "db90a415ff2fd428b4f7b3f800a51dc229287cb4",
-          "build_date" : "2023-06-03T06:24:25.112415503Z",
-          "build_snapshot" : false,
-          "lucene_version" : "9.6.0",
-          "minimum_wire_compatibility_version" : "7.10.0",
-          "minimum_index_compatibility_version" : "7.0.0"
+          "number" : "3.6.0",
+          ...
         },
         "tagline" : "The OpenSearch Project: https://opensearch.org/"
       }
@@ -360,6 +354,12 @@ The package issues the certificate that the agents verify, `remoted.pem`, for th
 ```bash
 WAZUH_MANAGER_REMOTED_CERT_SANS='IP:<HOST_IP_ADDRESS>,IP:203.0.113.10,DNS:wazuh.example.com' apt -y install wazuh-manager
 ```
+
+```bash
+WAZUH_MANAGER_REMOTED_CERT_SANS='IP:<HOST_IP_ADDRESS>,IP:203.0.113.10,DNS:wazuh.example.com' yum -y install wazuh-manager
+```
+
+The same applies when you install a downloaded package, for example `yum -y install ./wazuh-manager-5.0.0.x86_64.rpm`.
 
 ### Configuring the Wazuh manager
 
@@ -516,23 +516,22 @@ yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
 
 ### Configuring the Wazuh dashboard
 
-The package connects the Wazuh dashboard to the Wazuh indexer and to the Wazuh server API on this host, and stores their passwords in its keystore. Check the following values in `/etc/wazuh-dashboard/opensearch_dashboards.yml`:
+The package connects the Wazuh dashboard to the Wazuh indexer and to the Wazuh server API on this host, and stores their passwords in its keystore. There is nothing to change in `/etc/wazuh-dashboard/opensearch_dashboards.yml`, except:
 
-- `server.host`: This setting specifies the host of the Wazuh dashboard server. To allow remote users to connect, set the value to the IP address or DNS name of the Wazuh dashboard server. The value `0.0.0.0` will accept all the available IP addresses of the host.
-- `wazuh_core.hosts`: Do not set a `password` here. The package stored the `wazuh-wui` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it.
+- `server.host`: This setting specifies the host of the Wazuh dashboard server. The package sets `0.0.0.0`, which accepts all the available IP addresses of the host. To restrict it, set the IP address or DNS name of the Wazuh dashboard server.
+- Do not add a `password` under `wazuh_core.hosts`. The package stored the `wazuh-wui` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it.
+
+The file already holds these values, among others:
 
 ```yaml
 server.host: 0.0.0.0
 server.port: 443
 opensearch.hosts: https://localhost:9200
-opensearch.ssl.verificationMode: certificate
----
 wazuh_core.hosts:
   default:
     url: https://localhost
     port: 55000
     username: wazuh-wui
-    run_as: false
 ```
 
 ### Starting the Wazuh dashboard service
