@@ -317,24 +317,23 @@ The following dependencies must be installed on the Wazuh dashboard node:
    - `server.host`: This setting specifies the host of the Wazuh dashboard server. To allow remote users to connect, set the value to the IP address or DNS name of the Wazuh dashboard server. The value 0.0.0.0 will accept all the available IP addresses of the host.
    - `opensearch.hosts`: The URLs of the Wazuh indexer instances to use for all your queries. The Wazuh dashboard can be configured to connect to multiple Wazuh indexer nodes in the same cluster. The addresses of the nodes can be separated by commas. For example, ["https://10.0.0.2:9200", "https://10.0.0.3:9200","https://10.0.0.4:9200"]
    - `wazuh_core.hosts`: The Wazuh manager hosts that the dashboard will use to query the Wazuh manager API. At least one host is required. Each host entry defined with an unique ID and must include:
-   - `url`: The URL to the server API including the protocol and address (DNS or IP).
-   - `port`: The port where is served.
-   - `username`: The user that runs the requests.
-   - `password`: The password for the user.
-   - `run_as`: This defines how the dashboard requests the data, using the default configured account (false) or the current user's context (true).
+     - `url`: The URL to the server API including the protocol and address (DNS or IP).
+     - `port`: The port where is served.
+     - `username`: The user that runs the requests.
+     - `run_as`: This defines how the dashboard requests the data, using the default configured account (false) or the current user's context (true).
 
     ```yaml
     server.host: 0.0.0.0
     server.port: 443
     opensearch.hosts: https://127.0.0.1:9200
     opensearch.ssl.verificationMode: certificate
-    ---
+
+    # Define the Wazuh server hosts
     wazuh_core.hosts:
-    default:
+      default:
         url: https://127.0.0.1
         port: 55000
         username: wazuh-wui
-        password: wazuh-wui
         run_as: true
     ```
 

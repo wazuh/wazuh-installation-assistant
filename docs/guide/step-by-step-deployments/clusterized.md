@@ -754,7 +754,6 @@ Edit the `/etc/wazuh-dashboard/opensearch_dashboards.yml` file and replace the f
   - `url`: The URL to the server API including the protocol and address (DNS or IP).
   - `port`: The port where is served.
   - `username`: The user that runs the requests.
-  - `password`: The password for the user.
   - `run_as`: This defines how the dashboard requests the data, using the default configured account (false) or the current user's context (true).
 
 ```yaml
@@ -762,13 +761,13 @@ server.host: 0.0.0.0
 server.port: 443
 opensearch.hosts: https://<WAZUH-INDEXER-IP>:9200
 opensearch.ssl.verificationMode: certificate
----
+
+# Define the Wazuh server hosts
 wazuh_core.hosts:
   default:
     url: https://<WAZUH-MANAGER-IP>
     port: 55000
     username: wazuh-wui
-    password: wazuh-wui
     run_as: true
 ```
 
