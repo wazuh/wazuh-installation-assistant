@@ -220,8 +220,9 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
       Once the Wazuh installation is completed, the output shows the access credentials and a message that confirms that the installation was successful.
 
       ```bash
+        INFO: Wazuh dashboard web application initialized.
         INFO: --- Summary ---
-        INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>
+        INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>:443
         User: admin
         Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in the credentials.env file of wazuh-install-files.tar, or in /etc/wazuh/credentials.env of a Wazuh indexer node
 
