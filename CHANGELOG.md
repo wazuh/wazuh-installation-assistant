@@ -36,6 +36,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1052](https://github.com/wazuh/wazuh-installation-assistant/issues/1052) | Rewrite the step-by-step guides (all-in-one, distributed and offline) for install-time credentials, and fix the development packages, dependencies and node name documentation of the installation assistant |
 | [#1067](https://github.com/wazuh/wazuh-installation-assistant/issues/1067) | Print the dashboard node address in the installation summary and wait until the dashboard answers |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Align wazuh-passwords-tool.sh and wazuh-certs-tool.sh with the shared `wazuh-credentials.sh` library |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Let the component packages create the credentials in wazuh-install.sh: the all-in-one installation no longer creates certificates or passwords, and in a distributed installation -g generates the passwords and the certificates and each node places them before its package is installed |
