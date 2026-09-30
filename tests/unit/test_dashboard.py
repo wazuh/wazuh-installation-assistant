@@ -2,7 +2,7 @@
 Unit tests for install_functions/dashboard.sh
 
 Covers: dashboard_install, dashboard_configure, dashboard_copyCertificates,
-        dashboard_displaySummary
+        dashboard_initialize
 """
 
 import pytest
@@ -214,21 +214,87 @@ class TestDashboardCopyCertificates:
         assert (cert_path / "dashboard-key.pem").read_text() == "dashboard1-key.pem"
 
 
-class TestDashboardDisplaySummary:
-    def test_points_to_the_credentials_file_without_printing_a_password(self):
-        result = run_bash_function(BASE_SOURCES, "dashboard_displaySummary", {"common_logger": 'echo "$*"'}, {"http_port": "443", "AIO": "1"})
+class TestDashboardInitialize:
+    """dashboard_initialize waits for the dashboard, without credentials, and prints the summary."""
+
+    def _run(self, tmp_path, env, dashboard_codes=("200",), indexer_code="401"):
+        """curl answers the dashboard codes in order, the last one from then on, and logs each URL."""
+        codes = tmp_path / "codes"
+        codes.write_text("\n".join(dashboard_codes) + "\n")
+        log = tmp_path / "curl.log"
+        curl = (
+            f'echo "${{@: -1}}" >> "{log}"; '
+            f'case "${{@: -1}}" in *:9200/) echo {indexer_code};; '
+            f'*) c=$(head -n1 "{codes}"); [ "$(wc -l < "{codes}")" -gt 1 ] && sed -i 1d "{codes}"; echo "$c";; esac'
+        )
+        mocks = {"common_logger": 'echo "$*"', "curl": curl, "sleep": "true", "installCommon_rollBack": "echo ROLLBACK"}
+        result = run_bash_function(BASE_SOURCES, "dashboard_initialize", mocks, {"http_port": "443", **env})
+        return result, log.read_text().splitlines()
+
+    DISTRIBUTED = {
+        "dashboard_node_names": "(dashboard1)",
+        "dashboard_node_ips": "(10.0.0.5)",
+        "indexer_node_ips": "(10.0.0.1 10.0.0.2)",
+        "dashname": "dashboard1",
+        "tar_file_name": "wazuh-install-files.tar",
+    }
+
+    def test_aio_waits_on_localhost_and_prints_a_placeholder(self, tmp_path):
+        result, urls = self._run(tmp_path, {"AIO": "1"})
         assert_success(result)
-        assert "Password: admin" not in result.stdout
+        assert urls == ["https://127.0.0.1:443/status"]
+        assert "https://<wazuh-dashboard-ip>:443" in result.stdout
         assert "WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env" in result.stdout
 
-    def test_distributed_node_points_to_the_tar_file(self):
-        """A dashboard node does not receive the admin password, so it is read elsewhere."""
-        result = run_bash_function(
-            BASE_SOURCES,
-            "dashboard_displaySummary",
-            {"common_logger": 'echo "$*"'},
-            {"http_port": "443", "tar_file_name": "wazuh-install-files.tar"},
-        )
+    def test_distributed_single_node_prints_its_address(self, tmp_path):
+        result, urls = self._run(tmp_path, self.DISTRIBUTED)
         assert_success(result)
+        assert urls == ["https://10.0.0.5:443/status"]
+        assert "https://10.0.0.5:443" in result.stdout
         assert "credentials.env file of wazuh-install-files.tar" in result.stdout
-        assert "of a Wazuh indexer node" in result.stdout
+
+    def test_distributed_picks_the_node_of_dashname(self, tmp_path):
+        env = {**self.DISTRIBUTED, "dashboard_node_names": "(dashboard1 dashboard2)", "dashboard_node_ips": "(10.0.0.5 10.0.0.6)", "dashname": "dashboard2"}
+        result, urls = self._run(tmp_path, env)
+        assert_success(result)
+        assert urls == ["https://10.0.0.6:443/status"]
+        assert "https://10.0.0.6:443" in result.stdout
+
+    @pytest.mark.parametrize("ip", ["localhost", "127.0.1.1"])
+    def test_distributed_loopback_prints_a_placeholder(self, tmp_path, ip):
+        result, urls = self._run(tmp_path, {**self.DISTRIBUTED, "dashboard_node_ips": f"({ip})"})
+        assert_success(result)
+        assert urls == [f"https://{ip}:443/status"]
+        assert "https://<wazuh-dashboard-ip>:443" in result.stdout
+
+    @pytest.mark.parametrize("ready", ["200", "302", "401"])
+    def test_waits_while_not_ready(self, tmp_path, ready):
+        result, urls = self._run(tmp_path, self.DISTRIBUTED, dashboard_codes=("000", "503", ready))
+        assert_success(result)
+        assert len(urls) == 3
+        assert "--- Summary ---" in result.stdout
+
+    @pytest.mark.parametrize("indexer_code,message", [
+        ("000", "Failed to connect with the Wazuh indexer at 10.0.0.2:9200."),
+        ("503", "security settings not initialized in 10.0.0.2"),
+    ])
+    def test_timeout_diagnoses_the_indexers_and_rolls_back(self, tmp_path, indexer_code, message):
+        result, urls = self._run(tmp_path, self.DISTRIBUTED, dashboard_codes=("503",), indexer_code=indexer_code)
+        assert_failure(result)
+        assert urls.count("https://10.0.0.5:443/status") == 13
+        assert "Cannot connect to Wazuh dashboard." in result.stdout
+        assert message in result.stdout
+        assert "ROLLBACK" in result.stdout
+        assert "--- Summary ---" not in result.stdout
+
+    def test_aio_timeout_checks_the_local_indexer(self, tmp_path):
+        result, urls = self._run(tmp_path, {"AIO": "1"}, dashboard_codes=("000",), indexer_code="000")
+        assert_failure(result)
+        assert urls.count("https://127.0.0.1:443/status") == 21
+        assert "https://127.0.0.1:9200/" in urls
+        assert "ROLLBACK" in result.stdout
+
+    def test_never_prints_a_password(self, tmp_path):
+        result, _ = self._run(tmp_path, {"AIO": "1"})
+        assert "Password: the WAZUH_INDEXER_ADMIN_PASSWORD value" in result.stdout
+        assert "-u" not in result.stdout
