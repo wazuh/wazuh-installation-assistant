@@ -2,6 +2,9 @@
 
 Install and configure the Wazuh indexer as a multi-node cluster on a 64-bit (x86_64/AMD64 or AARCH64/ARM64) architecture using the assisted installation method. The Wazuh indexer is a highly scalable full-text search engine. It offers advanced security, alerting, index management, deep performance analysis, and several other features.
 
+> [!NOTE]
+> The assistant stops if a package it needs, such as `apt-transport-https`, is missing, and names it. Install it, or add `-id` to the installation commands of this guide to install it automatically. To install packages that are not published yet, add `-d local` and list them in `artifact_urls.yaml`, as described in [Use development packages](../../ref/getting-started/usage.md#use-development-packages).
+
 ## Wazuh indexer
 
 ### Wazuh indexer cluster installation
@@ -138,14 +141,8 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
         "cluster_name" : "wazuh-cluster",
         "cluster_uuid" : "095jEW-oRJSFKLz5wmo5PA",
         "version" : {
-          "number" : "7.10.2",
-          "build_type" : "rpm",
-          "build_hash" : "db90a415ff2fd428b4f7b3f800a51dc229287cb4",
-          "build_date" : "2023-06-03T06:24:25.112415503Z",
-          "build_snapshot" : false,
-          "lucene_version" : "9.6.0",
-          "minimum_wire_compatibility_version" : "7.10.0",
-          "minimum_index_compatibility_version" : "7.0.0"
+          "number" : "3.6.0",
+          ...
         },
         "tagline" : "The OpenSearch Project: https://opensearch.org/"
       }
@@ -159,7 +156,7 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
 
       ```bash
       ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
-      192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               indexer
+      192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      cluster_manager,data,ingest,remote_cluster_client *               indexer
       ```
 
 ## Wazuh manager
@@ -223,8 +220,9 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
       Once the Wazuh installation is completed, the output shows the access credentials and a message that confirms that the installation was successful.
 
       ```bash
+        INFO: Wazuh dashboard web application initialized.
         INFO: --- Summary ---
-        INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>
+        INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>:443
         User: admin
         Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in the credentials.env file of wazuh-install-files.tar, or in /etc/wazuh/credentials.env of a Wazuh indexer node
 
@@ -241,6 +239,8 @@ When you access the Wazuh dashboard for the first time, the browser shows a warn
 
 > [!NOTE]
 > `/etc/wazuh/credentials.env` holds the passwords of the Wazuh users, generated during the installation. Each node only receives the passwords of the components installed on it; the node where `wazuh-install-files.tar` was generated keeps all of them. Once you have stored them in a safe place, remove the file from every node: the Wazuh components do not read it after the installation. To change a password later, see [Multi-node and distributed deployments](../../ref/getting-started/usage.md#multi-node-and-distributed-deployments).
+>
+> Remove `wazuh-install-files.tar` from every node too: it holds the private keys and the passwords of the deployment. Keep a copy in a safe place if you plan to add nodes later, and update its passwords first if you change them, as described in [Security](../security.md).
 
 ## Next step: enroll the Wazuh agents
 

@@ -41,11 +41,11 @@ bash wazuh-install-5.0.0.sh --offline-installation -a
 Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful:
 
 ```shell
+INFO: Wazuh dashboard web application initialized.
 INFO: --- Summary ---
-INFO: You can access the web interface https://<wazuh_dashboard_ip>:443
+INFO: You can access the web interface https://<wazuh-dashboard-ip>:443
    User: admin
    Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env
-
 INFO: Installation finished.
 ```
 
@@ -186,11 +186,11 @@ The TCP port for the Wazuh web user interface (dashboard) is 443.
 Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful:
 
 ```shell
+INFO: Wazuh dashboard web application initialized.
 INFO: --- Summary ---
-INFO: You can access the web interface https://<wazuh_dashboard_ip>:443
+INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>:443
    User: admin
-   Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env
-
+   Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in the credentials.env file of wazuh-install-files.tar, or in /etc/wazuh/credentials.env of a Wazuh indexer node
 INFO: Installation finished.
 ```
 

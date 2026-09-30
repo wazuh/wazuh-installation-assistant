@@ -60,7 +60,56 @@ function dashboard_copyCertificates() {
 
 }
 
-function dashboard_displaySummary() {
+# Waits until the dashboard answers and prints the summary. Without credentials: a
+# distributed dashboard node does not have the admin password.
+function dashboard_initialize() {
+
+    common_logger "Initializing Wazuh dashboard web application."
+
+    # The all-in-one config.yml is not read, and its node address would be 127.0.0.1 anyway.
+    local dashboard_ip="127.0.0.1"
+    local max_retries=20
+    local delay=15
+    if [ -z "${AIO}" ]; then
+        max_retries=12
+        delay=10
+        dashboard_ip="${dashboard_node_ips[0]}"
+        for i in "${!dashboard_node_names[@]}"; do
+            if [ "${dashboard_node_names[i]}" == "${dashname}" ]; then
+                dashboard_ip="${dashboard_node_ips[i]}"
+            fi
+        done
+    fi
+
+    local print_ip="${dashboard_ip}"
+    if [ "${dashboard_ip}" == "localhost" ] || [[ "${dashboard_ip}" == 127.* ]]; then
+        print_ip="<wazuh-dashboard-ip>"
+    fi
+
+    # The dashboard answers 503 until it is ready, and 000 is no connection.
+    local code j=0
+    code=$(curl -k -s -o /dev/null -w "%{http_code}" --max-time 10 "https://${dashboard_ip}:${http_port}/status")
+    until [ "${code}" != "000" ] && [ "${code}" != "503" ] || [ "${j}" -ge "${max_retries}" ]; do
+        common_logger -d "Retrying Wazuh dashboard connection..."
+        sleep "${delay}"
+        j=$((j+1))
+        code=$(curl -k -s -o /dev/null -w "%{http_code}" --max-time 10 "https://${dashboard_ip}:${http_port}/status")
+    done
+
+    if [ "${code}" == "000" ] || [ "${code}" == "503" ]; then
+        common_logger -e "Cannot connect to Wazuh dashboard."
+        # Without credentials, an indexer answers 503 until its security is initialized.
+        for i in "${indexer_node_ips[@]:-127.0.0.1}"; do
+            code=$(curl -k -s -o /dev/null -w "%{http_code}" --max-time 10 "https://${i}:9200/")
+            if [ "${code}" == "000" ]; then
+                common_logger -e "Failed to connect with the Wazuh indexer at ${i}:9200."
+            elif [ "${code}" == "503" ]; then
+                common_logger -e "Wazuh indexer security settings not initialized in ${i}. Please run the installation assistant using -s|--start-cluster in one of the Wazuh indexer nodes."
+            fi
+        done
+        installCommon_rollBack
+        exit 1
+    fi
 
     # A distributed dashboard node only receives its own passwords, not the admin one.
     local location="/etc/wazuh/credentials.env"
@@ -68,8 +117,9 @@ function dashboard_displaySummary() {
         location="the credentials.env file of ${tar_file_name}, or in /etc/wazuh/credentials.env of a Wazuh indexer node"
     fi
 
+    common_logger "Wazuh dashboard web application initialized."
     common_logger -nl "--- Summary ---"
-    common_logger -nl "You can access the web interface https://<wazuh_dashboard_ip>:${http_port}\n    User: admin\n    Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in ${location}"
+    common_logger -nl "You can access the web interface https://${print_ip}:${http_port}\n    User: admin\n    Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in ${location}"
 
 }
 

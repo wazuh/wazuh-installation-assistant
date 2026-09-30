@@ -362,7 +362,7 @@ function main() {
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
-        dashboard_displaySummary
+        dashboard_initialize
         installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
@@ -403,7 +403,7 @@ function main() {
         installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install
         installCommon_startService "wazuh-dashboard"
-        dashboard_displaySummary
+        dashboard_initialize
         installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 

@@ -36,6 +36,8 @@
 
 | Issue | Comment |
 | - | - |
+| [#1052](https://github.com/wazuh/wazuh-installation-assistant/issues/1052) | Rewrite the step-by-step guides (all-in-one, distributed and offline) for install-time credentials, and fix the development packages, dependencies and node name documentation of the installation assistant |
+| [#1067](https://github.com/wazuh/wazuh-installation-assistant/issues/1067) | Print the dashboard node address in the installation summary and wait until the dashboard answers |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Align wazuh-passwords-tool.sh and wazuh-certs-tool.sh with the shared `wazuh-credentials.sh` library |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Let the component packages create the credentials in wazuh-install.sh: the all-in-one installation no longer creates certificates or passwords, and in a distributed installation -g generates the passwords and the certificates and each node places them before its package is installed |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Restrict the passwords the shared credentials library generates and accepts to `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with at least one uppercase letter, one lowercase letter, one digit and one symbol |
@@ -95,6 +97,7 @@
 | Issue | Comment |
 | - | - |
 | [#1068](https://github.com/wazuh/wazuh-installation-assistant/issues/1068) | Fix unclosed code fence and stale build artifact names in the generate-artifacts-manually guide and the glossary |
+| [#1060](https://github.com/wazuh/wazuh-installation-assistant/issues/1060) | Fix broken code blocks in the documentation |
 | [#6125](https://github.com/wazuh/internal-devel-requests/issues/6125) | wazuh-certs-tool.sh no longer relaxes generated private key permissions to world-readable |
 | [#1023](https://github.com/wazuh/wazuh-installation-assistant/issues/1023) | Check the Wazuh manager keystore writes in the passwords tool and the installation assistant, and stop before the new password reaches the Wazuh indexer when a write fails |
 | [#999](https://github.com/wazuh/wazuh-installation-assistant/issues/999) | Write both keystore keys for the wazuh-manager user, guard the manager restart with the service state, restart the services after the new passwords reach the Wazuh indexer, and document the multi-node procedure |
