@@ -94,7 +94,7 @@
 
 | Issue | Comment |
 | - | - |
-| [#1060](https://github.com/wazuh/wazuh-installation-assistant/issues/1060) | Fix the broken code blocks in the documentation: remove the extra backtick in the offline DEB pre-release commands, and remove the `---` separator and the `password` field from the `opensearch_dashboards.yml` examples of the offline, all-in-one and clusterized step-by-step guides |
+| [#1060](https://github.com/wazuh/wazuh-installation-assistant/issues/1060) | Fix broken code blocks in the documentation |
 | [#6125](https://github.com/wazuh/internal-devel-requests/issues/6125) | wazuh-certs-tool.sh no longer relaxes generated private key permissions to world-readable |
 | [#1023](https://github.com/wazuh/wazuh-installation-assistant/issues/1023) | Check the Wazuh manager keystore writes in the passwords tool and the installation assistant, and stop before the new password reaches the Wazuh indexer when a write fails |
 | [#999](https://github.com/wazuh/wazuh-installation-assistant/issues/999) | Write both keystore keys for the wazuh-manager user, guard the manager restart with the service state, restart the services after the new passwords reach the Wazuh indexer, and document the multi-node procedure |
