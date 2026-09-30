@@ -9,7 +9,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | Option | Description |
 | -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
-| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0.sh. |
+| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.0.0.sh. See [Use development packages](#use-development-packages). |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
 | `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
@@ -37,11 +37,13 @@ sudo bash wazuh-install-5.0.0.sh -a
 
 This command will download, install, and configure all Wazuh components on the same machine automatically without the need to configure anything else.
 
+The assistant stops if a package it needs, such as `apt-transport-https`, is missing, and names it. Install it, or add `-id|--install-dependencies` to the command to install it automatically. The same applies to every installation command.
+
 ### Specific Component Installation
 
 If you want to install a specific Wazuh component, first make sure you have the `config.yml` file downloaded.
 
-The `config.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [certs-tool-usage.md](../certs-tool/certs-tool-usage.md) section.
+The `config.yml` file is a YAML format configuration file that contains the name and IP of each component to be installed in the distributed installation. This file is used to generate the necessary certificates for secure communication between the different Wazuh components. For more information on how to configure this file, see the [config.yml configuration](#configyml-configuration) section.
 
 For additional `config.yml` formats (`dns`, DNS lists, and mixed configurations), see [Other `config.yml` examples](../configuration/configuration-files.md#other-configyml-examples).
 
@@ -58,30 +60,30 @@ The steps to perform the installation are as follows:
     ```
 
 3. The `wazuh-install-files.tar` file will be necessary for the installation of each component that will be part of the distributed installation as it includes the certificates for each of the components specified in the `config.yml` file. Therefore, copy this file to each of the machines where you will install a Wazuh component.
-4. Once you have the `wazuh-install-files.tar` file on the machine where you will install the component, you just need to run the installation command for the desired component:
+4. Once you have the `wazuh-install-files.tar` file on the machine where you will install the component, you just need to run the installation command for the desired component, with the name of the node in `config.yml`:
 
     4.1 To install the Wazuh Manager:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0.sh --wazuh-manager
+    sudo bash wazuh-install-5.0.0.sh --wazuh-manager <manager-node-name>
     # or use the short form
-    sudo bash wazuh-install-5.0.0.sh -wm
+    sudo bash wazuh-install-5.0.0.sh -wm <manager-node-name>
     ```
 
     4.2 To install the Wazuh Indexer:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0.sh --wazuh-indexer
+    sudo bash wazuh-install-5.0.0.sh --wazuh-indexer <indexer-node-name>
     # or use the short form
-    sudo bash wazuh-install-5.0.0.sh -wi
+    sudo bash wazuh-install-5.0.0.sh -wi <indexer-node-name>
     ```
 
     4.3 To install the Wazuh Dashboard:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0.sh --wazuh-dashboard
+    sudo bash wazuh-install-5.0.0.sh --wazuh-dashboard <dashboard-node-name>
     # or use the short form
-    sudo bash wazuh-install-5.0.0.sh -wd
+    sudo bash wazuh-install-5.0.0.sh -wd <dashboard-node-name>
     ```
 
 ### Change the default passwords
@@ -99,7 +101,7 @@ You can install Wazuh even without an Internet connection. Installing the soluti
 #### Download packages necessary for offline installation
 
 1. On a system with Internet access, download the packages of the central components you want to install on the offline system. Note that you also need to have the `wazuh-install-5.0.0.sh` on the system with Internet access.
-See the [Installation Assistant Installation](../../installation/installation-assistant/ia-installation.md) section to learn how to download `wazuh-install-5.0.0.sh`.
+See the [Installation Assistant Installation](../installation/installation-assistant/ia-installation.md) section to learn how to download `wazuh-install-5.0.0.sh`.
 
     To download the packages necessary for offline installation, run the following command:
 
@@ -162,25 +164,32 @@ sudo bash wazuh-install-5.0.0.sh -a -d pre-release
 
 #### Use development packages
 
-To use packages that are in development, it is necessary to have an `artifact_urls.yml` file located in the same path as the `wazuh-install-5.0.0.sh` script. This file must contain the URLs of the development packages that will be used in the installation. It must have the following format:
+To use packages that are in development, create an `artifact_urls.yaml` file in the same directory as the `wazuh-install-5.0.0.sh` script. It holds one `<key>: "<URL>"` line per package. The key is `wazuh_<component>_<architecture>_<package type>`, and the architecture is named as each package type names it:
+
+| Package type | x86_64 host | aarch64 host |
+| ------------ | ----------- | ------------ |
+| DEB | `amd64` | `arm64` |
+| RPM | `x86_64` | `aarch64` |
+
+Only the keys of the host where the assistant runs, and of the components it installs, are required. For example, for an all-in-one installation on an x86_64 RPM host:
 
 ``` yaml
-wazuh_manager_amd64_deb: "http://example.com/wazuh-manager-amd64.deb"
-wazuh_manager_arm64_deb: "http://example.com/wazuh-manager-arm"
-wazuh_manager_amd64_rpm: "http://example.com/wazuh-manager-amd64.rpm"
-wazuh_manager_arm64_rpm: "http://example.com/wazuh-manager-arm.rpm"
-wazuh_indexer_amd64_deb: "http://example.com/wazuh-indexer-amd64.deb"
-wazuh_indexer_arm64_deb: "http://example.com/wazuh-indexer-arm"
-wazuh_indexer_amd64_rpm: "http://example.com/wazuh-indexer-amd64.rpm"
-wazuh_indexer_arm64_rpm: "http://example.com/wazuh-indexer-arm.rpm"
-wazuh_dashboard_amd64_deb: "http://example.com/wazuh-dashboard-amd64.deb"
-wazuh_dashboard_arm64_deb: "http://example.com/wazuh-dashboard-arm"
-wazuh_dashboard_amd64_rpm: "http://example.com/wazuh-dashboard-amd64.rpm"
-wazuh_dashboard_arm64_rpm: "http://example.com/wazuh-dashboard-arm.rpm"
-...
+wazuh_indexer_x86_64_rpm: "https://example.com/wazuh-indexer-5.0.0-1.x86_64.rpm"
+wazuh_manager_x86_64_rpm: "https://example.com/wazuh-manager-5.0.0-1.x86_64.rpm"
+wazuh_dashboard_x86_64_rpm: "https://example.com/wazuh-dashboard-5.0.0-1.x86_64.rpm"
 ```
 
-Then, to use these development packages in the installation, simply add the `-d local, --development local` option to the installation command. For example, to perform an AIO installation using development packages, the command would be:
+And on an x86_64 DEB host:
+
+``` yaml
+wazuh_indexer_amd64_deb: "https://example.com/wazuh-indexer_5.0.0-1_amd64.deb"
+wazuh_manager_amd64_deb: "https://example.com/wazuh-manager_5.0.0-1_amd64.deb"
+wazuh_dashboard_amd64_deb: "https://example.com/wazuh-dashboard_5.0.0-1_amd64.deb"
+```
+
+A file with the keys of every architecture and package type works on any host. A missing key stops the installation with `Missing required artifact key: <key>`.
+
+Then add the `-d local, --development local` option to every installation command, including the ones of a distributed deployment. For example, to perform an AIO installation using development packages:
 
 ```bash
 sudo bash wazuh-install-5.0.0.sh --all-in-one --development local
@@ -188,7 +197,7 @@ sudo bash wazuh-install-5.0.0.sh --all-in-one --development local
 sudo bash wazuh-install-5.0.0.sh -a -d local
 ```
 
-This command will automatically detect the `artifact_urls.yml` file in the same path as the `wazuh-install-5.0.0.sh` script and will use the URLs specified in it to download the necessary packages for the installation.
+The assistant reads `artifact_urls.yaml` from the directory of the script and downloads the packages from the URLs in it. Without the file, it stops with `Cannot find artifact_urls.yaml in <directory>`.
 
 ## Wazuh certs tool
 

@@ -13,6 +13,9 @@
    > curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh && sudo bash ./wazuh-install-5.0.0-<STAGE>.sh -a -d pre-release
    > ```
 
+   > [!NOTE]
+   > The assistant stops if a package it needs, such as `apt-transport-https`, is missing, and names it. Install it, or add `-id` to the command to install it automatically. To install packages that are not published yet, add `-d local` and list them in `artifact_urls.yaml`, as described in [Use development packages](../../ref/getting-started/usage.md#use-development-packages).
+
    Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful.
 
    ```bash
