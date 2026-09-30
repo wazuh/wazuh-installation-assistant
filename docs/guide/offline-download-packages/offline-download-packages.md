@@ -66,7 +66,7 @@ To install `pre-release` packages instead, use:
 To install `pre-release` packages instead, use:
 
 ```bash
-./wazuh-install-5.0.0-<STAGE>.sh -dw deb -da amd64 -d pre-release`
+./wazuh-install-5.0.0-<STAGE>.sh -dw deb -da amd64 -d pre-release
 ```
 
 ##### arm64
@@ -78,7 +78,7 @@ To install `pre-release` packages instead, use:
 To install `pre-release` packages instead, use:
 
 ```bash
-./wazuh-install-5.0.0-<STAGE>.sh -dw deb -da arm64 -d pre-release`
+./wazuh-install-5.0.0-<STAGE>.sh -dw deb -da arm64 -d pre-release
 ```
 
 ### 3. Download the certificates configuration file
