@@ -214,7 +214,7 @@ Follow these steps on the master node and on every worker node.
       </hosts>
     ```
 
-4. Edit the `<cluster>` block of `/var/wazuh-manager/etc/wazuh-manager.conf`. Use the key in `wazuh-install-files/clusterkey` on every node (`cat wazuh-install-files/clusterkey`), `master` as `node_type` on the master node and `worker` on the rest, and a unique `node_name` for each node, such as its name in `config.yml`. Replace `<MASTER_NODE_IP>` with the IP address of the master node.
+4. Edit the `<cluster>` block of `/var/wazuh-manager/etc/wazuh-manager.conf`. Use the key in `wazuh-install-files/clusterkey` on every node (`cat wazuh-install-files/clusterkey`), `master` as `node_type` on the master node and `worker` on the rest, and a unique `node_name` for each node, such as its name in `config.yml`. Replace `<MASTER_NODE_IP>` with the IP address of the master node. The package writes a `<cluster>` block with a random key of its own, `node_type` `master` and `bind_addr` `127.0.0.1` on every node, so replace the whole block on each of them.
 
     ```xml
     <cluster>
@@ -303,7 +303,7 @@ Follow these steps on the master node and on every worker node.
 
    - `server.host`: This setting specifies the host of the Wazuh dashboard server. To allow remote users to connect, set the value to the IP address or DNS name of the Wazuh dashboard server. The value `0.0.0.0` will accept all the available IP addresses of the host.
    - `opensearch.hosts`: The URLs of the Wazuh indexer nodes.
-   - `wazuh_core.hosts`: The Wazuh server API that the dashboard queries. `url` must be the Wazuh server API of the **master node**: it only runs there. Do not set a `password`: the package stored the `wazuh-wui` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it.
+   - `wazuh_core.hosts`: The Wazuh server API that the dashboard queries. `url` must be the Wazuh server API of the **master node**: it only runs there. Do not set a `password`: the package stored the `wazuh-wui` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it. Leave `run_as` as the package wrote it.
 
     ```yaml
     server.host: 0.0.0.0
@@ -315,7 +315,6 @@ Follow these steps on the master node and on every worker node.
         url: https://<MASTER_NODE_IP>
         port: 55000
         username: wazuh-wui
-        run_as: false
     ```
 
 6. Enable and start the Wazuh dashboard.

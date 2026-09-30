@@ -203,6 +203,8 @@ The certificates tool ships with the Wazuh indexer package. On the first Wazuh i
 
 1. Edit `/usr/share/wazuh-indexer/tools/config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed. The Wazuh manager nodes need a `node_type`: one `master`, and `worker` for the rest.
 
+    The file that ships with the package is a template, with other node names and commented examples: replace its nodes with yours, as in this example.
+
     For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
 
     ```yaml
@@ -508,6 +510,12 @@ rm -rf wazuh-certificates
 
 The package uses these files instead of issuing its own, copies `root-ca.pem` to `/var/wazuh-manager/etc/certs`, and gives each file its owner. `remoted.pem` is served to the agents by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515.
 
+**Recommended action**: If no other Wazuh components will be installed on this node, remove the `wazuh-certificates.tar` file.
+
+```bash
+rm -f ./wazuh-certificates.tar
+```
+
 ### Installing Wazuh manager
 
 #### APT
@@ -592,7 +600,7 @@ yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
       </hosts>
     ```
 
-2. Configure the cluster. Create a key once, and use the same one on every node. It must be 32 characters long:
+2. Configure the cluster. Create a key on the master node, and use the same one on every worker node. It must be 32 characters long:
 
     ```bash
     openssl rand -hex 16
@@ -632,7 +640,7 @@ yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
     </cluster>
     ```
 
-    Replace `<CLUSTER_KEY>` with the key, `<MASTER_NODE_IP>` with the IP address of the master node, and use a unique `node_name` for each node, such as its name in `config.yml`.
+    The package writes a `<cluster>` block with a random key of its own, `node_type` `master` and `bind_addr` `127.0.0.1` on every node, so replace the whole block on each of them. Replace `<CLUSTER_KEY>` with the key, `<MASTER_NODE_IP>` with the IP address of the master node, and use a unique `node_name` for each node, such as its name in `config.yml`.
 
 ### Starting the Wazuh manager service
 
@@ -752,6 +760,12 @@ install -m 0400 wazuh-certificates/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs
 rm -rf wazuh-certificates
 ```
 
+**Recommended action**: If no other Wazuh components will be installed on this node, remove the `wazuh-certificates.tar` file.
+
+```bash
+rm -f ./wazuh-certificates.tar
+```
+
 ### Installing Wazuh dashboard
 
 #### APT
@@ -841,7 +855,7 @@ yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
       - `url`: The URL of the Wazuh server API of the **master node**, including the protocol and address (DNS or IP). The Wazuh server API only runs on the master node.
       - `port`: The port where it is served.
       - `username`: The user that runs the requests.
-      - `run_as`: This defines how the dashboard requests the data, using the default configured account (`false`) or the current user's context (`true`).
+      - `run_as`: Leave the value the package wrote.
 
     These settings are already in the file: change their values, and do not paste the block over it. Do not set a `password` in this file. The package stored the `wazuh-wui` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it.
 
@@ -855,7 +869,6 @@ yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
         url: https://<MASTER_NODE_IP>
         port: 55000
         username: wazuh-wui
-        run_as: false
     ```
 
 ### Starting the Wazuh dashboard service
