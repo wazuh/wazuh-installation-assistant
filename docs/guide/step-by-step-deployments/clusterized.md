@@ -7,7 +7,7 @@ Install and configure a distributed Wazuh deployment following step-by-step inst
 
 ## Before you start
 
-Firewalls can block communication between Wazuh components on different hosts: open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports).
+Check the hardware and operating system requirements in [Hardware and operating system](../../ref/getting-started/requirements.md#hardware-and-operating-system). Firewalls can block communication between Wazuh components on different hosts: open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports).
 
 ### How the passwords and certificates are shared
 
@@ -955,7 +955,7 @@ Once every component is installed and running, the passwords are stored in the k
     ls /etc/wazuh/ca
     ```
 
-To add a node later, recreate its `/etc/wazuh/credentials.env` with the current passwords, as described in [Deploying certificates and passwords](#deploying-certificates-and-passwords). To change a password, see [Security](../security.md).
+To add a node later, recreate its `/etc/wazuh/credentials.env` with the current passwords, as described in [Deploying certificates and passwords](#deploying-certificates-and-passwords). To change a password, see [Change the passwords of a step-by-step deployment](../security.md#change-the-passwords-of-a-step-by-step-deployment).
 
 ## Troubleshooting
 

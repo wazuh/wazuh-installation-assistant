@@ -5,7 +5,7 @@ Install the Wazuh central components on hosts without Internet access, from the 
 > [!NOTE]
 > You need root user privileges to run all the commands described below.
 
-Firewalls can block communication between Wazuh components on different hosts: open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports).
+Check the hardware and operating system requirements in [Hardware and operating system](../../ref/getting-started/requirements.md#hardware-and-operating-system). Firewalls can block communication between Wazuh components on different hosts: open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports).
 
 ## All-in-one deployment
 
@@ -33,7 +33,15 @@ apt install ./wazuh-offline/wazuh-packages/wazuh-dashboard*.deb
 
 Install one package at a time, in the order and at the step of the guide where it is installed.
 
+When you configure the Wazuh indexer, also disable the tasks that need Internet access, as described in [Installing the Wazuh indexer](#installing-the-wazuh-indexer), step 5.
+
+> [!IMPORTANT]
+> Without access to Wazuh CTI, the Wazuh indexer gets no vulnerability content, so vulnerability detection has no CVE feed and scans nothing. There is no offline feed in Wazuh 5.x. See [Migrating Vulnerability Detection to CTI-Based Feeds](https://github.com/wazuh/wazuh/blob/5.0.0/docs/guide/migration/vulnerability-detection-cti-feeds.md).
+
 ## Distributed deployment
+
+> [!IMPORTANT]
+> Without access to Wazuh CTI, the Wazuh indexer gets no vulnerability content, so vulnerability detection has no CVE feed and scans nothing. There is no offline feed in Wazuh 5.x. See [Migrating Vulnerability Detection to CTI-Based Feeds](https://github.com/wazuh/wazuh/blob/5.0.0/docs/guide/migration/vulnerability-detection-cti-feeds.md).
 
 ### How the passwords and certificates are shared
 
@@ -138,14 +146,24 @@ Follow these steps on every Wazuh indexer node.
         - "C=US,L=California,O=Wazuh,OU=Wazuh,CN=indexer-2"
         ```
 
-5. Set the Java heap of the Wazuh indexer. The package sets 1 GB, which is not enough: the Wazuh dashboard fails on its first start with `circuit_breaking_exception`. On a host dedicated to the Wazuh indexer, use half of the memory of the host:
+5. Disable the tasks that need Internet access. Add these settings to `/etc/wazuh-indexer/opensearch.yml`:
+
+    ```yaml
+    plugins.content_manager.catalog.update_on_start: false
+    plugins.content_manager.catalog.update_on_schedule: false
+    plugins.content_manager.telemetry.enabled: false
+    ```
+
+    See the [offline configuration of the Wazuh indexer](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/modules/content-manager/configuration.md#offline-configuration--disabling-automatic-updates).
+
+6. Set the Java heap of the Wazuh indexer. The package sets 1 GB, which is not enough: the Wazuh dashboard fails on its first start with `circuit_breaking_exception`. On a host dedicated to the Wazuh indexer, use half of the memory of the host:
 
     ```bash
     HEAP_MB=$(( $(free -m | awk 'NR == 2 {print $2}') / 2 ))
     sed -i -e "s/^-Xms.*/-Xms${HEAP_MB}m/" -e "s/^-Xmx.*/-Xmx${HEAP_MB}m/" /etc/wazuh-indexer/jvm.options
     ```
 
-6. Enable and start the Wazuh indexer service.
+7. Enable and start the Wazuh indexer service.
 
     ```bash
     systemctl daemon-reload
@@ -153,13 +171,13 @@ Follow these steps on every Wazuh indexer node.
     systemctl start wazuh-indexer
     ```
 
-7. When every Wazuh indexer node is running, run the Wazuh indexer `indexer-security-init.sh` script on one of them. It loads the security configuration, including the users and their passwords, and starts the cluster. Run it only once.
+8. When every Wazuh indexer node is running, run the Wazuh indexer `indexer-security-init.sh` script on one of them. It loads the security configuration, including the users and their passwords, and starts the cluster. Run it only once.
 
     ```bash
     /usr/share/wazuh-indexer/bin/indexer-security-init.sh
     ```
 
-8. Check that every Wazuh indexer node joined the cluster and that its status is `green`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`). The value is quoted in the file; the quotes are not part of the password.
+9. Check that every Wazuh indexer node joined the cluster and that its status is `green`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`). The value is quoted in the file; the quotes are not part of the password.
 
     ```bash
     curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v

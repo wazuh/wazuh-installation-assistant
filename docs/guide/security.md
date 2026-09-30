@@ -16,7 +16,7 @@ The installation bundle (`wazuh-install-files.tar`) is created once with `wazuh-
 - Individual node certificates for each Wazuh Indexer, Manager, and Dashboard node
 - For each Wazuh Manager node, the certificate of the agent listener (`<node>-remoted.pem` and `<node>-remoted-key.pem`), deployed as `remoted.pem` and `remoted-key.pem`
 
-The Wazuh manager does not generate certificates: it will not start until `remoted.pem` and `remoted-key.pem` are present in `/var/wazuh-manager/etc/certs`. That pair is served by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, so agents can verify the manager they dial by pinning `root-ca.pem`. `<node>-remoted.pem` is a chain: the leaf followed by the root CA, and its `notBefore` is backdated one day so an agent whose clock lags does not reject a freshly issued certificate. Unlike the rest of the trust material, which is read as `root`, the listener pair is opened after dropping privileges and is therefore owned by `wazuh-manager:wazuh-manager` with mode `640`.
+The Wazuh manager package issues its certificates when it is installed on a host whose `/etc/wazuh/ca` holds the root CA and its private key, as in an all-in-one installation. In a distributed deployment the node receives them in the bundle instead, and the Wazuh manager does not start until `remoted.pem` and `remoted-key.pem` are present in `/var/wazuh-manager/etc/certs`. That pair is served by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, so agents can verify the manager they dial by pinning `root-ca.pem`. `<node>-remoted.pem` is a chain: the leaf followed by the root CA, and its `notBefore` is backdated one day so an agent whose clock lags does not reject a freshly issued certificate. Unlike the rest of the trust material, which is read as `root`, the listener pair is opened after dropping privileges and is therefore owned by `wazuh-manager:wazuh-manager` with mode `640`.
 
 The root CA private key (`root-ca.key`) is not in the bundle: it stays in `/etc/wazuh/ca` of the node where the bundle was generated. Anyone holding it can issue a certificate with `CN=admin`, which the Wazuh indexer accepts as its superuser without a password, and a certificate issued that way cannot be revoked. Keeping it on one node, instead of on every node, limits that exposure to a single host. Back up `/etc/wazuh/ca` of that node in a safe place: the key is only needed to add nodes or renew certificates with `wazuh-certs-tool-5.0.0.sh`.
 
@@ -53,6 +53,26 @@ bash wazuh-passwords-tool-5.0.0.sh -u <USER> -p
 The tool never prints a password. Generated passwords are saved in `/etc/wazuh/credentials.env` (mode `0600`), the same file the Wazuh packages use.
 
 Passwords for internal users are stored hashed in `/etc/wazuh-indexer/opensearch-security/internal_users.yml`.
+
+### Change the passwords of a step-by-step deployment
+
+A deployment installed step by step does not need the Wazuh installation assistant to change a password: the Wazuh packages ship the tools.
+
+- **Wazuh indexer users** (`admin`, `kibanaserver`, `wazuh-manager`): on a Wazuh indexer node, run the passwords tool that ships with the package. It reads the new password from the standard input:
+
+    ```bash
+    /usr/share/wazuh-indexer/tools/wazuh-passwords-tool.sh -u <USER> -p
+    ```
+
+- **Wazuh server API users** (`wazuh`, `wazuh-wui`): on the master node, run `rbac_control`. Every node keeps its own `rbac.db` and the cluster does not synchronize it, so repeat the change on any node that may become the master:
+
+    ```bash
+    /var/wazuh-manager/bin/rbac_control change-password
+    ```
+
+- **The nodes that use the changed password** keep the previous one in their keystores until you update them and restart the service:
+  - After changing `wazuh-manager`, on every Wazuh manager node, as described in [Update the Wazuh manager nodes](../ref/getting-started/usage.md#update-the-wazuh-manager-nodes).
+  - After changing `kibanaserver` or `wazuh-wui`, on every Wazuh dashboard node (keystore entries `opensearch.password` and `wazuh_core.hosts.default.password`), as described in [Update the Wazuh dashboard nodes](../ref/getting-started/usage.md#update-the-wazuh-dashboard-nodes).
 
 ## Least privilege
 

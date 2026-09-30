@@ -7,7 +7,7 @@ Install and configure the Wazuh indexer, the Wazuh manager and the Wazuh dashboa
 
 ## Before you start
 
-Open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports) that the agents and the users of the Wazuh dashboard must reach.
+Check the hardware and operating system requirements in [Hardware and operating system](../../ref/getting-started/requirements.md#hardware-and-operating-system). Open the ports listed in [Required ports](../../ref/getting-started/requirements.md#required-ports) that the agents and the users of the Wazuh dashboard must reach.
 
 There are no default passwords and no default certificates, and there is nothing to create by hand. When they are installed on the same host, the Wazuh packages share what they generate through `/etc/wazuh`:
 
@@ -612,7 +612,7 @@ Once the three components are installed and running, the passwords are stored in
     rm -f /etc/wazuh/credentials.env
     ```
 
-The root CA private key stays in `/etc/wazuh/ca`. Back it up in a safe place: you need it to add nodes or renew certificates later. See [Security](../security.md).
+The root CA private key stays in `/etc/wazuh/ca`. Back it up in a safe place: you need it to add nodes or renew certificates later. See [Security](../security.md). To change a password, see [Change the passwords of a step-by-step deployment](../security.md#change-the-passwords-of-a-step-by-step-deployment).
 
 ## Troubleshooting
 
