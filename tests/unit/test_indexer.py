@@ -1,7 +1,8 @@
 """
 Unit tests for install_functions/indexer.sh
 
-Covers: indexer_install, indexer_configure
+Covers: indexer_install, indexer_configure, indexer_copyCertificates,
+        indexer_startCluster
 """
 
 import pytest
@@ -14,6 +15,23 @@ COMMON_VARS = "common_functions/commonVariables.sh"
 BASE_SOURCES = [COMMON_VARS, COMMON, INDEXER]
 
 IGNORE_LOGGER = {"common_logger": "true"}
+
+
+def make_tar(tmp_path, members):
+    """Build a wazuh-install-files.tar holding files named after themselves."""
+    import subprocess
+
+    staging = tmp_path / "wazuh-install-files"
+    staging.mkdir()
+    for name in members:
+        (staging / name).write_text(name)
+    tar = tmp_path / "wazuh-install-files.tar"
+    subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+    return tar
+
+
+# install -o root needs root; the owner of a pre-placed pair is the package's job anyway.
+FAKE_INSTALL = 'if [ "$1" = -d ]; then mkdir -p "${@: -1}"; else cp "${@: -2:1}" "${@: -1}"; fi'
 
 
 class TestIndexerInstall:
@@ -128,7 +146,6 @@ class TestIndexerConfigure:
             "free": "echo 'Mem: 8192 4096 1024'",
             "awk": "echo 4096",
             "sed": "true",
-            "indexer_copyCertificates": "true",
             "java": "true",
             "grep": "echo ''",
             **(extra_mocks or {}),
@@ -158,3 +175,69 @@ class TestIndexerConfigure:
             "indexer1",
         )
         assert_success(result)
+
+    def _sed_calls(self, tmp_path, **kwargs):
+        log = tmp_path / "sed.log"
+        result = self._run(extra_mocks={"sed": f'printf "%s\\n" "$*" >> "{log}"'}, **kwargs)
+        assert_success(result)
+        return log.read_text()
+
+    def test_aio_keeps_the_package_configuration(self, tmp_path):
+        """Only the heap and a local-only network.host; nodes_dn is the package's."""
+        calls = self._sed_calls(tmp_path, node_names=["indexer1"], node_ips=["1.1.1.1"], indxname="indexer1", aio=True)
+        assert 'network.host: "127.0.0.1"' in calls
+        assert "nodes_dn" not in calls
+        assert "node.name" not in calls
+
+    def test_distributed_lists_every_node_in_the_certificate_format(self, tmp_path):
+        calls = self._sed_calls(
+            tmp_path, node_names=["indexer1", "indexer2"], node_ips=["1.1.1.1", "2.2.2.2"], indxname="indexer1"
+        )
+        assert "C=US,L=California,O=Wazuh,OU=Wazuh,CN=indexer1" in calls
+        assert "C=US,L=California,O=Wazuh,OU=Wazuh,CN=indexer2" in calls
+        assert "CN=indexer1,OU=Wazuh" not in calls
+
+
+class TestIndexerCopyCertificates:
+    """indexer_copyCertificates places the node and admin pairs before the install."""
+
+    def _run(self, tmp_path, members):
+        tar = make_tar(tmp_path, members)
+        cert_path = tmp_path / "certs"
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installCommon.sh"],
+            "indexer_copyCertificates",
+            {**IGNORE_LOGGER, "install": FAKE_INSTALL},
+            {"indxname": "indexer1", "indexer_cert_path": str(cert_path), "tar_file": str(tar), "debug": ""},
+        )
+        return result, cert_path
+
+    def test_success_places_pairs_with_package_names(self, tmp_path):
+        result, cert_path = self._run(tmp_path, ["indexer1.pem", "indexer1-key.pem", "admin.pem", "admin-key.pem"])
+        assert_success(result)
+        assert (cert_path / "indexer.pem").read_text() == "indexer1.pem"
+        assert (cert_path / "indexer-key.pem").read_text() == "indexer1-key.pem"
+        assert (cert_path / "admin.pem").read_text() == "admin.pem"
+        assert (cert_path / "admin-key.pem").read_text() == "admin-key.pem"
+
+    def test_fail_when_admin_pair_missing(self, tmp_path):
+        result, _ = self._run(tmp_path, ["indexer1.pem", "indexer1-key.pem"])
+        assert_failure(result)
+
+
+class TestIndexerStartCluster:
+    """indexer_startCluster runs the security initializer the package ships."""
+
+    def _run(self, rc):
+        return run_bash_function(
+            BASE_SOURCES,
+            "indexer_startCluster",
+            {**IGNORE_LOGGER, "bash": f'[[ "$*" == *indexer-security-init.sh* ]] && return {rc}', "installCommon_rollBack": "true"},
+            {"debug": ""},
+        )
+
+    def test_success(self):
+        assert_success(self._run(0))
+
+    def test_fail_when_the_initializer_fails(self):
+        assert_failure(self._run(1))

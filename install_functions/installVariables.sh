@@ -26,6 +26,11 @@ readonly download_packages_directory="wazuh-install-packages"
 readonly dashboard_cert_path="/etc/wazuh-dashboard/certs"
 readonly manager_cert_path="/var/wazuh-manager/etc/certs"
 readonly indexer_cert_path="/etc/wazuh-indexer/certs"
+readonly credential_keys=( WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD )
+# The passwords each component needs: a node only receives the ones of its components.
+readonly indexer_credential_keys=( WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD )
+readonly dashboard_credential_keys=( WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_MANAGER_WUI_PASSWORD )
+readonly manager_credential_keys=( WAZUH_INDEXER_MANAGER_PASSWORD WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD )
 
 readonly logfile="/var/log/wazuh-install.log"
 debug=">> ${logfile} 2>&1"
@@ -36,19 +41,22 @@ readonly apt_lockfile="/var/lib/dpkg/lock"
 readonly base_dest_folder="wazuh-offline"
 
 http_port=443
-wazuh_aio_ports=( 9200 9300 1514 1515 1516 55000 "${http_port}")
+wazuh_aio_ports=( 9200 9300 1514 1515 1516 1517 55000 "${http_port}")
 readonly wazuh_indexer_ports=( 9200 9300 )
-readonly wazuh_manager_ports=( 1514 1515 1516 55000 )
+readonly wazuh_manager_ports=( 1514 1515 1516 1517 55000 )
 wazuh_dashboard_port="${http_port}"
 # `lsof` and `openssl` are installed separately
 wia_yum_dependencies=( systemd grep tar coreutils sed procps-ng gawk curl )
 readonly wia_apt_dependencies=( systemd grep tar coreutils sed procps gawk curl )
-readonly wazuh_yum_dependencies=()
-readonly wazuh_apt_dependencies=( apt-transport-https gnupg )
-readonly indexer_yum_dependencies=( coreutils )
-readonly indexer_apt_dependencies=( debconf adduser procps )
-readonly dashboard_yum_dependencies=( libcap )
-readonly dashboard_apt_dependencies=( tar curl libcap2-bin )
+# What each package requires, including what its credentials resolver uses. The offline
+# installation only checks these lists, and the assistant never removes a package in them.
+# diffutils is also needed before the install: the tar files are placed with cmp.
+readonly wazuh_yum_dependencies=( diffutils findutils gawk grep hostname iproute openssl sed util-linux )
+readonly wazuh_apt_dependencies=( apt-transport-https gnupg curl openssl iproute2 hostname util-linux diffutils )
+readonly indexer_yum_dependencies=( coreutils diffutils hostname iproute openssl procps-ng util-linux )
+readonly indexer_apt_dependencies=( debconf adduser procps openssl diffutils iproute2 )
+readonly dashboard_yum_dependencies=( libcap diffutils openssl util-linux )
+readonly dashboard_apt_dependencies=( tar curl libcap2-bin openssl diffutils )
 wia_offline_dependencies=( curl tar gnupg openssl )
 wia_dependencies_installed=()
 assistant_yum_dependencies=( "${wia_yum_dependencies[@]}" )
