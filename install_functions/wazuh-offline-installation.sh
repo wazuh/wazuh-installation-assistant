@@ -18,7 +18,7 @@ function offline_checkPrerequisites(){
         common_logger "Checking prerequisites for Offline installation."
         if [ "${sys_type}" == "yum" ]; then
             if [ "$1" == "AIO" ]; then
-                dependencies=( $(echo "${indexer_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" | tr ' ' '\n' | sort -u) )
+                dependencies=( $(echo "${wazuh_yum_dependencies[@]}" "${indexer_yum_dependencies[@]}" "${dashboard_yum_dependencies[@]}" | tr ' ' '\n' | sort -u) )
             elif [ "$1" == "indexer" ]; then
                 dependencies=( "${indexer_yum_dependencies[@]}" )
             elif [ "$1" == "dashboard" ]; then
@@ -88,7 +88,7 @@ function offline_extractFiles() {
 
     if [ "${sys_type}" == "apt-get" ]; then
         required_files+=("${offline_packages_path}/wazuh-dashboard*.deb" "${offline_packages_path}/wazuh-indexer*.deb" "${offline_packages_path}/wazuh-manager*.deb")
-    elif [ "${sys_type}" == "rpm" ]; then
+    elif [ "${sys_type}" == "yum" ]; then
         required_files+=("${offline_packages_path}/wazuh-dashboard*.rpm" "${offline_packages_path}/wazuh-indexer*.rpm" "${offline_packages_path}/wazuh-manager*.rpm")
     fi
 

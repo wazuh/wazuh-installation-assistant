@@ -235,7 +235,7 @@ nodes:
 Issue it with `-lb`, or with `-A`, which includes the section when it is present:
 
 ```bash
-sudo bash wazuh-certs-tool-5.0.0.sh -lb ./root-ca.pem ./root-ca.key
+sudo bash wazuh-certs-tool-5.0.1.sh -lb
 ```
 
 Use this **only when the proxy terminates TLS**. With a layer 4 passthrough load balancer
@@ -244,7 +244,7 @@ the agent validates, and the address of the balancer belongs in the listener cer
 of every manager node instead:
 
 ```bash
-sudo bash wazuh-certs-tool-5.0.0.sh -A -as wazuh.example.com
+sudo bash wazuh-certs-tool-5.0.1.sh -A -as wazuh.example.com
 ```
 
 By default, documentation examples use only `ip` values for simplicity.

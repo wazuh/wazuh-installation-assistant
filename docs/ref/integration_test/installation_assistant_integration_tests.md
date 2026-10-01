@@ -64,7 +64,7 @@ flowchart TD
 | Input | Required | Default | Description |
 |---|---|---|---|
 | `pr_head_ref` | Yes | — | Branch of `wazuh-installation-assistant` to test |
-| `automation_reference` | No | `5.0.0` | Branch of `wazuh-automation` to use |
+| `automation_reference` | No | `5.0.1` | Branch of `wazuh-automation` to use |
 | `tool_type` | Yes | — | `installer`, `cert-tool`, `passwords-tool`, or `all` |
 | `install_mode` | No | `aio` | `aio`, `distributed`, or `offline` — applies to `installer` and `all` only |
 | `package_type` | No | `staging` | `staging` (dev packages) or `production` (official packages) |
@@ -215,9 +215,9 @@ Runs when `install_mode == offline`. All package preparation happens on the runn
 After any installation mode completes:
 
 - **Disable host firewall**: `ufw disable` on Ubuntu; `systemctl stop firewalld` on RedHat
-- **Wait for dashboard** (installer/all only): polls `https://localhost/status` up to 5 minutes until HTTP 200
+- **Wait for dashboard** (installer/all only): polls `https://localhost/status` with the `admin` password read from `/etc/wazuh/credentials.env` up to 5 minutes until HTTP 200
 - **Run cert-tool** (cert-tool/all only): copies `config.yml` and runs `sudo bash /tmp/wazuh-certs-tool.sh -A`
-- **Run passwords-tool** (passwords-tool/all only): runs four `wazuh-passwords-tool.sh` invocations (admin, wazuh-server, wazuh-dashboard, and wazuh-wui), restarts services, then polls indexer port 9200, dashboard port 443, and manager API port 55000 until all accept the new credentials
+- **Run passwords-tool** (passwords-tool/all only): saves the `admin` password set by the installation as `WAZUH_OLD_PASSWORD` (masked), runs `wazuh-passwords-tool.sh -u <user> -p` with the new password on the standard input for `admin`, `kibanaserver`, `wazuh-manager`, `wazuh` and `wazuh-wui`, restarts services, then polls indexer port 9200, dashboard port 443, and manager API port 55000 until all accept the new credentials
 
 #### Test execution
 
