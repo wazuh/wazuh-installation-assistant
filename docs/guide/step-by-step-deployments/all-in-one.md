@@ -359,7 +359,7 @@ WAZUH_MANAGER_REMOTED_CERT_SANS='IP:<HOST_IP_ADDRESS>,IP:203.0.113.10,DNS:wazuh.
 WAZUH_MANAGER_REMOTED_CERT_SANS='IP:<HOST_IP_ADDRESS>,IP:203.0.113.10,DNS:wazuh.example.com' yum -y install wazuh-manager
 ```
 
-The same applies when you install a downloaded package, for example `yum -y install ./wazuh-manager-5.0.0.x86_64.rpm`.
+The same applies when you install a downloaded package, for example `yum -y install ./wazuh-manager-5.0.1.x86_64.rpm`.
 
 ### Configuring the Wazuh manager
 
@@ -584,7 +584,7 @@ Then install the agent with the token. For example, on a Debian-based endpoint:
 sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='<AGENT_NAME>' dpkg -i wazuh-agent_*.deb
 ```
 
-See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
+See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.1/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
 
 ## Removing the credentials file
 

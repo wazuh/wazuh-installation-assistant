@@ -672,8 +672,8 @@ On the master node, check that every node joined the cluster:
 
 ```text
 NAME    TYPE    VERSION  ADDRESS
-master  master  5.0.0    10.0.0.3
-worker  worker  5.0.0    10.0.0.4
+master  master  5.0.1    10.0.0.3
+worker  worker  5.0.1    10.0.0.4
 ```
 
 ## Wazuh dashboard
@@ -921,7 +921,7 @@ Then install the agent with the token. For example, on a Debian-based endpoint:
 sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='<AGENT_NAME>' dpkg -i wazuh-agent_*.deb
 ```
 
-See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
+See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.1/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
 
 ## Removing the credentials files
 

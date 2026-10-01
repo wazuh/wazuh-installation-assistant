@@ -4,7 +4,7 @@ The Wazuh installation assistant, Wazuh password tool, and Wazuh certs tools wor
 
 ## Hardware and operating system
 
-Minimum and recommended hardware of each node, from the installation guides of the [Wazuh indexer](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/getting-started/requirements.md), the [Wazuh manager](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/getting-started/requirements.md) and the [Wazuh dashboard](https://github.com/wazuh/wazuh-dashboard-plugins/blob/5.0.0/docs/ref/getting-started/requirements.md):
+Minimum and recommended hardware of each node, from the installation guides of the [Wazuh indexer](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.1/docs/ref/getting-started/requirements.md), the [Wazuh manager](https://github.com/wazuh/wazuh/blob/5.0.1/docs/ref/getting-started/requirements.md) and the [Wazuh dashboard](https://github.com/wazuh/wazuh-dashboard-plugins/blob/5.0.1/docs/ref/getting-started/requirements.md):
 
 | Component | Minimum | Recommended |
 | --------- | ------- | ----------- |

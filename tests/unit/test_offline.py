@@ -14,9 +14,9 @@ BASE_SOURCES = [OFFLINE]
 IGNORE_LOGGER = {"common_logger": "true"}
 
 RPM_PACKAGES = [
-    "wazuh-dashboard-5.0.0-1.x86_64.rpm",
-    "wazuh-indexer-5.0.0-1.x86_64.rpm",
-    "wazuh-manager-5.0.0-1.x86_64.rpm",
+    "wazuh-dashboard-5.0.1-1.x86_64.rpm",
+    "wazuh-indexer-5.0.1-1.x86_64.rpm",
+    "wazuh-manager-5.0.1-1.x86_64.rpm",
 ]
 
 

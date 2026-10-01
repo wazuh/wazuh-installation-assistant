@@ -640,7 +640,7 @@ class TestPasswordsChangePasswordApi:
         assert "SAVE:" not in result.stdout
 
     def test_fail_when_rbac_control_exits_0_without_updating(self):
-        """rbac_control on 5.0.0 exits 0 after an internal error, so its
+        """rbac_control on 5.0.1 exits 0 after an internal error, so its
         output is checked too."""
         result = self._run({"nuser": "wazuh", "password": "NewApiPass123"},
                            rbac='cat > /dev/null; printf "\\twazuh: FAILED | error\\n"')

@@ -36,12 +36,12 @@ Install one package at a time, in the order and at the step of the guide where i
 When you configure the Wazuh indexer, also disable the tasks that need Internet access, as described in [Installing the Wazuh indexer](#installing-the-wazuh-indexer), step 5.
 
 > [!IMPORTANT]
-> Without access to Wazuh CTI, the Wazuh indexer gets no vulnerability content, so vulnerability detection has no CVE feed and scans nothing. There is no offline feed in Wazuh 5.x. See [Migrating Vulnerability Detection to CTI-Based Feeds](https://github.com/wazuh/wazuh/blob/5.0.0/docs/guide/migration/vulnerability-detection-cti-feeds.md).
+> Without access to Wazuh CTI, the Wazuh indexer gets no vulnerability content, so vulnerability detection has no CVE feed and scans nothing. There is no offline feed in Wazuh 5.x. See [Migrating Vulnerability Detection to CTI-Based Feeds](https://github.com/wazuh/wazuh/blob/5.0.1/docs/guide/migration/vulnerability-detection-cti-feeds.md).
 
 ## Distributed deployment
 
 > [!IMPORTANT]
-> Without access to Wazuh CTI, the Wazuh indexer gets no vulnerability content, so vulnerability detection has no CVE feed and scans nothing. There is no offline feed in Wazuh 5.x. See [Migrating Vulnerability Detection to CTI-Based Feeds](https://github.com/wazuh/wazuh/blob/5.0.0/docs/guide/migration/vulnerability-detection-cti-feeds.md).
+> Without access to Wazuh CTI, the Wazuh indexer gets no vulnerability content, so vulnerability detection has no CVE feed and scans nothing. There is no offline feed in Wazuh 5.x. See [Migrating Vulnerability Detection to CTI-Based Feeds](https://github.com/wazuh/wazuh/blob/5.0.1/docs/guide/migration/vulnerability-detection-cti-feeds.md).
 
 ### How the passwords and certificates are shared
 
@@ -61,7 +61,7 @@ Each host needs these keys in `/etc/wazuh/credentials.env`:
 
 A host that runs more than one component needs the keys of all of them: the commands of this guide only add the keys that are not in the file yet.
 
-The private key of the root CA, `root-ca.key`, is not in `wazuh-install-files.tar`: it stays in `/etc/wazuh/ca` of the host where you ran `wazuh-install-5.0.0.sh -g`. Back it up in a safe place: you need it to add nodes or renew certificates later. See [Security](../security.md).
+The private key of the root CA, `root-ca.key`, is not in `wazuh-install-files.tar`: it stays in `/etc/wazuh/ca` of the host where you ran `wazuh-install-5.0.1.sh -g`. Back it up in a safe place: you need it to add nodes or renew certificates later. See [Security](../security.md).
 
 ### Decompress necessary installation files
 
@@ -154,7 +154,7 @@ Follow these steps on every Wazuh indexer node.
     plugins.content_manager.telemetry.enabled: false
     ```
 
-    See the [offline configuration of the Wazuh indexer](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/modules/content-manager/configuration.md#offline-configuration--disabling-automatic-updates).
+    See the [offline configuration of the Wazuh indexer](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.1/docs/ref/modules/content-manager/configuration.md#offline-configuration--disabling-automatic-updates).
 
 6. Set the Java heap of the Wazuh indexer. The package sets 1 GB, which is not enough: the Wazuh dashboard fails on its first start with `circuit_breaking_exception`. On a host dedicated to the Wazuh indexer, use half of the memory of the host:
 
@@ -266,8 +266,8 @@ Follow these steps on the master node and on every worker node.
 
     ```text
     NAME    TYPE    VERSION  ADDRESS
-    master  master  5.0.0    10.0.0.3
-    worker  worker  5.0.0    10.0.0.4
+    master  master  5.0.1    10.0.0.3
+    worker  worker  5.0.1    10.0.0.4
     ```
 
 ### Installing the Wazuh dashboard
