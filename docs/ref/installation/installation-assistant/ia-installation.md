@@ -12,7 +12,7 @@ To use `pre-release` packages instead, use the following command:
 curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh
 ```
 
-If you want to perform an installation of a specific component, you must also download the config-.yml file with:
+If you want to perform an installation of a specific component, you must also download the `config.yml` file with:
 
 For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../configuration/configuration-files.md#other-configyml-examples).
 

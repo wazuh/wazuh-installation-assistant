@@ -96,6 +96,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1071](https://github.com/wazuh/wazuh-installation-assistant/issues/1071) | Fix the `config.yml` file name on the installation assistant page |
 | [#1068](https://github.com/wazuh/wazuh-installation-assistant/issues/1068) | Fix unclosed code fence and stale build artifact names in the generate-artifacts-manually guide and the glossary |
 | [#1060](https://github.com/wazuh/wazuh-installation-assistant/issues/1060) | Fix broken code blocks in the documentation |
 | [#6125](https://github.com/wazuh/internal-devel-requests/issues/6125) | wazuh-certs-tool.sh no longer relaxes generated private key permissions to world-readable |
