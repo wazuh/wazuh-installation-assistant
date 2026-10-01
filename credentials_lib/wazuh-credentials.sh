@@ -407,6 +407,9 @@ _wazuh_env_mutate_locked() (
             return lhs
         }
         function quote_value(s,    out, i, c) {
+            # The password alphabet needs no quoting; anything else is still escaped.
+            if (s ~ /^[A-Za-z0-9.,_+:@%^=~-]*$/)
+                return s
             out = "\""
             for (i = 1; i <= length(s); i++) {
                 c = substr(s, i, 1)
@@ -416,11 +419,18 @@ _wazuh_env_mutate_locked() (
             }
             return out "\""
         }
+        function print_assignment() {
+            if (wanted == admin_key && last != admin_comment)
+                print admin_comment
+            print assignment
+        }
         BEGIN {
             begin_marker = "# >>> wazuh generated — do not edit <<<"
             end_marker = "# >>> end wazuh generated <<<"
             warning_1 = "# Editing a value here does not change the deployment."
             warning_2 = "# To rotate, use wazuh-passwords-tool.sh."
+            admin_key = "WAZUH_INDEXER_ADMIN_PASSWORD"
+            admin_comment = "# admin: login of the Wazuh dashboard and administrator of the indexer"
             value = ""
             if (action == "set") {
                 read_status = (getline value < value_file)
@@ -448,7 +458,7 @@ _wazuh_env_mutate_locked() (
                 next
             }
             if (action == "set" && !written) {
-                print assignment
+                print_assignment()
                 written = 1
             }
             end_count++
@@ -459,11 +469,12 @@ _wazuh_env_mutate_locked() (
         {
             if (inside && lhs_name($0) == wanted) {
                 if (action == "set" && !written) {
-                    print assignment
+                    print_assignment()
                     written = 1
                 }
                 next
             }
+            last = $0
             print
         }
         END {
@@ -477,7 +488,7 @@ _wazuh_env_mutate_locked() (
                 print begin_marker
                 print warning_1
                 print warning_2
-                print assignment
+                print_assignment()
                 print end_marker
             }
         }

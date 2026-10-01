@@ -60,6 +60,17 @@ function dashboard_copyCertificates() {
 
 }
 
+# Prints the global addresses in the SANs of the dashboard certificate, one per line.
+# The dashboard package takes them from the default-route interfaces; loopback and
+# link-local are dropped.
+function dashboard_globalAddresses() {
+
+    openssl x509 -in "${dashboard_cert_path}/dashboard.pem" -noout -ext subjectAltName 2>/dev/null \
+        | grep -o 'IP Address:[^,[:space:]]*' | cut -d: -f2- \
+        | grep -Ev '^(127\.|169\.254\.|0:0:0:0:0:0:0:1$|::1$|[Ff][Ee]80:)'
+
+}
+
 # Waits until the dashboard answers and prints the summary. Without credentials: a
 # distributed dashboard node does not have the admin password.
 function dashboard_initialize() {
@@ -81,9 +92,10 @@ function dashboard_initialize() {
         done
     fi
 
-    local print_ip="${dashboard_ip}"
+    local print_ips=("${dashboard_ip}")
     if [ "${dashboard_ip}" == "localhost" ] || [[ "${dashboard_ip}" == 127.* ]]; then
-        print_ip="<wazuh-dashboard-ip>"
+        mapfile -t print_ips < <(dashboard_globalAddresses)
+        [ "${#print_ips[@]}" -eq 0 ] && print_ips=("<wazuh-dashboard-ip>")
     fi
 
     # The dashboard answers 503 until it is ready, and 000 is no connection.
@@ -112,14 +124,21 @@ function dashboard_initialize() {
     fi
 
     # A distributed dashboard node only receives its own passwords, not the admin one.
-    local location="/etc/wazuh/credentials.env"
+    local password_command="sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env"
     if [ -z "${AIO}" ]; then
-        location="the credentials.env file of ${tar_file_name}, or in /etc/wazuh/credentials.env of a Wazuh indexer node"
+        password_command="sudo tar -xOf ${tar_file_name} wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD='"
     fi
 
+    # Logged too: it holds the command that reads the password, not the password.
     common_logger "Wazuh dashboard web application initialized."
-    common_logger -nl "--- Summary ---"
-    common_logger -nl "You can access the web interface https://${print_ip}:${http_port}\n    User: admin\n    Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in ${location}"
+    common_logger "--- Summary ---"
+    local ip
+    for ip in "${print_ips[@]}"; do
+        [[ "${ip}" == *:* ]] && ip="[${ip}]"
+        common_logger "You can access the web interface https://${ip}:${http_port}"
+    done
+    common_logger "    User: admin"
+    common_logger "    Password: run ${password_command}"
 
 }
 

@@ -244,14 +244,36 @@ class TestDashboardInitialize:
         assert_success(result)
         assert urls == ["https://127.0.0.1:443/status"]
         assert "https://<wazuh-dashboard-ip>:443" in result.stdout
-        assert "WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env" in result.stdout
+        assert "sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env" in result.stdout
+
+    def test_aio_prints_the_global_addresses_of_the_certificate(self, tmp_path):
+        cert_dir = tmp_path / "certs"
+        cert_dir.mkdir()
+        sans = "subjectAltName=DNS:h,IP:127.0.0.1,IP:10.0.1.5,IP:169.254.1.1,IP:::1,IP:fe80::1,IP:203.0.113.7,IP:2001:db8::5"
+        import subprocess
+        subprocess.run(
+            ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-subj", "/CN=h", "-days", "1",
+             "-addext", sans, "-keyout", str(tmp_path / "k"), "-out", str(cert_dir / "dashboard.pem")],
+            check=True, capture_output=True)
+        result, _ = self._run(tmp_path, {"AIO": "1", "dashboard_cert_path": str(cert_dir)})
+        assert_success(result)
+        assert "https://10.0.1.5:443" in result.stdout
+        assert "https://203.0.113.7:443" in result.stdout
+        assert "https://[2001:DB8:0:0:0:0:0:5]:443" in result.stdout
+        assert "FE80" not in result.stdout and ":0:1]" not in result.stdout
+        assert "127.0.0.1:443" not in result.stdout and "169.254" not in result.stdout
+        assert "<wazuh-dashboard-ip>" not in result.stdout
+
+    def test_summary_is_logged(self, tmp_path):
+        result, _ = self._run(tmp_path, {"AIO": "1"})
+        assert "-nl" not in result.stdout
 
     def test_distributed_single_node_prints_its_address(self, tmp_path):
         result, urls = self._run(tmp_path, self.DISTRIBUTED)
         assert_success(result)
         assert urls == ["https://10.0.0.5:443/status"]
         assert "https://10.0.0.5:443" in result.stdout
-        assert "credentials.env file of wazuh-install-files.tar" in result.stdout
+        assert "tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD='" in result.stdout
 
     def test_distributed_picks_the_node_of_dashname(self, tmp_path):
         env = {**self.DISTRIBUTED, "dashboard_node_names": "(dashboard1 dashboard2)", "dashboard_node_ips": "(10.0.0.5 10.0.0.6)", "dashname": "dashboard2"}
@@ -296,5 +318,5 @@ class TestDashboardInitialize:
 
     def test_never_prints_a_password(self, tmp_path):
         result, _ = self._run(tmp_path, {"AIO": "1"})
-        assert "Password: the WAZUH_INDEXER_ADMIN_PASSWORD value" in result.stdout
+        assert "Password: run sudo grep" in result.stdout
         assert "-u" not in result.stdout
