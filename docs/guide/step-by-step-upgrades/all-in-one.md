@@ -356,7 +356,7 @@ uiSettings.overrides.defaultRoute: /app/wz-home
 
 6. Import the saved objects customizations exported while preparing the upgrade if required.
 
-- Navigate to **Dashboard management** > **Dashboard Management** > **Saved objects** on the Wazuh dashboard.
+- Navigate to **Dashboard management** > **Dashboards Management** > **Saved objects** on the Wazuh dashboard.
 - Click **Import**, add the ndjson file and click **Import**.
 
 > **Note:**
