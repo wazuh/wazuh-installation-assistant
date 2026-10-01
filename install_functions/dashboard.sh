@@ -92,10 +92,14 @@ function dashboard_initialize() {
         done
     fi
 
-    local print_ips=("${dashboard_ip}")
-    if [ "${dashboard_ip}" == "localhost" ] || [[ "${dashboard_ip}" == 127.* ]]; then
-        mapfile -t print_ips < <(dashboard_globalAddresses)
-        [ "${#print_ips[@]}" -eq 0 ] && print_ips=("<wazuh-dashboard-ip>")
+    # Without a global address in the certificate, the node address, unless it is loopback.
+    local print_ips
+    mapfile -t print_ips < <(dashboard_globalAddresses)
+    if [ "${#print_ips[@]}" -eq 0 ]; then
+        print_ips=("${dashboard_ip}")
+        if [ "${dashboard_ip}" == "localhost" ] || [[ "${dashboard_ip}" == 127.* ]]; then
+            print_ips=("<wazuh-dashboard-ip>")
+        fi
     fi
 
     # The dashboard answers 503 until it is ready, and 000 is no connection.

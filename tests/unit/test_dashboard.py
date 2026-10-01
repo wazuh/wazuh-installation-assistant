@@ -246,16 +246,23 @@ class TestDashboardInitialize:
         assert "https://<wazuh-dashboard-ip>:443" in result.stdout
         assert "sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env" in result.stdout
 
-    def test_aio_prints_the_global_addresses_of_the_certificate(self, tmp_path):
+    @staticmethod
+    def _cert(tmp_path, ips):
+        """A dashboard.pem whose SANs are the given IPs; returns its directory."""
+        import subprocess
+
         cert_dir = tmp_path / "certs"
         cert_dir.mkdir()
-        sans = "subjectAltName=DNS:h,IP:127.0.0.1,IP:10.0.1.5,IP:169.254.1.1,IP:::1,IP:fe80::1,IP:203.0.113.7,IP:2001:db8::5"
-        import subprocess
+        sans = "subjectAltName=DNS:h," + ",".join(f"IP:{ip}" for ip in ips)
         subprocess.run(
             ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-subj", "/CN=h", "-days", "1",
              "-addext", sans, "-keyout", str(tmp_path / "k"), "-out", str(cert_dir / "dashboard.pem")],
             check=True, capture_output=True)
-        result, _ = self._run(tmp_path, {"AIO": "1", "dashboard_cert_path": str(cert_dir)})
+        return str(cert_dir)
+
+    def test_aio_prints_the_global_addresses_of_the_certificate(self, tmp_path):
+        cert_dir = self._cert(tmp_path, ["127.0.0.1", "10.0.1.5", "169.254.1.1", "::1", "fe80::1", "203.0.113.7", "2001:db8::5"])
+        result, _ = self._run(tmp_path, {"AIO": "1", "dashboard_cert_path": cert_dir})
         assert_success(result)
         assert "https://10.0.1.5:443" in result.stdout
         assert "https://203.0.113.7:443" in result.stdout
@@ -263,6 +270,14 @@ class TestDashboardInitialize:
         assert "FE80" not in result.stdout and ":0:1]" not in result.stdout
         assert "127.0.0.1:443" not in result.stdout and "169.254" not in result.stdout
         assert "<wazuh-dashboard-ip>" not in result.stdout
+
+    def test_distributed_prints_the_global_addresses_of_the_certificate(self, tmp_path):
+        cert_dir = self._cert(tmp_path, ["10.0.0.5", "198.51.100.9", "127.0.0.1"])
+        result, urls = self._run(tmp_path, {**self.DISTRIBUTED, "dashboard_cert_path": cert_dir})
+        assert_success(result)
+        assert urls == ["https://10.0.0.5:443/status"]
+        assert "https://10.0.0.5:443" in result.stdout
+        assert "https://198.51.100.9:443" in result.stdout
 
     def test_summary_is_logged(self, tmp_path):
         result, _ = self._run(tmp_path, {"AIO": "1"})
