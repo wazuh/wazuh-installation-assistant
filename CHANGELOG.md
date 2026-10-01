@@ -98,6 +98,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1075](https://github.com/wazuh/wazuh-installation-assistant/issues/1075) | Start the Wazuh agent after installing it in the enrollment steps of the deployment guides |
 | [#1062](https://github.com/wazuh/wazuh-installation-assistant/issues/1062) | Fix the global.db path, the incomplete Wazuh indexer restore, and a wrong dashboard menu name in the upgrade and backup guides |
 | [#1068](https://github.com/wazuh/wazuh-installation-assistant/issues/1068) | Fix unclosed code fence and stale build artifact names in the generate-artifacts-manually guide and the glossary |
 | [#1060](https://github.com/wazuh/wazuh-installation-assistant/issues/1060) | Fix broken code blocks in the documentation |
