@@ -36,6 +36,8 @@
 
 | Issue | Comment |
 | - | - |
+| [#1061](https://github.com/wazuh/wazuh-installation-assistant/issues/1061) | Add port 1517 to the firewall warning and the port checks of the installation assistant |
+| [#1058](https://github.com/wazuh/wazuh-installation-assistant/issues/1058) | Add port 1517 to the Wazuh manager entry of the glossary |
 | [#1052](https://github.com/wazuh/wazuh-installation-assistant/issues/1052) | Rewrite the step-by-step guides (all-in-one, distributed and offline) for install-time credentials, and fix the development packages, dependencies and node name documentation of the installation assistant |
 | [#1067](https://github.com/wazuh/wazuh-installation-assistant/issues/1067) | Print the dashboard node address in the installation summary and wait until the dashboard answers |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Align wazuh-passwords-tool.sh and wazuh-certs-tool.sh with the shared `wazuh-credentials.sh` library |
