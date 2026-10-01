@@ -124,6 +124,44 @@ function cert_cleanFiles() {
 
 }
 
+# Creates the temporary directory of the certificates. Without -tmp it is a new
+# directory with a random name in /tmp. A path given with -tmp must not exist, or must
+# be an empty directory of this user, so no other user can read the keys written there.
+function cert_createTmpDir() {
+
+    if [ -z "${cert_tmp_path}" ]; then
+        if ! cert_tmp_path="$(mktemp -d /tmp/wazuh-certificates.XXXXXXXXXX)"; then
+            common_logger -e "Could not create a temporary directory for the certificates."
+            exit 1
+        fi
+        return 0
+    fi
+
+    # Without the trailing slashes, -L checks the link itself and not its target.
+    while [[ "${cert_tmp_path}" == */ && "${cert_tmp_path}" != "/" ]]; do
+        cert_tmp_path="${cert_tmp_path%/}"
+    done
+
+    if [ -L "${cert_tmp_path}" ]; then
+        common_logger -e "The temporary directory ${cert_tmp_path} is a symbolic link. Use another path."
+        exit 1
+    fi
+
+    # The last mkdir has no -p, so it fails if another user creates the directory first.
+    if [ -e "${cert_tmp_path}" ]; then
+        if [ ! -d "${cert_tmp_path}" ] || [ "$(stat -c %u "${cert_tmp_path}")" != "$(id -u)" ] || [ -n "$(ls -A "${cert_tmp_path}")" ]; then
+            common_logger -e "The temporary directory ${cert_tmp_path} must be an empty directory owned by root. Remove it or use another path."
+            exit 1
+        fi
+    elif ! mkdir -p "$(dirname "${cert_tmp_path}")" || ! mkdir "${cert_tmp_path}"; then
+        common_logger -e "Could not create the temporary directory ${cert_tmp_path}."
+        exit 1
+    fi
+
+    chmod 700 "${cert_tmp_path}"
+
+}
+
 # Checks OpenSSL and the commands the shared credentials library needs to create and
 # validate the root CA. Without them the CA check fails with a misleading error.
 function cert_checkOpenSSL() {
@@ -1481,7 +1519,7 @@ function cert_setpermisions() {
 
 function cert_convertCRLFtoLF() {
     local config_file_path="$1"
-    local temp_dir="/tmp/wazuh-install-files"
+    local temp_file
 
     # Validate input file path
     if ! cert_validatePath "${config_file_path}" "file"; then
@@ -1489,29 +1527,19 @@ function cert_convertCRLFtoLF() {
         return 1
     fi
 
-    # Create temp directory if it doesn't exist
-    if [[ ! -d "${temp_dir}" ]]; then
-        if [ -n "${debugEnabled}" ]; then
-            mkdir "${temp_dir}"
-        else
-            mkdir "${temp_dir}" > /dev/null 2>&1
-        fi
-    fi
-
-    # Set permissions on temp directory
-    if [ -n "${debugEnabled}" ]; then
-        chmod -R 755 "${temp_dir}"
-    else
-        chmod -R 755 "${temp_dir}" > /dev/null 2>&1
+    # A new file with a random name, so no other user can create it or link it first.
+    if ! temp_file="$(mktemp)"; then
+        common_logger -e "Could not create a temporary file to convert ${config_file_path}."
+        return 1
     fi
 
     # Convert CRLF to LF
-    tr -d '\015' < "${config_file_path}" > "${temp_dir}/new_config.yml"
+    tr -d '\015' < "${config_file_path}" > "${temp_file}"
 
     # Move converted file back
     if [ -n "${debugEnabled}" ]; then
-        mv "${temp_dir}/new_config.yml" "${config_file_path}"
+        mv "${temp_file}" "${config_file_path}"
     else
-        mv "${temp_dir}/new_config.yml" "${config_file_path}" > /dev/null 2>&1
+        mv "${temp_file}" "${config_file_path}" > /dev/null 2>&1
     fi
 }
