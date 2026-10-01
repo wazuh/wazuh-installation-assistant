@@ -123,5 +123,5 @@ You can use `scp` to complete this task.
 
 Now, you can continue with the installation of the Wazuh components:
 
-- Installing using the [installation assistant](/docs/guide/offline-installation-assistant-deployments/offline-assisted-install.md).
-- Installing [step-by-step](/docs/guide/offline-step-by-step-deployments/offline-step-by-step.md).
+- Installing using the [installation assistant](../offline-installation-assistant-deployments/offline-assisted-install.md).
+- Installing [step-by-step](../offline-step-by-step-deployments/offline-step-by-step.md).

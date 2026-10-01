@@ -204,7 +204,7 @@ mkdir -p $BACKUP_DIR/db
 
 # Backup configuration and database
 tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
-sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
+sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 
 # Verify backup integrity
 tar -tzf $BACKUP_DIR/wazuh-etc.tar.gz > /dev/null && echo "Backup successful"
@@ -250,7 +250,7 @@ systemctl status wazuh-manager
 tail -50 /var/wazuh-manager/logs/wazuh-manager.log
 
 # Check database integrity
-sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
+sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check"
 ```
 
 ## Wazuh Dashboard
