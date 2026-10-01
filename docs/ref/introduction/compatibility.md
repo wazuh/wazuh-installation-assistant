@@ -4,4 +4,4 @@ The Wazuh installation assistant, Wazuh certs tool, and Wazuh password tool requ
 
 - Amazon Linux 2023
 - Red Hat Enterprise Linux 9, 10
-- Ubuntu 22.04, 24.04
+- Ubuntu 24.04, 26.04
