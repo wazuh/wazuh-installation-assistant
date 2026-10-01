@@ -66,7 +66,7 @@ To install `pre-release` packages instead, use:
 To install `pre-release` packages instead, use:
 
 ```bash
-./wazuh-install-5.1.0-<STAGE>.sh -dw deb -da amd64 -d pre-release`
+./wazuh-install-5.1.0-<STAGE>.sh -dw deb -da amd64 -d pre-release
 ```
 
 ##### arm64
@@ -78,7 +78,7 @@ To install `pre-release` packages instead, use:
 To install `pre-release` packages instead, use:
 
 ```bash
-./wazuh-install-5.1.0-<STAGE>.sh -dw deb -da arm64 -d pre-release`
+./wazuh-install-5.1.0-<STAGE>.sh -dw deb -da arm64 -d pre-release
 ```
 
 ### 3. Download the certificates configuration file
@@ -123,5 +123,5 @@ You can use `scp` to complete this task.
 
 Now, you can continue with the installation of the Wazuh components:
 
-- Installing using the [installation assistant](/docs/guide/offline-installation-assistant-deployments/offline-assisted-install.md).
-- Installing [step-by-step](/docs/guide/offline-step-by-step-deployments/offline-step-by-step.md).
+- Installing using the [installation assistant](../offline-installation-assistant-deployments/offline-assisted-install.md).
+- Installing [step-by-step](../offline-step-by-step-deployments/offline-step-by-step.md).

@@ -13,13 +13,17 @@
    > curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.1.0-<STAGE>.sh && sudo bash ./wazuh-install-5.1.0-<STAGE>.sh -a -d pre-release
    > ```
 
+   > [!NOTE]
+   > The assistant stops if a package it needs, such as `apt-transport-https`, is missing, and names it. Install it, or add `-id` to the command to install it automatically. To install packages that are not published yet, add `-d local` and list them in `artifact_urls.yaml`, as described in [Use development packages](../../ref/getting-started/usage.md#use-development-packages).
+
    Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful.
 
    ```bash
+   INFO: Wazuh dashboard web application initialized.
    INFO: --- Summary ---
-   INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>
+   INFO: You can access the web interface https://<wazuh-dashboard-ip>:443
          User: admin
-         Password: admin
+         Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env
    INFO: Installation finished.
    ```
 
@@ -30,10 +34,10 @@
 Access ``https://<WAZUH_DASHBOARD_IP_ADDRESS>`` and using your credentials:
 
 - **Username**: ``admin``
-- **Password**: ``admin``
+- **Password**: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `/etc/wazuh/credentials.env`
 
 > [!NOTE]
 > When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. This is expected and the user has the option to accept the certificate as an exception or, alternatively, configure the system to use a certificate from a trusted authority.
 
 > [!NOTE]
-> It is highly recommended to change the default passwords after installation. See the [Change all default passwords](../../ref/getting-started/usage.md#change-all-default-passwords) section for details.
+> `/etc/wazuh/credentials.env` holds the passwords of the Wazuh users, generated during the installation. Once you have stored them in a safe place, remove the file from every node: the Wazuh components do not read it after the installation. To change a password later, see [Change all default passwords](../../ref/getting-started/usage.md#change-all-default-passwords).

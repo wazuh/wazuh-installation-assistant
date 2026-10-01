@@ -30,7 +30,7 @@ mkdir -p $BACKUP_DIR/db
 
 # Full backup of master
 tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /var/wazuh-manager etc/
-sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
+sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 
 # Verify backup
 tar -tzf $BACKUP_DIR/wazuh-master-etc.tar.gz > /dev/null && echo "Master backup successful"
@@ -179,7 +179,7 @@ After upgrading all nodes, perform comprehensive verification:
 /var/wazuh-manager/bin/cluster_control -i
 
 # Check database integrity
-sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
+sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check"
 
 # Monitor logs for errors
 tail -100 /var/wazuh-manager/logs/wazuh-manager.log | grep -i error
