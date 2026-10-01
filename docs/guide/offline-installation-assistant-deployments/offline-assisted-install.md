@@ -41,11 +41,11 @@ bash wazuh-install-5.1.0.sh --offline-installation -a
 Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful:
 
 ```shell
+INFO: Wazuh dashboard web application initialized.
 INFO: --- Summary ---
-INFO: You can access the web interface https://<wazuh_dashboard_ip>:443
+INFO: You can access the web interface https://<wazuh-dashboard-ip>:443
    User: admin
-   Password: admin
-
+   Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env
 INFO: Installation finished.
 ```
 
@@ -101,10 +101,10 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
 ### Testing the cluster installation
 
-1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the configured Wazuh indexer IP address:
+1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the configured Wazuh indexer IP address. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
     ```bash
-    curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
+    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
     ```
 
     **Output example:**
@@ -129,10 +129,10 @@ The following dependencies must be installed on the Wazuh indexer nodes:
     }
 ```
 
-2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command, then execute it:
+2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command, then execute it. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
 
     ```bash
-    curl -k -u admin:admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
     ```
 
 ### Installing the Wazuh manager
@@ -186,11 +186,11 @@ The TCP port for the Wazuh web user interface (dashboard) is 443.
 Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful:
 
 ```shell
+INFO: Wazuh dashboard web application initialized.
 INFO: --- Summary ---
-INFO: You can access the web interface https://<wazuh_dashboard_ip>:443
+INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>:443
    User: admin
-   Password: admin
-
+   Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in the credentials.env file of wazuh-install-files.tar, or in /etc/wazuh/credentials.env of a Wazuh indexer node
 INFO: Installation finished.
 ```
 

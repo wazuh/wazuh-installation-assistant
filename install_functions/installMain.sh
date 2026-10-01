@@ -309,13 +309,14 @@ function main() {
 
 # -------------- Configuration creation case  -----------------------
 
-    # Creation certificate case: Only AIO and -g option can create certificates.
-    if [ -z "${offline_install}" ] && { [ -n "${configurations}" ] || [ -n "${AIO}" ]; }; then
+    # Creation certificate case: only -g creates certificates. On an all-in-one install
+    # the packages create the CA, their certificates and their passwords.
+    if [ -z "${offline_install}" ] && [ -n "${configurations}" ]; then
         common_logger "--- Configuration files ---"
         installCommon_createInstallFiles
     fi
 
-    if [ -z "${configurations}" ] && [ -z "${download}" ]; then
+    if [ -z "${configurations}" ] && [ -z "${AIO}" ] && [ -z "${download}" ]; then
         installCommon_extractConfig
         config_file="/tmp/wazuh-install-files/config.yml"
         cert_readConfig
@@ -335,6 +336,8 @@ function main() {
     if [ -n "${indexer}" ]; then
         common_logger "--- Wazuh indexer ---"
         installCommon_downloadComponent "wazuh_indexer"
+        installCommon_placeCredentials "${indexer_credential_keys[@]}"
+        indexer_copyCertificates
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
@@ -354,10 +357,12 @@ function main() {
     if [ -n "${dashboard}" ]; then
         common_logger "--- Wazuh dashboard ----"
         installCommon_downloadComponent "wazuh_dashboard"
+        installCommon_placeCredentials "${dashboard_credential_keys[@]}"
+        dashboard_copyCertificates
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
-        dashboard_displaySummary
+        dashboard_initialize
         installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
@@ -368,6 +373,8 @@ function main() {
     if [ -n "${wazuh}" ]; then
         common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
+        installCommon_placeCredentials "${manager_credential_keys[@]}"
+        manager_copyCertificates
         manager_install
         manager_configure
         if [ -n "${manager_node_types[*]}" ]; then
@@ -389,15 +396,14 @@ function main() {
         indexer_startCluster
         common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
+        manager_setRemotedSans
         manager_install
-        manager_configure
         installCommon_startService "wazuh-manager"
         common_logger "--- Wazuh dashboard ---"
         installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install
-        dashboard_configure
         installCommon_startService "wazuh-dashboard"
-        dashboard_displaySummary
+        dashboard_initialize
         installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 

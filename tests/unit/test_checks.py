@@ -299,43 +299,78 @@ class TestChecksHealth:
 # ---------------------------------------------------------------------------
 
 class TestChecksPreviousCertificate:
-    def _run(self, env_vars=None, extra_mocks=None):
-        mocks = {**IGNORE_LOGGER, **(extra_mocks or {})}
-        return run_bash_function(BASE_SOURCES, "checks_previousCertificate", mocks, env_vars)
+    """Tests for checks_previousCertificate.
+
+    The tar file must hold, for the component of the node, the credentials file with
+    valid passwords, the root CA certificate and the certificate pairs of the node.
+    """
+
+    PASSWORD = "Aa1.aaaaaaaaaaaa"
+    KEYS = [
+        "WAZUH_INDEXER_ADMIN_PASSWORD",
+        "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
+        "WAZUH_INDEXER_MANAGER_PASSWORD",
+        "WAZUH_MANAGER_API_PASSWORD",
+        "WAZUH_MANAGER_WUI_PASSWORD",
+    ]
+    FILES = [
+        "config.yml", "root-ca.pem", "admin.pem", "admin-key.pem",
+        "indexer1.pem", "indexer1-key.pem", "dashboard1.pem", "dashboard1-key.pem",
+        "wazuh1.pem", "wazuh1-key.pem", "wazuh1-remoted.pem", "wazuh1-remoted-key.pem",
+    ]
+
+    def _tar(self, tmp_path, files=None, passwords=None):
+        import subprocess
+
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        for name in self.FILES if files is None else files:
+            (staging / name).write_text(name)
+        passwords = {k: self.PASSWORD for k in self.KEYS} if passwords is None else passwords
+        (staging / "credentials.env").write_text("".join(f'{k}="{v}"\n' for k, v in passwords.items()))
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        return tar
+
+    def _run(self, tar, **names):
+        return run_bash_function(
+            [*BASE_SOURCES, "install_functions/installVariables.sh", "credentials_lib/wazuh-credentials.sh"],
+            "checks_previousCertificate",
+            IGNORE_LOGGER,
+            {"tar_file": str(tar), **names},
+        )
 
     def test_fail_no_tar_file(self, tmp_path):
-        result = self._run(env_vars={"tar_file": str(tmp_path / "missing.tar")})
-        assert_failure(result)
+        assert_failure(self._run(tmp_path / "missing.tar", indxname="indexer1"))
 
-    def test_success_all_certs_present(self, tmp_path):
-        tar = tmp_path / "wazuh-install-files.tar"
-        tar.touch()
-        mocks = {
-            **IGNORE_LOGGER,
-            "tar": "true",
-            "grep": "return 0",
-        }
-        result = self._run(
-            env_vars={
-                "tar_file": str(tar),
-                "indxname": "indexer1",
-                "dashname": "dashboard1",
-                "winame": "wazuh1",
-            },
-            extra_mocks=mocks,
-        )
-        assert_success(result)
+    def test_success_start_cluster_needs_only_the_tar(self, tmp_path):
+        assert_success(self._run(self._tar(tmp_path, files=[], passwords={})))
 
-    def test_fail_indexer_cert_missing(self, tmp_path):
-        tar = tmp_path / "wazuh-install-files.tar"
-        tar.touch()
-        mocks = {
-            **IGNORE_LOGGER,
-            "tar": "true",
-            "grep": "return 1",
-        }
-        result = self._run(
-            env_vars={"tar_file": str(tar), "indxname": "indexer1"},
-            extra_mocks=mocks,
-        )
-        assert_failure(result)
+    def test_success_all_components(self, tmp_path):
+        tar = self._tar(tmp_path)
+        assert_success(self._run(tar, indxname="indexer1", dashname="dashboard1", winame="wazuh1"))
+
+    def test_fail_indexer_pair_missing(self, tmp_path):
+        tar = self._tar(tmp_path, files=[f for f in self.FILES if f != "indexer1-key.pem"])
+        assert_failure(self._run(tar, indxname="indexer1"))
+
+    def test_fail_manager_remoted_pair_missing(self, tmp_path):
+        tar = self._tar(tmp_path, files=[f for f in self.FILES if f != "wazuh1-remoted.pem"])
+        assert_failure(self._run(tar, winame="wazuh1"))
+
+    def test_fail_password_missing(self, tmp_path):
+        passwords = {k: self.PASSWORD for k in self.KEYS if k != "WAZUH_MANAGER_WUI_PASSWORD"}
+        assert_failure(self._run(self._tar(tmp_path, passwords=passwords), dashname="dashboard1"))
+
+    def test_fail_password_against_policy(self, tmp_path):
+        passwords = {k: self.PASSWORD for k in self.KEYS}
+        passwords["WAZUH_INDEXER_ADMIN_PASSWORD"] = "onlylowercaseletters"
+        assert_failure(self._run(self._tar(tmp_path, passwords=passwords), indxname="indexer1"))
+
+    def test_fail_manager_password_missing(self, tmp_path):
+        passwords = {k: self.PASSWORD for k in self.KEYS if k != "WAZUH_MANAGER_API_PASSWORD"}
+        assert_failure(self._run(self._tar(tmp_path, passwords=passwords), winame="wazuh1"))
+
+    def test_success_ignores_passwords_other_components_use(self, tmp_path):
+        passwords = {"WAZUH_INDEXER_KIBANASERVER_PASSWORD": self.PASSWORD, "WAZUH_MANAGER_WUI_PASSWORD": self.PASSWORD}
+        assert_success(self._run(self._tar(tmp_path, passwords=passwords), dashname="dashboard1"))

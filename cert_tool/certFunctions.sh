@@ -113,6 +113,8 @@ function cert_cleanFiles() {
     rm -f "${cert_tmp_path}"/*.srl
     rm -f "${cert_tmp_path}"/*.conf
     rm -f "${cert_tmp_path}"/admin-key-temp.pem
+    # The root CA key never leaves the CA directory.
+    rm -f "${cert_tmp_path}"/root-ca.key
     # Single-use CA workspaces of the server leaves, in case one was left behind.
     for workspace in "${cert_tmp_path}"/*-ca; do
         if [ -d "${workspace}" ]; then
@@ -122,65 +124,75 @@ function cert_cleanFiles() {
 
 }
 
+# Checks OpenSSL and the commands the shared credentials library needs to create and
+# validate the root CA. Without them the CA check fails with a misleading error.
 function cert_checkOpenSSL() {
 
-    common_logger -d "Checking if OpenSSL is installed."
+    local missing=()
+
+    common_logger -d "Checking if OpenSSL and the commands the root CA needs are installed."
 
     if [ -z "$(command -v openssl)" ]; then
-        common_logger -e "OpenSSL not installed."
+        missing+=("openssl (package openssl)")
+    fi
+    if [ -z "$(command -v cmp)" ]; then
+        missing+=("cmp (package diffutils)")
+    fi
+    if [ -z "$(command -v flock)" ]; then
+        missing+=("flock (package util-linux)")
+    fi
+    if ! stat -c '%a' / > /dev/null 2>&1; then
+        missing+=("GNU stat (package coreutils)")
+    fi
+    if ! ln --help 2>&1 | grep -q -- '-T'; then
+        missing+=("GNU ln (package coreutils)")
+    fi
+
+    if [ "${#missing[@]}" -gt 0 ]; then
+        common_logger -e "The following commands are required and could not be found: $(IFS=','; echo "${missing[*]}" | sed 's/,/, /g'). Install them and run the tool again."
         exit 1
     fi
 
 }
 
+# Gets the root CA from the directory resolved by the shared credentials library:
+# WAZUH_CA_DIR, or /etc/wazuh/ca by default. With "create", a missing CA is created
+# there first. root-ca.key stays in that directory: only root-ca.pem is copied next
+# to the new certificates.
 function cert_checkRootCA() {
 
-    common_logger -d "Checking if the root CA exists."
+    local mode="${1:-validate}"
 
-    if  [[ -n ${rootca} || -n ${rootcakey} ]]; then
-        # Verify variables match keys
-        if [[ ${rootca} == *".key" ]]; then
-            ca_temp=${rootca}
-            rootca=${rootcakey}
-            rootcakey=${ca_temp}
-        fi
+    common_logger -d "Checking the root CA."
 
-        # Validate paths
-        if ! cert_validatePath "${rootca}" "file"; then
-            common_logger -e "Invalid root CA certificate path: ${rootca}"
-            cert_cleanFiles
-            exit 1
-        fi
-
-        if ! cert_validatePath "${rootcakey}" "file"; then
-            common_logger -e "Invalid root CA key path: ${rootcakey}"
-            cert_cleanFiles
-            exit 1
-        fi
-
-        if ! cert_validatePath "${cert_tmp_path}" "directory"; then
-            common_logger -e "Invalid certificate temporary path."
-            cert_cleanFiles
-            exit 1
-        fi
-
-        # Validate that files exist
-        if [[ -e ${rootca} ]]; then
-            cp "${rootca}" "${cert_tmp_path}/root-ca.pem"
-        else
-            common_logger -e "The file ${rootca} does not exists"
-            cert_cleanFiles
-            exit 1
-        fi
-        if [[ -e ${rootcakey} ]]; then
-            cp "${rootcakey}" "${cert_tmp_path}/root-ca.key"
-        else
-            common_logger -e "The file ${rootcakey} does not exists"
-            cert_cleanFiles
-            exit 1
-        fi
-    else
+    if [ "${mode}" == "create" ]; then
         cert_generateRootCAcertificate
+    else
+        if ! cert_ca_dir=$(wazuh_ca_get_dir); then
+            common_logger -e "Could not resolve the root CA directory."
+            cert_cleanFiles
+            exit 1
+        fi
+        if ! wazuh_ca_validate; then
+            common_logger -e "There is no valid root CA in ${cert_ca_dir}. Create it with -ca|--root-ca-certificates, or set WAZUH_CA_DIR to the directory of an existing one."
+            cert_cleanFiles
+            exit 1
+        fi
+    fi
+
+    rootca="${cert_ca_dir}/root-ca.pem"
+    rootcakey="${cert_ca_dir}/root-ca.key"
+
+    if [ ! -f "${rootcakey}" ]; then
+        common_logger -e "The root CA in ${cert_ca_dir} has no private key (root-ca.key), so it cannot sign certificates. Run the tool on the host that holds the key."
+        cert_cleanFiles
+        exit 1
+    fi
+
+    if ! cp "${rootca}" "${cert_tmp_path}/root-ca.pem"; then
+        common_logger -e "Could not copy ${rootca} to ${cert_tmp_path}."
+        cert_cleanFiles
+        exit 1
     fi
 
 }
@@ -218,7 +230,8 @@ function cert_generateAdmincertificate() {
     common_logger -d "Converting Admin private key to PKCS8 format."
     cert_executeAndValidate openssl pkcs8 -inform PEM -outform PEM -in "${cert_tmp_path}/admin-key-temp.pem" -topk8 -nocrypt -v1 PBE-SHA1-3DES -out "${cert_tmp_path}/admin-key.pem"
     common_logger -d "Generating Admin CSR."
-    cert_executeAndValidate openssl req -new -key "${cert_tmp_path}/admin-key.pem" -out "${cert_tmp_path}/admin.csr" -batch -subj '/C=US/L=California/O=Wazuh/OU=Wazuh/CN=admin'
+    # Same subject order as the Wazuh indexer package, which writes this DN in admin_dn.
+    cert_executeAndValidate openssl req -new -key "${cert_tmp_path}/admin-key.pem" -out "${cert_tmp_path}/admin.csr" -batch -subj '/CN=admin/OU=Wazuh/O=Wazuh/L=California/C=US'
 
     # The admin certificate carries no SAN: it is never dialled, it authenticates
     # against the indexer security API. Hence an extension file of its own rather
@@ -232,7 +245,7 @@ function cert_generateAdmincertificate() {
 	EOF
 
     common_logger -d "Creating Admin certificate."
-    cert_executeAndValidate openssl x509 -days 3650 -req -in "${cert_tmp_path}/admin.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -sha256 -out "${cert_tmp_path}/admin.pem" -extfile "${cert_tmp_path}/admin.conf" -extensions v3_admin
+    cert_executeAndValidate openssl x509 -days 3650 -req -in "${cert_tmp_path}/admin.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${rootcakey}" -CAcreateserial -sha256 -out "${cert_tmp_path}/admin.pem" -extfile "${cert_tmp_path}/admin.conf" -extensions v3_admin
 
 }
 
@@ -266,6 +279,21 @@ function cert_generateCertificateconfiguration() {
         exit 1
     fi
 
+    # Subject order of the Wazuh manager and dashboard packages. With cert_cn_first set, the
+    # order of the Wazuh indexer package, which writes that DN in nodes_dn and admin_dn.
+    local subject="C = US
+        L = California
+        O = Wazuh
+        OU = Wazuh
+        CN = cname"
+    if [ -n "${cert_cn_first}" ]; then
+        subject="CN = cname
+        OU = Wazuh
+        O = Wazuh
+        L = California
+        C = US"
+    fi
+
     cat > "${cert_tmp_path}/${node_name}.conf" <<- EOF
         [ req ]
         prompt = no
@@ -275,11 +303,7 @@ function cert_generateCertificateconfiguration() {
         x509_extensions = v3_req
 
         [req_distinguished_name]
-        C = US
-        L = California
-        O = Wazuh
-        OU = Wazuh
-        CN = cname
+        ${subject}
 
         [ v3_req ]
         authorityKeyIdentifier=keyid,issuer
@@ -339,11 +363,11 @@ function cert_generateIndexercertificates() {
             if [ "${#idx_dns[@]}" -gt 0 ]; then
                 idx_san+=("${idx_dns[@]}")
             fi
-            cert_generateCertificateconfiguration "${indexer_node_name}" "serverAuth, clientAuth" "${idx_san[@]}"
+            cert_cn_first=1 cert_generateCertificateconfiguration "${indexer_node_name}" "serverAuth, clientAuth" "${idx_san[@]}"
             common_logger -d "Creating the Wazuh indexer tmp key pair."
             cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${indexer_node_name}-key.pem" -out "${cert_tmp_path}/${indexer_node_name}.csr" -config "${cert_tmp_path}/${indexer_node_name}.conf"
             common_logger -d "Creating the Wazuh indexer certificates."
-            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${indexer_node_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${indexer_node_name}.pem" -extfile "${cert_tmp_path}/${indexer_node_name}.conf" -extensions v3_req -days 3650
+            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${indexer_node_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${rootcakey}" -CAcreateserial -out "${cert_tmp_path}/${indexer_node_name}.pem" -extfile "${cert_tmp_path}/${indexer_node_name}.conf" -extensions v3_req -days 3650
         done
     else
         return 1
@@ -375,7 +399,7 @@ function cert_generateManagercertificates() {
             common_logger -d "Creating the Wazuh manager tmp key pair."
             cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${manager_name}-key.pem" -out "${cert_tmp_path}/${manager_name}.csr" -config "${cert_tmp_path}/${manager_name}.conf"
             common_logger -d "Creating the Wazuh manager certificates."
-            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${manager_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${manager_name}.pem" -extfile "${cert_tmp_path}/${manager_name}.conf" -extensions v3_req -days 3650
+            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${manager_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${rootcakey}" -CAcreateserial -out "${cert_tmp_path}/${manager_name}.pem" -extfile "${cert_tmp_path}/${manager_name}.conf" -extensions v3_req -days 3650
             # Agent-facing listener leaf for this manager node: the node SAN plus the
             # addresses given with --agent-san, which every node shares. Only this leaf
             # gets them; the manager certificate above keeps the node SAN alone.
@@ -517,7 +541,7 @@ function cert_generateRemotedCAworkspace() {
         printf '%s\n' "serial = ${ca_dir}/serial"
         printf '%s\n' "new_certs_dir = ${ca_dir}/newcerts"
         printf '%s\n' "certificate = ${cert_tmp_path}/root-ca.pem"
-        printf '%s\n' "private_key = ${cert_tmp_path}/root-ca.key"
+        printf '%s\n' "private_key = ${rootcakey}"
         printf '%s\n' "default_md = sha256"
         printf '%s\n' "preserve = yes"
         printf '%s\n' "email_in_dn = no"
@@ -644,7 +668,7 @@ function cert_generateDashboardcertificates() {
             common_logger -d "Creating the Wazuh dashboard tmp key pair."
             cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${dashboard_node_name}-key.pem" -out "${cert_tmp_path}/${dashboard_node_name}.csr" -config "${cert_tmp_path}/${dashboard_node_name}.conf"
             common_logger -d "Creating the Wazuh dashboard certificates."
-            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${dashboard_node_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${dashboard_node_name}.pem" -extfile "${cert_tmp_path}/${dashboard_node_name}.conf" -extensions v3_req -days 3650
+            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${dashboard_node_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${rootcakey}" -CAcreateserial -out "${cert_tmp_path}/${dashboard_node_name}.pem" -extfile "${cert_tmp_path}/${dashboard_node_name}.conf" -extensions v3_req -days 3650
         done
     else
         return 1
@@ -715,17 +739,27 @@ function cert_verifyLoadbalancercertificates() {
 
 }
 
+# Creates the root CA through the shared credentials library, in the directory it
+# resolves. An existing CA is validated and never replaced.
 function cert_generateRootCAcertificate() {
 
-    common_logger "Generating the root certificate."
-
-    # Validate cert_tmp_path
-    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
-        common_logger -e "Invalid certificate temporary path."
+    if ! cert_ca_dir=$(wazuh_ca_get_dir); then
+        common_logger -e "Could not resolve the root CA directory."
+        cert_cleanFiles
         exit 1
     fi
 
-    cert_executeAndValidate openssl req -x509 -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/root-ca.key" -out "${cert_tmp_path}/root-ca.pem" -batch -subj '/OU=Wazuh/O=Wazuh/L=California/' -days 3650
+    if [ -e "${cert_ca_dir}/root-ca.pem" ] || [ -e "${cert_ca_dir}/root-ca.key" ]; then
+        common_logger "Using the existing root CA in ${cert_ca_dir}."
+    else
+        common_logger "Generating the root certificate in ${cert_ca_dir}."
+    fi
+
+    if ! wazuh_ca_ensure; then
+        common_logger -e "The root CA in ${cert_ca_dir} could not be created or is not valid."
+        cert_cleanFiles
+        exit 1
+    fi
 
 }
 
@@ -1410,6 +1444,17 @@ function cert_readConfig() {
 
 }
 
+# The root CA is no longer given on the command line: it is read from the CA
+# directory. Fails when the argument after an option is a path instead of an option.
+function cert_rejectCAPaths() {
+
+    if [[ -n "${2}" && "${2}" != -* ]]; then
+        common_logger -e "${1} does not take root CA files anymore. The root CA is read from $(wazuh_ca_get_dir 2>/dev/null). Set WAZUH_CA_DIR to use the root CA of another directory."
+        exit 1
+    fi
+
+}
+
 function cert_setpermisions() {
     # Validate cert_tmp_path before setting permissions
     if ! cert_validatePath "${cert_tmp_path}" "directory"; then
@@ -1417,7 +1462,7 @@ function cert_setpermisions() {
         return 1
     fi
 
-    # Private keys (root CA and every node/admin/remoted key) must stay
+    # Private keys (every node/admin/remoted key) must stay
     # owner-only: the umask this tool sets at startup already creates them
     # at 0600, this only re-asserts it. Public certificates can be 0644 -
     # they carry no secret. The directory itself must stay 700 so the mode
@@ -1425,11 +1470,11 @@ function cert_setpermisions() {
     # a copy of this directory relaxes traversal.
     if [ -n "${debugEnabled}" ]; then
         chmod 700 "${cert_tmp_path}"
-        find "${cert_tmp_path}" -maxdepth 1 -type f \( -name '*-key.pem' -o -name 'root-ca.key' \) -exec chmod 600 {} +
+        find "${cert_tmp_path}" -maxdepth 1 -type f -name '*-key.pem' -exec chmod 600 {} +
         find "${cert_tmp_path}" -maxdepth 1 -type f -name '*.pem' ! -name '*-key.pem' -exec chmod 644 {} +
     else
         chmod 700 "${cert_tmp_path}" > /dev/null 2>&1
-        find "${cert_tmp_path}" -maxdepth 1 -type f \( -name '*-key.pem' -o -name 'root-ca.key' \) -exec chmod 600 {} + > /dev/null 2>&1
+        find "${cert_tmp_path}" -maxdepth 1 -type f -name '*-key.pem' -exec chmod 600 {} + > /dev/null 2>&1
         find "${cert_tmp_path}" -maxdepth 1 -type f -name '*.pem' ! -name '*-key.pem' -exec chmod 644 {} + > /dev/null 2>&1
     fi
 }

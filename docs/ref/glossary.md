@@ -8,19 +8,19 @@ This glossary provides definitions for key terms, components, and concepts used 
 
 ### Wazuh Installation Assistant
 
-The main tool (`wazuh-install-5.1.0.sh`) that automates the deployment and configuration of Wazuh central components. It guides users through the process of installing Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard. The assistant supports both All-In-One (AIO) installations and distributed deployments, includes system requirements checking, automated configuration, and embeds both the Certificate Tool and Password Tool for complete setup automation.
+The main tool (`wazuh-install.sh`) that automates the deployment and configuration of Wazuh central components. It guides users through the process of installing Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard. The assistant supports both All-In-One (AIO) installations and distributed deployments, includes system requirements checking, automated configuration, and embeds both the Certificate Tool and Password Tool for complete setup automation.
 
 ### Wazuh Certs Tool
 
-A utility script (`wazuh-certs-tool-5.1.0.sh`) for generating and managing SSL/TLS certificates required for secure communication between Wazuh components. It uses OpenSSL to create 2048-bit SHA-256 certificates for each node specified in the `config.yml` file. The tool can generate root CA certificates, admin certificates, Wazuh Indexer certificates, Wazuh Manager certificates, and Wazuh Dashboard certificates.
+A utility script (`wazuh-certs-tool.sh`) for generating and managing SSL/TLS certificates required for secure communication between Wazuh components. It uses OpenSSL to create 2048-bit SHA-256 certificates for each node specified in the `config.yml` file. The tool can generate root CA certificates, admin certificates, Wazuh Indexer certificates, Wazuh Manager certificates, and Wazuh Dashboard certificates.
 
 ### Wazuh Password Tool
 
-A script (`wazuh-passwords-tool-5.1.0.sh`) for securely generating, managing, and resetting passwords for Wazuh internal users. It can create random secure passwords, update passwords in the different Wazuh components, modify Wazuh API passwords, and update the `internal_users.yml` file using Wazuh Indexer's hashing tool to obfuscate passwords.
+A script (`wazuh-passwords-tool.sh`) for securely generating, managing, and resetting passwords for Wazuh internal users. It can create random secure passwords, update passwords in the different Wazuh components, modify Wazuh API passwords, and update the `internal_users.yml` file using Wazuh Indexer's hashing tool to obfuscate passwords.
 
 ### Builder Script
 
-The `builder.sh` script used to build the installation assistant and tools. It combines multiple source files into single, distributable shell scripts (`wazuh-install-5.1.0.sh`, `wazuh-certs-tool-5.1.0.sh`, and `wazuh-passwords-tool-5.1.0.sh`). Accepts options to build the installer (`-i`), certificate tool (`-c`), or password tool (`-p`).
+The `builder.sh` script used to build the installation assistant and tools. It combines multiple source files into single, distributable shell scripts (`wazuh-install.sh`, `wazuh-certs-tool.sh`, and `wazuh-passwords-tool.sh`). Accepts options to build the installer (`-i`), certificate tool (`-c`), or password tool (`-p`). The version suffix seen on the published files (for example `wazuh-install-5.1.0.sh`) is added later, when `5_builder_installation_assistant.yml` publishes them.
 
 ---
 
@@ -32,7 +32,7 @@ The search and analytics engine for Wazuh, responsible for indexing and storing 
 
 ### Wazuh Manager
 
-Also referred to as **Wazuh Manager**, this is the core component that analyzes data received from agents, triggers alerts, and manages agent communication. It runs on ports 1514, 1515, 1516 (agent communication), and 55000 (API). Can be deployed in cluster mode with master and worker nodes for load balancing and redundancy.
+Also referred to as **Wazuh Manager**, this is the core component that analyzes data received from agents, triggers alerts, and manages agent communication. It uses port 1517 for agent communication over HTTPS, 1515 for agent enrollment, 1516 for cluster communication between Wazuh manager nodes, and 55000 for the API. Port 1514 is the legacy agent channel. It is optional and disabled by default. Can be deployed in cluster mode with master and worker nodes for load balancing and redundancy.
 
 ### Wazuh Dashboard
 
@@ -188,7 +188,7 @@ Command-line option to install only the Wazuh Indexer component on the current m
 
 Command-line option to install only the Wazuh Dashboard component on the current machine, using the node name specified in `config.yml`.
 
-### --wazuh-server <NODE_NAME>
+### --wazuh-manager <NODE_NAME>
 
 Command-line option to install only the Wazuh Manager (server) component on the current machine, using the node name specified in `config.yml`.
 

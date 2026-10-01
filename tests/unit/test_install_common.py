@@ -2,7 +2,9 @@
 Unit tests for install_functions/installCommon.sh
 
 Covers: installCommon_getConfig, installCommon_installPrerequisites,
-        installCommon_startService
+        installCommon_startService, installCommon_placeFromTar,
+        installCommon_placeCredentials, installCommon_createPasswords,
+        installCommon_scanDependencies
 """
 
 from tests.unit.conftest import assert_failure, assert_success, run_bash_function
@@ -374,3 +376,311 @@ class TestInstallCommonDownloadArtifactURLs:
             'echo "mock yaml content" > "$output_file"\n'
             'echo "mock yaml content" > "$filename"'
         )
+
+
+class TestInstallCommonPlaceFromTar:
+    """Tests for installCommon_placeFromTar.
+
+    A file of the tar is placed where it does not exist, kept when an identical one is
+    already there (the -g host), and refused when a different one is there.
+    """
+
+    def _run(self, tmp_path, existing=None):
+        import subprocess
+
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        (staging / "root-ca.pem").write_text("the-ca")
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        destination = tmp_path / "ca" / "root-ca.pem"
+        destination.parent.mkdir()
+        if existing is not None:
+            destination.write_text(existing)
+        result = run_bash_function(
+            BASE_SOURCES,
+            f'installCommon_placeFromTar root-ca.pem "{destination}" "$(id -un)" "$(id -gn)" 0644',
+            IGNORE_LOGGER,
+            {"tar_file": str(tar), "debug": ""},
+        )
+        return result, destination
+
+    def test_success_places_file(self, tmp_path):
+        result, destination = self._run(tmp_path)
+        assert_success(result)
+        assert destination.read_text() == "the-ca"
+        assert oct(destination.stat().st_mode & 0o777) == "0o644"
+
+    def test_success_keeps_identical_file(self, tmp_path):
+        result, destination = self._run(tmp_path, existing="the-ca")
+        assert_success(result)
+
+    def test_fail_on_different_file(self, tmp_path):
+        result, destination = self._run(tmp_path, existing="another-ca")
+        assert_failure(result)
+        assert destination.read_text() == "another-ca"
+
+
+class TestInstallCommonCreatePasswords:
+    """Tests for installCommon_createPasswords.
+
+    -g writes the five passwords in the credentials file of the host, keeps any already
+    there, and adds a copy of the file to the install files. The library is replaced by
+    a flat file: it refuses a base directory under the world-writable /tmp.
+    """
+
+    KEYS = [
+        "WAZUH_INDEXER_ADMIN_PASSWORD",
+        "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
+        "WAZUH_INDEXER_MANAGER_PASSWORD",
+        "WAZUH_MANAGER_API_PASSWORD",
+        "WAZUH_MANAGER_WUI_PASSWORD",
+    ]
+
+    def test_success_generates_missing_and_keeps_existing(self, tmp_path):
+        env_file = tmp_path / "credentials.env"
+        env_file.write_text('WAZUH_MANAGER_API_PASSWORD="Kept.Password1"\n')
+        copy = tmp_path / "copy.env"
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installVariables.sh"],
+            "installCommon_createPasswords",
+            {
+                **IGNORE_LOGGER,
+                "wazuh_env_get": f'grep -q "^$1=" "{env_file}"',
+                "wazuh_env_set": f'printf \'%s="%s"\\n\' "$1" "$2" >> "{env_file}"',
+                "wazuh_env_get_file": f'echo "{env_file}"',
+                "wazuh_password_generate": "echo Generated.Pass1",
+                "cp": f'command cp "$1" "{copy}"',
+                "chmod": "true",
+            },
+            {"debug": ""},
+        )
+        assert_success(result)
+        lines = copy.read_text().splitlines()
+        assert 'WAZUH_MANAGER_API_PASSWORD="Kept.Password1"' in lines
+        for key in self.KEYS:
+            assert sum(line.startswith(f"{key}=") for line in lines) == 1
+        assert 'WAZUH_INDEXER_ADMIN_PASSWORD="Generated.Pass1"' in lines
+
+
+class TestInstallCommonPlaceCredentials:
+    """installCommon_placeCredentials places the passwords of the component and root-ca.pem.
+
+    A node only receives the passwords of the components installed on it, never the CA
+    key. The library is replaced by a flat file: it refuses a base directory under the
+    world-writable /tmp.
+    """
+
+    PASSWORD = "Aa1.aaaaaaaaaaaa"
+
+    def _tar(self, tmp_path):
+        import subprocess
+
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        keys = TestInstallCommonCreatePasswords.KEYS
+        (staging / "credentials.env").write_text("".join(f'{k}="{self.PASSWORD}"\n' for k in keys))
+        for name in ["root-ca.pem", "root-ca.key"]:
+            (staging / name).write_text(name)
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        return tar
+
+    def _run(self, tmp_path, tar, call):
+        base = tmp_path / "etc-wazuh"
+        env_file = base / "credentials.env"
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installVariables.sh"],
+            call,
+            {
+                **IGNORE_LOGGER,
+                "wazuh_base_get_dir": f'echo "{base}"',
+                "wazuh_ca_get_dir": f'echo "{base}/ca"',
+                "wazuh_env_get": f'sed -n "s/^$1=\\"\\(.*\\)\\"$/\\1/p" "{env_file}" 2>/dev/null | grep .',
+                "wazuh_env_set": f'printf \'%s="%s"\\n\' "$1" "$2" >> "{env_file}"',
+                "wazuh_env_get_file": f'echo "{env_file}"',
+                "install": 'if [ "$1" = -d ]; then mkdir -p "${@: -1}"; else cp "${@: -2:1}" "${@: -1}"; fi',
+            },
+            {"tar_file": str(tar), "debug": ""},
+        )
+        return result, base
+
+    def _keys(self, base):
+        return [line.split("=", 1)[0] for line in (base / "credentials.env").read_text().splitlines()]
+
+    def test_success_places_anchor_without_key(self, tmp_path):
+        result, base = self._run(tmp_path, self._tar(tmp_path), 'installCommon_placeCredentials "${indexer_credential_keys[@]}"')
+        assert_success(result)
+        assert (base / "ca" / "root-ca.pem").read_text() == "root-ca.pem"
+        assert not (base / "ca" / "root-ca.key").exists()
+
+    def test_success_indexer_node_gets_its_keys(self, tmp_path):
+        result, base = self._run(tmp_path, self._tar(tmp_path), 'installCommon_placeCredentials "${indexer_credential_keys[@]}"')
+        assert_success(result)
+        assert self._keys(base) == [
+            "WAZUH_INDEXER_ADMIN_PASSWORD",
+            "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
+            "WAZUH_INDEXER_MANAGER_PASSWORD",
+        ]
+
+    def test_success_dashboard_node_gets_only_its_keys(self, tmp_path):
+        result, base = self._run(tmp_path, self._tar(tmp_path), 'installCommon_placeCredentials "${dashboard_credential_keys[@]}"')
+        assert_success(result)
+        assert self._keys(base) == ["WAZUH_INDEXER_KIBANASERVER_PASSWORD", "WAZUH_MANAGER_WUI_PASSWORD"]
+        assert f'WAZUH_MANAGER_WUI_PASSWORD="{self.PASSWORD}"' in (base / "credentials.env").read_text()
+
+    def test_success_manager_node_gets_only_its_keys(self, tmp_path):
+        result, base = self._run(tmp_path, self._tar(tmp_path), 'installCommon_placeCredentials "${manager_credential_keys[@]}"')
+        assert_success(result)
+        assert self._keys(base) == [
+            "WAZUH_INDEXER_MANAGER_PASSWORD",
+            "WAZUH_MANAGER_API_PASSWORD",
+            "WAZUH_MANAGER_WUI_PASSWORD",
+        ]
+
+    def test_success_existing_file_only_gets_the_missing_keys(self, tmp_path):
+        tar = self._tar(tmp_path)
+        base = tmp_path / "etc-wazuh"
+        base.mkdir()
+        (base / "credentials.env").write_text(
+            f'WAZUH_INDEXER_KIBANASERVER_PASSWORD="{self.PASSWORD}"\nWAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n'
+        )
+        result, base = self._run(tmp_path, tar, 'installCommon_placeCredentials "${dashboard_credential_keys[@]}"')
+        assert_success(result)
+        assert self._keys(base) == [
+            "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
+            "WAZUH_MANAGER_API_PASSWORD",
+            "WAZUH_MANAGER_WUI_PASSWORD",
+        ]
+
+    def test_success_several_components_get_the_union(self, tmp_path):
+        tar = self._tar(tmp_path)
+        result, base = self._run(
+            tmp_path,
+            tar,
+            'installCommon_placeCredentials "${dashboard_credential_keys[@]}" && '
+            'installCommon_placeCredentials "${manager_credential_keys[@]}"',
+        )
+        assert_success(result)
+        assert sorted(self._keys(base)) == [
+            "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
+            "WAZUH_INDEXER_MANAGER_PASSWORD",
+            "WAZUH_MANAGER_API_PASSWORD",
+            "WAZUH_MANAGER_WUI_PASSWORD",
+        ]
+
+    def test_fail_on_a_password_of_another_deployment(self, tmp_path):
+        """A different value of a key the component does not use still stops the install."""
+        tar = self._tar(tmp_path)
+        base = tmp_path / "etc-wazuh"
+        base.mkdir()
+        existing = 'WAZUH_INDEXER_ADMIN_PASSWORD="Other.Password1"\n'
+        (base / "credentials.env").write_text(existing)
+        result, base = self._run(tmp_path, tar, 'installCommon_placeCredentials "${dashboard_credential_keys[@]}"')
+        assert_failure(result)
+        assert (base / "credentials.env").read_text() == existing
+        assert not (base / "ca").exists()
+
+    def test_fail_without_keys(self, tmp_path):
+        result, base = self._run(tmp_path, self._tar(tmp_path), "installCommon_placeCredentials")
+        assert_failure(result)
+        assert not base.exists()
+
+
+class TestInstallCommonScanDependencies:
+    """-g needs what the credentials library uses; the other options do not."""
+
+    def _all_deps(self, env):
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installVariables.sh"],
+            'installCommon_scanDependencies; printf "%s\\n" "${all_deps[@]}"',
+            {**IGNORE_LOGGER, "rpm": "return 0"},
+            {"sys_type": "yum", **env},
+        )
+        assert_success(result)
+        return result.stdout.split()
+
+    def test_generate_config_adds_library_dependencies(self):
+        deps = self._all_deps({"configurations": "1"})
+        for dep in ["openssl", "diffutils", "util-linux"]:
+            assert dep in deps
+
+    def test_manager_node_includes_package_requirements(self):
+        deps = self._all_deps({"wazuh": "1"})
+        for dep in ["openssl", "diffutils", "gawk", "iproute"]:
+            assert dep in deps
+
+
+class TestInstallCommonMergeCredentials:
+    """installCommon_mergeCredentials completes a credentials file already on the host.
+
+    The file can miss keys (a failed install whose package removed its own) but a
+    different value means the file belongs to another deployment.
+    """
+
+    PASSWORD = "Aa1.aaaaaaaaaaaa"
+
+    def _run(self, tmp_path, existing, keys='"${credential_keys[@]}"'):
+        return self._run_mode(tmp_path, existing, f"merge {keys}")
+
+    def _run_mode(self, tmp_path, existing, mode):
+        import subprocess
+
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        keys = TestInstallCommonCreatePasswords.KEYS
+        (staging / "credentials.env").write_text("".join(f'{k}="{self.PASSWORD}"\n' for k in keys))
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        env_file = tmp_path / "credentials.env"
+        env_file.write_text(existing)
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installVariables.sh"],
+            f"installCommon_mergeCredentials {mode}",
+            {
+                **IGNORE_LOGGER,
+                "wazuh_env_get": f'sed -n "s/^$1=\\"\\(.*\\)\\"$/\\1/p" "{env_file}" | grep .',
+                "wazuh_env_set": f'printf \'%s="%s"\\n\' "$1" "$2" >> "{env_file}"',
+                "wazuh_env_get_file": f'echo "{env_file}"',
+            },
+            {"tar_file": str(tar)},
+        )
+        return result, env_file.read_text()
+
+    def test_success_adds_missing_keys(self, tmp_path):
+        result, content = self._run(tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n')
+        assert_success(result)
+        for key in TestInstallCommonCreatePasswords.KEYS:
+            assert content.count(f'{key}="{self.PASSWORD}"') == 1
+
+    def test_success_adds_only_the_given_keys(self, tmp_path):
+        result, content = self._run(tmp_path, "", '"${dashboard_credential_keys[@]}"')
+        assert_success(result)
+        assert content == (
+            f'WAZUH_INDEXER_KIBANASERVER_PASSWORD="{self.PASSWORD}"\n'
+            f'WAZUH_MANAGER_WUI_PASSWORD="{self.PASSWORD}"\n'
+        )
+
+    def test_success_writes_nothing_without_keys(self, tmp_path):
+        result, content = self._run(tmp_path, "", "")
+        assert_success(result)
+        assert content == ""
+
+    def test_fail_on_a_key_missing_from_the_tar(self, tmp_path):
+        result, _ = self._run(tmp_path, "", "WAZUH_UNKNOWN_PASSWORD")
+        assert_failure(result)
+
+    def test_fail_on_a_different_password(self, tmp_path):
+        result, _ = self._run(tmp_path, 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n')
+        assert_failure(result)
+
+    def test_check_mode_writes_nothing(self, tmp_path):
+        """Checking a file from another deployment leaves it as it was."""
+        result, content = self._run_mode(tmp_path, 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n', "check")
+        assert_failure(result)
+        assert content == 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n'
+
+    def test_check_mode_accepts_a_compatible_file(self, tmp_path):
+        result, content = self._run_mode(tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n', "check")
+        assert_success(result)
+        assert content == f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n'
