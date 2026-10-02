@@ -479,7 +479,7 @@ The tool never prints a password. The passwords are saved in the credentials fil
 Read the new password in the file, for example:
 
 ```bash
-sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env
+sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-
 ```
 
 Remove the file when you no longer need it. Editing a value in the file does not change the deployment: use the tool to change a password.
@@ -541,7 +541,7 @@ The Wazuh dashboard steps are needed even with a single Wazuh dashboard, when it
 Read it in `/etc/wazuh/credentials.env` of the node where the tool ran. The file on the other nodes, and the one inside `wazuh-install-files.tar`, keep the previous values:
 
 ```bash
-sudo grep WAZUH_INDEXER_MANAGER_PASSWORD /etc/wazuh/credentials.env
+sudo grep '^WAZUH_INDEXER_MANAGER_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-
 ```
 
 The keys are `WAZUH_INDEXER_ADMIN_PASSWORD`, `WAZUH_INDEXER_KIBANASERVER_PASSWORD`, `WAZUH_INDEXER_MANAGER_PASSWORD`, `WAZUH_MANAGER_API_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD`.
