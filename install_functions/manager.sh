@@ -78,6 +78,12 @@ function manager_setRemotedSans() {
         fi
     done < <(printf '%s\n' "${agent_san[@]}"; cert_hostAddresses)
 
+    # cert_hostAddresses deliberately excludes loopback (it is building the list of
+    # addresses reachable from another host), but indexer-security-init.sh and
+    # wazuh-passwords-tool.sh connect to localhost, so it has to be in the certificate
+    # regardless of what -as replaced.
+    sans+=("IP:127.0.0.1")
+
     WAZUH_MANAGER_REMOTED_CERT_SANS=$(printf '%s\n' "${sans[@]}" | awk '!seen[$0]++' | paste -sd, -)
     export WAZUH_MANAGER_REMOTED_CERT_SANS
     common_logger -d "Agent listener addresses: ${WAZUH_MANAGER_REMOTED_CERT_SANS}"

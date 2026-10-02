@@ -263,8 +263,8 @@ function installCommon_createInstallFiles() {
         eval "chown root:root /tmp/wazuh-install-files/* ${debug}"
         eval "tar -zcf '${tar_file}' -C '/tmp/' wazuh-install-files/ ${debug}"
         eval "rm -rf '/tmp/wazuh-install-files' ${debug}"
-	    eval "rm -rf ${config_file} ${debug}"
         common_logger "Created ${tar_file_name}. It contains the Wazuh cluster key, the passwords and the certificates necessary for installation. Remove it from every node once the installation finishes."
+        common_logger "Keeping ${config_file}: the copy used for installation is the one inside ${tar_file_name}."
         common_logger "The root CA and its private key are in $(wazuh_ca_get_dir). Back them up: they are needed to add nodes or renew certificates."
     else
         common_logger -e "Unable to create /tmp/wazuh-install-files"
