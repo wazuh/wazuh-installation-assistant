@@ -244,7 +244,7 @@ class TestDashboardInitialize:
         assert_success(result)
         assert urls == ["https://127.0.0.1:443/status"]
         assert "https://<wazuh-dashboard-ip>:443" in result.stdout
-        assert "sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env" in result.stdout
+        assert "\n        sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-\n" in result.stdout
 
     @staticmethod
     def _cert(tmp_path, ips):
@@ -288,7 +288,8 @@ class TestDashboardInitialize:
         assert_success(result)
         assert urls == ["https://10.0.0.5:443/status"]
         assert "https://10.0.0.5:443" in result.stdout
-        assert "tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD='" in result.stdout
+        assert "Password: to read it from wazuh-install-files.tar, run:" in result.stdout
+        assert "\n        sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-\n" in result.stdout
 
     def test_distributed_picks_the_node_of_dashname(self, tmp_path):
         env = {**self.DISTRIBUTED, "dashboard_node_names": "(dashboard1 dashboard2)", "dashboard_node_ips": "(10.0.0.5 10.0.0.6)", "dashname": "dashboard2"}
@@ -333,5 +334,5 @@ class TestDashboardInitialize:
 
     def test_never_prints_a_password(self, tmp_path):
         result, _ = self._run(tmp_path, {"AIO": "1"})
-        assert "Password: run sudo grep" in result.stdout
+        assert "Password: to read it from the credentials file, run:" in result.stdout
         assert "-u" not in result.stdout

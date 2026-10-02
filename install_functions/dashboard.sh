@@ -128,9 +128,11 @@ function dashboard_initialize() {
     fi
 
     # A distributed dashboard node only receives its own passwords, not the admin one.
-    local password_command="sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env"
+    local password_source="the credentials file"
+    local password_command="sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-"
     if [ -z "${AIO}" ]; then
-        password_command="sudo tar -xOf ${tar_file_name} wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD='"
+        password_source="${tar_file_name}"
+        password_command="sudo tar -xOf ${tar_file_name} wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-"
     fi
 
     # Logged too: it holds the command that reads the password, not the password.
@@ -142,7 +144,8 @@ function dashboard_initialize() {
         common_logger "You can access the web interface https://${ip}:${http_port}"
     done
     common_logger "    User: admin"
-    common_logger "    Password: run ${password_command}"
+    common_logger "    Password: to read it from ${password_source}, run:"
+    common_logger "        ${password_command}"
 
 }
 
