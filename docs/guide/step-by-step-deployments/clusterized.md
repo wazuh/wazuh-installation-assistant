@@ -964,7 +964,7 @@ Once every component is installed and running, the passwords are stored in the k
     ls /etc/wazuh/ca
     ```
 
-To add a node later, recreate its `/etc/wazuh/credentials.env` with the current passwords, as described in [Deploying certificates and passwords](#deploying-certificates-and-passwords). To change a password, see [Change the passwords of a step-by-step deployment](../security.md#change-the-passwords-of-a-step-by-step-deployment).
+To add a node later, recreate its `/etc/wazuh/credentials.env` with the current passwords, as described in [Deploying certificates and passwords](#deploying-certificates-and-passwords). Issue its certificates on the first Wazuh indexer node, from the root CA in `/etc/wazuh/ca`: a node issued from another root CA does not work in the cluster. For a Wazuh manager worker, see [Add a Wazuh manager node to an existing deployment](../../ref/getting-started/usage.md#add-a-wazuh-manager-node-to-an-existing-deployment). To change a password, see [Change the passwords of a step-by-step deployment](../security.md#change-the-passwords-of-a-step-by-step-deployment).
 
 ## Troubleshooting
 

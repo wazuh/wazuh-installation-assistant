@@ -241,6 +241,8 @@ When you access the Wazuh dashboard for the first time, the browser shows a warn
 > `/etc/wazuh/credentials.env` holds the passwords of the Wazuh users, generated during the installation. Each node only receives the passwords of the components installed on it; the node where `wazuh-install-files.tar` was generated keeps all of them. Once you have stored them in a safe place, remove the file from every node: the Wazuh components do not read it after the installation. To change a password later, see [Multi-node and distributed deployments](../../ref/getting-started/usage.md#multi-node-and-distributed-deployments).
 >
 > Remove `wazuh-install-files.tar` from every node too: it holds the private keys and the passwords of the deployment. Keep a copy in a safe place if you plan to add nodes later, and update its passwords first if you change them, as described in [Security](../security.md).
+>
+> The bundle only holds the certificates of the nodes in its `config.yml`, and the root CA private key stays in `/etc/wazuh/ca` of the node where it was generated: back that directory up. To add a Wazuh manager worker later, issue its certificates there, from that root CA, as described in [Add a Wazuh manager node to an existing deployment](../../ref/getting-started/usage.md#add-a-wazuh-manager-node-to-an-existing-deployment). Do not run `--generate-config-files` again to add it: it creates a new cluster key, so a node installed from the new bundle does not join the cluster.
 
 ## Next step: enroll the Wazuh agents
 
