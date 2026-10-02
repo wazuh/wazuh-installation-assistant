@@ -25,15 +25,15 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
   1. Download the Wazuh installation assistant and the configuration file.
 
       ```bash
-      curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install-5.0.0.sh
-      curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
+      curl -fsSO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install-5.0.0.sh
+      curl -fsS -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
       ```
 
       To use `pre-release` packages instead, use the following commands:
 
       ```bash
-      curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh
-      curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
+      curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh
+      curl -fsS -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
       ```
 
   2. Edit `./config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed. Use the IP addresses the nodes use to reach each other.

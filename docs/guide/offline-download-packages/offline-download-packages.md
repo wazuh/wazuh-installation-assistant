@@ -16,14 +16,14 @@ There are some packages that need to be installed in the target system where the
 ### 1. Download the Wazuh Installation Assistant
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install-5.0.0.sh
+curl -fsSO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install-5.0.0.sh
 chmod 744 wazuh-install-5.0.0.sh
 ```
 
 To use `pre-release` packages instead, use the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/wazuh-install-5.0.0-<STAGE>.sh
 chmod 744 wazuh-install-5.0.0-<STAGE>.sh
 ```
 
@@ -84,13 +84,13 @@ To install `pre-release` packages instead, use:
 ### 3. Download the certificates configuration file
 
 ```bash
-curl -s -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
+curl -fsS -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
 ```
 
 To download `pre-release` configuration file instead, use:
 
 ```bash
-curl -s -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
+curl -fsS -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
 ```
 
 ### 4. Edit `config.yml` to prepare the certificates creation
