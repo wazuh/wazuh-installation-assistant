@@ -38,14 +38,16 @@ To perform the offline installation with the `--offline-installation` flag of Wa
 bash wazuh-install-5.0.0.sh --offline-installation -a
 ```
 
-Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful:
+Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful. There is one `You can access` line per address of the Wazuh dashboard certificate, and the line after `Password:` is the command that prints the `admin` password.
 
 ```shell
 INFO: Wazuh dashboard web application initialized.
 INFO: --- Summary ---
-INFO: You can access the web interface https://<wazuh-dashboard-ip>:443
-   User: admin
-   Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env
+INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>:443
+INFO:     User: admin (Wazuh dashboard login and Wazuh indexer administrator)
+INFO:     Password: to read it from the credentials file, run:
+INFO:         sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-
+INFO: The other users of the deployment are listed at the top of /etc/wazuh/credentials.env.
 INFO: Installation finished.
 ```
 
@@ -101,7 +103,7 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
 ### Testing the cluster installation
 
-1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the configured Wazuh indexer IP address. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
+1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the configured Wazuh indexer IP address. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-`).
 
     ```bash
     curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
@@ -129,7 +131,7 @@ The following dependencies must be installed on the Wazuh indexer nodes:
     }
 ```
 
-2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command, then execute it. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`).
+2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command, then execute it. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-`).
 
     ```bash
     curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
@@ -183,14 +185,16 @@ The TCP port for the Wazuh web user interface (dashboard) is 443.
 
 #### Installation Summary
 
-Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful:
+Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful. There is one `You can access` line per address of the Wazuh dashboard certificate, and the line after `Password:` is the command that prints the `admin` password.
 
 ```shell
 INFO: Wazuh dashboard web application initialized.
 INFO: --- Summary ---
 INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>:443
-   User: admin
-   Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in the credentials.env file of wazuh-install-files.tar, or in /etc/wazuh/credentials.env of a Wazuh indexer node
+INFO:     User: admin (Wazuh dashboard login and Wazuh indexer administrator)
+INFO:     Password: to read it from wazuh-install-files.tar, run:
+INFO:         sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-
+INFO: The other users of the deployment are listed at the top of wazuh-install-files/credentials.env of wazuh-install-files.tar.
 INFO: Installation finished.
 ```
 
