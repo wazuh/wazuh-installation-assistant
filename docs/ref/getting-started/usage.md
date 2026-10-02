@@ -37,7 +37,7 @@ sudo bash wazuh-install-5.1.0.sh -a
 
 This command will download, install, and configure all Wazuh components on the same machine automatically without the need to configure anything else.
 
-The assistant stops if a package it needs, such as `apt-transport-https`, is missing, and names it. Install it, or add `-id|--install-dependencies` to the command to install it automatically. The same applies to every installation command.
+The assistant stops if a package it needs, such as `gnupg`, is missing, and names it. Install it, or add `-id|--install-dependencies` to the command to install it automatically. The same applies to every installation command.
 
 ### Specific Component Installation
 

@@ -52,7 +52,7 @@ readonly wia_apt_dependencies=( systemd grep tar coreutils sed procps gawk curl 
 # installation only checks these lists, and the assistant never removes a package in them.
 # diffutils is also needed before the install: the tar files are placed with cmp.
 readonly wazuh_yum_dependencies=( diffutils findutils gawk grep hostname iproute openssl sed util-linux )
-readonly wazuh_apt_dependencies=( apt-transport-https gnupg curl openssl iproute2 hostname util-linux diffutils )
+readonly wazuh_apt_dependencies=( gnupg curl openssl iproute2 hostname util-linux diffutils )
 readonly indexer_yum_dependencies=( coreutils diffutils hostname iproute openssl procps-ng util-linux )
 readonly indexer_apt_dependencies=( debconf adduser procps openssl diffutils iproute2 )
 readonly dashboard_yum_dependencies=( libcap diffutils openssl util-linux )
