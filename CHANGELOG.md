@@ -36,6 +36,8 @@
 
 | Issue | Comment |
 | - | - |
+| [#1093](https://github.com/wazuh/wazuh-installation-assistant/issues/1093) | Print the real dashboard addresses and the exact command that reads the admin password in the install summary, and log it |
+| [#1091](https://github.com/wazuh/wazuh-installation-assistant/issues/1091) | Write credentials.env values unquoted when they need no quoting, and describe the user of each key in its header |
 | [#1061](https://github.com/wazuh/wazuh-installation-assistant/issues/1061) | Add port 1517 to the firewall warning and the port checks of the installation assistant |
 | [#1058](https://github.com/wazuh/wazuh-installation-assistant/issues/1058) | Add port 1517 to the Wazuh manager entry of the glossary |
 | [#1052](https://github.com/wazuh/wazuh-installation-assistant/issues/1052) | Rewrite the step-by-step guides (all-in-one, distributed and offline) for install-time credentials, and fix the development packages, dependencies and node name documentation of the installation assistant |
@@ -98,6 +100,9 @@
 
 | Issue | Comment |
 | - | - |
+| [#1049](https://github.com/wazuh/wazuh-installation-assistant/issues/1049) | Warn when wazuh-certs-tool.sh creates a new root CA, and document how to add a Wazuh manager worker to an existing deployment with its root CA |
+| [#1070](https://github.com/wazuh/wazuh-installation-assistant/issues/1070) | Fix the stale CI workflow file names and the integration test matrix in the test reference docs |
+| [#1071](https://github.com/wazuh/wazuh-installation-assistant/issues/1071) | Fix the `config.yml` file name on the installation assistant page, and stop the package download commands of the documentation from saving HTTP error pages |
 | [#1075](https://github.com/wazuh/wazuh-installation-assistant/issues/1075) | Start the Wazuh agent after installing it in the enrollment steps of the deployment guides |
 | [#1062](https://github.com/wazuh/wazuh-installation-assistant/issues/1062) | Fix the global.db path, the incomplete Wazuh indexer restore, and a wrong dashboard menu name in the upgrade and backup guides |
 | [#1068](https://github.com/wazuh/wazuh-installation-assistant/issues/1068) | Fix unclosed code fence and stale build artifact names in the generate-artifacts-manually guide and the glossary |

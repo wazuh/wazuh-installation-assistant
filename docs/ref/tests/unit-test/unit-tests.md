@@ -278,7 +278,7 @@ export nuser="admin"
 
 ## CI integration
 
-Unit tests run automatically on every pull request via [`.github/workflows/5_check_unit_tests.yaml`](https://github.com/wazuh/wazuh-installation-assistant/blob/5.0.0/.github/workflows/5_check_unit_tests.yaml):
+Unit tests run automatically on every pull request via [`.github/workflows/5_check_unit_tests.yaml`](../../../../.github/workflows/5_check_unit_tests.yaml):
 
 - Triggered on `ready_for_review` and `synchronize` events (non-draft PRs only).
 - Runs `hatch run dev:test-cov` using Python 3.12.

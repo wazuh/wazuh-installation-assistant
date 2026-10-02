@@ -16,7 +16,7 @@ Each tool is built from the PR branch by `builder.sh` before being deployed to t
 
 ## Workflow file
 
-[`.github/workflows/5_check_integration_tools.yaml`](https://github.com/wazuh/wazuh-installation-assistant/blob/5.0.0/.github/workflows/5_check_integration_tools.yaml)
+[`.github/workflows/5_check_integration_tools.yaml`](../../../../.github/workflows/5_check_integration_tools.yaml)
 
 ## Trigger methods
 
@@ -42,7 +42,7 @@ Post one of the following commands as a comment on an open, non-draft pull reque
 Navigate to **Actions → PR Check - Test Integration Tools → Run workflow**, or use the GitHub CLI:
 
 ```bash
-gh workflow run check_integration_tools.yaml \
+gh workflow run 5_check_integration_tools.yaml \
   --field pr_head_ref=my-feature-branch \
   --field tool_type=installer \
   --field install_mode=aio
@@ -62,7 +62,7 @@ gh workflow run check_integration_tools.yaml \
 By default all supported systems are tested in parallel. To test a subset, pass a comma-separated list to the `systems` input:
 
 ```bash
-gh workflow run check_integration_tools.yaml \
+gh workflow run 5_check_integration_tools.yaml \
   --field pr_head_ref=my-feature-branch \
   --field tool_type=cert-tool \
   --field systems="ubuntu-24-amd64,redhat-9-arm64"
@@ -82,8 +82,6 @@ One independent job runs per system, in parallel (`fail-fast: false`), so a fail
 | `redhat-9-arm64` | Red Hat Enterprise Linux 9 | ARM64 |
 | `redhat-10-amd64` | Red Hat Enterprise Linux 10 | x86_64 |
 | `redhat-10-arm64` | Red Hat Enterprise Linux 10 | ARM64 |
-| `amazon-2023-amd64` | Amazon Linux 2023 | x86_64 |
-| `amazon-2023-arm64` | Amazon Linux 2023 | ARM64 |
 
 ## Installation modes
 
@@ -360,7 +358,7 @@ Run the full end-to-end sequence: AIO install → cert-tool → passwords-tool �
 Test the AIO installer on a specific branch, limited to two systems:
 
 ```bash
-gh workflow run check_integration_tools.yaml \
+gh workflow run 5_check_integration_tools.yaml \
   --field pr_head_ref=enhancement/my-feature \
   --field tool_type=installer \
   --field install_mode=aio \
@@ -370,7 +368,7 @@ gh workflow run check_integration_tools.yaml \
 Test the distributed installer on all systems using production packages:
 
 ```bash
-gh workflow run check_integration_tools.yaml \
+gh workflow run 5_check_integration_tools.yaml \
   --field pr_head_ref=main \
   --field tool_type=installer \
   --field install_mode=distributed \
@@ -380,7 +378,7 @@ gh workflow run check_integration_tools.yaml \
 Test the offline installer on ARM64 systems only:
 
 ```bash
-gh workflow run check_integration_tools.yaml \
+gh workflow run 5_check_integration_tools.yaml \
   --field pr_head_ref=fix/offline-install \
   --field tool_type=installer \
   --field install_mode=offline \
@@ -390,7 +388,7 @@ gh workflow run check_integration_tools.yaml \
 Test the cert-tool using a custom `wazuh-automation` branch:
 
 ```bash
-gh workflow run check_integration_tools.yaml \
+gh workflow run 5_check_integration_tools.yaml \
   --field pr_head_ref=fix/cert-generation \
   --field tool_type=cert-tool \
   --field automation_reference=feature/new-cert-tests
@@ -399,7 +397,7 @@ gh workflow run check_integration_tools.yaml \
 Run the full sequence on a single system:
 
 ```bash
-gh workflow run check_integration_tools.yaml \
+gh workflow run 5_check_integration_tools.yaml \
   --field pr_head_ref=main \
   --field tool_type=all \
   --field systems=ubuntu-24-amd64
