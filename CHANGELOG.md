@@ -100,6 +100,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1070](https://github.com/wazuh/wazuh-installation-assistant/issues/1070) | Fix the stale CI workflow file names and the integration test matrix in the test reference docs |
 | [#1071](https://github.com/wazuh/wazuh-installation-assistant/issues/1071) | Fix the `config.yml` file name on the installation assistant page, and stop the package download commands of the documentation from saving HTTP error pages |
 | [#1075](https://github.com/wazuh/wazuh-installation-assistant/issues/1075) | Start the Wazuh agent after installing it in the enrollment steps of the deployment guides |
 | [#1062](https://github.com/wazuh/wazuh-installation-assistant/issues/1062) | Fix the global.db path, the incomplete Wazuh indexer restore, and a wrong dashboard menu name in the upgrade and backup guides |
