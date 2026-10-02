@@ -753,6 +753,10 @@ function cert_generateRootCAcertificate() {
         common_logger "Using the existing root CA in ${cert_ca_dir}."
     else
         common_logger "Generating the root certificate in ${cert_ca_dir}."
+        # A new CA is right for a new deployment, but the nodes of an existing one
+        # only trust the CA they were issued from: a node issued from this one
+        # would not match them. See #1049.
+        common_logger -w "There is no root CA in ${cert_ca_dir}, so a new one is created. The certificates issued from it do not chain to the root CA of any existing deployment. To add nodes to an existing deployment, stop here and run the tool on the host that holds its root CA, or set WAZUH_CA_DIR to a directory with a copy of that root CA and its key."
     fi
 
     if ! wazuh_ca_ensure; then
