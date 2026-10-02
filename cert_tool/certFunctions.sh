@@ -501,6 +501,11 @@ function cert_checkPrivateIp() {
         return 0
     fi
 
+    # Check RFC 6598 shared address space (100.64.0.0/10)
+    if [[ $ip =~ ^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\. ]]; then
+        return 0
+    fi
+
     # Check private IPv6 ranges (fc00::/7 prefix)
     if [[ $ip =~ ^fc ]]; then
         return 0
