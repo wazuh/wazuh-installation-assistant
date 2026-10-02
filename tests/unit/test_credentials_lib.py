@@ -122,3 +122,96 @@ class TestPasswordGenerate:
             assert any(c.isdigit() for c in password)
             assert any(c in ".,_+:@%^=~-" for c in password)
         assert len(set(passwords)) == 10
+
+
+def _awk(source: str, name: str, tmp_path, value: str = "", action: str = "set") -> str:
+    """Run the awk program of wazuh_env_set/unset (the real one, extracted) over `source`."""
+    import re
+
+    script = (PROJECT_ROOT / "credentials_lib/wazuh-credentials.sh").read_text()
+    program = re.search(r"-v value_file=\"\$_wazuh_value_file\" '(.*?)\n    ' \"\$_wazuh_source\"", script, re.S).group(1)
+    value_file = tmp_path / "value"
+    value_file.write_text(value + "\n")
+    src = tmp_path / "src"
+    src.write_text(source)
+    result = subprocess.run(
+        ["awk", "-v", f"action={action}", "-v", f"wanted={name}", "-v", f"value_file={value_file}", program, str(src)],
+        capture_output=True, text=True, check=True,
+    )
+    return result.stdout
+
+
+KEYS = [
+    "WAZUH_INDEXER_ADMIN_PASSWORD",
+    "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
+    "WAZUH_INDEXER_MANAGER_PASSWORD",
+    "WAZUH_MANAGER_API_PASSWORD",
+    "WAZUH_MANAGER_WUI_PASSWORD",
+]
+ADMIN = KEYS[0]
+BEGIN = "# >>> wazuh generated — do not edit <<<"
+END = "# >>> end wazuh generated <<<"
+HEADER = [
+    "# Written by the Wazuh packages and tools. Editing a value here changes nothing.",
+    "# To change a password: wazuh-passwords-tool.sh -u <user>",
+    "# A host only holds the keys of the components installed on it.",
+    "#",
+    "#                 User           Key                                  Used for",
+    "# Logins:",
+    "#                 admin          WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API",
+    "#                 wazuh          WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)",
+    "# Service accounts the components connect with, not logins:",
+    "#                 kibanaserver   WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer",
+    "#                 wazuh-manager  WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer",
+    "#                 wazuh-wui      WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API",
+    "#",
+]
+
+
+def _install(tmp_path, value="Aa1.install-pass"):
+    out = ""
+    for key in KEYS:
+        out = _awk(out, key, tmp_path, value)
+    return out
+
+
+def _expected(values):
+    return [BEGIN, *HEADER, *(f"{k}={v}" for k, v in values.items()), END]
+
+
+class TestCredentialsEnvWriter:
+    def test_password_alphabet_is_written_bare(self, tmp_path):
+        out = _awk("", ADMIN, tmp_path, "Aa0.,_+:@%^=~-xyz")
+        assert f"{ADMIN}=Aa0.,_+:@%^=~-xyz\n" in out
+
+    def test_values_outside_the_alphabet_are_still_escaped(self, tmp_path):
+        out = _awk("", "OTHER", tmp_path, 'a b$c"d')
+        assert 'OTHER="a b\\$c\\"d"\n' in out
+
+    def test_install_writes_the_header_then_the_bare_keys(self, tmp_path):
+        assert _install(tmp_path).splitlines() == _expected({k: "Aa1.install-pass" for k in KEYS})
+
+    def test_rotating_keeps_one_header(self, tmp_path):
+        out = _install(tmp_path)
+        for _ in range(2):
+            for key in KEYS:
+                out = _awk(out, key, tmp_path, "Bb2.rotated-pass")
+        assert out.splitlines() == _expected({k: "Bb2.rotated-pass" for k in KEYS})
+
+    def test_unset_leaves_the_header_and_reinstalling_does_not_repeat_it(self, tmp_path):
+        out = _awk(_install(tmp_path), ADMIN, tmp_path, action="unset")
+        assert out.splitlines() == _expected({k: "Aa1.install-pass" for k in KEYS[1:]})
+        out = _awk(out, ADMIN, tmp_path, "Cc3.reinstalled")
+        assert out.splitlines() == _expected({**{k: "Aa1.install-pass" for k in KEYS[1:]}, ADMIN: "Cc3.reinstalled"})
+
+    def test_the_header_of_a_file_written_before_is_replaced(self, tmp_path):
+        old = (
+            f"{BEGIN}\n# Editing a value here does not change the deployment.\n# To rotate, use wazuh-passwords-tool.sh.\n"
+            f"# admin: login of the Wazuh dashboard and administrator of the indexer\n{ADMIN}=\"Dd4.old-quoted\"\n{END}\n"
+        )
+        out = _awk(old, "WAZUH_MANAGER_API_PASSWORD", tmp_path, "Ee5.api-pass")
+        assert out.splitlines() == _expected({ADMIN: '"Dd4.old-quoted"', "WAZUH_MANAGER_API_PASSWORD": "Ee5.api-pass"})
+
+    def test_lines_outside_the_block_are_kept(self, tmp_path):
+        out = _awk("# operator note\nCUSTOM=1\n", ADMIN, tmp_path, "Ff6.password-x")
+        assert out.splitlines()[:2] == ["# operator note", "CUSTOM=1"]

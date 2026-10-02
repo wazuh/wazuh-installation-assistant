@@ -407,6 +407,9 @@ _wazuh_env_mutate_locked() (
             return lhs
         }
         function quote_value(s,    out, i, c) {
+            # The password alphabet needs no quoting; anything else is still escaped.
+            if (s ~ /^[A-Za-z0-9.,_+:@%^=~-]*$/)
+                return s
             out = "\""
             for (i = 1; i <= length(s); i++) {
                 c = substr(s, i, 1)
@@ -416,11 +419,34 @@ _wazuh_env_mutate_locked() (
             }
             return out "\""
         }
+        function print_header(    i) {
+            for (i = 1; i <= header_lines; i++)
+                print header[i]
+        }
         BEGIN {
             begin_marker = "# >>> wazuh generated — do not edit <<<"
             end_marker = "# >>> end wazuh generated <<<"
-            warning_1 = "# Editing a value here does not change the deployment."
-            warning_2 = "# To rotate, use wazuh-passwords-tool.sh."
+            # The header follows the begin marker. Every header line, and the ones of earlier
+            # versions, is dropped from the block and printed again, so it is never duplicated.
+            header_lines = split("" \
+                "# Written by the Wazuh packages and tools. Editing a value here changes nothing.\n" \
+                "# To change a password: wazuh-passwords-tool.sh -u <user>\n" \
+                "# A host only holds the keys of the components installed on it.\n" \
+                "#\n" \
+                "#                 User           Key                                  Used for\n" \
+                "# Logins:\n" \
+                "#                 admin          WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API\n" \
+                "#                 wazuh          WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)\n" \
+                "# Service accounts the components connect with, not logins:\n" \
+                "#                 kibanaserver   WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer\n" \
+                "#                 wazuh-manager  WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer\n" \
+                "#                 wazuh-wui      WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API\n" \
+                "#", header, "\n")
+            for (i = 1; i <= header_lines; i++)
+                known_header[header[i]] = 1
+            known_header["# Editing a value here does not change the deployment."] = 1
+            known_header["# To rotate, use wazuh-passwords-tool.sh."] = 1
+            known_header["# admin: login of the Wazuh dashboard and administrator of the indexer"] = 1
             value = ""
             if (action == "set") {
                 read_status = (getline value < value_file)
@@ -440,6 +466,7 @@ _wazuh_env_mutate_locked() (
             begin_count++
             inside = 1
             print
+            print_header()
             next
         }
         $0 == end_marker {
@@ -457,6 +484,8 @@ _wazuh_env_mutate_locked() (
             next
         }
         {
+            if (inside && ($0 in known_header))
+                next
             if (inside && lhs_name($0) == wanted) {
                 if (action == "set" && !written) {
                     print assignment
@@ -475,8 +504,7 @@ _wazuh_env_mutate_locked() (
                 if (NR > 0)
                     print ""
                 print begin_marker
-                print warning_1
-                print warning_2
+                print_header()
                 print assignment
                 print end_marker
             }

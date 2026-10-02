@@ -27,7 +27,7 @@ Each host needs these keys in `/etc/wazuh/credentials.env`:
 | Wazuh manager nodes, master and workers | `WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`, `WAZUH_INDEXER_MANAGER_PASSWORD` |
 | Wazuh dashboard nodes | `WAZUH_INDEXER_KIBANASERVER_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD` |
 
-A host that runs more than one component needs the keys of all of them: the commands of this guide only add the keys that are not in the file yet. The file has one `KEY="value"` line per password, belongs to `root:root` with mode `0600`, and lives in `/etc/wazuh`, which belongs to `root:root` with mode `0700`.
+A host that runs more than one component needs the keys of all of them: the commands of this guide only add the keys that are not in the file yet. The file has one `KEY=value` line per password, belongs to `root:root` with mode `0600`, and lives in `/etc/wazuh`, which belongs to `root:root` with mode `0700`.
 
 ## Wazuh indexer
 
@@ -106,11 +106,24 @@ On the first Wazuh indexer node, before installing its package:
     ```bash
     install -m 0600 /dev/null credentials.env
     cat > credentials.env <<EOF
-    WAZUH_INDEXER_ADMIN_PASSWORD="$(wazuh_generate_password)"
-    WAZUH_INDEXER_KIBANASERVER_PASSWORD="$(wazuh_generate_password)"
-    WAZUH_INDEXER_MANAGER_PASSWORD="$(wazuh_generate_password)"
-    WAZUH_MANAGER_API_PASSWORD="$(wazuh_generate_password)"
-    WAZUH_MANAGER_WUI_PASSWORD="$(wazuh_generate_password)"
+    # Written by the Wazuh packages and tools. Editing a value here changes nothing.
+    # To change a password: wazuh-passwords-tool.sh -u <user>
+    # A host only holds the keys of the components installed on it.
+    #
+    #                 User           Key                                  Used for
+    # Logins:
+    #                 admin          WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API
+    #                 wazuh          WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)
+    # Service accounts the components connect with, not logins:
+    #                 kibanaserver   WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer
+    #                 wazuh-manager  WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer
+    #                 wazuh-wui      WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API
+    #
+    WAZUH_INDEXER_ADMIN_PASSWORD=$(wazuh_generate_password)
+    WAZUH_INDEXER_KIBANASERVER_PASSWORD=$(wazuh_generate_password)
+    WAZUH_INDEXER_MANAGER_PASSWORD=$(wazuh_generate_password)
+    WAZUH_MANAGER_API_PASSWORD=$(wazuh_generate_password)
+    WAZUH_MANAGER_WUI_PASSWORD=$(wazuh_generate_password)
     EOF
     ```
 
@@ -402,7 +415,7 @@ When every Wazuh indexer node is running, run the Wazuh indexer `indexer-securit
 
 ### Testing the cluster installation
 
-When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`). The value is quoted in the file; the quotes are not part of the password.
+When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-`).
 
   1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of a Wazuh indexer node.
 

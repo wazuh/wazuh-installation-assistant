@@ -177,7 +177,7 @@ function installCommon_mergeCredentials() {
 
     credentials=$(tar -xOf "${tar_file}" wazuh-install-files/credentials.env 2>/dev/null)
     for key in "${keys[@]}"; do
-        value=$(sed -n "s/^${key}=\"\(.*\)\"$/\1/p" <<< "${credentials}" | tail -n 1)
+        value=$(sed -nE "s/^${key}=\"?([^\"]*)\"?$/\1/p" <<< "${credentials}" | tail -n 1)
         if [ -z "${value}" ]; then
             if [ "${mode}" = "check" ]; then
                 continue
