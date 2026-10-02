@@ -36,6 +36,8 @@
 
 | Issue | Comment |
 | - | - |
+| [#1061](https://github.com/wazuh/wazuh-installation-assistant/issues/1061) | Add port 1517 to the firewall warning and the port checks of the installation assistant |
+| [#1058](https://github.com/wazuh/wazuh-installation-assistant/issues/1058) | Add port 1517 to the Wazuh manager entry of the glossary |
 | [#1052](https://github.com/wazuh/wazuh-installation-assistant/issues/1052) | Rewrite the step-by-step guides (all-in-one, distributed and offline) for install-time credentials, and fix the development packages, dependencies and node name documentation of the installation assistant |
 | [#1067](https://github.com/wazuh/wazuh-installation-assistant/issues/1067) | Print the dashboard node address in the installation summary and wait until the dashboard answers |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Align wazuh-passwords-tool.sh and wazuh-certs-tool.sh with the shared `wazuh-credentials.sh` library |
@@ -97,6 +99,8 @@
 | Issue | Comment |
 | - | - |
 | [#1071](https://github.com/wazuh/wazuh-installation-assistant/issues/1071) | Fix the `config.yml` file name on the installation assistant page |
+| [#1075](https://github.com/wazuh/wazuh-installation-assistant/issues/1075) | Start the Wazuh agent after installing it in the enrollment steps of the deployment guides |
+| [#1062](https://github.com/wazuh/wazuh-installation-assistant/issues/1062) | Fix the global.db path, the incomplete Wazuh indexer restore, and a wrong dashboard menu name in the upgrade and backup guides |
 | [#1068](https://github.com/wazuh/wazuh-installation-assistant/issues/1068) | Fix unclosed code fence and stale build artifact names in the generate-artifacts-manually guide and the glossary |
 | [#1060](https://github.com/wazuh/wazuh-installation-assistant/issues/1060) | Fix broken code blocks in the documentation |
 | [#6125](https://github.com/wazuh/internal-devel-requests/issues/6125) | wazuh-certs-tool.sh no longer relaxes generated private key permissions to world-readable |
