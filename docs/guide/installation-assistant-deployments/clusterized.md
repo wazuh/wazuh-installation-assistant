@@ -223,9 +223,10 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
         INFO: Wazuh dashboard web application initialized.
         INFO: --- Summary ---
         INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>:443
-        INFO:     User: admin
+        INFO:     User: admin (Wazuh dashboard login and Wazuh indexer administrator)
         INFO:     Password: to read it from wazuh-install-files.tar, run:
         INFO:         sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-
+        INFO: The other users of the deployment are listed at the top of wazuh-install-files/credentials.env of wazuh-install-files.tar.
         INFO: Installation finished.
       ```
 

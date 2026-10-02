@@ -106,7 +106,19 @@ On the first Wazuh indexer node, before installing its package:
     ```bash
     install -m 0600 /dev/null credentials.env
     cat > credentials.env <<EOF
-    # admin: login of the Wazuh dashboard and administrator of the indexer
+    # Written by the Wazuh packages and tools. Editing a value here changes nothing.
+    # To change a password: wazuh-passwords-tool.sh -u <user>
+    # A host only holds the keys of the components installed on it.
+    #
+    #                 User           Key                                  Used for
+    # Logins:
+    #                 admin          WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API
+    #                 wazuh          WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)
+    # Service accounts the components connect with, not logins:
+    #                 kibanaserver   WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer
+    #                 wazuh-manager  WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer
+    #                 wazuh-wui      WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API
+    #
     WAZUH_INDEXER_ADMIN_PASSWORD=$(wazuh_generate_password)
     WAZUH_INDEXER_KIBANASERVER_PASSWORD=$(wazuh_generate_password)
     WAZUH_INDEXER_MANAGER_PASSWORD=$(wazuh_generate_password)

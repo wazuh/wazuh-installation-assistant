@@ -289,6 +289,7 @@ class TestDashboardInitialize:
         assert urls == ["https://10.0.0.5:443/status"]
         assert "https://10.0.0.5:443" in result.stdout
         assert "Password: to read it from wazuh-install-files.tar, run:" in result.stdout
+        assert "The other users of the deployment are listed at the top of wazuh-install-files/credentials.env of wazuh-install-files.tar." in result.stdout
         assert "\n        sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-\n" in result.stdout
 
     def test_distributed_picks_the_node_of_dashname(self, tmp_path):
@@ -335,4 +336,6 @@ class TestDashboardInitialize:
     def test_never_prints_a_password(self, tmp_path):
         result, _ = self._run(tmp_path, {"AIO": "1"})
         assert "Password: to read it from the credentials file, run:" in result.stdout
+        assert "User: admin (Wazuh dashboard login and Wazuh indexer administrator)" in result.stdout
+        assert "The other users of the deployment are listed at the top of /etc/wazuh/credentials.env." in result.stdout
         assert "-u" not in result.stdout

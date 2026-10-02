@@ -129,9 +129,11 @@ function dashboard_initialize() {
 
     # A distributed dashboard node only receives its own passwords, not the admin one.
     local password_source="the credentials file"
+    local credentials_file="/etc/wazuh/credentials.env"
     local password_command="sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-"
     if [ -z "${AIO}" ]; then
         password_source="${tar_file_name}"
+        credentials_file="wazuh-install-files/credentials.env of ${tar_file_name}"
         password_command="sudo tar -xOf ${tar_file_name} wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-"
     fi
 
@@ -143,9 +145,10 @@ function dashboard_initialize() {
         [[ "${ip}" == *:* ]] && ip="[${ip}]"
         common_logger "You can access the web interface https://${ip}:${http_port}"
     done
-    common_logger "    User: admin"
+    common_logger "    User: admin (Wazuh dashboard login and Wazuh indexer administrator)"
     common_logger "    Password: to read it from ${password_source}, run:"
     common_logger "        ${password_command}"
+    common_logger "The other users of the deployment are listed at the top of ${credentials_file}."
 
 }
 
