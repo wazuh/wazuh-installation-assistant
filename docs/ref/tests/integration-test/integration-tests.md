@@ -16,7 +16,7 @@ Each tool is built from the PR branch by `builder.sh` before being deployed to t
 
 ## Workflow file
 
-[`.github/workflows/check_integration_tools.yaml`](../../../../.github/workflows/check_integration_tools.yaml)
+[`.github/workflows/5_check_integration_tools.yaml`](https://github.com/wazuh/wazuh-installation-assistant/blob/5.0.0/.github/workflows/5_check_integration_tools.yaml)
 
 ## Trigger methods
 

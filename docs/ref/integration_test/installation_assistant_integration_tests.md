@@ -1,6 +1,6 @@
 # Installation Assistant Integration Tests
 
-Workflow file: `.github/workflows/check_integration_tools.yaml`
+Workflow file: `.github/workflows/5_check_integration_tools.yaml`
 
 This workflow builds the installation assistant scripts from the PR branch, provisions one AWS VM per target OS, installs Wazuh using the built scripts (AIO, distributed, or offline mode), and runs the integration test suite against the live installation. Each OS in the test matrix runs independently.
 
