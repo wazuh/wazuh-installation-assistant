@@ -56,7 +56,8 @@ function getHelp() {
     echo -e "                the certificate of the agent listener (remoted and authd)."
     echo -e ""
     echo -e "        -tmp,  --cert_tmp_path </path/to/tmp_dir>"
-    echo -e "                Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one."
+    echo -e "                Uses this directory to create the certificates, instead of a new one in /tmp."
+    echo -e "                The directory must not exist, or must be an empty directory owned by root."
     echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb"
     echo -e ""
     echo -e "ROOT CA"
@@ -167,16 +168,11 @@ function main() {
                 common_logger -e "Directory wazuh-certificates already exists in the same path as the script. Please, remove the certs directory to create new certificates."
                 exit 1
             fi
+            # Removed so the temporary directory is moved to this name and not inside it.
+            rmdir "${base_path}"/wazuh-certificates
         fi
 
-        if [[ ! -d "${cert_tmp_path}" ]]; then
-            # Create directory with secure permissions
-            mkdir -p "${cert_tmp_path}"
-            chmod 700 "${cert_tmp_path}"
-        else
-            # Ensure existing directory has secure permissions
-            chmod 700 "${cert_tmp_path}"
-        fi
+        cert_createTmpDir
 
         cert_readConfig
 
