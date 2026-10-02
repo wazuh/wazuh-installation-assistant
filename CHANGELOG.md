@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Use each server node's own certificate in `ossec.conf` instead of the first node's ([#1063](https://github.com/wazuh/wazuh-installation-assistant/pull/1063))
 
 ### Deleted
 
