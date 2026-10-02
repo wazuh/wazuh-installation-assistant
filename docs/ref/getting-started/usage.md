@@ -590,7 +590,7 @@ Only write the entry of the user that changed. After `-a`, write both and restar
 `echo '<PASSWORD>'` leaves the password in the shell history. You can pipe it from the node where the tool ran instead, for example from a host that reaches both nodes over SSH:
 
 ```bash
-ssh <WAZUH_INDEXER_NODE> "sudo grep '^WAZUH_INDEXER_MANAGER_PASSWORD=' /etc/wazuh/credentials.env | cut -d'\"' -f2" \
+ssh <WAZUH_INDEXER_NODE> "sudo grep '^WAZUH_INDEXER_MANAGER_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-" \
   | ssh <WAZUH_MANAGER_NODE> 'sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password'
 ```
 

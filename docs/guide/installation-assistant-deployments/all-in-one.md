@@ -16,14 +16,15 @@
    > [!NOTE]
    > The assistant stops if a package it needs, such as `apt-transport-https`, is missing, and names it. Install it, or add `-id` to the command to install it automatically. To install packages that are not published yet, add `-d local` and list them in `artifact_urls.yaml`, as described in [Use development packages](../../ref/getting-started/usage.md#use-development-packages).
 
-   Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful.
+   Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful. There is one `You can access` line per address of the Wazuh dashboard certificate, and the line after `Password:` is the command that prints the `admin` password.
 
    ```bash
    INFO: Wazuh dashboard web application initialized.
    INFO: --- Summary ---
-   INFO: You can access the web interface https://<wazuh-dashboard-ip>:443
-         User: admin
-         Password: the WAZUH_INDEXER_ADMIN_PASSWORD value in /etc/wazuh/credentials.env
+   INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>:443
+   INFO:     User: admin
+   INFO:     Password: to read it from the credentials file, run:
+   INFO:         sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-
    INFO: Installation finished.
    ```
 

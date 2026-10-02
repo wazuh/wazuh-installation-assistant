@@ -177,7 +177,7 @@ Follow these steps on every Wazuh indexer node.
     /usr/share/wazuh-indexer/bin/indexer-security-init.sh
     ```
 
-9. Check that every Wazuh indexer node joined the cluster and that its status is `green`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`). The value is quoted in the file; the quotes are not part of the password.
+9. Check that every Wazuh indexer node joined the cluster and that its status is `green`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-`).
 
     ```bash
     curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
