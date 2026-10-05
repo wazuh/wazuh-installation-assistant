@@ -59,8 +59,13 @@ function manager_configure(){
             fi
         done
     fi
-    eval "sed -i s/filebeat.pem/${server_node_names[0]}.pem/ /var/ossec/etc/ossec.conf ${debug}"
-    eval "sed -i s/filebeat-key.pem/${server_node_names[0]}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
+    if [ -n "${AIO}" ]; then
+        server_cert_name="${server_node_names[0]}"
+    else
+        server_cert_name="${winame}"
+    fi
+    eval "sed -i s/filebeat.pem/${server_cert_name}.pem/ /var/ossec/etc/ossec.conf ${debug}"
+    eval "sed -i s/filebeat-key.pem/${server_cert_name}-key.pem/ /var/ossec/etc/ossec.conf ${debug}"
     common_logger -d "Setting provisional Wazuh indexer password."
     /var/ossec/bin/wazuh-keystore -f indexer -k username -v admin
     /var/ossec/bin/wazuh-keystore -f indexer -k password -v admin
