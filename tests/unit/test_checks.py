@@ -2,7 +2,7 @@
 Unit tests for install_functions/checks.sh
 
 Covers: checks_names, checks_arch, checks_arguments, checks_health,
-        checks_previousCertificate
+        checks_previousCertificate, checks_ports
 """
 
 import pytest
@@ -374,3 +374,64 @@ class TestChecksPreviousCertificate:
     def test_success_ignores_passwords_other_components_use(self, tmp_path):
         passwords = {"WAZUH_INDEXER_KIBANASERVER_PASSWORD": self.PASSWORD, "WAZUH_MANAGER_WUI_PASSWORD": self.PASSWORD}
         assert_success(self._run(self._tar(tmp_path, passwords=passwords), dashname="dashboard1"))
+
+
+# ---------------------------------------------------------------------------
+# checks_ports
+# ---------------------------------------------------------------------------
+
+SS_HEADER = "echo 'State Recv-Q Send-Q Local Address:Port Peer Address:Port'"
+SS_BUSY = SS_HEADER + "; echo 'LISTEN 0 128 0.0.0.0:9200 0.0.0.0:*'"
+
+
+def _command_without(*names):
+    """Mock for `command` that reports the given tools as not installed.
+
+    `command -v` also finds functions, so mocking a tool as a function can only
+    simulate "present". To simulate "absent" the lookup itself has to be hidden.
+    """
+    missing = " || ".join(f'[ "$2" = "{n}" ]' for n in names)
+    return f'if [ "$1" = "-v" ] && {{ {missing}; }}; then return 1; fi; builtin command "$@"'
+
+
+class TestChecksPorts:
+    def _run(self, mocks):
+        base = {
+            "common_logger": 'echo "$*"',
+            "checks_firewall": "true",
+            "installCommon_rollBack": "echo ROLLBACK",
+        }
+        return run_bash_function(BASE_SOURCES, "checks_ports 9200 9300", {**base, **mocks})
+
+    def test_success_lsof_port_free(self):
+        result = self._run({"lsof": "return 1"})
+        assert_success(result)
+        assert "being used" not in result.stdout
+
+    def test_fail_lsof_port_busy(self):
+        result = self._run({"lsof": "return 0"})
+        assert_failure(result)
+        assert "being used" in result.stdout
+        assert "ROLLBACK" in result.stdout
+
+    def test_fail_ss_port_busy_without_lsof(self):
+        result = self._run({"command": _command_without("lsof"), "ss": SS_BUSY})
+        assert_failure(result)
+        assert "being used" in result.stdout
+        assert "ROLLBACK" in result.stdout
+
+    def test_success_ss_port_free_without_lsof(self):
+        # Only the header line: must not be taken as a listener
+        result = self._run({"command": _command_without("lsof"), "ss": SS_HEADER})
+        assert_success(result)
+        assert "being used" not in result.stdout
+
+    def test_skipped_without_lsof_and_ss(self):
+        result = self._run({"command": _command_without("lsof", "ss")})
+        assert_failure(result)
+        assert "Cannot find lsof or ss" in result.stdout
+        assert "ROLLBACK" not in result.stdout
+
+    def test_lsof_preferred_when_both_available(self):
+        result = self._run({"lsof": "return 1", "ss": SS_BUSY})
+        assert_success(result)
