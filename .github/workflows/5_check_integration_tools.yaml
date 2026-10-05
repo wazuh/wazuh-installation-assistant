@@ -367,6 +367,9 @@ jobs:
           echo "SSH_PORT=$ansible_port"                >> $GITHUB_ENV
           echo "SSH_USER=$ansible_user"                >> $GITHUB_ENV
           echo "SSH_KEY=$ansible_ssh_private_key_file" >> $GITHUB_ENV
+          # Address agents dial: -g adds it to the agent listener certificate with -as
+          [ -n "${ansible_host_private_ip:-}" ] || { echo 'ERROR: no private IP in the allocator inventory'; exit 1; }
+          echo "PRIVATE_IP=$ansible_host_private_ip"   >> "$GITHUB_ENV"
 
       # -----------------------------------------------------------------------
       # Deploy: copy built tools and artifact URLs to remote instance
@@ -403,7 +406,6 @@ jobs:
       - name: Create config.yml and copy to remote instance
         if: |
           needs.build_tools.outputs.install_mode == 'distributed' ||
-          needs.build_tools.outputs.install_mode == 'offline' ||
           needs.build_tools.outputs.tool_type == 'cert-tool' ||
           needs.build_tools.outputs.tool_type == 'all'
         run: |
@@ -419,11 +421,7 @@ jobs:
               - name: dashboard
                 ip: 127.0.0.1
           EOF
-          if [ "${{ needs.build_tools.outputs.install_mode }}" = "offline" ]; then
-            cp /tmp/config.yml /tmp/built-tools/config.yml
-          else
-            scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
-          fi
+          scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
 
       # -----------------------------------------------------------------------
       # Install with assistant AIO
@@ -453,15 +451,28 @@ jobs:
         if: needs.build_tools.outputs.install_mode == 'distributed'
         timeout-minutes: 60
         run: |
-          # Generate install files (certificates + config) from config.yml
+          # Generate install files (certificates + config) from config.yml. config.yml keeps the
+          # nodes on 127.0.0.1, so the services listen on localhost, and -as adds the address agents
+          # dial to the agent listener certificate, which -g refuses to issue for loopback only.
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Generating certificates and config...\"; sleep 60; done } &
             HB=\$!
-            sudo bash /tmp/wazuh-install.sh -g -id 2>&1 | tee /tmp/install-g.log
+            sudo bash /tmp/wazuh-install.sh -g -as ${{ env.PRIVATE_IP }} -id 2>&1 | tee /tmp/install-g.log
             RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; }
             exit \$RESULT
           "
+          # The tar carries the credentials file and not the root CA key, and the agent listener
+          # certificate names the address agents dial
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" '
+            members=$(sudo tar -tf /tmp/wazuh-install-files.tar) || exit 1
+            grep -qx "wazuh-install-files/credentials.env" <<< "$members" || { echo "ERROR: credentials.env missing from wazuh-install-files.tar"; exit 1; }
+            if grep -q "root-ca.key" <<< "$members"; then echo "ERROR: root-ca.key must not be in wazuh-install-files.tar"; exit 1; fi
+            sudo tar -xOf /tmp/wazuh-install-files.tar wazuh-install-files/manager-remoted.pem | openssl x509 -noout -ext subjectAltName \
+              | tr "," "\n" | sed "s/^ *//" | grep -qx "IP Address:${{ env.PRIVATE_IP }}" \
+              || { echo "ERROR: the agent listener certificate does not name ${{ env.PRIVATE_IP }}"; exit 1; }
+            echo "wazuh-install-files.tar: credentials.env present, root-ca.key absent, agent listener certificate names ${{ env.PRIVATE_IP }}"
+          '
           # Install indexer
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-indexer...\"; sleep 60; done } &
@@ -554,23 +565,15 @@ jobs:
           sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }} -id
           sudo chmod 644 wazuh-offline.tar.gz
 
-      - name: Generate install files on runner (Offline installation)
-        if: needs.build_tools.outputs.install_mode == 'offline'
-        run: |
-          cd /tmp/built-tools
-          sudo bash wazuh-install.sh -g -id 2>&1 | tee /tmp/install-g.log
-          [ ${PIPESTATUS[0]} -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; exit 1; }
-          sudo chmod 644 wazuh-install-files.tar
-
+      # The offline all-in-one install (-a -of) does not use wazuh-install-files.tar nor
+      # config.yml: the packages create the root CA, the certificates and the passwords.
       - name: Copy all offline files to remote instance (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           scp ${{ env.SCP_OPTS }} \
             /tmp/built-tools/wazuh-install.sh \
             /tmp/built-tools/wazuh-offline.tar.gz \
-            /tmp/built-tools/wazuh-install-files.tar \
             /tmp/built-tools/artifact_urls.yaml \
-            /tmp/config.yml \
             "${{ env.REMOTE }}:/tmp/"
 
       - name: Remove internet access from instance (Offline installation)
@@ -649,8 +652,10 @@ jobs:
           needs.build_tools.outputs.tool_type == 'all'
         run: |
           scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
+          # The tool refuses to write into a wazuh-certificates directory that is not empty, and the
+          # tests check the output of this run only
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-certs-tool.sh -A"
+            "sudo rm -rf /tmp/wazuh-certificates && sudo bash /tmp/wazuh-certs-tool.sh -A"
 
       # -----------------------------------------------------------------------
       # Run passwords-tool
@@ -669,6 +674,29 @@ jobs:
           [ -n "$OLD_ADMIN_PW" ] || { echo 'ERROR: WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh/credentials.env'; exit 1; }
           echo "::add-mask::${OLD_ADMIN_PW}"
           echo "WAZUH_OLD_PASSWORD=${OLD_ADMIN_PW}" >> "$GITHUB_ENV"
+          # Without -p the tool generates the password and saves it to credentials.env
+          read_credential() {
+            ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+              "sudo grep '^$1=' /etc/wazuh/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"'"
+          }
+          kibanaserver_http_code() {
+            ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+              "curl -sk -u 'kibanaserver:$1' -o /dev/null -w '%{http_code}' 'https://localhost:9200/_cluster/health'"
+          }
+          KIBANASERVER_PW=$(read_credential WAZUH_INDEXER_KIBANASERVER_PASSWORD)
+          [ -n "$KIBANASERVER_PW" ] || { echo 'ERROR: WAZUH_INDEXER_KIBANASERVER_PASSWORD not found in /etc/wazuh/credentials.env'; exit 1; }
+          echo "::add-mask::${KIBANASERVER_PW}"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "sudo bash /tmp/wazuh-passwords-tool.sh -u kibanaserver" \
+            || { echo 'ERROR: the passwords tool failed to generate a password for kibanaserver'; exit 1; }
+          GENERATED_PW=$(read_credential WAZUH_INDEXER_KIBANASERVER_PASSWORD)
+          [ -n "$GENERATED_PW" ] && echo "::add-mask::${GENERATED_PW}"
+          [ -n "$GENERATED_PW" ] && [ "$GENERATED_PW" != "$KIBANASERVER_PW" ] \
+            || { echo 'ERROR: the password generated for kibanaserver was not saved to /etc/wazuh/credentials.env'; exit 1; }
+          code=$(kibanaserver_http_code "$GENERATED_PW") || true
+          [ "$code" = "200" ] || { echo "ERROR: the generated kibanaserver password is rejected (HTTP ${code})"; exit 1; }
+          code=$(kibanaserver_http_code "$KIBANASERVER_PW") || true
+          [ "$code" = "401" ] || { echo "ERROR: the previous kibanaserver password is still accepted (HTTP ${code})"; exit 1; }
+          echo "The password generated for kibanaserver is saved to credentials.env and replaces the previous one"
           # The passwords tool reads the new password from the standard input with -p
           for user in admin kibanaserver wazuh-manager wazuh wazuh-wui; do
             printf '%s\n' "$WAZUH_NEW_PASSWORD" | ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
@@ -729,9 +757,20 @@ jobs:
           WAZUH_NEW_PASSWORD: ${{ (needs.build_tools.outputs.tool_type == 'passwords-tool' || needs.build_tools.outputs.tool_type == 'all') && 'T3sting-Password' || '' }}
           WAZUH_SERVICE_PASSWORD: ${{ (needs.build_tools.outputs.tool_type == 'passwords-tool' || needs.build_tools.outputs.tool_type == 'all') && 'T3sting-Password' || '' }}
           WAZUH_CERT_TOOL_OUTPUT_DIR: /tmp/wazuh-certificates
+          # The node certificates carry the node names of config.yml with -g and the host name with -a
+          WAZUH_INSTALL_MODE: ${{ needs.build_tools.outputs.install_mode }}
         run: |
           TOOL_TYPE="${{ needs.build_tools.outputs.tool_type }}"
           OS="${{ matrix.system }}"
+          # Expected version: the one of the branch under test, not the default of wazuh-automation
+          EXPECTED_VERSION="${{ needs.build_tools.outputs.wazuh_version }}"
+          [ -n "$EXPECTED_VERSION" ] || { echo 'ERROR: no Wazuh version from VERSION.json'; exit 1; }
+          if [ "${{ needs.build_tools.outputs.package_type }}" = "staging" ]; then
+            EXPECTED_VERSION="${EXPECTED_VERSION}-latest"
+          fi
+          export WAZUH_MANAGER_EXPECTED_VERSION="$EXPECTED_VERSION"
+          export WAZUH_INDEXER_EXPECTED_VERSION="$EXPECTED_VERSION"
+          export WAZUH_DASHBOARD_EXPECTED_VERSION="$EXPECTED_VERSION"
           test_runner \
             --test-type "$TOOL_TYPE" \
             --ssh-host "${{ env.SSH_HOST }}" \
@@ -891,6 +930,14 @@ jobs:
           python3 wazuh-automation/deployability/modules/allocation/main.py \
             --action delete \
             --track-output ${{ env.ALLOCATOR_PATH }}/track.yml
+
+      # The test steps continue on error so that the results are reported and the instance is
+      # deallocated; this step makes the job, and so the check run, fail when a test failed.
+      - name: Fail the job when a test failed
+        if: always() && (steps.run_tests.outcome == 'failure' || steps.run_tests_uninstall.outcome == 'failure')
+        run: |
+          echo "Integration tests failed: run_tests=${{ steps.run_tests.outcome }}, run_tests_uninstall=${{ steps.run_tests_uninstall.outcome }}"
+          exit 1
 
   # -------------------------------------------------------------------------
   # Job 4: Update the GitHub check run (issue_comment trigger only)

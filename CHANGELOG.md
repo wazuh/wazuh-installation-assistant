@@ -36,6 +36,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#3870](https://github.com/wazuh/wazuh-automation/issues/3870) | Adapt the integration tests to install-time credentials: agent listener address in the distributed flow, no install files in the offline flow, password generated without -p, expected version of the branch, and fail the job when a test fails |
 | [#1093](https://github.com/wazuh/wazuh-installation-assistant/issues/1093) | Print the real dashboard addresses and the exact command that reads the admin password in the install summary, and log it |
 | [#1091](https://github.com/wazuh/wazuh-installation-assistant/issues/1091) | Write credentials.env values unquoted when they need no quoting, and describe the user of each key in its header |
 | [#1061](https://github.com/wazuh/wazuh-installation-assistant/issues/1061) | Add port 1517 to the firewall warning and the port checks of the installation assistant |

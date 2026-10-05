@@ -59,6 +59,8 @@ gh workflow run 5_check_integration_tools.yaml \
 | `package_type` | Package source | `staging` / `production` | `staging` |
 | `systems` | Comma-separated list of systems to test, or `all` | see table below | `all` |
 
+> **note**: GitHub runs the `issue_comment` trigger with the workflow file of the default branch (`main`), and the PR comment commands use the `main` branch of `wazuh-automation`, so a change to this workflow reaches the PR comment commands only after it is merged up to `main`. Use the manual dispatch with `--ref` and `automation_reference` to test a change before that.
+
 By default all supported systems are tested in parallel. To test a subset, pass a comma-separated list to the `systems` input:
 
 ```bash
@@ -120,15 +122,19 @@ nodes:
       ip: 127.0.0.1
 ```
 
+`-g` refuses to issue an agent listener certificate that names only loopback addresses, so the workflow adds the private address of the instance with `-as`. The nodes stay on `127.0.0.1`, so the services listen on localhost.
+
 Installation steps run in order:
 
 ```bash
-sudo bash wazuh-install.sh -g -id                    # generate wazuh-install-files.tar (certs + config)
+sudo bash wazuh-install.sh -g -as <private IP> -id   # generate wazuh-install-files.tar (certs + config + credentials.env)
 sudo bash wazuh-install.sh -wi indexer -d local -id  # install Wazuh indexer
 sudo bash wazuh-install.sh -s                        # initialize indexer cluster security
 sudo bash wazuh-install.sh -wm manager -d local -id  # install Wazuh manager
 sudo bash wazuh-install.sh -wd dashboard -d local -id # install Wazuh dashboard
 ```
+
+After `-g` the workflow checks that `wazuh-install-files.tar` contains `credentials.env`, does not contain `root-ca.key`, and that the agent listener certificate (`manager-remoted.pem`) names the private address.
 
 ### Offline
 
@@ -143,17 +149,15 @@ sudo bash wazuh-install.sh -dw deb -da amd64 -d local   # produces wazuh-offline
 # or
 sudo bash wazuh-install.sh -dw rpm -da aarch64 -d local
 
-# 2. On the runner: generate certificates and config
-sudo bash wazuh-install.sh -g                            # produces wazuh-install-files.tar
+# 2. Transfer wazuh-install.sh, wazuh-offline.tar.gz, and artifact_urls.yaml to the remote instance
 
-# 3. Transfer wazuh-install.sh, wazuh-offline.tar.gz, wazuh-install-files.tar,
-#    artifact_urls.yaml, and config.yml to the remote instance
+# 3. Remove the instance's internet access (switch AWS security group to no-internet)
 
-# 4. Remove the instance's internet access (switch AWS security group to no-internet)
-
-# 5. On the instance: install without any outbound network access
+# 4. On the instance: install without any outbound network access
 sudo bash wazuh-install.sh -a -of
 ```
+
+The offline all-in-one install does not use `wazuh-install-files.tar` nor `config.yml`: the packages create the root CA, the certificates, and the passwords.
 
 > **note**: For Amazon Linux 2023 instances, `dnf-utils` is installed as a prerequisite in place of `yum-utils` before the offline installation begins, since AL2023 does not ship `yum-utils`.
 
@@ -168,17 +172,22 @@ Runs after any installation mode (AIO, distributed, offline). Verifies that all 
 | Test module | What it checks |
 | ----------- | -------------- |
 | `test_services` | All three services (`wazuh-indexer`, `wazuh-manager`, `wazuh-dashboard`) are active (`systemctl is-active`) and running, expected ports are listening (9200, 443, 55000), required directories exist, health API endpoints return HTTP 200 |
-| `test_certificates` | Certificate files exist in the expected paths for each component, file permissions are `400`, certificates are not expired, subject and issuer fields match the expected patterns (`CN=indexer`, `CN=dashboard`, `CN=manager`, `OU=Wazuh`) |
+| `test_certificates` | Certificate files exist in the expected paths for each component, file permissions are `400`, certificates are not expired, subject and issuer fields match the expected patterns. The common name of the node certificates depends on the mode: the node names of `config.yml` (`CN=indexer`, `CN=dashboard`, `CN=manager`) for distributed, and the short host name (`hostname -s`) for AIO and offline, where the packages issue them |
 | `test_logs` | Log files exist for each component, no critical error patterns (`ERROR`, `CRITICAL`, `FATAL`, `Failed to`) found in recent log entries, known false positives (e.g. `ErrorDocument`) are excluded |
 | `test_version` | The installed version and revision reported by each component match the expected values from `VERSION.json` |
+| `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401: `admin:admin` on the indexer and the dashboard, `wazuh:wazuh` and `wazuh-wui:wazuh-wui` on the Wazuh server API |
+
+There are no default passwords: the packages save the generated ones in `/etc/wazuh/credentials.env`, and `test_runner` reads them from there over SSH.
 
 ### `cert-tool` — validate certificate generation
 
-Runs `wazuh-certs-tool.sh -A` on the instance (generates all certificates for all nodes in `config.yml`) and then validates the output. No Wazuh installation is required on the instance for this test.
+Runs after an AIO installation. The workflow removes any previous `/tmp/wazuh-certificates` directory and runs `wazuh-certs-tool.sh -A` on the instance, which generates all certificates for all nodes in `config.yml` with the root CA in `/etc/wazuh/ca` that the installation created, and then validates the result.
 
 | Test module | What it checks |
 | ----------- | -------------- |
-| `test_certificates` | All expected certificate files exist under `WAZUH_CERT_TOOL_OUTPUT_DIR` (`/tmp/wazuh-certificates`), file permissions are `400`, certificates are not expired, subject DN and issuer DN match the node names specified in `config.yml` |
+| `test_certificates` | The installed certificates of each component, as in the `installer` test |
+| `test_cert_tool` | The tool output (`WAZUH_CERT_TOOL_OUTPUT_DIR`, `/tmp/wazuh-certificates`) does not contain `root-ca.key`, its `root-ca.pem` is the root CA in `/etc/wazuh/ca`, and every certificate it issued verifies against that root CA |
+| `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401 |
 
 The `config.yml` used defines three nodes (`indexer`, `manager`, `dashboard`) all pointing to `127.0.0.1`.
 
@@ -192,12 +201,15 @@ for user in admin kibanaserver wazuh-manager wazuh wazuh-wui; do
 done
 ```
 
+Before that, it runs the tool once without `-p` for `kibanaserver`, and checks that the generated password is saved in `credentials.env`, is accepted by the indexer, and replaces the previous one.
+
 All services are restarted after the password changes. The workflow then waits for each service to accept the new credentials before running validation.
 
 | Test module | What it checks |
 | ----------- | -------------- |
 | `test_services` | Services are still active and health endpoints are reachable using the new password |
-| `test_passwords` | New password is accepted by indexer (`https://localhost:9200`) and dashboard (`https://localhost/status`) with HTTP 200, old password (`WAZUH_OLD_PASSWORD`, the `admin` password set by the installation) is rejected with HTTP 401, Wazuh Manager API accepts the new `wazuh-wui` credentials at `https://localhost:55000/security/user/authenticate` |
+| `test_passwords` | New password is accepted by indexer (`https://localhost:9200`) and dashboard (`https://localhost/status`) with HTTP 200, old password (`WAZUH_OLD_PASSWORD`, the `admin` password set by the installation) is rejected with HTTP 401, Wazuh Manager API accepts the new `wazuh-wui` credentials at `https://localhost:55000/security/user/authenticate`. Without `WAZUH_OLD_PASSWORD` the old-password check fails |
+| `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401 |
 
 ### `uninstall` — validate complete removal
 
@@ -205,7 +217,7 @@ Runs automatically after every `installer` or `all` test. Executes `wazuh-instal
 
 | Test module | What it checks |
 | ----------- | -------------- |
-| `test_uninstall` | None of the Wazuh services are active, none of the Wazuh packages remain installed, all data and configuration directories (`/etc/wazuh-*`, `/var/wazuh-*`) have been removed |
+| `test_uninstall` | None of the Wazuh services are active, none of the Wazuh packages remain installed, all data and configuration directories (`/etc/wazuh-*`, `/var/wazuh-*`, and `/etc/wazuh` with the credentials file and the root CA) have been removed |
 
 ### `all` — full end-to-end sequence
 
@@ -218,12 +230,13 @@ Triggered by `/test-assistant`. Runs all three tools on the same AIO installatio
 
 ### Test execution matrix
 
-| test_type | `test_services` | `test_certificates` | `test_passwords` | `test_logs` | `test_version` | `test_uninstall` |
-| --------- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `installer` | ✓ | ✓ | — | ✓ | ✓ | — |
-| `cert-tool` | — | ✓ | — | — | — | — |
-| `passwords-tool` | ✓ | — | ✓ | — | — | — |
-| `uninstall` | — | — | — | — | — | ✓ |
+| test_type | `test_services` | `test_certificates` | `test_cert_tool` | `test_passwords` | `test_default_credentials` | `test_logs` | `test_version` | `test_uninstall` |
+| --------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `installer` | ✓ | ✓ | — | — | ✓ | ✓ | ✓ | — |
+| `cert-tool` | — | ✓ | ✓ | — | ✓ | — | — | — |
+| `passwords-tool` | ✓ | — | — | ✓ | ✓ | — | — | — |
+| `all` | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | — |
+| `uninstall` | — | — | — | — | — | — | — | ✓ |
 
 ## Workflow jobs
 
@@ -260,6 +273,7 @@ The main job. Runs in parallel for each OS:
 7. Posts a per-OS result comment on the PR (comment trigger only).
 8. Uploads test result files as artifacts (7-day retention).
 9. **Always** deallocates the instance, even if previous steps failed.
+10. Fails the job when `test_runner` reported a failed test. The test steps continue on error so that the results are reported and the instance is deallocated first.
 
 ### Job 4 — `update_check` (comment trigger only)
 
@@ -272,6 +286,11 @@ Updates the GitHub check run from Job 1 with the final conclusion (`success`, `f
 | `WAZUH_NEW_PASSWORD` | New password set by `wazuh-passwords-tool.sh` | `T3sting-Password` |
 | `WAZUH_SERVICE_PASSWORD` | Password used for health check API calls | `T3sting-Password` |
 | `WAZUH_CERT_TOOL_OUTPUT_DIR` | Directory where `wazuh-certs-tool.sh` writes certificates | `/tmp/wazuh-certificates` |
+| `WAZUH_OLD_PASSWORD` | `admin` password set by the installation, read from `/etc/wazuh/credentials.env` before the rotation (masked) | `passwords-tool` and `all` |
+| `WAZUH_INSTALL_MODE` | Installation mode, for the common name expected in the node certificates | `aio` / `distributed` / `offline` |
+| `WAZUH_MANAGER_EXPECTED_VERSION`, `WAZUH_INDEXER_EXPECTED_VERSION`, `WAZUH_DASHBOARD_EXPECTED_VERSION` | Expected version, from `VERSION.json` of the branch under test (with `-latest` for staging packages) | e.g. `5.0.0-latest` |
+
+For the `installer` and `cert-tool` test types, `WAZUH_SERVICE_PASSWORD` is empty and `test_runner` reads the passwords from `/etc/wazuh/credentials.env` on the instance. It masks every value it reads in the workflow log.
 
 ## Results and artifacts
 
