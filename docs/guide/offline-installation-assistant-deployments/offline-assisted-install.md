@@ -6,7 +6,7 @@ Install and configure the single-node server on a 64-bit (**x86_64/AMD64** or **
 
 ### Prerequisites
 
-> **Note:** You need root user privileges to run all the commands described below. Please make sure that a copy of the `wazuh-install-files.tar` and `wazuh-offline.tar.gz` files, created during the initial configuration step, is placed in your working directory.
+> **Note:** You need root user privileges to run all the commands described below. Please make sure that a copy of the `wazuh-offline.tar.gz` file, created during the initial configuration step, is placed in your working directory.
 
 #### Required dependencies
 
@@ -15,18 +15,41 @@ The following dependencies must be installed on the Wazuh single node:
 **RPM-based systems:**
 
 - coreutils
+- curl
+- diffutils
+- findutils
+- gawk
+- gnupg2
+- grep
+- hostname
+- iproute
 - libcap
+- openssl
+- procps-ng
+- sed
+- tar
+- util-linux
 
 **DEB-based systems:**
 
-- coreutils
-- libcap
+- adduser
+- apt-transport-https
+- curl
+- debconf
+- diffutils
+- gnupg
+- hostname
+- iproute2
+- libcap2-bin
+- openssl
+- procps
+- tar
+- util-linux
 
 #### Files needed
 
 For the single-node offline installation, you need to have the following files in your working directory:
 
-- `wazuh-install-files.tar`
 - `wazuh-offline.tar.gz`
 - `wazuh-install-5.0.0.sh`
 
@@ -59,11 +82,13 @@ Access the Wazuh web interface with your admin user credentials. This is the def
 
 - **URL:** `https://<WAZUH_DASHBOARD_IP_ADDRESS>:443`
 - **Username:** `admin`
-- **Password:** `admin`
+- **Password:** the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `/etc/wazuh/credentials.env`
 
 ---
 
 ## Multi-node offline installation
+
+> **Note:** You need root user privileges to run all the commands described below. Please make sure that a copy of the `wazuh-install-files.tar` and `wazuh-offline.tar.gz` files, created during the initial configuration step, is placed in the working directory of every node.
 
 ### Installing the Wazuh indexer
 
@@ -71,15 +96,26 @@ Install and configure the Wazuh indexer nodes on a 64-bit (**x86_64/AMD64** or *
 
 #### Required dependencies
 
-The following dependencies must be installed on the Wazuh indexer nodes:
+The following dependencies must be installed on the Wazuh indexer nodes, besides the prerequisites of [Offline download packages](../offline-download-packages/offline-download-packages.md#prerequisites):
 
 **RPM-based systems:**
 
 - coreutils
+- diffutils
+- hostname
+- iproute
+- openssl
+- procps-ng
+- util-linux
 
 **DEB-based systems:**
 
-- coreutils
+- adduser
+- debconf
+- diffutils
+- iproute2
+- openssl
+- procps
 
 #### Installation Steps
 
@@ -141,13 +177,30 @@ The following dependencies must be installed on the Wazuh indexer nodes:
 
 #### Required dependencies
 
-**RPM-based systems (with yum package manager):**
+The following dependencies must be installed on the Wazuh manager nodes, besides the prerequisites of [Offline download packages](../offline-download-packages/offline-download-packages.md#prerequisites):
 
-- libcap
+**RPM-based systems:**
+
+- diffutils
+- findutils
+- gawk
+- grep
+- hostname
+- iproute
+- openssl
+- sed
+- util-linux
 
 **DEB-based systems:**
 
-- libcap
+- apt-transport-https
+- curl
+- diffutils
+- gnupg
+- hostname
+- iproute2
+- openssl
+- util-linux
 
 #### Installation Steps
 
@@ -163,15 +216,22 @@ Your Wazuh manager is now successfully installed. Repeat this step on every Wazu
 
 #### Required dependencies
 
-The following dependencies must be installed on the Wazuh dashboard node:
+The following dependencies must be installed on the Wazuh dashboard node, besides the prerequisites of [Offline download packages](../offline-download-packages/offline-download-packages.md#prerequisites):
 
 **RPM-based systems:**
 
+- diffutils
 - libcap
+- openssl
+- util-linux
 
 **DEB-based systems:**
 
-- libcap
+- curl
+- diffutils
+- libcap2-bin
+- openssl
+- tar
 
 #### Installation Steps
 
@@ -206,7 +266,7 @@ Access the Wazuh web interface with your admin user credentials. This is the def
 
 - **URL:** `https://<WAZUH_DASHBOARD_IP_ADDRESS>`
 - **Username:** `admin`
-- **Password:** `admin`
+- **Password:** the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `wazuh-install-files/credentials.env` of `wazuh-install-files.tar`
 
 #### Certificate Notice
 
