@@ -64,6 +64,11 @@ _wazuh_error() (
     printf '%s\n' "wazuh-credentials: $*" >&2
 )
 
+# Notices go to stderr too, so they never mix with the values callers capture.
+_wazuh_info() (
+    printf '%s\n' "wazuh-credentials: $*" >&2
+)
+
 wazuh_base_get_dir() (
     _wazuh_base=${WAZUH_BASE_DIR-/etc/wazuh}
     _wazuh_validate_absolute_path "$_wazuh_base" || return 1
@@ -779,7 +784,8 @@ _wazuh_ca_ensure_locked() (
 
     rm -rf -- "$_wazuh_tmp_dir"
     trap - 0 1 2 3 15
-    _wazuh_validate_ca_files "$_wazuh_ca_dir"
+    _wazuh_validate_ca_files "$_wazuh_ca_dir" || return 1
+    _wazuh_info "created a new CA in $_wazuh_ca_dir. Hosts of the same deployment must share one CA: use the installation assistant, or place this CA in $_wazuh_ca_dir on the other hosts before installing their packages."
 )
 
 wazuh_ca_ensure() (
