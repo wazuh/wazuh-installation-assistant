@@ -20,22 +20,22 @@ Each tool is built from the PR branch by `builder.sh` before being deployed to t
 
 ## Trigger methods
 
-Integration tests are not run automatically on every push. They must be triggered explicitly, either via a PR comment command or manually via workflow dispatch.
+Integration tests are not run automatically on every push. They must be triggered explicitly, either by adding a label to the PR or manually via workflow dispatch.
 
-### PR comment commands
+### PR labels
 
-Post one of the following commands as a comment on an open, non-draft pull request. The workflow reacts with a 🚀 emoji and creates a GitHub check run that tracks the result.
+Add one of the following labels to a non-draft pull request opened from a branch of this repository. Each label added starts one run against the PR head at that moment, and the run shows up in the PR checks.
 
-| Comment | Tool tested | Installation mode |
-| ------- | ----------- | ----------------- |
-| `/test-install` | Installation assistant | AIO |
-| `/test-install-distributed` | Installation assistant | Distributed |
-| `/test-install-offline` | Installation assistant | Offline |
-| `/test-cert-tool` | Certificates tool | — |
-| `/test-passwords-tool` | Passwords tool | — |
-| `/test-assistant` | All three tools in sequence | AIO |
+| Label | Tool tested | Installation mode |
+| ----- | ----------- | ----------------- |
+| `test/install` | Installation assistant | AIO |
+| `test/install-distributed` | Installation assistant | Distributed |
+| `test/install-offline` | Installation assistant | Offline |
+| `test/cert-tool` | Certificates tool | — |
+| `test/passwords-tool` | Passwords tool | — |
+| `test/assistant` | All three tools in sequence | AIO |
 
-> **note**: Comments on draft PRs or closed PRs are ignored.
+> **note**: To run the tests again (for example after pushing new commits), remove the label and add it again. Labels added while the PR is a draft are ignored: mark the PR as ready for review and add the label again. PRs opened from forks do not run, because GitHub does not pass secrets to `pull_request` runs from forks.
 
 ### Manual dispatch (workflow_dispatch)
 
@@ -85,7 +85,7 @@ One independent job runs per system, in parallel (`fail-fast: false`), so a fail
 
 ## Installation modes
 
-The installation assistant supports three deployment modes. The mode is selected by the `install_mode` input (or inferred from the PR comment command). All modes install Wazuh on a single AWS EC2 instance with `127.0.0.1` as the node IP.
+The installation assistant supports three deployment modes. The mode is selected by the `install_mode` input (or inferred from the PR label). All modes install Wazuh on a single AWS EC2 instance with `127.0.0.1` as the node IP.
 
 ### AIO (All-In-One)
 
@@ -209,7 +209,7 @@ Runs automatically after every `installer` or `all` test. Executes `wazuh-instal
 
 ### `all` — full end-to-end sequence
 
-Triggered by `/test-assistant`. Runs all three tools on the same AIO installation in sequence:
+Triggered by the `test/assistant` label. Runs all three tools on the same AIO installation in sequence:
 
 1. AIO install → `installer` validation
 2. `wazuh-certs-tool.sh` → `cert-tool` validation
@@ -227,14 +227,12 @@ Triggered by `/test-assistant`. Runs all three tools on the same AIO installatio
 
 ## Workflow jobs
 
-The workflow is composed of four jobs.
+The workflow is composed of three jobs.
 
-### Job 1 — `get_pr_info` (comment trigger only)
+### Job 1 — `get_pr_info` (label trigger only)
 
-1. Adds a 🚀 reaction to the triggering comment.
-2. Fetches the PR head branch and commit SHA via the GitHub API.
-3. Maps the comment body to a `tool_type` and `install_mode`.
-4. Creates a GitHub check run in `in_progress` state, visible on the PR commits view.
+1. Reads the PR number, head branch and commit SHA from the event payload.
+2. Maps the label name to a `tool_type` and `install_mode`.
 
 ### Job 2 — `build_tools`
 
@@ -257,13 +255,9 @@ The main job. Runs in parallel for each OS:
 4. Runs the installation according to the selected mode.
 5. Runs `test_runner` against the instance via SSH.
 6. For `installer` and `all`: runs uninstall and `test_runner --test-type uninstall`.
-7. Posts a per-OS result comment on the PR (comment trigger only).
+7. Posts a per-OS result comment on the PR (label trigger only).
 8. Uploads test result files as artifacts (7-day retention).
 9. **Always** deallocates the instance, even if previous steps failed.
-
-### Job 4 — `update_check` (comment trigger only)
-
-Updates the GitHub check run from Job 1 with the final conclusion (`success`, `failure`, or `cancelled`) based on the overall result of Job 3.
 
 ## Environment variables for `test_runner`
 
@@ -284,20 +278,11 @@ After each OS job completes, a bot comment is posted (or updated if one already 
 - Detailed test output from `test_runner`.
 - A link to the workflow run.
 
-For the `all` command, a separate uninstall result section is appended to the same comment.
+For the `test/assistant` label, a separate uninstall result section is appended to the same comment.
 
-### GitHub check run
+### GitHub checks
 
-When triggered via PR comment, a named check run is created on the PR commit and updated when all OS jobs finish. Check run names:
-
-| Command | Check run name |
-| ------- | -------------- |
-| `/test-install` | Installation Assistant Check |
-| `/test-install-distributed` | Installation Assistant Check (Distributed) |
-| `/test-install-offline` | Installation Assistant Check (Offline) |
-| `/test-cert-tool` | Certificates Tool Check |
-| `/test-passwords-tool` | Passwords Tool Check |
-| `/test-assistant` | Full Integration Check |
+When triggered by a label, each job of the run shows up in the PR checks with its own result.
 
 ### Artifacts
 
@@ -311,42 +296,42 @@ For example: `test-results-installer-aio-ubuntu-24-amd64`
 
 ## Examples
 
-### Trigger via PR comment
+### Trigger via PR label
 
-Post any of the following as a comment on an open, non-draft PR:
+Add any of the following labels to a non-draft PR:
 
 ```
-/test-install
+test/install
 ```
 
 Test the AIO installer and validate services, certificates, logs, and version. Runs on all supported systems.
 
 ```
-/test-install-distributed
+test/install-distributed
 ```
 
 Test the distributed installation flow (separate install of each component). Runs on all supported systems.
 
 ```
-/test-install-offline
+test/install-offline
 ```
 
 Test the offline installation flow (no internet access on the instance during install). Runs on all supported systems.
 
 ```
-/test-cert-tool
+test/cert-tool
 ```
 
 Test certificate generation only. No Wazuh installation is performed. Runs on all supported systems.
 
 ```
-/test-passwords-tool
+test/passwords-tool
 ```
 
 Perform an AIO installation, rotate passwords for all internal users, and validate the new credentials. Runs on all supported systems.
 
 ```
-/test-assistant
+test/assistant
 ```
 
 Run the full end-to-end sequence: AIO install → cert-tool → passwords-tool → uninstall. Runs on all supported systems.
