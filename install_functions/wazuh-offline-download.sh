@@ -113,6 +113,12 @@ function offline_download() {
 
   common_logger "The packages are in ${dest_path}"
 
+  # The installation checks the packages against this key, so it is checked here too.
+  key_dir=$(mktemp -d)
+  installCommon_getWazuhGPGKey "${key_dir}"
+  eval "cp ${key_dir}/wazuh.asc ${base_dest_folder}/GPG-KEY-WAZUH ${debug}"
+  rm -rf "${key_dir}"
+
   eval "chmod 500 ${base_dest_folder} ${debug}"
 
   common_logger "Creating wazuh-offline.tar.gz with all packages."

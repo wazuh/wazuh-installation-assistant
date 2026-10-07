@@ -24,12 +24,15 @@ class TestOfflineExtractFiles:
     """Tests for offline_extractFiles.
 
     With ${base_path}/wazuh-offline/ already present the tar step is skipped,
-    and the function checks that the packages of the system type are there.
+    and the function checks that the Wazuh GPG key and the packages of the
+    system type are there.
     """
 
-    def _run(self, tmp_path, packages):
+    def _run(self, tmp_path, packages, key=True):
         packages_path = tmp_path / "wazuh-offline" / "wazuh-packages"
         packages_path.mkdir(parents=True)
+        if key:
+            (tmp_path / "wazuh-offline" / "GPG-KEY-WAZUH").touch()
         for package in packages:
             (packages_path / package).touch()
         return run_bash_function(
@@ -41,6 +44,9 @@ class TestOfflineExtractFiles:
 
     def test_success_all_rpm_packages(self, tmp_path):
         assert_success(self._run(tmp_path, RPM_PACKAGES))
+
+    def test_fail_missing_gpg_key(self, tmp_path):
+        assert_failure(self._run(tmp_path, RPM_PACKAGES, key=False))
 
     @pytest.mark.parametrize("missing", RPM_PACKAGES)
     def test_fail_missing_rpm_package(self, tmp_path, missing):

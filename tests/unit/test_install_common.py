@@ -7,6 +7,8 @@ Covers: installCommon_getConfig, installCommon_installPrerequisites,
         installCommon_scanDependencies
 """
 
+from pathlib import Path
+
 from tests.unit.conftest import assert_failure, assert_success, run_bash_function
 
 INSTALL_COMMON = "install_functions/installCommon.sh"
@@ -15,6 +17,10 @@ COMMON_VARS = "common_functions/commonVariables.sh"
 BASE_SOURCES = [COMMON_VARS, COMMON, INSTALL_COMMON]
 
 IGNORE_LOGGER = {"common_logger": "true"}
+
+KEY_FIXTURE = Path(__file__).parent / "fixtures" / "GPG-KEY-WAZUH"
+WAZUH_KEY = KEY_FIXTURE.read_text()
+WAZUH_FINGERPRINT = "0DCFCA5547B19D2A6099506096B3EE5F29111145"
 
 
 class TestInstallCommonGetConfig:
@@ -689,8 +695,8 @@ class TestInstallCommonMergeCredentials:
 class TestInstallCommonVerifyPackageSignature:
     """Tests for installCommon_verifyPackageSignature on RPM packages.
 
-    rpm is mocked: -q reports the key as imported, -qp prints the signer and
-    -K returns the given exit code.
+    The key is mocked as already checked; rpm is mocked: -q reports the key as
+    imported, -qp prints the signer and -K returns the given exit code.
     """
 
     WAZUH_SIGNER = "RSA/SHA256, Mon Oct  5 23:35:00 2026, Key ID 96b3ee5f29111145"
@@ -699,8 +705,14 @@ class TestInstallCommonVerifyPackageSignature:
         rpm_mock = (
             'case "$1" in -qp) echo "' + signer + '";; -K) return ' + str(checksig_rc) + ';; esac; return 0'
         )
-        mocks = {**IGNORE_LOGGER, "installCommon_rollBack": "true", "rpm": rpm_mock}
-        env = {"wazuh_gpg_key_id": "96b3ee5f29111145", "skip_signature_check": skip}
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_rollBack": "true",
+            "installCommon_getWazuhGPGKey": "true",
+            "installCommon_getGPGKeyFingerprint": f"echo {WAZUH_FINGERPRINT}",
+            "rpm": rpm_mock,
+        }
+        env = {"skip_signature_check": skip}
         return run_bash_function(BASE_SOURCES, "installCommon_verifyPackageSignature /tmp/p.rpm", mocks, env)
 
     def test_success_signed_with_wazuh_key(self):
@@ -717,3 +729,51 @@ class TestInstallCommonVerifyPackageSignature:
 
     def test_success_unsigned_with_skip(self):
         assert_success(self._run("(none)", skip="1"))
+
+
+class TestInstallCommonGetWazuhGPGKey:
+    """Tests for installCommon_getWazuhGPGKey with the key of the offline bundle.
+
+    The key is only trusted if the file holds a single primary key with a pinned fingerprint.
+    """
+
+    def _run(self, tmp_path, key_text):
+        bundle = tmp_path / "wazuh-offline"
+        bundle.mkdir()
+        (bundle / "GPG-KEY-WAZUH").write_text(key_text)
+        key_dir = tmp_path / "key"
+        key_dir.mkdir()
+        mocks = {**IGNORE_LOGGER, "installCommon_rollBack": "true"}
+        env = {
+            "offline_install": "1",
+            "base_path": str(tmp_path),
+            "wazuh_gpg_key_fingerprints": f"( {WAZUH_FINGERPRINT} )",
+        }
+        return run_bash_function(BASE_SOURCES, f"installCommon_getWazuhGPGKey {key_dir}", mocks, env)
+
+    def test_success_wazuh_key(self, tmp_path):
+        assert_success(self._run(tmp_path, WAZUH_KEY))
+
+    def test_fail_two_keys_in_the_file(self, tmp_path):
+        assert_failure(self._run(tmp_path, WAZUH_KEY + WAZUH_KEY))
+
+    def test_fail_modified_key(self, tmp_path):
+        lines = WAZUH_KEY.splitlines(keepends=True)
+        body = lines.index("\n") + 1
+        lines[body] = ("A" if lines[body][0] != "A" else "B") + lines[body][1:]
+        assert_failure(self._run(tmp_path, "".join(lines)))
+
+    def test_fail_no_key(self, tmp_path):
+        assert_failure(self._run(tmp_path, ""))
+
+
+class TestInstallCommonGetGPGKeyFingerprint:
+    def test_success_wazuh_key(self, tmp_path):
+        result = run_bash_function(
+            BASE_SOURCES,
+            f"sed '1,/^$/d; /^=/,$d; /^-----/d' {KEY_FIXTURE} | base64 -d > {tmp_path}/k.gpg && "
+            f"installCommon_getGPGKeyFingerprint {tmp_path}/k.gpg",
+            IGNORE_LOGGER,
+        )
+        assert_success(result)
+        assert result.stdout.strip() == WAZUH_FINGERPRINT
