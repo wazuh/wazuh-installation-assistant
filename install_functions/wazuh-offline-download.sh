@@ -111,7 +111,6 @@ function offline_download() {
     common_logger "The ${component} package was downloaded."
   done
 
-  common_logger "The packages are in ${dest_path}"
 
   eval "chmod 500 ${base_dest_folder} ${debug}"
 
@@ -120,6 +119,6 @@ function offline_download() {
   eval "tar -czf ${base_dest_folder}.tar.gz ${base_dest_folder} ${debug}"
   eval "chmod -R 700 ${base_dest_folder} && rm -rf ${base_dest_folder} ${debug}"
 
-  common_logger "You can follow the installation guide here https://documentation.wazuh.com/current/deployment-options/offline-installation.html"
-
+  common_logger "The packages are in ${base_dest_folder}.tar.gz"
+  common_logger "You can follow the installation guide here https://documentation.wazuh.com/${wazuh_version%.*}/deployment-options/offline-installation/index.html"
 }
