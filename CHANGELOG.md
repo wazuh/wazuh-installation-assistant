@@ -108,7 +108,7 @@
 | [#1062](https://github.com/wazuh/wazuh-installation-assistant/issues/1062) | Fix the global.db path, the incomplete Wazuh indexer restore, and a wrong dashboard menu name in the upgrade and backup guides |
 | [#1068](https://github.com/wazuh/wazuh-installation-assistant/issues/1068) | Fix unclosed code fence and stale build artifact names in the generate-artifacts-manually guide and the glossary |
 | [#1060](https://github.com/wazuh/wazuh-installation-assistant/issues/1060) | Fix broken code blocks in the documentation |
-| [#6694](https://github.com/wazuh/internal-devel-requests/issues/6694) | wazuh-certs-tool.sh and the distributed install no longer use fixed temporary directories in /tmp that another local user can create first |
+| [#1086](https://github.com/wazuh/wazuh-installation-assistant/pull/1086) | wazuh-certs-tool.sh and the distributed install no longer use fixed temporary directories in /tmp that another local user can create first |
 | [#6125](https://github.com/wazuh/internal-devel-requests/issues/6125) | wazuh-certs-tool.sh no longer relaxes generated private key permissions to world-readable |
 | [#1023](https://github.com/wazuh/wazuh-installation-assistant/issues/1023) | Check the Wazuh manager keystore writes in the passwords tool and the installation assistant, and stop before the new password reaches the Wazuh indexer when a write fails |
 | [#999](https://github.com/wazuh/wazuh-installation-assistant/issues/999) | Write both keystore keys for the wazuh-manager user, guard the manager restart with the service state, restart the services after the new passwords reach the Wazuh indexer, and document the multi-node procedure |
