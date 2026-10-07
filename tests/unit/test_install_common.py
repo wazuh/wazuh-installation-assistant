@@ -684,3 +684,36 @@ class TestInstallCommonMergeCredentials:
         result, content = self._run_mode(tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n', "check")
         assert_success(result)
         assert content == f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n'
+
+
+class TestInstallCommonVerifyPackageSignature:
+    """Tests for installCommon_verifyPackageSignature on RPM packages.
+
+    rpm is mocked: -q reports the key as imported, -qp prints the signer and
+    -K returns the given exit code.
+    """
+
+    WAZUH_SIGNER = "RSA/SHA256, Mon Oct  5 23:35:00 2026, Key ID 96b3ee5f29111145"
+
+    def _run(self, signer, checksig_rc=0, skip=""):
+        rpm_mock = (
+            'case "$1" in -qp) echo "' + signer + '";; -K) return ' + str(checksig_rc) + ';; esac; return 0'
+        )
+        mocks = {**IGNORE_LOGGER, "installCommon_rollBack": "true", "rpm": rpm_mock}
+        env = {"wazuh_gpg_key_id": "96b3ee5f29111145", "skip_signature_check": skip}
+        return run_bash_function(BASE_SOURCES, "installCommon_verifyPackageSignature /tmp/p.rpm", mocks, env)
+
+    def test_success_signed_with_wazuh_key(self):
+        assert_success(self._run(self.WAZUH_SIGNER))
+
+    def test_fail_unsigned(self):
+        assert_failure(self._run("(none)"))
+
+    def test_fail_signed_with_another_key(self):
+        assert_failure(self._run("RSA/SHA256, Mon Oct  5 23:35:00 2026, Key ID 0123456789abcdef"))
+
+    def test_fail_invalid_signature(self):
+        assert_failure(self._run(self.WAZUH_SIGNER, checksig_rc=1))
+
+    def test_success_unsigned_with_skip(self):
+        assert_success(self._run("(none)", skip="1"))

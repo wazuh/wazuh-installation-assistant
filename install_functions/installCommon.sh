@@ -49,6 +49,10 @@ function installCommon_aptInstall() {
         installer="${offline_packages_path}/${package_name}"
     fi
 
+    if [[ "${installer}" == *.deb ]]; then
+        installCommon_verifyPackageSignature "${installer}"
+    fi
+
     # Build the installation command
     command="DEBIAN_FRONTEND=noninteractive apt-get install ${installer} -y -q"
 
@@ -898,6 +902,162 @@ function installCommon_removeDownloadPackagesDirectory() {
 
 }
 
+# Checks that a downloaded Wazuh package is signed with the Wazuh key before installing it.
+# Unsigned packages only pass with --skip-signature-check, which needs -d.
+function installCommon_verifyPackageSignature() {
+
+    package_file="${1}"
+    if [ -n "${skip_signature_check}" ]; then
+        common_logger -w "Skipping the signature check of ${package_file}. Use it only with development packages."
+        return 0
+    fi
+
+    common_logger -d "Checking the signature of ${package_file}."
+    if [[ "${package_file}" == *.rpm ]]; then
+        installCommon_verifyRpmSignature "${package_file}"
+    elif [[ "${package_file}" == *.deb ]]; then
+        installCommon_verifyDebSignature "${package_file}"
+    fi
+
+}
+
+# rpm -K passes on unsigned packages, so the signer key is checked first.
+function installCommon_verifyRpmSignature() {
+
+    package_file="${1}"
+    if ! rpm -q "gpg-pubkey-${wazuh_gpg_key_id: -8}" --quiet; then
+        key_file=$(mktemp)
+        installCommon_writeWazuhGPGKey "${key_file}"
+        eval "rpm --import ${key_file} ${debug}"
+        rm -f "${key_file}"
+    fi
+
+    signature=$(rpm -qp --qf '%{RSAHEADER:pgpsig}' "${package_file}" 2>/dev/null)
+    if [[ "${signature,,}" != *"key id ${wazuh_gpg_key_id}"* ]]; then
+        installCommon_signatureCheckFailed "${package_file} is not signed with the Wazuh key."
+    fi
+    if ! rpm -K "${package_file}" >/dev/null 2>&1; then
+        installCommon_signatureCheckFailed "The signature of ${package_file} is not valid."
+    fi
+
+}
+
+# apt ignores the signature embedded in a .deb, so the _gpgbuilder member is checked with
+# gpgv and the hashes it signs are compared with the other members. The .deb is an ar
+# archive, read with coreutils because binutils is not always installed.
+function installCommon_verifyDebSignature() {
+
+    package_file="${1}"
+    verify_dir=$(mktemp -d)
+    installCommon_writeWazuhGPGKey "${verify_dir}/wazuh.asc"
+    # gpgv only reads binary keyrings: decode the armored key body.
+    sed '1,/^$/d; /^=/,$d' "${verify_dir}/wazuh.asc" | base64 -d > "${verify_dir}/wazuh.gpg"
+
+    package_size=$(stat -c %s "${package_file}")
+    offset=8
+    touch "${verify_dir}/members"
+    while [ "${offset}" -lt "${package_size}" ]; do
+        member_header=$(dd if="${package_file}" bs=1 skip="${offset}" count=60 2>/dev/null)
+        member_name=$(echo "${member_header:0:16}" | sed 's/[ /]*$//')
+        member_size=$(echo "${member_header:48:10}" | tr -d ' ')
+        member_start=$((offset + 61))
+        if [ "${member_name}" == "_gpgbuilder" ]; then
+            tail -c +"${member_start}" "${package_file}" | head -c "${member_size}" > "${verify_dir}/_gpgbuilder"
+        elif [[ "${member_name}" != _gpg* ]]; then
+            member_sha1=$(tail -c +"${member_start}" "${package_file}" | head -c "${member_size}" | sha1sum | awk '{print $1}')
+            echo "${member_sha1} ${member_size} ${member_name}" >> "${verify_dir}/members"
+        fi
+        offset=$((offset + 60 + member_size + member_size % 2))
+    done
+
+    if [ ! -s "${verify_dir}/_gpgbuilder" ]; then
+        rm -rf "${verify_dir}"
+        installCommon_signatureCheckFailed "${package_file} is not signed."
+    fi
+    if ! gpgv --keyring "${verify_dir}/wazuh.gpg" --output "${verify_dir}/signed" "${verify_dir}/_gpgbuilder" >/dev/null 2>&1; then
+        rm -rf "${verify_dir}"
+        installCommon_signatureCheckFailed "${package_file} is not signed with the Wazuh key."
+    fi
+    # Signed lines: <md5> <sha1> <size> <member>
+    signed_members=$(awk 'NF == 4 && length($1) == 32 && $1 ~ /^[0-9a-f]+$/ {print $2, $3, $4}' "${verify_dir}/signed" | sort)
+    if [ -z "${signed_members}" ] || [ "${signed_members}" != "$(sort "${verify_dir}/members")" ]; then
+        rm -rf "${verify_dir}"
+        installCommon_signatureCheckFailed "The contents of ${package_file} do not match its signature."
+    fi
+    rm -rf "${verify_dir}"
+
+}
+
+function installCommon_signatureCheckFailed() {
+
+    common_logger -e "${1}"
+    common_logger -e "Wazuh packages are signed. Use --skip-signature-check along with -d only for unsigned development packages."
+    installCommon_rollBack
+    exit 1
+
+}
+
+# Wazuh package signing key (fingerprint 0DCF CA55 47B1 9D2A 6099 5060 96B3 EE5F 2911 1145).
+# It expires on 2027-05-15.
+function installCommon_writeWazuhGPGKey() {
+
+    cat > "${1}" << 'EOF'
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+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
+bvP0H2BRCKoelsbRENu58BkU6YhiUry7pVul
+=SJij
+-----END PGP PUBLIC KEY BLOCK-----
+EOF
+
+}
+
 function installCommon_yumInstall() {
 
     package="${1}"
@@ -931,6 +1091,9 @@ function installCommon_yumInstall() {
         else
             command="yum install ${installer} -y"
         fi
+    fi
+    if [[ "${installer}" == *.rpm ]]; then
+        installCommon_verifyPackageSignature "${installer}"
     fi
     common_checkYumLock
 

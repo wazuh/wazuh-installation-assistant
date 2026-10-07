@@ -29,6 +29,9 @@ function getHelp() {
     echo -e "        -d [pre-release|local],  --development"
     echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0.sh."
     echo -e ""
+    echo -e "        --skip-signature-check"
+    echo -e "                Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with -d."
+    echo -e ""
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
     echo -e ""
@@ -130,6 +133,10 @@ function main() {
                 ;;
             "-o"|"--overwrite")
                 overwrite=1
+                shift 1
+                ;;
+            "--skip-signature-check")
+                skip_signature_check=1
                 shift 1
                 ;;
             "-of"|"--offline-installation")

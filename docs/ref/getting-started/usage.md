@@ -10,6 +10,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.0.0.sh. See [Use development packages](#use-development-packages). |
+| `--skip-signature-check` | Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with `-d`. See [Use development packages](#use-development-packages). |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
 | `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
@@ -197,7 +198,17 @@ sudo bash wazuh-install-5.0.0.sh --all-in-one --development local
 sudo bash wazuh-install-5.0.0.sh -a -d local
 ```
 
-The assistant reads `artifact_urls.yaml` from the directory of the script and downloads the packages from the URLs in it. Without the file, it stops with `Cannot find artifact_urls.yaml in <directory>`.
+The assistant reads `artifact_urls.yaml` from the directory of the script and downloads the packages from the URLs in it. Without the file, it stops with `Cannot find artifact_urls.yaml in <directory>`. Every URL must use `https://`.
+
+#### Package signature check
+
+Before installing a package, the assistant checks that it is signed with the Wazuh key, also in offline installations. The key is embedded in the script, so the check needs no network access. An unsigned package, a package signed with another key, or a modified package stops the installation.
+
+Packages in the nightly, pre-release and production repositories are signed. Development builds that did not go through the signing process are not, and need the `--skip-signature-check` option, which is only accepted along with `-d`:
+
+```bash
+sudo bash wazuh-install-5.0.0.sh -a -d local --skip-signature-check
+```
 
 ## Wazuh certs tool
 

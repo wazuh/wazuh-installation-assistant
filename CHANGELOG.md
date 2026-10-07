@@ -4,6 +4,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#6790](https://github.com/wazuh/internal-devel-requests/issues/6790) | Check that every Wazuh package is signed with the Wazuh key before installing it, refuse `http://` artifact URLs, and add `--skip-signature-check` for unsigned development packages |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Publish the shared `wazuh-credentials.sh` library used by the component packages as a build artifact |
 | [#1027](https://github.com/wazuh/wazuh-installation-assistant/issues/1027) | Complete the agent listener certificate: SAN coverage, ip lists, public addresses, and a load balancer leaf |
 | [#1009](https://github.com/wazuh/wazuh-installation-assistant/issues/1009) | Issue the agent listener certificate from root-ca in wazuh-certs-tool and deploy it |
