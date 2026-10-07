@@ -6,11 +6,15 @@ Covers: cert_cleanFiles, cert_setpermisions, cert_checkOpenSSL,
         cert_generateAdmincertificate,
         cert_generateIndexercertificates, cert_generateManagercertificates,
         cert_generateDashboardcertificates, cert_generateRemotedcertificateconfiguration,
-        cert_verifyRemotedcertificates, cert_readConfig
+        cert_verifyRemotedcertificates, cert_readConfig, cert_createTmpDir,
+        cert_convertCRLFtoLF
 """
 
+import os
+import shutil
 import subprocess
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -127,6 +131,126 @@ class TestCertSetpermisions:
 
         dir_mode = certs_dir.stat().st_mode & 0o777
         assert dir_mode == 0o700, f"directory expected 700, got {oct(dir_mode)}"
+
+
+class TestCertCreateTmpDir:
+    """The temporary directory of the certificates cannot be created first by another user."""
+
+    def _run(self, cert_tmp_path="", mocks=None):
+        return run_bash_function(
+            BASE_SOURCES,
+            'cert_createTmpDir && echo "${cert_tmp_path}"',
+            {**IGNORE_LOGGER, **(mocks or {})},
+            {"cert_tmp_path": cert_tmp_path},
+        )
+
+    def test_default_is_a_new_directory_with_a_random_name(self):
+        first, second = self._run(), self._run()
+        try:
+            assert_success(first)
+            assert_success(second)
+            first_dir = Path(first.stdout.strip())
+            second_dir = Path(second.stdout.strip())
+            assert first_dir != second_dir
+            for directory in (first_dir, second_dir):
+                assert directory.name.startswith("wazuh-certificates.")
+                assert directory.parent == Path("/tmp")
+                assert directory.is_dir() and not directory.is_symlink()
+                assert directory.stat().st_uid == os.getuid()
+                assert directory.stat().st_mode & 0o777 == 0o700
+                assert not any(directory.iterdir())
+        finally:
+            for result in (first, second):
+                if result.stdout.strip().startswith("/tmp/wazuh-certificates."):
+                    shutil.rmtree(result.stdout.strip(), ignore_errors=True)
+
+    def test_default_does_not_use_a_precreated_fixed_directory(self):
+        fixed = Path("/tmp/wazuh-certificates")
+        if fixed.exists() or fixed.is_symlink():
+            pytest.skip("/tmp/wazuh-certificates already exists on this host")
+        fixed.mkdir(mode=0o777)
+        (fixed / "admin-key.pem").touch()
+        result = self._run()
+        try:
+            assert_success(result)
+            assert Path(result.stdout.strip()) != fixed
+        finally:
+            shutil.rmtree(fixed, ignore_errors=True)
+            if result.stdout.strip().startswith("/tmp/wazuh-certificates."):
+                shutil.rmtree(result.stdout.strip(), ignore_errors=True)
+
+    def test_given_path_is_created(self, tmp_path):
+        target = tmp_path / "parent" / "certs"
+        result = self._run(str(target) + "/")
+        assert_success(result)
+        assert result.stdout.strip() == str(target)
+        assert target.is_dir()
+        assert target.stat().st_mode & 0o777 == 0o700
+
+    def test_given_empty_directory_of_this_user_is_used(self, tmp_path):
+        target = tmp_path / "certs"
+        target.mkdir(mode=0o755)
+        result = self._run(str(target))
+        assert_success(result)
+        assert target.stat().st_mode & 0o777 == 0o700
+
+    def test_fail_given_directory_not_empty(self, tmp_path):
+        target = tmp_path / "certs"
+        target.mkdir()
+        (target / "admin-key.pem").touch()
+        assert_failure(self._run(str(target)))
+
+    def test_fail_given_directory_of_another_user(self, tmp_path):
+        target = tmp_path / "certs"
+        target.mkdir()
+        result = self._run(str(target), {"stat": "echo 12345"})
+        assert_failure(result)
+
+    def test_fail_given_path_is_a_file(self, tmp_path):
+        target = tmp_path / "certs"
+        target.touch()
+        assert_failure(self._run(str(target)))
+
+    def test_fail_given_path_is_a_symlink(self, tmp_path):
+        real = tmp_path / "real"
+        real.mkdir()
+        link = tmp_path / "certs"
+        link.symlink_to(real)
+        assert_failure(self._run(str(link)))
+        assert_failure(self._run(str(link) + "//"))
+
+
+class TestCertConvertCRLFtoLF:
+    """The config file is converted through a new temporary file, not a fixed path in /tmp."""
+
+    def test_success_converts_crlf(self, tmp_path):
+        config = tmp_path / "config.yml"
+        config.write_bytes(b"nodes:\r\n  indexer:\r\n")
+        result = run_bash_function(
+            BASE_SOURCES, f'cert_convertCRLFtoLF "{config}"', IGNORE_LOGGER, {"TMPDIR": str(tmp_path)}
+        )
+        assert_success(result)
+        assert config.read_bytes() == b"nodes:\n  indexer:\n"
+        assert [f.name for f in tmp_path.iterdir()] == ["config.yml"]
+
+    def test_does_not_follow_a_precreated_symlink(self, tmp_path):
+        fixed = Path("/tmp/wazuh-install-files")
+        if fixed.exists() or fixed.is_symlink():
+            pytest.skip("/tmp/wazuh-install-files already exists on this host")
+        victim = tmp_path / "victim"
+        victim.write_text("original")
+        config = tmp_path / "config.yml"
+        config.write_text("nodes:\n")
+        fixed.mkdir(mode=0o777)
+        (fixed / "new_config.yml").symlink_to(victim)
+        try:
+            result = run_bash_function(BASE_SOURCES, f'cert_convertCRLFtoLF "{config}"', IGNORE_LOGGER)
+            assert_success(result)
+            assert victim.read_text() == "original"
+            assert config.read_text() == "nodes:\n"
+            assert (fixed / "new_config.yml").is_symlink()
+        finally:
+            shutil.rmtree(fixed, ignore_errors=True)
 
 
 class TestCertCheckOpenSSL:

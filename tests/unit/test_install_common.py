@@ -4,16 +4,22 @@ Unit tests for install_functions/installCommon.sh
 Covers: installCommon_getConfig, installCommon_installPrerequisites,
         installCommon_startService, installCommon_placeFromTar,
         installCommon_placeCredentials, installCommon_createPasswords,
-        installCommon_scanDependencies
+        installCommon_scanDependencies, installCommon_extractConfig,
+        installCommon_createCertificates
 """
 
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from tests.unit.conftest import assert_failure, assert_success, run_bash_function
 
 INSTALL_COMMON = "install_functions/installCommon.sh"
 COMMON = "common_functions/common.sh"
 COMMON_VARS = "common_functions/commonVariables.sh"
+CERT = "cert_tool/certFunctions.sh"
 BASE_SOURCES = [COMMON_VARS, COMMON, INSTALL_COMMON]
 
 IGNORE_LOGGER = {"common_logger": "true"}
@@ -425,6 +431,94 @@ class TestInstallCommonPlaceFromTar:
         result, destination = self._run(tmp_path, existing="another-ca")
         assert_failure(result)
         assert destination.read_text() == "another-ca"
+
+
+class TestInstallCommonExtractConfig:
+    """config.yml is extracted to a new directory, not to a fixed path in /tmp."""
+
+    def _tar(self, tmp_path):
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        (staging / "config.yml").write_text("nodes:\n")
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        return tar
+
+    def _run(self, tar):
+        return run_bash_function(
+            BASE_SOURCES,
+            'installCommon_extractConfig && echo "${install_tmp_path}" && echo "${config_file}"',
+            IGNORE_LOGGER,
+            {"tar_file": str(tar), "debug": ""},
+        )
+
+    def test_success_extracts_to_a_new_directory(self, tmp_path):
+        result = self._run(self._tar(tmp_path))
+        install_tmp_path, config_file = (result.stdout.strip().splitlines() + ["", ""])[:2]
+        try:
+            assert_success(result)
+            directory = Path(install_tmp_path)
+            assert directory.name.startswith("wazuh-install-files.")
+            assert directory.parent == Path("/tmp")
+            assert directory.stat().st_mode & 0o077 == 0
+            assert config_file == f"{install_tmp_path}/wazuh-install-files/config.yml"
+            assert Path(config_file).read_text() == "nodes:\n"
+        finally:
+            if install_tmp_path.startswith("/tmp/wazuh-install-files."):
+                shutil.rmtree(install_tmp_path, ignore_errors=True)
+
+    def test_does_not_use_a_precreated_fixed_directory(self, tmp_path):
+        fixed = Path("/tmp/wazuh-install-files")
+        if fixed.exists() or fixed.is_symlink():
+            pytest.skip("/tmp/wazuh-install-files already exists on this host")
+        fixed.mkdir(mode=0o777)
+        (fixed / "config.yml").write_text("attacker")
+        result = self._run(self._tar(tmp_path))
+        install_tmp_path = (result.stdout.strip().splitlines() + [""])[0]
+        try:
+            assert_success(result)
+            assert not result.stdout.strip().endswith("/tmp/wazuh-install-files/config.yml")
+            assert (fixed / "config.yml").read_text() == "attacker"
+        finally:
+            shutil.rmtree(fixed, ignore_errors=True)
+            if install_tmp_path.startswith("/tmp/wazuh-install-files."):
+                shutil.rmtree(install_tmp_path, ignore_errors=True)
+
+    def test_fail_without_config_in_tar(self, tmp_path):
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        (staging / "clusterkey").write_text("key")
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        assert_failure(self._run(tar))
+
+
+class TestInstallCommonCreateCertificates:
+    """The certificates of -g are created in a new directory, not in /tmp/wazuh-certificates."""
+
+    def test_success_uses_a_new_directory_and_removes_it(self, tmp_path):
+        record = tmp_path / "cert_tmp_path"
+        mocks = {
+            **IGNORE_LOGGER,
+            "cert_readConfig": "true",
+            "cert_checkListenerReachability": "true",
+            "cert_checkRootCA": "true",
+            "cert_generateAdmincertificate": f'echo "${{cert_tmp_path}}" > "{record}"; touch "${{cert_tmp_path}}/admin-key.pem"',
+            "cert_generateIndexercertificates": "true",
+            "cert_generateManagercertificates": "true",
+            "cert_generateDashboardcertificates": "true",
+            "cert_cleanFiles": "true",
+            "cert_verifyRemotedcertificates": "true",
+            "mv": "true",
+        }
+        result = run_bash_function(
+            [*BASE_SOURCES, CERT], "installCommon_createCertificates", mocks, {"debug": ""}
+        )
+        assert_success(result)
+        used = Path(record.read_text().strip())
+        assert used.name.startswith("wazuh-certificates.")
+        assert used.parent == Path("/tmp")
+        assert not used.exists()
 
 
 class TestInstallCommonCreatePasswords:

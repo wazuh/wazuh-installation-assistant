@@ -227,7 +227,7 @@ The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.
 | `-wd`, `--wazuh-dashboard-certificates` | Creates the Wazuh dashboard certificates. |
 | `-wi`, `--wazuh-indexer-certificates` | Creates the Wazuh indexer certificates. |
 | `-wm`, `--wazuh-manager-certificates` | Creates the Wazuh manager certificates. |
-| `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb |
+| `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Uses this directory to create the certificates, instead of a new one with a random name in `/tmp`. The directory must not exist, or must be an empty directory owned by root. Symbolic links are not allowed. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb |
 
 ### Root CA
 

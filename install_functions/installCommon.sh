@@ -69,12 +69,8 @@ function installCommon_createCertificates() {
 
     cert_checkListenerReachability
 
-    if [ -d /tmp/wazuh-certificates/ ]; then
-        eval "rm -rf /tmp/wazuh-certificates/ ${debug}"
-    fi
-    eval "mkdir /tmp/wazuh-certificates/ ${debug}"
-
-    cert_tmp_path="/tmp/wazuh-certificates/"
+    cert_tmp_path=""
+    cert_createTmpDir
 
     cert_checkRootCA "create"
     cert_generateAdmincertificate
@@ -82,9 +78,9 @@ function installCommon_createCertificates() {
     cert_generateManagercertificates
     cert_generateDashboardcertificates
     cert_cleanFiles
-    eval "chmod 400 /tmp/wazuh-certificates/* ${debug}"
-    eval "mv /tmp/wazuh-certificates/* /tmp/wazuh-install-files ${debug}"
-    eval "rm -rf /tmp/wazuh-certificates/ ${debug}"
+    eval "chmod 400 ${cert_tmp_path}/* ${debug}"
+    eval "mv ${cert_tmp_path}/* /tmp/wazuh-install-files ${debug}"
+    eval "rm -rf ${cert_tmp_path} ${debug}"
     cert_verifyRemotedcertificates "/tmp/wazuh-install-files"
 
 }
@@ -245,7 +241,9 @@ function installCommon_createInstallFiles() {
         eval "rm -rf /tmp/wazuh-install-files ${debug}"
     fi
 
-    if eval "mkdir /tmp/wazuh-install-files ${debug}"; then
+    # mkdir fails if another user creates the directory first. The mode is the one the
+    # directory has in the tar.
+    if eval "mkdir -m 755 /tmp/wazuh-install-files ${debug}"; then
         common_logger "Generating configuration files."
 
         if [ -n "${configurations}" ]; then
@@ -398,7 +396,14 @@ function installCommon_extractConfig() {
         common_logger -e "There is no config.yml file in ${tar_file}."
         exit 1
     fi
-    eval "tar -xf ${tar_file} -C /tmp wazuh-install-files/config.yml ${debug}"
+    # A new directory with a random name, so no other user can create it or change
+    # config.yml before it is read.
+    if ! install_tmp_path="$(mktemp -d /tmp/wazuh-install-files.XXXXXXXXXX)"; then
+        common_logger -e "Could not create a temporary directory to extract config.yml."
+        exit 1
+    fi
+    eval "tar -xf ${tar_file} -C ${install_tmp_path} wazuh-install-files/config.yml ${debug}"
+    config_file="${install_tmp_path}/wazuh-install-files/config.yml"
 
 }
 

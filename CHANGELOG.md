@@ -37,6 +37,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1110](https://github.com/wazuh/wazuh-installation-assistant/issues/1110) | Start the OVA and AMI integration tests from PR labels |
 | [#1092](https://github.com/wazuh/wazuh-installation-assistant/issues/1092) | Say how to share the CA when the credentials library creates a new one |
 | [#1093](https://github.com/wazuh/wazuh-installation-assistant/issues/1093) | Print the real dashboard addresses and the exact command that reads the admin password in the install summary, and log it |
 | [#1091](https://github.com/wazuh/wazuh-installation-assistant/issues/1091) | Write credentials.env values unquoted when they need no quoting, and describe the user of each key in its header |
@@ -102,6 +103,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1113](https://github.com/wazuh/wazuh-installation-assistant/issues/1113) | Fix the final messages of the offline download and link the offline installation guide of the assistant's own version |
 | [#1108](https://github.com/wazuh/wazuh-installation-assistant/issues/1108) | Update the offline installation guide: no `-g` or `wazuh-install-files.tar` for all-in-one, `--agent-san` for distributed, dependency lists and dashboard password |
 | [#1049](https://github.com/wazuh/wazuh-installation-assistant/issues/1049) | Warn when wazuh-certs-tool.sh creates a new root CA, and document how to add a Wazuh manager worker to an existing deployment with its root CA |
 | [#1070](https://github.com/wazuh/wazuh-installation-assistant/issues/1070) | Fix the stale CI workflow file names and the integration test matrix in the test reference docs |
@@ -110,6 +112,7 @@
 | [#1062](https://github.com/wazuh/wazuh-installation-assistant/issues/1062) | Fix the global.db path, the incomplete Wazuh indexer restore, and a wrong dashboard menu name in the upgrade and backup guides |
 | [#1068](https://github.com/wazuh/wazuh-installation-assistant/issues/1068) | Fix unclosed code fence and stale build artifact names in the generate-artifacts-manually guide and the glossary |
 | [#1060](https://github.com/wazuh/wazuh-installation-assistant/issues/1060) | Fix broken code blocks in the documentation |
+| [#1086](https://github.com/wazuh/wazuh-installation-assistant/pull/1086) | wazuh-certs-tool.sh and the distributed install no longer use fixed temporary directories in /tmp that another local user can create first |
 | [#6125](https://github.com/wazuh/internal-devel-requests/issues/6125) | wazuh-certs-tool.sh no longer relaxes generated private key permissions to world-readable |
 | [#1023](https://github.com/wazuh/wazuh-installation-assistant/issues/1023) | Check the Wazuh manager keystore writes in the passwords tool and the installation assistant, and stop before the new password reaches the Wazuh indexer when a write fails |
 | [#999](https://github.com/wazuh/wazuh-installation-assistant/issues/999) | Write both keystore keys for the wazuh-manager user, guard the manager restart with the service state, restart the services after the new passwords reach the Wazuh indexer, and document the multi-node procedure |

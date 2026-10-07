@@ -325,7 +325,6 @@ function main() {
 
     if [ -z "${configurations}" ] && [ -z "${AIO}" ] && [ -z "${download}" ]; then
         installCommon_extractConfig
-        config_file="/tmp/wazuh-install-files/config.yml"
         cert_readConfig
     fi
 
@@ -431,9 +430,12 @@ function main() {
 
 # -------------------------------------------------------------------
 
+    if [ -n "${install_tmp_path}" ]; then
+        eval "rm -rf ${install_tmp_path} ${debug}"
+    fi
+
     if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
         installCommon_removeDownloadPackagesDirectory
-        eval "rm -rf /tmp/wazuh-install-files ${debug}"
         common_logger "Installation finished."
     elif [ -n "${start_indexer_cluster}" ]; then
         common_logger "Wazuh indexer cluster started."
