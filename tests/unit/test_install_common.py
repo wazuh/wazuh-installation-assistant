@@ -777,3 +777,36 @@ class TestInstallCommonGetGPGKeyFingerprint:
         )
         assert_success(result)
         assert result.stdout.strip() == WAZUH_FINGERPRINT
+
+
+class TestInstallCommonGetPackages:
+    """Tests for installCommon_getPackages with the packages of the offline bundle.
+
+    Every package of the components to install is checked before any of them is installed.
+    """
+
+    PACKAGES = [
+        "wazuh-indexer-5.0.0-1.x86_64.rpm",
+        "wazuh-manager-5.0.0-1.x86_64.rpm",
+        "wazuh-dashboard-5.0.0-1.x86_64.rpm",
+    ]
+
+    def _run(self, tmp_path, packages):
+        for package in packages:
+            (tmp_path / package).touch()
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_rollBack": "true",
+            "installCommon_downloadComponent": "true",
+            "installCommon_verifyPackageSignature": 'echo "checked $(basename $1)"',
+        }
+        env = {"AIO": "1", "offline_install": "1", "offline_packages_path": str(tmp_path), "sys_type": "yum"}
+        return run_bash_function(BASE_SOURCES, "installCommon_getPackages", mocks, env)
+
+    def test_success_checks_every_aio_package(self, tmp_path):
+        result = self._run(tmp_path, self.PACKAGES)
+        assert_success(result)
+        assert result.stdout.split("\n")[:3] == [f"checked {p}" for p in self.PACKAGES]
+
+    def test_fail_missing_package(self, tmp_path):
+        assert_failure(self._run(tmp_path, self.PACKAGES[:2]))

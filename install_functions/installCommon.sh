@@ -49,10 +49,6 @@ function installCommon_aptInstall() {
         installer="${offline_packages_path}/${package_name}"
     fi
 
-    if [[ "${installer}" == *.deb ]]; then
-        installCommon_verifyPackageSignature "${installer}"
-    fi
-
     # Build the installation command
     command="DEBIAN_FRONTEND=noninteractive apt-get install ${installer} -y -q"
 
@@ -902,6 +898,47 @@ function installCommon_removeDownloadPackagesDirectory() {
 
 }
 
+# Downloads the packages of the components to install, or finds them in the offline bundle,
+# and checks all their signatures before any of them is installed.
+function installCommon_getPackages() {
+
+    components=()
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ]; then
+        components+=("wazuh_indexer")
+    fi
+    if [ -n "${AIO}" ] || [ -n "${wazuh}" ]; then
+        components+=("wazuh_manager")
+    fi
+    if [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
+        components+=("wazuh_dashboard")
+    fi
+
+    if [ -n "${offline_install}" ]; then
+        packages_dir="${offline_packages_path}"
+    else
+        packages_dir="${base_path}/${download_packages_directory}"
+    fi
+    if [ "${sys_type}" == "yum" ]; then
+        package_extension="rpm"
+    else
+        package_extension="deb"
+    fi
+
+    for component in "${components[@]}"; do
+        installCommon_downloadComponent "${component}"
+    done
+    for component in "${components[@]}"; do
+        package_file=$(ls "${packages_dir}/${component//_/-}"*."${package_extension}" 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "The ${component//_/ } package was not found in ${packages_dir}."
+            installCommon_rollBack
+            exit 1
+        fi
+        installCommon_verifyPackageSignature "${package_file}"
+    done
+
+}
+
 # Checks that a downloaded Wazuh package is signed with the Wazuh key before installing it.
 # Unsigned packages only pass with --skip-signature-check, which needs -d.
 function installCommon_verifyPackageSignature() {
@@ -1100,9 +1137,6 @@ function installCommon_yumInstall() {
         else
             command="yum install ${installer} -y"
         fi
-    fi
-    if [[ "${installer}" == *.rpm ]]; then
-        installCommon_verifyPackageSignature "${installer}"
     fi
     common_checkYumLock
 

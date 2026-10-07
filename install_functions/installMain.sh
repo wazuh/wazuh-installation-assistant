@@ -338,17 +338,22 @@ function main() {
         installCommon_removeWIADependencies
     fi
 
+# -------------- Packages ------------------------------------------
+
+    # Every package is downloaded and its signature checked before any of them is installed.
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+        installCommon_getPackages
+    fi
+
 # -------------- Wazuh indexer case -------------------------------
 
     if [ -n "${indexer}" ]; then
         common_logger "--- Wazuh indexer ---"
-        installCommon_downloadComponent "wazuh_indexer"
         installCommon_placeCredentials "${indexer_credential_keys[@]}"
         indexer_copyCertificates
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
-        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
     fi
 
@@ -363,14 +368,12 @@ function main() {
 
     if [ -n "${dashboard}" ]; then
         common_logger "--- Wazuh dashboard ----"
-        installCommon_downloadComponent "wazuh_dashboard"
         installCommon_placeCredentials "${dashboard_credential_keys[@]}"
         dashboard_copyCertificates
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
         dashboard_initialize
-        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
     fi
@@ -379,7 +382,6 @@ function main() {
 
     if [ -n "${wazuh}" ]; then
         common_logger "--- Wazuh manager ---"
-        installCommon_downloadComponent "wazuh_manager"
         installCommon_placeCredentials "${manager_credential_keys[@]}"
         manager_copyCertificates
         manager_install
@@ -396,22 +398,18 @@ function main() {
     if [ -n "${AIO}" ]; then
 
         common_logger "--- Wazuh indexer ---"
-        installCommon_downloadComponent "wazuh_indexer"
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_startCluster
         common_logger "--- Wazuh manager ---"
-        installCommon_downloadComponent "wazuh_manager"
         manager_setRemotedSans
         manager_install
         installCommon_startService "wazuh-manager"
         common_logger "--- Wazuh dashboard ---"
-        installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install
         installCommon_startService "wazuh-dashboard"
         dashboard_initialize
-        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
     fi
@@ -434,6 +432,7 @@ function main() {
 # -------------------------------------------------------------------
 
     if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+        installCommon_removeDownloadPackagesDirectory
         eval "rm -rf /tmp/wazuh-install-files ${debug}"
         common_logger "Installation finished."
     elif [ -n "${start_indexer_cluster}" ]; then
