@@ -347,12 +347,22 @@ class TestCertGenerateRootCA:
         assert f"ca_dir:{tmp_path}/ca" in result.stdout
         assert f"Generating the root certificate in {tmp_path}/ca." in result.stdout
 
+    def test_warns_that_a_new_root_ca_does_not_match_an_existing_deployment(self, tmp_path):
+        # Issue #1049: a node added to an existing deployment from a host without
+        # its root CA would silently get a new, incompatible one.
+        result = self._run(tmp_path)
+        assert_success(result)
+        assert f"LOG:-w There is no root CA in {tmp_path}/ca, so a new one is created." in result.stdout
+        assert "do not chain to the root CA of any existing deployment" in result.stdout
+        assert "WAZUH_CA_DIR" in result.stdout
+
     def test_success_reuses_an_existing_root_ca(self, tmp_path):
         (tmp_path / "ca").mkdir()
         (tmp_path / "ca" / "root-ca.pem").touch()
         result = self._run(tmp_path)
         assert_success(result)
         assert f"Using the existing root CA in {tmp_path}/ca." in result.stdout
+        assert "LOG:-w" not in result.stdout
 
     def test_fail_when_the_library_fails(self, tmp_path):
         result = self._run(tmp_path, ensure="return 1")

@@ -46,7 +46,7 @@ yum install coreutils diffutils hostname iproute openssl procps-ng util-linux
 
 ```bash
 apt install gnupg apt-transport-https
-curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+curl -fsS https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
 ```
@@ -55,7 +55,7 @@ To use `pre-release` packages instead, run the following commands:
 
 ```bash
 apt install gnupg apt-transport-https
-curl -s https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+curl -fsS https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
 ```
@@ -93,56 +93,56 @@ yum -y install wazuh-indexer
 #### DEB amd64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_amd64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_amd64.deb
 apt -y install ./wazuh-indexer_5.0.0_amd64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-<STAGE>_amd64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-<STAGE>_amd64.deb
 apt -y install ./wazuh-indexer_5.0.0-<STAGE>_amd64.deb
 ```
 
 #### DEB arm64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_arm64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_arm64.deb
 apt -y install ./wazuh-indexer_5.0.0_arm64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-<STAGE>_arm64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-<STAGE>_arm64.deb
 apt -y install ./wazuh-indexer_5.0.0-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.x86_64.rpm
+curl -fsSO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.x86_64.rpm
 yum -y install ./wazuh-indexer-5.0.0.x86_64.rpm
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0-<STAGE>.x86_64.rpm
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0-<STAGE>.x86_64.rpm
 yum -y install ./wazuh-indexer-5.0.0-<STAGE>.x86_64.rpm
 ```
 
 #### RPM aarch64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.aarch64.rpm
+curl -fsSO https://packages.wazuh.com/production/5.x/yum/wazuh-indexer-5.0.0.aarch64.rpm
 yum -y install ./wazuh-indexer-5.0.0.aarch64.rpm
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0-<STAGE>.aarch64.rpm
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-indexer-5.0.0-<STAGE>.aarch64.rpm
 yum -y install ./wazuh-indexer-5.0.0-<STAGE>.aarch64.rpm
 ```
 
@@ -206,7 +206,7 @@ Run the Wazuh indexer `indexer-security-init.sh` script. It loads the security c
 
 ### Testing the cluster installation
 
-When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`grep WAZUH_INDEXER_ADMIN_PASSWORD /etc/wazuh/credentials.env`). The value is quoted in the file; the quotes are not part of the password.
+When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-`).
 
   1. Run the following command to confirm that the installation is successful.
 
@@ -249,7 +249,7 @@ Install and configure the Wazuh manager following step-by-step instructions. The
 
 ```bash
 apt install gnupg apt-transport-https
-curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+curl -fsS https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
 ```
@@ -258,7 +258,7 @@ To use `pre-release` packages instead, run the following commands:
 
 ```bash
 apt install gnupg apt-transport-https
-curl -s https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+curl -fsS https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
 ```
@@ -296,56 +296,56 @@ yum -y install wazuh-manager
 #### DEB amd64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_amd64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_amd64.deb
 apt -y install ./wazuh-manager_5.0.0_amd64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-<STAGE>_amd64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-<STAGE>_amd64.deb
 apt -y install ./wazuh-manager_5.0.0-<STAGE>_amd64.deb
 ```
 
 #### DEB arm64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_arm64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_arm64.deb
 apt -y install ./wazuh-manager_5.0.0_arm64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-<STAGE>_arm64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-<STAGE>_arm64.deb
 apt -y install ./wazuh-manager_5.0.0-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.x86_64.rpm
+curl -fsSO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.x86_64.rpm
 yum -y install ./wazuh-manager-5.0.0.x86_64.rpm
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0-<STAGE>.x86_64.rpm
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0-<STAGE>.x86_64.rpm
 yum -y install ./wazuh-manager-5.0.0-<STAGE>.x86_64.rpm
 ```
 
 #### RPM aarch64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.aarch64.rpm
+curl -fsSO https://packages.wazuh.com/production/5.x/yum/wazuh-manager-5.0.0.aarch64.rpm
 yum -y install ./wazuh-manager-5.0.0.aarch64.rpm
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
 yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
 ```
 
@@ -414,7 +414,7 @@ yum install libcap openssl diffutils util-linux
 
 ```bash
 apt install gnupg apt-transport-https
-curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+curl -fsS https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
 ```
@@ -423,7 +423,7 @@ To use `pre-release` packages instead, run the following commands:
 
 ```bash
 apt install gnupg apt-transport-https
-curl -s https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
+curl -fsS https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
 ```
@@ -461,56 +461,56 @@ yum -y install wazuh-dashboard
 #### DEB amd64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_amd64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_amd64.deb
 apt -y install ./wazuh-dashboard_5.0.0_amd64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-<STAGE>_amd64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-<STAGE>_amd64.deb
 apt -y install ./wazuh-dashboard_5.0.0-<STAGE>_amd64.deb
 ```
 
 #### DEB arm64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_arm64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_arm64.deb
 apt -y install ./wazuh-dashboard_5.0.0_arm64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-<STAGE>_arm64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-<STAGE>_arm64.deb
 apt -y install ./wazuh-dashboard_5.0.0-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.x86_64.rpm
+curl -fsSO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.x86_64.rpm
 yum -y install ./wazuh-dashboard-5.0.0.x86_64.rpm
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0-<STAGE>.x86_64.rpm
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0-<STAGE>.x86_64.rpm
 yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.x86_64.rpm
 ```
 
 #### RPM aarch64
 
 ```bash
-curl -sO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.aarch64.rpm
+curl -fsSO https://packages.wazuh.com/production/5.x/yum/wazuh-dashboard-5.0.0.aarch64.rpm
 yum -y install ./wazuh-dashboard-5.0.0.aarch64.rpm
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -sO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/yum/wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
 yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
 ```
 
@@ -575,7 +575,7 @@ When you access the Wazuh dashboard for the first time, the browser shows a warn
 Agents register with an enrollment token. Create it on this host, replacing `<MANAGER_ADDRESS>` with the address the agents use to reach the Wazuh manager. It must be one of the addresses of `remoted.pem`:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <MANAGER_ADDRESS>
+sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <MANAGER_ADDRESS>
 ```
 
 Then install the agent with the token. For example, on a Debian-based endpoint:
@@ -583,6 +583,15 @@ Then install the agent with the token. For example, on a Debian-based endpoint:
 ```bash
 sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='<AGENT_NAME>' dpkg -i wazuh-agent_*.deb
 ```
+
+The package does not start the agent. Start it and enable it at boot:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now wazuh-agent
+```
+
+To check the enrollment, look for `Token bootstrap: enrollment succeeded` in `/var/ossec/logs/ossec.log` on the endpoint. The agent then shows as `active` in the Wazuh server API (`GET /agents`) and in the Wazuh dashboard.
 
 See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
 

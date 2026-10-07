@@ -104,21 +104,27 @@ Perform the following steps to restore the Wazuh indexer files on the new server
 2. Restore the Wazuh indexer configuration files and change the file permissions and ownership accordingly:
 
     ```bash
+    cp -r etc/wazuh-indexer/certs/. /etc/wazuh-indexer/certs/
     cp etc/wazuh-indexer/jvm.options /etc/wazuh-indexer/jvm.options
-    cp -r etc/wazuh-indexer/jvm.options.d/ /etc/wazuh-indexer/jvm.options.d/
+    cp -r etc/wazuh-indexer/jvm.options.d/. /etc/wazuh-indexer/jvm.options.d/
     cp etc/wazuh-indexer/log4j2.properties /etc/wazuh-indexer/log4j2.properties
+    cp etc/wazuh-indexer/opensearch.yml /etc/wazuh-indexer/opensearch.yml
     cp etc/wazuh-indexer/opensearch.keystore /etc/wazuh-indexer/opensearch.keystore
-    cp -r etc/wazuh-indexer/opensearch-observability/ /etc/wazuh-indexer/opensearch-observability/
-    cp -r etc/wazuh-indexer/wazuh-indexer-reports-scheduler/ /etc/wazuh-indexer/wazuh-indexer-reports-scheduler/
-    cp -r etc/wazuh-indexer/wazuh-indexer-notifications/ /etc/wazuh-indexer/wazuh-indexer-notifications/
-    cp -r etc/wazuh-indexer/wazuh-indexer-notifications-core/ /etc/wazuh-indexer/wazuh-indexer-notifications-core/
+    cp -r etc/wazuh-indexer/opensearch-observability/. /etc/wazuh-indexer/opensearch-observability/
+    cp -r etc/wazuh-indexer/opensearch-security/. /etc/wazuh-indexer/opensearch-security/
+    cp -r etc/wazuh-indexer/wazuh-indexer-reports-scheduler/. /etc/wazuh-indexer/wazuh-indexer-reports-scheduler/
+    cp -r etc/wazuh-indexer/wazuh-indexer-notifications/. /etc/wazuh-indexer/wazuh-indexer-notifications/
+    cp -r etc/wazuh-indexer/wazuh-indexer-notifications-core/. /etc/wazuh-indexer/wazuh-indexer-notifications-core/
     cp usr/lib/sysctl.d/wazuh-indexer.conf /usr/lib/sysctl.d/wazuh-indexer.conf
 
+    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs/
     chown wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/jvm.options
     chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/jvm.options.d
     chown wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/log4j2.properties
+    chown wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/opensearch.yml
     chown wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/opensearch.keystore
     chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/opensearch-observability/
+    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/opensearch-security/
     chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-reports-scheduler/
     chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-notifications/
     chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-notifications-core/
@@ -156,7 +162,7 @@ The following components should be included in your Wazuh manager backup strateg
   - Manager certificates and keys
   - Root CA certificates
 
-- **Global database**: `/var/wazuh-manager/var/db/global.db`
+- **Global database**: `/var/wazuh-manager/queue/db/global.db`
   - Agent information (registration, metadata)
   - Agent group assignments
   - Group membership data
@@ -198,7 +204,7 @@ sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
 
 # Backup global database (use SQLite backup for consistency)
 sudo mkdir -p $BACKUP_DIR/db
-sudo sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
+sudo sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 
 # Set proper permissions
 sudo chown -R $(whoami):$(whoami) $BACKUP_DIR
@@ -220,7 +226,7 @@ sudo systemctl stop wazuh-manager
 sudo tar -czf $BACKUP_DIR/wazuh-manager-backup.tar.gz \
     -C /var/wazuh-manager \
     etc/ \
-    var/db/global.db
+    queue/db/global.db
 
 # Start the Wazuh manager
 sudo systemctl start wazuh-manager
@@ -249,7 +255,7 @@ sudo cp /var/wazuh-manager/etc/client.keys wazuh-client-keys-$(date +%Y%m%d).bac
 **Global database only:**
 
 ```bash
-sudo sqlite3 /var/wazuh-manager/var/db/global.db ".backup 'wazuh-global-db-$(date +%Y%m%d).db'"
+sudo sqlite3 /var/wazuh-manager/queue/db/global.db ".backup 'wazuh-global-db-$(date +%Y%m%d).db'"
 ```
 
 #### Backup Verification
@@ -288,7 +294,7 @@ mkdir -p $BACKUP_DIR/db
 
 # Perform backup
 tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
-sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
+sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 
 # Verify backup
 if tar -tzf $BACKUP_DIR/wazuh-etc.tar.gz > /dev/null 2>&1 && \
@@ -334,7 +340,7 @@ sudo systemctl stop wazuh-manager
 
 ```bash
 sudo mv /var/wazuh-manager/etc /var/wazuh-manager/etc.old.$(date +%Y%m%d)
-sudo mv /var/wazuh-manager/var/db/global.db /var/wazuh-manager/var/db/global.db.old.$(date +%Y%m%d)
+sudo mv /var/wazuh-manager/queue/db/global.db /var/wazuh-manager/queue/db/global.db.old.$(date +%Y%m%d)
 ```
 
 **Step 3: Restore from backup**
@@ -344,14 +350,14 @@ sudo mv /var/wazuh-manager/var/db/global.db /var/wazuh-manager/var/db/global.db.
 sudo tar -xzf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager
 
 # Restore global database
-sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/var/db/global.db
+sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
 ```
 
 **Step 4: Set proper permissions**
 
 ```bash
 sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/var/db
+sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
 sudo chmod 640 /var/wazuh-manager/etc/client.keys
 sudo chmod 500 /var/wazuh-manager/etc/certs
 sudo chmod 400 /var/wazuh-manager/etc/certs/*
@@ -370,7 +376,7 @@ sudo systemctl start wazuh-manager
 sudo systemctl status wazuh-manager
 
 # Check database integrity
-sudo sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
+sudo sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check"
 
 # Check logs for errors
 sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log
@@ -401,9 +407,9 @@ sudo systemctl start wazuh-manager
 
 ```bash
 sudo systemctl stop wazuh-manager
-sudo cp wazuh-global-db-YYYYMMDD.db /var/wazuh-manager/var/db/global.db
-sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/var/db/global.db
-sudo chmod 640 /var/wazuh-manager/var/db/global.db
+sudo cp wazuh-global-db-YYYYMMDD.db /var/wazuh-manager/queue/db/global.db
+sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
+sudo chmod 640 /var/wazuh-manager/queue/db/global.db
 sudo systemctl start wazuh-manager
 ```
 
@@ -437,7 +443,7 @@ sudo mkdir -p $BACKUP_DIR/db
 
 # Full backup of master node
 sudo tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /var/wazuh-manager etc/
-sudo sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
+sudo sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 ```
 
 #### Worker Node Backup
@@ -523,7 +529,7 @@ $backup_folder
 mkdir -p "$backup_folder/saved_objects"
 ```
 
-> Note: if multitenancy is used, exportthe saved objects of each tenant repeating the following steps, consider separating in directories by tenant.
+> Note: if multitenancy is used, export the saved objects of each tenant repeating the following steps, consider separating in directories by tenant.
 
 3.2. Open **Dashboard management** > **Dashboards Management** > **Saved objects**.
 
@@ -576,7 +582,7 @@ cd $backup_destination_folder
 cp etc/wazuh-dashboard/opensearch_dashboards.yml /etc/wazuh-dashboard/opensearch_dashboards.yml
 cp etc/wazuh-dashboard/node.options /etc/wazuh-dashboard/node.options
 cp etc/wazuh-dashboard/opensearch_dashboards.keystore /etc/wazuh-dashboard/opensearch_dashboards.keystore
-cp -r etc/wazuh-dashboard/certs/ /etc/wazuh-dashboard/certs/
+cp -r etc/wazuh-dashboard/certs/. /etc/wazuh-dashboard/certs/
 chown wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/opensearch_dashboards.yml
 chown wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/node.options
 chown wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/opensearch_dashboards.keystore

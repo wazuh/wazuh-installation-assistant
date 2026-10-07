@@ -397,7 +397,7 @@ class TestManagerInstall:
 
 ## CI integration
 
-Tests run automatically on every PR via [`.github/workflows/check_unit_tests.yaml`](../../.github/workflows/check_unit_tests.yaml):
+Tests run automatically on every PR via [`.github/workflows/5_check_unit_tests.yaml`](../../.github/workflows/5_check_unit_tests.yaml):
 
 - Triggered on `ready_for_review` and `synchronize` events (non-draft PRs only).
 - Runs `hatch run dev:test-cov` and posts a bot comment with results and coverage.

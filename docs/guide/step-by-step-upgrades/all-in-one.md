@@ -189,7 +189,7 @@ Before upgrading, ensure you:
 
 1. Review release notes for breaking changes and new features
 2. Verify system meets requirements for the new version
-3. Create a backup following the [backup procedures](backup-restore.md#manager-backup-and-restore)
+3. Create a backup following the [backup procedures](../backup-and-restore.md#manager-backup-procedures)
 4. Plan maintenance window for the upgrade
 5. Notify relevant stakeholders
 
@@ -204,7 +204,7 @@ mkdir -p $BACKUP_DIR/db
 
 # Backup configuration and database
 tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
-sqlite3 /var/wazuh-manager/var/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
+sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 
 # Verify backup integrity
 tar -tzf $BACKUP_DIR/wazuh-etc.tar.gz > /dev/null && echo "Backup successful"
@@ -250,7 +250,7 @@ systemctl status wazuh-manager
 tail -50 /var/wazuh-manager/logs/wazuh-manager.log
 
 # Check database integrity
-sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
+sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check"
 ```
 
 ## Wazuh Dashboard
@@ -261,7 +261,7 @@ Before upgrading, ensure you:
 
 1. Review release notes for breaking changes and new features
 2. Verify system meets requirements for the new version
-3. Create a backup following the [backup procedures](./backup-restore.md)
+3. Create a backup following the [backup procedures](../backup-and-restore.md)
 
 ### Upgrading the Wazuh dashboard
 
@@ -281,7 +281,7 @@ service wazuh-dashboard stop
 
 2. Backup
 
-It is recommended to take a backup before proceding the upgrade. See [backup](./backup-restore.md).
+It is recommended to take a backup before proceeding the upgrade. See [backup](../backup-and-restore.md).
 
 Backup the `/etc/wazuh-dashboard/opensearch_dashboards.yml` file to save your settings at least, this could be required to redefine the configuration changes. Create a copy of the file using the following command:
 
@@ -356,7 +356,7 @@ uiSettings.overrides.defaultRoute: /app/wz-home
 
 6. Import the saved objects customizations exported while preparing the upgrade if required.
 
-- Navigate to **Dashboard management** > **Dashboard Management** > **Saved objects** on the Wazuh dashboard.
+- Navigate to **Dashboard management** > **Dashboards Management** > **Saved objects** on the Wazuh dashboard.
 - Click **Import**, add the ndjson file and click **Import**.
 
 > **Note:**

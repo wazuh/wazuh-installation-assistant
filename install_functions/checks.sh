@@ -384,7 +384,7 @@ function checks_tarPasswords() {
 
     credentials=$(tar -xOf "${tar_file}" wazuh-install-files/credentials.env 2>/dev/null)
     for key in "$@"; do
-        value=$(sed -n "s/^${key}=\"\(.*\)\"$/\1/p" <<< "${credentials}" | tail -n 1)
+        value=$(sed -nE "s/^${key}=\"?([^\"]*)\"?$/\1/p" <<< "${credentials}" | tail -n 1)
         if [ -z "${value}" ]; then
             common_logger -e "There is no ${key} in the credentials.env file of ${tar_file}."
             exit 1
