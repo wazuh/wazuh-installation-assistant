@@ -48,7 +48,7 @@ To change a specific user's password, reading the new one from the standard inpu
 bash wazuh-passwords-tool-5.0.0.sh -u <USER> -p
 ```
 
-`<USER>` is a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh API user (`wazuh`, `wazuh-wui`). The Wazuh API passwords are changed with `rbac_control`, so no admin credentials are needed. Without `-p`, a random password is generated.
+`<USER>` is a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh API user (`wazuh`, `wazuh-internal-client`). The Wazuh API passwords are changed with `rbac_control`, so no admin credentials are needed. Without `-p`, a random password is generated.
 
 The tool never prints a password. Generated passwords are saved in `/etc/wazuh/credentials.env` (mode `0600`), the same file the Wazuh packages use.
 
@@ -64,7 +64,7 @@ A deployment installed step by step does not need the Wazuh installation assista
     /usr/share/wazuh-indexer/tools/wazuh-passwords-tool.sh -u <USER> -p
     ```
 
-- **Wazuh server API users** (`wazuh`, `wazuh-wui`): on the master node, run `rbac_control`. Every node keeps its own `rbac.db` and the cluster does not synchronize it, so repeat the change on any node that may become the master:
+- **Wazuh server API users** (`wazuh`, `wazuh-internal-client`): on the master node, run `rbac_control`. Every node keeps its own `rbac.db` and the cluster does not synchronize it, so repeat the change on any node that may become the master:
 
     ```bash
     /var/wazuh-manager/bin/rbac_control change-password
@@ -72,7 +72,7 @@ A deployment installed step by step does not need the Wazuh installation assista
 
 - **The nodes that use the changed password** keep the previous one in their keystores until you update them and restart the service:
   - After changing `wazuh-manager`, on every Wazuh manager node, as described in [Update the Wazuh manager nodes](../ref/getting-started/usage.md#update-the-wazuh-manager-nodes).
-  - After changing `kibanaserver` or `wazuh-wui`, on every Wazuh dashboard node (keystore entries `opensearch.password` and `wazuh_core.hosts.default.password`), as described in [Update the Wazuh dashboard nodes](../ref/getting-started/usage.md#update-the-wazuh-dashboard-nodes).
+  - After changing `kibanaserver` or `wazuh-internal-client`, on every Wazuh dashboard node (keystore entries `opensearch.password` and `wazuh_core.hosts.default.password`), as described in [Update the Wazuh dashboard nodes](../ref/getting-started/usage.md#update-the-wazuh-dashboard-nodes).
 
 ## Least privilege
 

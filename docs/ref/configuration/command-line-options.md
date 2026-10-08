@@ -58,7 +58,7 @@ The `wazuh-passwords-tool-5.0.0.sh` script provides the following options for ma
 | Options | Purpose |
 | --------- | --------- |
 | `-a\|--change-all` | Changes the passwords of all the Wazuh indexer and Wazuh server API users installed on the host. The new passwords are generated and saved in `/etc/wazuh/credentials.env`. |
-| `-u\|--user <USER>` | Indicates the name of the user whose password will be changed: a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh server API user (`wazuh`, `wazuh-wui`). If `-p\|--password` is not used, a random password is generated and saved in `/etc/wazuh/credentials.env`. |
+| `-u\|--user <USER>` | Indicates the name of the user whose password will be changed: a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh server API user (`wazuh`, `wazuh-internal-client`). If `-p\|--password` is not used, a random password is generated and saved in `/etc/wazuh/credentials.env`. |
 | `-p\|--password` | Reads the new password from the standard input. Takes no value. Must be used with option `-u\|--user <USER>`. For example: `printf '%s\n' "$NEW_PASSWORD" \| sudo bash wazuh-passwords-tool-5.0.0.sh -u admin -p`. |
 | `-v\|--verbose` | Shows the complete script execution output. |
 | `-h\|--help` | Shows help. |

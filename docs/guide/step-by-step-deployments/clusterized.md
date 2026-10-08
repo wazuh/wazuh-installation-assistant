@@ -110,14 +110,14 @@ On the first Wazuh indexer node, before installing its package:
     # To change a password: wazuh-passwords-tool.sh -u <user>
     # A host only holds the keys of the components installed on it.
     #
-    #                 User           Key                                  Used for
+    #                 User                   Key                                  Used for
     # Logins:
-    #                 admin          WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API
-    #                 wazuh          WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)
+    #                 admin                  WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API
+    #                 wazuh                  WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)
     # Service accounts the components connect with, not logins:
-    #                 kibanaserver   WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer
-    #                 wazuh-manager  WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer
-    #                 wazuh-wui      WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API
+    #                 kibanaserver           WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer
+    #                 wazuh-manager          WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer
+    #                 wazuh-internal-client  WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API
     #
     WAZUH_INDEXER_ADMIN_PASSWORD=$(wazuh_generate_password)
     WAZUH_INDEXER_KIBANASERVER_PASSWORD=$(wazuh_generate_password)
@@ -870,7 +870,7 @@ yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
       - `username`: The user that runs the requests.
       - `run_as`: Leave the value the package wrote.
 
-    These settings are already in the file: change their values, and do not paste the block over it. Do not set a `password` in this file. The package stored the `wazuh-wui` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it.
+    These settings are already in the file: change their values, and do not paste the block over it. Do not set a `password` in this file. The package stored the `wazuh-internal-client` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it.
 
     ```yaml
     server.host: 0.0.0.0
@@ -881,7 +881,7 @@ yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
       default:
         url: https://<MASTER_NODE_IP>
         port: 55000
-        username: wazuh-wui
+        username: wazuh-internal-client
     ```
 
 ### Starting the Wazuh dashboard service
@@ -956,9 +956,9 @@ Once every component is installed and running, the passwords are stored in the k
     curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cluster/health?pretty
     curl -k -u kibanaserver https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_plugins/_security/authinfo?pretty
     curl -k -u wazuh-manager https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_plugins/_security/authinfo?pretty
-    # Wazuh server API on the master node: wazuh (WAZUH_MANAGER_API_PASSWORD) and wazuh-wui (WAZUH_MANAGER_WUI_PASSWORD)
+    # Wazuh server API on the master node: wazuh (WAZUH_MANAGER_API_PASSWORD) and wazuh-internal-client (WAZUH_MANAGER_WUI_PASSWORD)
     curl -k -u wazuh -X POST "https://<MASTER_NODE_IP>:55000/security/user/authenticate?raw=true"
-    curl -k -u wazuh-wui -X POST "https://<MASTER_NODE_IP>:55000/security/user/authenticate?raw=true"
+    curl -k -u wazuh-internal-client -X POST "https://<MASTER_NODE_IP>:55000/security/user/authenticate?raw=true"
     ```
 
     Log in to the Wazuh dashboard, and check that it reaches the Wazuh server API: the dashboard shows an error of the Wazuh server API connection otherwise.
