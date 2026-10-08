@@ -197,16 +197,29 @@ class TestManagerCopyCertificates:
     def test_success_places_pairs_with_package_names(self, tmp_path):
         result, cert_path = self._run(
             tmp_path,
-            ["wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem"],
+            [
+                "wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem",
+                "wazuh-master-apid.pem", "wazuh-master-apid-key.pem",
+            ],
         )
         assert_success(result)
         assert (cert_path / "indexer-connector.pem").read_text() == "wazuh-master.pem"
         assert (cert_path / "indexer-connector-key.pem").read_text() == "wazuh-master-key.pem"
         assert (cert_path / "remoted.pem").read_text() == "wazuh-master-remoted.pem"
         assert (cert_path / "remoted-key.pem").read_text() == "wazuh-master-remoted-key.pem"
+        assert (cert_path / "apid.pem").read_text() == "wazuh-master-apid.pem"
+        assert (cert_path / "apid-key.pem").read_text() == "wazuh-master-apid-key.pem"
 
     def test_fail_when_remoted_pair_missing(self, tmp_path):
         result, _ = self._run(tmp_path, ["wazuh-master.pem", "wazuh-master-key.pem"])
+        assert_failure(result)
+
+    def test_fail_when_apid_pair_missing(self, tmp_path):
+        """A tar from a certs tool that predates the Server API pair."""
+        result, _ = self._run(
+            tmp_path,
+            ["wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem"],
+        )
         assert_failure(result)
 
 
@@ -235,3 +248,40 @@ class TestManagerSetRemotedSans:
         result = self._run(["203.0.113.7", "wazuh.example.com", "10.0.0.5"])
         assert_success(result)
         assert "SANS=IP:203.0.113.7,DNS:wazuh.example.com,IP:10.0.0.5,DNS:host.example.com" in result.stdout
+
+
+class TestManagerSetApidSans:
+    """Tests for manager_setApidSans.
+
+    On an all-in-one install the manager package issues apid.pem. Addresses given with
+    -ap|--api-san reach it through WAZUH_MANAGER_APID_CERT_SANS, together with the host
+    addresses, because the variable replaces the discovered list.
+    """
+
+    def _run(self, api_san):
+        return run_bash_function(
+            [*BASE_SOURCES, "cert_tool/certFunctions.sh"],
+            'manager_setApidSans; echo "SANS=${WAZUH_MANAGER_APID_CERT_SANS-unset}"',
+            {**IGNORE_LOGGER, "cert_hostAddresses": "printf '%s\\n' 10.0.0.5 host.example.com"},
+            {"api_san": f"({' '.join(api_san)})"},
+        )
+
+    def test_success_unset_without_api_san(self):
+        result = self._run([])
+        assert_success(result)
+        assert "SANS=unset" in result.stdout
+
+    def test_success_types_and_dedups_addresses(self):
+        result = self._run(["203.0.113.7", "api.example.com", "10.0.0.5"])
+        assert_success(result)
+        assert "SANS=IP:203.0.113.7,DNS:api.example.com,IP:10.0.0.5,DNS:host.example.com" in result.stdout
+
+    def test_success_does_not_touch_the_remoted_list(self):
+        result = run_bash_function(
+            [*BASE_SOURCES, "cert_tool/certFunctions.sh"],
+            'manager_setApidSans; echo "REMOTED=${WAZUH_MANAGER_REMOTED_CERT_SANS-unset}"',
+            {**IGNORE_LOGGER, "cert_hostAddresses": "true"},
+            {"api_san": "(api.example.com)"},
+        )
+        assert_success(result)
+        assert "REMOTED=unset" in result.stdout

@@ -442,6 +442,9 @@ function cert_generateManagercertificates() {
             # addresses given with --agent-san, which every node shares. Only this leaf
             # gets them; the manager certificate above keeps the node SAN alone.
             cert_generateRemotedcertificate "${manager_name}" "${manager_san[@]}" "${agent_san[@]}"
+            # Server API leaf: the node SAN, loopback and the addresses given with
+            # --api-san. It never takes the --agent-san addresses.
+            cert_generateApidcertificate "${manager_name}" "${manager_san[@]}" localhost 127.0.0.1 ::1 "${api_san[@]}"
         done
     else
         return 1
@@ -657,13 +660,28 @@ function cert_generateRemotedcertificate() {
 
 }
 
-# Every listener leaf must chain to the CA written next to it; a failure here means
-# remoted would serve a bundle agents cannot validate. Takes the directory holding
-# the issued certificates as first argument.
+# Issues the Server API pair of a manager node: <name>-apid.pem and <name>-apid-key.pem,
+# deployed as etc/certs/apid.pem and apid-key.pem. Same profile as the agent listener
+# leaf, with its own SAN list. Takes the node name followed by the SAN entries.
+function cert_generateApidcertificate() {
+
+    local node_name="$1"
+    shift
+
+    common_logger -d "Creating the Server API certificate for ${node_name}."
+
+    cert_generateServerLeaf "${node_name}-apid" "${node_name}" "$@"
+
+}
+
+# Every listener leaf, agent listener and Server API, must chain to the CA written next
+# to it; a failure here means the manager would serve a bundle its clients cannot
+# validate. Takes the directory holding the issued certificates as first argument.
 function cert_verifyRemotedcertificates() {
 
     local certs_dir="${1}"
     local manager_name
+    local leaf
 
     if [ ${#manager_node_names[@]} -eq 0 ]; then
         return 0
@@ -675,11 +693,13 @@ function cert_verifyRemotedcertificates() {
     fi
 
     for manager_name in "${manager_node_names[@]}"; do
-        if ! openssl verify -CAfile "${certs_dir}/root-ca.pem" "${certs_dir}/${manager_name}-remoted.pem" > /dev/null 2>&1; then
-            common_logger -e "The certificate ${certs_dir}/${manager_name}-remoted.pem does not verify against ${certs_dir}/root-ca.pem."
-            exit 1
-        fi
-        common_logger -d "Verified ${manager_name}-remoted.pem against root-ca.pem."
+        for leaf in "${manager_name}-remoted" "${manager_name}-apid"; do
+            if ! openssl verify -CAfile "${certs_dir}/root-ca.pem" "${certs_dir}/${leaf}.pem" > /dev/null 2>&1; then
+                common_logger -e "The certificate ${certs_dir}/${leaf}.pem does not verify against ${certs_dir}/root-ca.pem."
+                exit 1
+            fi
+            common_logger -d "Verified ${leaf}.pem against root-ca.pem."
+        done
     done
 
 }
@@ -1110,7 +1130,7 @@ function cert_isIPv4() {
 function cert_isIPv6() {
 
     local ip="$1"
-    [[ ${ip} =~ ^(([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,7}:|:([0-9A-Fa-f]{1,4}:){1,7}|([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2}|([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3}|([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4}|([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:((:[0-9A-Fa-f]{1,4}){1,6})|::)$ ]]
+    [[ ${ip} =~ ^(([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,7}:|:([0-9A-Fa-f]{1,4}:){1,7}|([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2}|([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3}|([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4}|([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:((:[0-9A-Fa-f]{1,4}){1,6})|:(:[0-9A-Fa-f]{1,4}){1,7}|::)$ ]]
 
 }
 
@@ -1253,6 +1273,30 @@ function cert_validateAgentSan() {
     for san in "${agent_san[@]}"; do
         if ! cert_isIP "${san}" && ! cert_isDNS "${san}"; then
             common_logger -e "Invalid IP or DNS in -as|--agent-san: ${san}."
+            exit 1
+        fi
+    done
+
+}
+
+# Validates the addresses given with -ap|--api-san: the names API clients dial, such as
+# a published name or the address of a load balancer in front of the Server API.
+function cert_validateApiSan() {
+
+    local san
+
+    if [ "${#api_san[@]}" -eq 0 ]; then
+        return 0
+    fi
+
+    if [[ -z "${all}" && -z "${cmanager}" && -z "${AIO}" && -z "${configurations}" ]]; then
+        common_logger -e "The option -ap|--api-san must be used along with one of these options: -A, -wm in wazuh-certs-tool.sh, or -a, -g in wazuh-install.sh"
+        exit 1
+    fi
+
+    for san in "${api_san[@]}"; do
+        if ! cert_isIP "${san}" && ! cert_isDNS "${san}"; then
+            common_logger -e "Invalid IP or DNS in -ap|--api-san: ${san}."
             exit 1
         fi
     done

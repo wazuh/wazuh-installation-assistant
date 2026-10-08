@@ -4,6 +4,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1121](https://github.com/wazuh/wazuh-installation-assistant/issues/1121) | Issue the Server API certificate (`apid.pem`) from root-ca in wazuh-certs-tool, deploy it, and add the `-ap\|--api-san` option |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Publish the shared `wazuh-credentials.sh` library used by the component packages as a build artifact |
 | [#1027](https://github.com/wazuh/wazuh-installation-assistant/issues/1027) | Complete the agent listener certificate: SAN coverage, ip lists, public addresses, and a load balancer leaf |
 | [#1009](https://github.com/wazuh/wazuh-installation-assistant/issues/1009) | Issue the agent listener certificate from root-ca in wazuh-certs-tool and deploy it |
