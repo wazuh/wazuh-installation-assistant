@@ -181,6 +181,12 @@ class TestChecksArguments:
         )
         assert_success(result)
 
+    def test_fail_skip_signature_check_without_development(self):
+        assert_failure(self._run(env_vars={"skip_signature_check": "1", "wazuh": "1"}))
+
+    def test_success_skip_signature_check_with_development(self):
+        assert_success(self._run(env_vars={"skip_signature_check": "1", "development": "1", "wazuh": "1"}))
+
     def test_fail_uninstall_and_aio(self):
         assert_failure(self._run(env_vars={"uninstall": "1", "AIO": "1"}))
 
@@ -379,3 +385,20 @@ class TestChecksPreviousCertificate:
     def test_success_ignores_passwords_other_components_use(self, tmp_path):
         passwords = {"WAZUH_INDEXER_KIBANASERVER_PASSWORD": self.PASSWORD, "WAZUH_MANAGER_WUI_PASSWORD": self.PASSWORD}
         assert_success(self._run(self._tar(tmp_path, passwords=passwords), dashname="dashboard1"))
+
+
+# ---------------------------------------------------------------------------
+# checks_ArtifactURLs_format
+# ---------------------------------------------------------------------------
+
+class TestChecksArtifactURLsFormat:
+    def _run(self, tmp_path, url):
+        (tmp_path / "artifact_urls.yaml").write_text(f'wazuh_manager_x86_64_rpm: "{url}"\n')
+        env = {"base_path": str(tmp_path), "artifact_urls_file_name": "artifact_urls.yaml"}
+        return run_bash_function(BASE_SOURCES, "checks_ArtifactURLs_format", IGNORE_LOGGER, env)
+
+    def test_success_https(self, tmp_path):
+        assert_success(self._run(tmp_path, "https://example.com/wazuh-manager.rpm"))
+
+    def test_fail_http(self, tmp_path):
+        assert_failure(self._run(tmp_path, "http://example.com/wazuh-manager.rpm"))

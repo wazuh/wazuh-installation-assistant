@@ -30,6 +30,11 @@ function checks_arguments() {
         fi
     fi
 
+    if [ -n "${skip_signature_check}" ] && [ -z "${development}" ]; then
+        common_logger -e "The --skip-signature-check option must be used with -d|--development."
+        exit 1
+    fi
+
     # -------------- Offline installation ---------------------
 
     if [ -n "${offline_install}" ]; then
@@ -479,10 +484,10 @@ function checks_ArtifactURLs_format() {
         # Remove quotes and whitespace from value
         value=$(echo "$value" | tr -d '"' | xargs)
 
-        # Validate URL format (must start with http:// or https://)
-        if [[ ! "$value" =~ ^https?:// ]]; then
+        # Validate URL format (must start with https://)
+        if [[ ! "$value" =~ ^https:// ]]; then
             common_logger -e "Invalid URL format for key '${key}': ${value}"
-            common_logger -e "All values in ${artifact_urls_file_name} must be valid URLs starting with http:// or https://"
+            common_logger -e "All values in ${artifact_urls_file_name} must be valid URLs starting with https://"
             exit 1
         fi
     done < "$artifact_file"
