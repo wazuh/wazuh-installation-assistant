@@ -83,6 +83,8 @@ nodes:
       bash wazuh-install-5.0.0.sh --generate-config-files -as <address>
       ```
 
+      In the same way, add the address API clients use to reach the Server API with `-ap|--api-san <address>`, when it is not in the node fields. See [Name the address API clients dial](../../ref/getting-started/usage.md#name-the-address-api-clients-dial).
+
   4. Copy the `wazuh-install-files.tar` file and the `wazuh-install-5.0.0.sh` script to all the servers of the distributed deployment, including the Wazuh manager, the Wazuh indexer, and the Wazuh dashboard nodes. This can be done by using the `scp` utility.
 
       > [!NOTE]

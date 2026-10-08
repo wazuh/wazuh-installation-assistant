@@ -26,6 +26,13 @@ function getHelp() {
     echo -e "                it: a load balancer shared by a cluster, a published name, a NAT"
     echo -e "                address. Must be used along with one of these options: -a, -g"
     echo -e ""
+    echo -e "        -ap, --api-san <ip|dns>"
+    echo -e "                Adds an extra address to the subject alternative name of the Server"
+    echo -e "                API certificate of every Wazuh manager node. Repeat it for more than"
+    echo -e "                one. Use it for the address API clients dial when the host cannot know"
+    echo -e "                it: a load balancer, a published name, a NAT address."
+    echo -e "                Must be used along with one of these options: -a, -g"
+    echo -e ""
     echo -e "        -d [pre-release|local],  --development"
     echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0.sh."
     echo -e ""
@@ -83,6 +90,7 @@ function main() {
     fi
 
     declare -a agent_san=()
+    declare -a api_san=()
 
     while [ -n "${1}" ]
     do
@@ -98,6 +106,16 @@ function main() {
                     exit 1
                 else
                     agent_san+=("${2}")
+                    shift 2
+                fi
+                ;;
+            "-ap"|"--api-san")
+                if [[ -z "${2}" || "${2}" == -* ]]; then
+                    common_logger -e "Error on arguments. Probably missing <ip|dns> after -ap|--api-san"
+                    getHelp
+                    exit 1
+                else
+                    api_san+=("${2}")
                     shift 2
                 fi
                 ;;
@@ -230,6 +248,7 @@ function main() {
     common_checkInstalled
     checks_arguments
     cert_validateAgentSan
+    cert_validateApiSan
     check_dist
 
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
@@ -396,6 +415,7 @@ function main() {
         common_logger "--- Wazuh manager ---"
         installCommon_downloadComponent "wazuh_manager"
         manager_setRemotedSans
+        manager_setApidSans
         manager_install
         installCommon_startService "wazuh-manager"
         common_logger "--- Wazuh dashboard ---"

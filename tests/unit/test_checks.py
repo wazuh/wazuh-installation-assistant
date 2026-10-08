@@ -317,6 +317,7 @@ class TestChecksPreviousCertificate:
         "config.yml", "root-ca.pem", "admin.pem", "admin-key.pem",
         "indexer1.pem", "indexer1-key.pem", "dashboard1.pem", "dashboard1-key.pem",
         "wazuh1.pem", "wazuh1-key.pem", "wazuh1-remoted.pem", "wazuh1-remoted-key.pem",
+        "wazuh1-apid.pem", "wazuh1-apid-key.pem",
     ]
 
     def _tar(self, tmp_path, files=None, passwords=None):
@@ -356,6 +357,10 @@ class TestChecksPreviousCertificate:
 
     def test_fail_manager_remoted_pair_missing(self, tmp_path):
         tar = self._tar(tmp_path, files=[f for f in self.FILES if f != "wazuh1-remoted.pem"])
+        assert_failure(self._run(tar, winame="wazuh1"))
+
+    def test_fail_manager_apid_pair_missing(self, tmp_path):
+        tar = self._tar(tmp_path, files=[f for f in self.FILES if f != "wazuh1-apid-key.pem"])
         assert_failure(self._run(tar, winame="wazuh1"))
 
     def test_fail_password_missing(self, tmp_path):
