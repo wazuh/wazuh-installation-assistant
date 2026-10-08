@@ -133,7 +133,7 @@ function passwords_changeApiUserPassword() {
 
     passwords_saveCredential "${user}" "${new_password}" "${generated}"
 
-    if [ "${user}" == "wazuh-wui" ]; then
+    if [ "${user}" == "wazuh-internal-client" ]; then
         if [ -n "${dashboard_installed}" ]; then
             if ! passwords_updateDashboardKeystore "wazuh_core.hosts.default.password" "${new_password}"; then
                 return 1
@@ -309,7 +309,7 @@ function passwords_getEnvKey() {
         "kibanaserver") echo "WAZUH_INDEXER_KIBANASERVER_PASSWORD" ;;
         "wazuh-manager") echo "WAZUH_INDEXER_MANAGER_PASSWORD" ;;
         "wazuh") echo "WAZUH_MANAGER_API_PASSWORD" ;;
-        "wazuh-wui") echo "WAZUH_MANAGER_WUI_PASSWORD" ;;
+        "wazuh-internal-client") echo "WAZUH_MANAGER_WUI_PASSWORD" ;;
         *) return 1 ;;
     esac
 

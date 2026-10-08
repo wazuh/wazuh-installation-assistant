@@ -91,7 +91,7 @@ The steps to perform the installation are as follows:
 
 A freshly completed installation has no default passwords: the passwords of the Wazuh indexer and Wazuh server API users are generated during the installation and saved in `/etc/wazuh/credentials.env`. To rotate them, for example if that file was exposed, the recommended procedure is to change all the passwords in a single command using the `--change-all` option of the passwords tool. See the [Change all default passwords](#change-all-default-passwords) section for details.
 
-This same command also rotates the Wazuh server API users (`wazuh` and `wazuh-wui`) on the host where the Wazuh manager is installed, so there is no need to change them separately. The new passwords are saved in `/etc/wazuh/credentials.env`, never printed.
+This same command also rotates the Wazuh server API users (`wazuh` and `wazuh-internal-client`) on the host where the Wazuh manager is installed, so there is no need to change them separately. The new passwords are saved in `/etc/wazuh/credentials.env`, never printed.
 
 After changing the passwords, remember to use the new `admin` password to log in to the Wazuh dashboard.
 
@@ -221,12 +221,13 @@ The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.
 | `-a`, `--admin-certificates` | Creates the admin certificates. |
 | `-A`, `--all` | Creates certificates specified in config.yml and admin certificates. If there is no root CA in the CA directory, a new one is created there. Includes the `load_balancer` entries when the section is present. |
 | `-as`, `--agent-san <ip\|dns>` | Adds an extra address to the subject alternative name of every agent listener certificate. Repeat it for more than one. Must be used along with `-A` or `-wm`. |
+| `-ap`, `--api-san <ip\|dns>` | Adds an extra address to the subject alternative name of every Server API certificate. Repeat it for more than one. Must be used along with `-A` or `-wm`. |
 | `-ca`, `--root-ca-certificates` | Creates the root CA in the CA directory, if it does not exist yet. |
 | `-lb`, `--load-balancer-certificates` | Creates the certificates of the `load_balancer` entries of config.yml. Only needed by a proxy that terminates TLS. |
 | `-v`, `--verbose` | Enables verbose mode. |
 | `-wd`, `--wazuh-dashboard-certificates` | Creates the Wazuh dashboard certificates. |
 | `-wi`, `--wazuh-indexer-certificates` | Creates the Wazuh indexer certificates. |
-| `-wm`, `--wazuh-manager-certificates` | Creates the Wazuh manager certificates. |
+| `-wm`, `--wazuh-manager-certificates` | Creates the Wazuh manager certificates, including the agent listener (`<name>-remoted.pem`) and Server API (`<name>-apid.pem`) pairs. |
 | `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Uses this directory to create the certificates, instead of a new one with a random name in `/tmp`. The directory must not exist, or must be an empty directory owned by root. Symbolic links are not allowed. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb |
 
 ### Root CA
@@ -381,6 +382,30 @@ address agents dial is one the host cannot see, such as a NAT or a cloud balance
 sudo bash wazuh-install-5.0.0.sh -a --agent-san wazuh.example.com
 ```
 
+#### Name the address API clients dial
+
+Each Wazuh manager node also gets the certificate of the Server API, `<node>-apid.pem` and
+`<node>-apid-key.pem`, deployed as `/var/wazuh-manager/etc/certs/apid.pem` and
+`apid-key.pem`. The Wazuh manager does not self-sign it: without this pair the Server API
+does not start. It has the same profile as the agent listener certificate, the leaf followed
+by the CA, and its own subject alternative name: the `ip` and `dns` entries of the node,
+`localhost`, `127.0.0.1` and `::1`. The `--agent-san` addresses are not added to it.
+
+When API clients reach the Server API at an address no single node owns, such as a published
+name or a load balancer, add it with `-ap`, `--api-san`, repeated once per value:
+
+```bash
+sudo bash wazuh-certs-tool-5.0.0.sh -A --api-san api.example.com --api-san 203.0.113.20
+```
+
+`wazuh-install-5.0.0.sh` takes the same option with `-a` and `-g`. On an all-in-one install
+the Wazuh manager package issues the certificate with the addresses of the host, and the
+option adds the ones the host cannot see:
+
+```bash
+sudo bash wazuh-install-5.0.0.sh -a --api-san api.example.com
+```
+
 #### Create the certificate of a TLS-terminating load balancer
 
 When a proxy terminates the agents' TLS session, it is the proxy's certificate that agents
@@ -428,6 +453,7 @@ To renew the certificates of a deployment, run the certs tool again on the node 
     | Wazuh indexer | `admin.pem`, `admin-key.pem` | `/etc/wazuh-indexer/certs/admin.pem`, `admin-key.pem` | `wazuh-indexer:wazuh-indexer`, `0400` |
     | Wazuh manager | `<node>.pem`, `<node>-key.pem` | `/var/wazuh-manager/etc/certs/indexer-connector.pem`, `indexer-connector-key.pem` | `root:wazuh-manager`, `0640` |
     | Wazuh manager | `<node>-remoted.pem`, `<node>-remoted-key.pem` | `/var/wazuh-manager/etc/certs/remoted.pem`, `remoted-key.pem` | `wazuh-manager:wazuh-manager`, `0640` |
+    | Wazuh manager | `<node>-apid.pem`, `<node>-apid-key.pem` | `/var/wazuh-manager/etc/certs/apid.pem`, `apid-key.pem` | `wazuh-manager:wazuh-manager`, `0640` |
     | Wazuh dashboard | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-dashboard/certs/dashboard.pem`, `dashboard-key.pem` | `wazuh-dashboard:wazuh-dashboard`, `0400` |
 
     For example, on a Wazuh indexer node, with the files of that node copied to the current directory:
@@ -461,7 +487,7 @@ Every Wazuh manager node of a cluster must serve an agent listener certificate s
           ip: "<new-node-ip>"
     ```
 
-3. Remove the `wazuh-certificates` directory of a previous run and create the Wazuh manager certificates. If the other Wazuh manager nodes were created with `-as|--agent-san`, pass the same addresses, so that the new node also answers on the address agents dial:
+3. Remove the `wazuh-certificates` directory of a previous run and create the Wazuh manager certificates. If the other Wazuh manager nodes were created with `-as|--agent-san` or `-ap|--api-san`, pass the same addresses, so that the new node also answers on the addresses agents and API clients dial:
 
     ```bash
     sudo rm -rf wazuh-certificates
@@ -470,10 +496,11 @@ Every Wazuh manager node of a cluster must serve an agent listener certificate s
 
     `-wm` only uses an existing root CA, never creates one. If it stops with `There is no valid root CA in …` or `… has no private key (root-ca.key)…`, you are not on the node that holds the root CA of the deployment: go back to step 1.
 
-4. Check that the agent listener certificate of the new node chains to the root CA of the deployment. The command must print `OK`:
+4. Check that the agent listener and Server API certificates of the new node chain to the root CA of the deployment. Each command must print `OK`:
 
     ```bash
     sudo openssl verify -CAfile /etc/wazuh/ca/root-ca.pem wazuh-certificates/worker-2-remoted.pem
+    sudo openssl verify -CAfile /etc/wazuh/ca/root-ca.pem wazuh-certificates/worker-2-apid.pem
     ```
 
 5. Copy the certificates of the new node to it and install it as the other Wazuh manager nodes, as in the Wazuh manager steps of the [step-by-step clusterized deployment](../../guide/step-by-step-deployments/clusterized.md#wazuh-manager). In the `<cluster>` block of the new node, use the `<key>` of the master node: a node with another key does not join the cluster. Do not run `--generate-config-files` again to add the node: it creates a new cluster key. Then remove the `wazuh-certificates` directory, and every copy of it: it holds private keys.
@@ -500,7 +527,9 @@ The tool manages the users of the Wazuh packages only:
 | `kibanaserver` | Wazuh indexer | `WAZUH_INDEXER_KIBANASERVER_PASSWORD` |
 | `wazuh-manager` | Wazuh indexer | `WAZUH_INDEXER_MANAGER_PASSWORD` |
 | `wazuh` | Wazuh server API | `WAZUH_MANAGER_API_PASSWORD` |
-| `wazuh-wui` | Wazuh server API | `WAZUH_MANAGER_WUI_PASSWORD` |
+| `wazuh-internal-client` | Wazuh server API | `WAZUH_MANAGER_WUI_PASSWORD` |
+
+`wazuh-internal-client` is the account the Wazuh dashboard uses to connect to the Wazuh server API. It is not a user to log into the Wazuh dashboard: log in with `admin`.
 
 The tool requires root privileges to run.
 
@@ -545,11 +574,11 @@ INFO: The new password of user kibanaserver was saved in /etc/wazuh/credentials.
 INFO: The new password of user wazuh-manager was saved in /etc/wazuh/credentials.env as WAZUH_INDEXER_MANAGER_PASSWORD.
 INFO: The password of the Wazuh API user wazuh was changed.
 INFO: The new password of user wazuh was saved in /etc/wazuh/credentials.env as WAZUH_MANAGER_API_PASSWORD.
-INFO: The password of the Wazuh API user wazuh-wui was changed.
-INFO: The new password of user wazuh-wui was saved in /etc/wazuh/credentials.env as WAZUH_MANAGER_WUI_PASSWORD.
+INFO: The password of the Wazuh API user wazuh-internal-client was changed.
+INFO: The new password of user wazuh-internal-client was saved in /etc/wazuh/credentials.env as WAZUH_MANAGER_WUI_PASSWORD.
 ```
 
-The tool updates the keystore of the Wazuh manager (`wazuh-manager` user) and the keystore of the Wazuh dashboard (`kibanaserver` and `wazuh-wui` users), and restarts both services once the new passwords have been applied, so the connectivity between components is preserved on the node where the tool runs.
+The tool updates the keystore of the Wazuh manager (`wazuh-manager` user) and the keystore of the Wazuh dashboard (`kibanaserver` and `wazuh-internal-client` users), and restarts both services once the new passwords have been applied, so the connectivity between components is preserved on the node where the tool runs.
 
 > [!NOTE]
 > In a distributed deployment, `-a` only changes the users of the components installed on the host where it runs. Run it on a Wazuh indexer node to change the Wazuh indexer users, and on the Wazuh manager master node to change the Wazuh server API users. Then update the other nodes as described in [Multi-node and distributed deployments](#multi-node-and-distributed-deployments).
@@ -577,7 +606,7 @@ Run the tool on the node given below for each user, then update the nodes of the
 | `kibanaserver` | a Wazuh indexer node | Wazuh dashboard: keystore entry `opensearch.password` | `wazuh-dashboard` |
 | `wazuh-manager` | a Wazuh indexer node | Wazuh manager (master and workers): keystore `-f indexer -k password` | `wazuh-manager` |
 | `wazuh` | the Wazuh manager master node | nothing | nothing |
-| `wazuh-wui` | the Wazuh manager master node | Wazuh dashboard: keystore entry `wazuh_core.hosts.default.password` | `wazuh-dashboard` |
+| `wazuh-internal-client` | the Wazuh manager master node | Wazuh dashboard: keystore entry `wazuh_core.hosts.default.password` | `wazuh-dashboard` |
 
 The Wazuh dashboard steps are needed even with a single Wazuh dashboard, when it is not on the node where the tool runs.
 
@@ -611,7 +640,7 @@ grep 'indexer is reachable' /var/wazuh-manager/logs/wazuh-manager.log | tail -1
 
 #### Update the Wazuh dashboard nodes
 
-After changing `kibanaserver` or `wazuh-wui`, on every Wazuh dashboard node. The keystore belongs to the `wazuh-dashboard` user, so write it as that user:
+After changing `kibanaserver` or `wazuh-internal-client`, on every Wazuh dashboard node. The keystore belongs to the `wazuh-dashboard` user, so write it as that user:
 
 ```bash
 echo '<KIBANASERVER_PASSWORD>' | runuser -u wazuh-dashboard -- /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore add opensearch.password --stdin --force
@@ -628,7 +657,7 @@ Only write the entry of the user that changed. After `-a`, write both and restar
 > curl -k -u admin https://<WAZUH_DASHBOARD_IP_ADDRESS>/api/status
 > ```
 >
-> A wrong `wazuh-wui` password shows as an error of the Wazuh server API connection in the Wazuh dashboard.
+> A wrong `wazuh-internal-client` password shows as an error of the Wazuh server API connection in the Wazuh dashboard.
 
 #### Pass the password without typing it
 
@@ -642,7 +671,7 @@ ssh <WAZUH_INDEXER_NODE> "sudo grep '^WAZUH_INDEXER_MANAGER_PASSWORD=' /etc/wazu
 #### Change all passwords in a distributed deployment
 
 1. On a Wazuh indexer node, run `-a`. It changes `admin`, `kibanaserver` and `wazuh-manager`.
-2. On the Wazuh manager master node, run `-a`. It changes `wazuh` and `wazuh-wui`.
+2. On the Wazuh manager master node, run `-a`. It changes `wazuh` and `wazuh-internal-client`.
 3. On every Wazuh manager node, update the keystore with the `WAZUH_INDEXER_MANAGER_PASSWORD` of the Wazuh indexer node, and restart the service.
 4. On every Wazuh dashboard node, write `opensearch.password` with the `WAZUH_INDEXER_KIBANASERVER_PASSWORD` of the Wazuh indexer node and `wazuh_core.hosts.default.password` with the `WAZUH_MANAGER_WUI_PASSWORD` of the master node, and restart the service once.
 
@@ -670,7 +699,7 @@ INFO: The password of the Wazuh indexer user admin was changed.
 INFO: WAZUH_INDEXER_ADMIN_PASSWORD was updated in /etc/wazuh/credentials.env.
 ```
 
-The tool only warns about what it cannot do on this host: after changing `wazuh-manager`, `kibanaserver` or `wazuh-wui`, it reminds you to update the keystore of the Wazuh manager or Wazuh dashboard nodes on other hosts.
+The tool only warns about what it cannot do on this host: after changing `wazuh-manager`, `kibanaserver` or `wazuh-internal-client`, it reminds you to update the keystore of the Wazuh manager or Wazuh dashboard nodes on other hosts.
 
 ### Change a Wazuh server API password
 
@@ -680,7 +709,7 @@ The Wazuh server API passwords are changed with `rbac_control change-password` o
 sudo ./wazuh-passwords-tool-5.0.0.sh -u <USER> [-p]
 ```
 
-Where `<USER>` is `wazuh` or `wazuh-wui`. `-p` works as for the Wazuh indexer users.
+Where `<USER>` is `wazuh` or `wazuh-internal-client`. `-p` works as for the Wazuh indexer users.
 
 The command output will be similar to the following:
 
@@ -688,4 +717,4 @@ The command output will be similar to the following:
 INFO: The password of the Wazuh API user wazuh was changed.
 ```
 
-When the user is `wazuh-wui` and the Wazuh dashboard is installed on the same host, the tool also writes the new password into the `wazuh_core.hosts.default.password` entry of the Wazuh dashboard keystore and restarts the Wazuh dashboard. Otherwise, update the Wazuh dashboard nodes as described in [Multi-node and distributed deployments](#multi-node-and-distributed-deployments).
+When the user is `wazuh-internal-client` and the Wazuh dashboard is installed on the same host, the tool also writes the new password into the `wazuh_core.hosts.default.password` entry of the Wazuh dashboard keystore and restarts the Wazuh dashboard. Otherwise, update the Wazuh dashboard nodes as described in [Multi-node and distributed deployments](#multi-node-and-distributed-deployments).

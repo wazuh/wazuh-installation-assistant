@@ -6,6 +6,7 @@ Covers: cert_cleanFiles, cert_setpermisions, cert_checkOpenSSL,
         cert_generateAdmincertificate,
         cert_generateIndexercertificates, cert_generateManagercertificates,
         cert_generateDashboardcertificates, cert_generateRemotedcertificateconfiguration,
+        cert_generateApidcertificate, cert_validateApiSan, cert_isIPv6,
         cert_verifyRemotedcertificates, cert_readConfig, cert_createTmpDir,
         cert_convertCRLFtoLF
 """
@@ -584,6 +585,7 @@ class TestCertGenerateManagercertificates:
         )
         assert_success(result)
         assert (tmp_path / "wazuh-master-remoted.pem").read_text() == "root-ca"
+        assert (tmp_path / "wazuh-master-apid.pem").read_text() == "root-ca"
 
 
 class TestCertGenerateRemotedcertificateRealOpenSSL:
@@ -651,6 +653,69 @@ class TestCertGenerateRemotedcertificateRealOpenSSL:
         self._issue(tmp_path, "wazuh-master", "1.1.1.1")
 
         assert not list(tmp_path.glob("*-remoted-ca"))
+
+
+class TestCertGenerateApidcertificateRealOpenSSL:
+    """The Server API leaf the manager package requires since it stopped self-signing it."""
+
+    @pytest.fixture
+    def issued(self, tmp_path):
+        env = {
+            "cert_tmp_path": str(tmp_path),
+            "rootcakey": make_ca(tmp_path),
+            "manager_node_names": "(wazuh-master)",
+            "manager_node_ip_1": "(10.0.1.11)",
+            "manager_node_dns_1": "(wazuh-api)",
+            "agent_san": "(agents.example.com)",
+            "api_san": "(api.example.com 203.0.113.20)",
+        }
+        assert_success(
+            run_bash_function(BASE_SOURCES, "cert_generateManagercertificates", IGNORE_LOGGER, env)
+        )
+        return tmp_path
+
+    def _san(self, cert):
+        return subprocess.run(
+            ["openssl", "x509", "-in", str(cert), "-noout", "-ext", "subjectAltName"],
+            check=True, capture_output=True, text=True,
+        ).stdout
+
+    def test_success_san_node_loopback_and_api_san(self, issued):
+        san = self._san(issued / "wazuh-master-apid.pem")
+        for entry in (
+            "IP Address:10.0.1.11", "DNS:wazuh-api", "DNS:wazuh-master", "DNS:localhost",
+            "IP Address:127.0.0.1", "IP Address:0:0:0:0:0:0:0:1",
+            "DNS:api.example.com", "IP Address:203.0.113.20",
+        ):
+            assert entry in san, san
+
+    def test_success_api_and_agent_san_do_not_mix(self, issued):
+        """Each listener only answers on the addresses its own clients dial."""
+        assert "agents.example.com" not in self._san(issued / "wazuh-master-apid.pem")
+        remoted = self._san(issued / "wazuh-master-remoted.pem")
+        assert "api.example.com" not in remoted
+        assert "localhost" not in remoted
+
+    def test_success_chain_and_verification(self, issued):
+        cert = issued / "wazuh-master-apid.pem"
+        assert cert.read_text().count("BEGIN CERTIFICATE") == 2
+        assert (issued / "wazuh-master-apid-key.pem").exists()
+        verify = subprocess.run(
+            ["openssl", "verify", "-purpose", "sslserver", "-CAfile", str(issued / "root-ca.pem"), str(cert)],
+            capture_output=True, text=True,
+        )
+        assert verify.returncode == 0, verify.stderr
+
+    def test_success_key_matches_certificate(self, issued):
+        def pubkey(*args):
+            return subprocess.run(args, check=True, capture_output=True, text=True).stdout
+
+        cert_key = pubkey("openssl", "x509", "-in", str(issued / "wazuh-master-apid.pem"), "-noout", "-pubkey")
+        key = pubkey("openssl", "pkey", "-in", str(issued / "wazuh-master-apid-key.pem"), "-pubout")
+        assert cert_key == key
+
+    def test_success_removes_the_temporary_ca_workspace(self, issued):
+        assert not list(issued.glob("*-ca"))
 
 
 class TestCertGenerateRemotedcertificateconfiguration:
@@ -770,6 +835,17 @@ class TestCertVerifyRemotedcertificates:
             {**IGNORE_LOGGER, "openssl": "false"},
             {"manager_node_names": "(wazuh-master)", "cert_tmp_path": str(tmp_path)},
         )
+        assert_failure(result)
+
+    def test_fail_apid_certificate_does_not_verify(self, tmp_path):
+        """The Server API leaf is checked too, not only the agent listener one."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            f"cert_verifyRemotedcertificates {tmp_path}",
+            {**IGNORE_LOGGER, "openssl": '[[ "${@: -1}" != *-apid.pem ]]'},
+            {"manager_node_names": "(wazuh-master)", "cert_tmp_path": str(tmp_path)},
+        )
+        # openssl only fails for the -apid leaf, so the remoted one alone would pass.
         assert_failure(result)
 
 
@@ -967,6 +1043,60 @@ class TestCertValidateAgentSan:
         assert_failure(self._run(["bad_host"]))
 
 
+class TestCertValidateApiSan:
+    """--api-san names an address API clients dial, such as a published name."""
+
+    def _run(self, san_values, modes=None):
+        env = {"api_san": "(" + " ".join(san_values) + ")"}
+        env.update(modes or {"all": "1"})
+        return run_bash_function(
+            BASE_SOURCES, "cert_validateApiSan", IGNORE_LOGGER, env
+        )
+
+    def test_success_no_values(self):
+        assert_success(
+            run_bash_function(
+                BASE_SOURCES,
+                "cert_validateApiSan",
+                IGNORE_LOGGER,
+                {"api_san": "()", "all": "", "cmanager": ""},
+            )
+        )
+
+    def test_success_dns_and_ip(self):
+        assert_success(self._run(["wazuh-api", "10.0.0.5", "api.example.com", "2001:db8::5"]))
+
+    def test_success_with_wm(self):
+        assert_success(self._run(["wazuh-api"], {"all": "", "cmanager": "1"}))
+
+    def test_success_with_installer_options(self):
+        assert_success(self._run(["wazuh-api"], {"all": "", "AIO": "1"}))
+        assert_success(self._run(["wazuh-api"], {"all": "", "configurations": "1"}))
+
+    def test_fail_without_a_manager_option(self):
+        assert_failure(self._run(["wazuh-api"], {"all": "", "cmanager": ""}))
+
+    def test_fail_invalid_value(self):
+        assert_failure(self._run(["bad_host"]))
+
+
+class TestCertIsIPv6:
+    """Loopback (::1) is always in the Server API certificate, like the package issues it."""
+
+    def _run(self, value):
+        return run_bash_function(
+            BASE_SOURCES, f'cert_isIPv6 "{value}"', IGNORE_LOGGER, {}
+        )
+
+    def test_success_valid_addresses(self):
+        for value in ("::1", "::ffff:a00:5", "2001:db8::1", "fe80::1", "::"):
+            assert_success(self._run(value))
+
+    def test_fail_not_an_address(self):
+        for value in (":::1", "::1:2:3:4:5:6:7:8", "::g", "10.0.0.1"):
+            assert_failure(self._run(value))
+
+
 class TestCertIsIPv4:
     """An address that reaches the SAN has to be one OpenSSL will accept."""
 
@@ -1081,6 +1211,7 @@ class TestCertExtensionMatrixRealOpenSSL:
             "dashboard_node_ip_1": "(10.0.2.11)",
             "dashboard_node_dns_1": "()",
             "agent_san": "()",
+            "api_san": "()",
         }
         call = (
             "cert_generateAdmincertificate && "
@@ -1103,6 +1234,7 @@ class TestCertExtensionMatrixRealOpenSSL:
             ("indexer-1", ["TLS Web Server Authentication", "TLS Web Client Authentication"]),
             ("manager-1", ["TLS Web Client Authentication"]),
             ("manager-1-remoted", ["TLS Web Server Authentication"]),
+            ("manager-1-apid", ["TLS Web Server Authentication"]),
             ("dashboard-1", ["TLS Web Server Authentication"]),
         ],
     )
@@ -1133,6 +1265,7 @@ class TestCertExtensionMatrixRealOpenSSL:
             # The Wazuh manager and dashboard packages use the other order.
             ("manager-1", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
             ("manager-1-remoted", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
+            ("manager-1-apid", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
             ("dashboard-1", "CN=dashboard-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
         ],
     )

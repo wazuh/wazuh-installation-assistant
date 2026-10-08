@@ -27,6 +27,14 @@ function getHelp() {
     echo -e "                owns, such as a load balancer shared by every node of a cluster."
     echo -e "                Must be used along with one of these options: -A, -wm"
     echo -e ""
+    echo -e "        -ap, --api-san <ip|dns>"
+    echo -e "                Adds an extra address to the subject alternative name of every"
+    echo -e "                Server API certificate, on top of the ip and dns entries of each"
+    echo -e "                manager node in config.yml and loopback. Repeat it for more than"
+    echo -e "                one. Use it for the address API clients dial, such as a published"
+    echo -e "                name or a load balancer in front of the Server API."
+    echo -e "                Must be used along with one of these options: -A, -wm"
+    echo -e ""
     echo -e "        -A, --all"
     echo -e "                Creates certificates specified in config.yml and admin certificates."
     echo -e "                If there is no root CA in the CA directory, a new one is created there."
@@ -53,7 +61,8 @@ function getHelp() {
     echo -e "        -wm,  --wazuh-manager-certificates"
     echo -e "                Creates the Wazuh manager certificates."
     echo -e "                Each manager node also gets <name>-remoted.pem and <name>-remoted-key.pem,"
-    echo -e "                the certificate of the agent listener (remoted and authd)."
+    echo -e "                the certificate of the agent listener (remoted and authd), and"
+    echo -e "                <name>-apid.pem and <name>-apid-key.pem, the certificate of the Server API."
     echo -e ""
     echo -e "        -tmp,  --cert_tmp_path </path/to/tmp_dir>"
     echo -e "                Uses this directory to create the certificates, instead of a new one in /tmp."
@@ -81,6 +90,7 @@ function main() {
     cert_checkOpenSSL
 
     declare -a agent_san=()
+    declare -a api_san=()
 
     if [ -n "${1}" ]; then
         while [ -n "${1}" ]
@@ -103,6 +113,16 @@ function main() {
                     exit 1
                 else
                     agent_san+=("${2}")
+                    shift 2
+                fi
+                ;;
+            "-ap"|"--api-san")
+                if [[ -z "${2}" || "${2}" == -* ]]; then
+                    common_logger -e "Error on arguments. Probably missing <ip|dns> after -ap|--api-san"
+                    getHelp
+                    exit 1
+                else
+                    api_san+=("${2}")
                     shift 2
                 fi
                 ;;
@@ -162,6 +182,7 @@ function main() {
         common_logger "Verbose logging redirected to ${logfile}"
 
         cert_validateAgentSan
+        cert_validateApiSan
 
         if [[ -d "${base_path}"/wazuh-certificates ]]; then
             if [ -n "$(ls -A "${base_path}"/wazuh-certificates)" ]; then

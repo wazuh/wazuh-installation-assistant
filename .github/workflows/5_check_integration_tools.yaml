@@ -634,7 +634,7 @@ jobs:
           echo "::add-mask::${OLD_ADMIN_PW}"
           echo "WAZUH_OLD_PASSWORD=${OLD_ADMIN_PW}" >> "$GITHUB_ENV"
           # The passwords tool reads the new password from the standard input with -p
-          for user in admin kibanaserver wazuh-manager wazuh wazuh-wui; do
+          for user in admin kibanaserver wazuh-manager wazuh wazuh-internal-client; do
             printf '%s\n' "$WAZUH_NEW_PASSWORD" | ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
               "sudo bash /tmp/wazuh-passwords-tool.sh -u ${user} -p"
           done
@@ -672,14 +672,14 @@ jobs:
           [ \"\$code\" = '200' ] || { echo 'ERROR: dashboard not accepting new credentials after 3 minutes'; exit 1; }
           echo 'wazuh-dashboard is ready'
 
-          echo 'Waiting for wazuh-manager API to accept wazuh-wui credentials...'
+          echo 'Waiting for wazuh-manager API to accept wazuh-internal-client credentials...'
           for i in \$(seq 1 \$RETRIES); do
-            code=\$(curl -sk -X POST -u \"wazuh-wui:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate')
+            code=\$(curl -sk -X POST -u \"wazuh-internal-client:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate')
             [ \"\$code\" = '200' ] && break
             echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
             sleep 10
           done
-          [ \"\$code\" = '200' ] || { echo 'ERROR: manager API not accepting wazuh-wui credentials after 3 minutes'; exit 1; }
+          [ \"\$code\" = '200' ] || { echo 'ERROR: manager API not accepting wazuh-internal-client credentials after 3 minutes'; exit 1; }
           echo 'wazuh-manager API is ready'
           "
 
