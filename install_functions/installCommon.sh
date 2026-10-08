@@ -327,11 +327,17 @@ function installCommon_downloadComponent() {
 
     # Create download directory if it doesn't exist
     if [ ! -d "${download_dir}" ]; then
-        eval "mkdir -p ${download_dir} ${debug}"
+        eval "mkdir -m 700 -p ${download_dir} ${debug}"
         if [ ! -d "${download_dir}" ]; then
             common_logger -e "Failed to create download directory: ${download_dir}"
             exit 1
         fi
+    fi
+
+    # Packages are checked before installing them, so no other user may be able to replace them in between
+    if [ -L "${download_dir}" ] || [ ! -O "${download_dir}" ] || [ -n "$(find "${download_dir}" -maxdepth 0 \( -perm -020 -o -perm -002 \))" ]; then
+        common_logger -e "The download directory ${download_dir} must belong to the current user and not be writable by others."
+        exit 1
     fi
 
     # Determine package type based on system

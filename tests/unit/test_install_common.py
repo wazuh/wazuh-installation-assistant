@@ -904,3 +904,35 @@ class TestInstallCommonGetPackages:
 
     def test_fail_missing_package(self, tmp_path):
         assert_failure(self._run(tmp_path, self.PACKAGES[:2]))
+
+
+class TestInstallCommonDownloadDirectory:
+    """installCommon_downloadComponent refuses a download directory that others can write to."""
+
+    def _run(self, tmp_path):
+        return run_bash_function(
+            BASE_SOURCES,
+            "installCommon_downloadComponent wazuh_manager",
+            {"common_logger": 'echo "$@"', "installCommon_rollBack": "true"},
+            {"base_path": str(tmp_path), "download_packages_directory": "pkgs", "sys_type": "none"},
+        )
+
+    def test_creates_private_directory(self, tmp_path):
+        result = self._run(tmp_path)
+        assert "must belong" not in result.stdout
+        assert (tmp_path / "pkgs").stat().st_mode & 0o777 == 0o700
+
+    @pytest.mark.parametrize("mode", [0o777, 0o775])
+    def test_fail_writable_by_others(self, tmp_path, mode):
+        (tmp_path / "pkgs").mkdir()
+        (tmp_path / "pkgs").chmod(mode)
+        result = self._run(tmp_path)
+        assert_failure(result)
+        assert "must belong" in result.stdout
+
+    def test_fail_symlink(self, tmp_path):
+        (tmp_path / "real").mkdir(mode=0o700)
+        (tmp_path / "pkgs").symlink_to(tmp_path / "real")
+        result = self._run(tmp_path)
+        assert_failure(result)
+        assert "must belong" in result.stdout
