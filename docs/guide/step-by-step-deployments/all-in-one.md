@@ -361,6 +361,8 @@ WAZUH_MANAGER_REMOTED_CERT_SANS='IP:<HOST_IP_ADDRESS>,IP:203.0.113.10,DNS:wazuh.
 
 The same applies when you install a downloaded package, for example `yum -y install ./wazuh-manager-5.0.0.x86_64.rpm`.
 
+The package also issues the certificate of the Server API, `apid.pem`, for the addresses it finds on the host plus `localhost`, `127.0.0.1` and `::1`. To add an address API clients dial, set `WAZUH_MANAGER_APID_CERT_SANS` the same way, for example `WAZUH_MANAGER_APID_CERT_SANS='IP:<HOST_IP_ADDRESS>,DNS:api.example.com'`. It is independent from `WAZUH_MANAGER_REMOTED_CERT_SANS`.
+
 ### Configuring the Wazuh manager
 
 There is nothing to configure. The package connects the Wazuh manager to the Wazuh indexer on `127.0.0.1`, with the certificates it issued and the password of its Wazuh indexer user, which it stored in its keystore.

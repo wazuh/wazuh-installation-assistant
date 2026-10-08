@@ -518,10 +518,12 @@ install -m 0640 wazuh-certificates/$NODE_NAME.pem /var/wazuh-manager/etc/certs/i
 install -m 0640 wazuh-certificates/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 install -m 0640 wazuh-certificates/$NODE_NAME-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem
 install -m 0640 wazuh-certificates/$NODE_NAME-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem
+install -m 0640 wazuh-certificates/$NODE_NAME-apid.pem /var/wazuh-manager/etc/certs/apid.pem
+install -m 0640 wazuh-certificates/$NODE_NAME-apid-key.pem /var/wazuh-manager/etc/certs/apid-key.pem
 rm -rf wazuh-certificates
 ```
 
-The package uses these files instead of issuing its own, copies `root-ca.pem` to `/var/wazuh-manager/etc/certs`, and gives each file its owner. `remoted.pem` is served to the agents by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515.
+The package uses these files instead of issuing its own, copies `root-ca.pem` to `/var/wazuh-manager/etc/certs`, and gives each file its owner. `remoted.pem` is served to the agents by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515. `apid.pem` is served by the Server API on port 55000.
 
 **Recommended action**: If no other Wazuh components will be installed on this node, remove the `wazuh-certificates.tar` file.
 

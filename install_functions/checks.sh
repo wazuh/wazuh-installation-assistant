@@ -357,7 +357,8 @@ function checks_previousCertificate() {
     fi
 
     if [ -n "${winame}" ]; then
-        checks_tarFiles "${winame}.pem" "${winame}-key.pem" "${winame}-remoted.pem" "${winame}-remoted-key.pem"
+        checks_tarFiles "${winame}.pem" "${winame}-key.pem" "${winame}-remoted.pem" "${winame}-remoted-key.pem" \
+            "${winame}-apid.pem" "${winame}-apid-key.pem"
         checks_tarPasswords "${manager_credential_keys[@]}"
     fi
 }

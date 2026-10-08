@@ -210,12 +210,13 @@ The certs-tool is used by running the previously downloaded `wazuh-certs-tool-5.
 | `-a`, `--admin-certificates` | Creates the admin certificates. |
 | `-A`, `--all` | Creates certificates specified in config.yml and admin certificates. If there is no root CA in the CA directory, a new one is created there. Includes the `load_balancer` entries when the section is present. |
 | `-as`, `--agent-san <ip\|dns>` | Adds an extra address to the subject alternative name of every agent listener certificate. Repeat it for more than one. Must be used along with `-A` or `-wm`. |
+| `-ap`, `--api-san <ip\|dns>` | Adds an extra address to the subject alternative name of every Server API certificate. Repeat it for more than one. Must be used along with `-A` or `-wm`. |
 | `-ca`, `--root-ca-certificates` | Creates the root CA in the CA directory, if it does not exist yet. |
 | `-lb`, `--load-balancer-certificates` | Creates the certificates of the `load_balancer` entries of config.yml. Only needed by a proxy that terminates TLS. |
 | `-v`, `--verbose` | Enables verbose mode. |
 | `-wd`, `--wazuh-dashboard-certificates` | Creates the Wazuh dashboard certificates. |
 | `-wi`, `--wazuh-indexer-certificates` | Creates the Wazuh indexer certificates. |
-| `-wm`, `--wazuh-manager-certificates` | Creates the Wazuh manager certificates. |
+| `-wm`, `--wazuh-manager-certificates` | Creates the Wazuh manager certificates, including the agent listener (`<name>-remoted.pem`) and Server API (`<name>-apid.pem`) pairs. |
 | `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Uses this directory to create the certificates, instead of a new one with a random name in `/tmp`. The directory must not exist, or must be an empty directory owned by root. Symbolic links are not allowed. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb |
 
 ### Root CA
@@ -370,6 +371,30 @@ address agents dial is one the host cannot see, such as a NAT or a cloud balance
 sudo bash wazuh-install-5.0.0.sh -a --agent-san wazuh.example.com
 ```
 
+#### Name the address API clients dial
+
+Each Wazuh manager node also gets the certificate of the Server API, `<node>-apid.pem` and
+`<node>-apid-key.pem`, deployed as `/var/wazuh-manager/etc/certs/apid.pem` and
+`apid-key.pem`. The Wazuh manager does not self-sign it: without this pair the Server API
+does not start. It has the same profile as the agent listener certificate, the leaf followed
+by the CA, and its own subject alternative name: the `ip` and `dns` entries of the node,
+`localhost`, `127.0.0.1` and `::1`. The `--agent-san` addresses are not added to it.
+
+When API clients reach the Server API at an address no single node owns, such as a published
+name or a load balancer, add it with `-ap`, `--api-san`, repeated once per value:
+
+```bash
+sudo bash wazuh-certs-tool-5.0.0.sh -A --api-san api.example.com --api-san 203.0.113.20
+```
+
+`wazuh-install-5.0.0.sh` takes the same option with `-a` and `-g`. On an all-in-one install
+the Wazuh manager package issues the certificate with the addresses of the host, and the
+option adds the ones the host cannot see:
+
+```bash
+sudo bash wazuh-install-5.0.0.sh -a --api-san api.example.com
+```
+
 #### Create the certificate of a TLS-terminating load balancer
 
 When a proxy terminates the agents' TLS session, it is the proxy's certificate that agents
@@ -417,6 +442,7 @@ To renew the certificates of a deployment, run the certs tool again on the node 
     | Wazuh indexer | `admin.pem`, `admin-key.pem` | `/etc/wazuh-indexer/certs/admin.pem`, `admin-key.pem` | `wazuh-indexer:wazuh-indexer`, `0400` |
     | Wazuh manager | `<node>.pem`, `<node>-key.pem` | `/var/wazuh-manager/etc/certs/indexer-connector.pem`, `indexer-connector-key.pem` | `root:wazuh-manager`, `0640` |
     | Wazuh manager | `<node>-remoted.pem`, `<node>-remoted-key.pem` | `/var/wazuh-manager/etc/certs/remoted.pem`, `remoted-key.pem` | `wazuh-manager:wazuh-manager`, `0640` |
+    | Wazuh manager | `<node>-apid.pem`, `<node>-apid-key.pem` | `/var/wazuh-manager/etc/certs/apid.pem`, `apid-key.pem` | `wazuh-manager:wazuh-manager`, `0640` |
     | Wazuh dashboard | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-dashboard/certs/dashboard.pem`, `dashboard-key.pem` | `wazuh-dashboard:wazuh-dashboard`, `0400` |
 
     For example, on a Wazuh indexer node, with the files of that node copied to the current directory:
@@ -450,7 +476,7 @@ Every Wazuh manager node of a cluster must serve an agent listener certificate s
           ip: "<new-node-ip>"
     ```
 
-3. Remove the `wazuh-certificates` directory of a previous run and create the Wazuh manager certificates. If the other Wazuh manager nodes were created with `-as|--agent-san`, pass the same addresses, so that the new node also answers on the address agents dial:
+3. Remove the `wazuh-certificates` directory of a previous run and create the Wazuh manager certificates. If the other Wazuh manager nodes were created with `-as|--agent-san` or `-ap|--api-san`, pass the same addresses, so that the new node also answers on the addresses agents and API clients dial:
 
     ```bash
     sudo rm -rf wazuh-certificates
@@ -459,10 +485,11 @@ Every Wazuh manager node of a cluster must serve an agent listener certificate s
 
     `-wm` only uses an existing root CA, never creates one. If it stops with `There is no valid root CA in …` or `… has no private key (root-ca.key)…`, you are not on the node that holds the root CA of the deployment: go back to step 1.
 
-4. Check that the agent listener certificate of the new node chains to the root CA of the deployment. The command must print `OK`:
+4. Check that the agent listener and Server API certificates of the new node chain to the root CA of the deployment. Each command must print `OK`:
 
     ```bash
     sudo openssl verify -CAfile /etc/wazuh/ca/root-ca.pem wazuh-certificates/worker-2-remoted.pem
+    sudo openssl verify -CAfile /etc/wazuh/ca/root-ca.pem wazuh-certificates/worker-2-apid.pem
     ```
 
 5. Copy the certificates of the new node to it and install it as the other Wazuh manager nodes, as in the Wazuh manager steps of the [step-by-step clusterized deployment](../../guide/step-by-step-deployments/clusterized.md#wazuh-manager). In the `<cluster>` block of the new node, use the `<key>` of the master node: a node with another key does not join the cluster. Do not run `--generate-config-files` again to add the node: it creates a new cluster key. Then remove the `wazuh-certificates` directory, and every copy of it: it holds private keys.

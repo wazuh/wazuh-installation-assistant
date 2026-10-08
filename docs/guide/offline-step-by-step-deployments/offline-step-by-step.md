@@ -206,6 +206,8 @@ Follow these steps on the master node and on every worker node.
     install -m 0640 wazuh-install-files/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
     install -m 0640 wazuh-install-files/$NODE_NAME-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem
     install -m 0640 wazuh-install-files/$NODE_NAME-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-apid.pem /var/wazuh-manager/etc/certs/apid.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-apid-key.pem /var/wazuh-manager/etc/certs/apid-key.pem
     ```
 
 2. Install the Wazuh manager. The package uses the files you placed instead of issuing its own, and gives each one its owner.
