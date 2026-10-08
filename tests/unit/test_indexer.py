@@ -7,7 +7,7 @@ Covers: indexer_install, indexer_configure, indexer_copyCertificates,
 
 import pytest
 
-from tests.unit.conftest import assert_failure, assert_success, run_bash_function
+from tests.unit.conftest import VERBOSE_DEBUG, assert_failure, assert_success, run_bash_function
 
 INDEXER = "install_functions/indexer.sh"
 COMMON = "common_functions/common.sh"
@@ -228,16 +228,18 @@ class TestIndexerCopyCertificates:
 class TestIndexerStartCluster:
     """indexer_startCluster runs the security initializer the package ships."""
 
-    def _run(self, rc):
+    def _run(self, rc, debug=""):
         return run_bash_function(
             BASE_SOURCES,
             "indexer_startCluster",
             {**IGNORE_LOGGER, "bash": f'[[ "$*" == *indexer-security-init.sh* ]] && return {rc}', "installCommon_rollBack": "true"},
-            {"debug": ""},
+            {"debug": debug},
         )
 
-    def test_success(self):
-        assert_success(self._run(0))
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_success(self, debug):
+        assert_success(self._run(0, debug))
 
-    def test_fail_when_the_initializer_fails(self):
-        assert_failure(self._run(1))
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_fail_when_the_initializer_fails(self, debug):
+        assert_failure(self._run(1, debug))

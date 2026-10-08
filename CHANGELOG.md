@@ -103,6 +103,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1119](https://github.com/wazuh/wazuh-installation-assistant/issues/1119) | With `-v`, the tools read the exit code of `tee` instead of the command, so failed service starts, security initialization and downloads were reported as successful |
 | [#1113](https://github.com/wazuh/wazuh-installation-assistant/issues/1113) | Fix the final messages of the offline download and link the offline installation guide of the assistant's own version |
 | [#1108](https://github.com/wazuh/wazuh-installation-assistant/issues/1108) | Update the offline installation guide: no `-g` or `wazuh-install-files.tar` for all-in-one, `--agent-san` for distributed, dependency lists and dashboard password |
 | [#1049](https://github.com/wazuh/wazuh-installation-assistant/issues/1049) | Warn when wazuh-certs-tool.sh creates a new root CA, and document how to add a Wazuh manager worker to an existing deployment with its root CA |

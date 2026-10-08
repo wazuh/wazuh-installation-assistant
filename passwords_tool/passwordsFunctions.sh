@@ -219,8 +219,8 @@ function passwords_createBackUp() {
     if [ ! -d "/etc/wazuh-indexer/backup" ]; then
         eval "mkdir /etc/wazuh-indexer/backup ${debug}"
     fi
-    eval "JAVA_HOME=/usr/share/wazuh-indexer/jdk/ OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -backup /etc/wazuh-indexer/backup -icl -p 9200 -nhnv -cacert ${capem} -cert ${adminpem} -key ${adminkey} -h ${IP} ${debug}"
-    if [ "${PIPESTATUS[0]}" != 0 ]; then
+    eval "JAVA_HOME=/usr/share/wazuh-indexer/jdk/ OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -backup /etc/wazuh-indexer/backup -icl -p 9200 -nhnv -cacert ${capem} -cert ${adminpem} -key ${adminkey} -h ${IP} ${debug}; e_code=\${PIPESTATUS[0]}"
+    if [ "${e_code}" != 0 ]; then
         common_logger -e "The backup could not be created"
         passwords_removeBackUp
         if [[ $(type -t installCommon_rollBack) == "function" ]]; then
@@ -499,8 +499,8 @@ function passwords_restartService() {
 
     if [[ -d /run/systemd/system ]]; then
         eval "systemctl daemon-reload ${debug}"
-        eval "systemctl restart ${1}.service ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        eval "systemctl restart ${1}.service ${debug}; e_code=\${PIPESTATUS[0]}"
+        if [  "${e_code}" != 0  ]; then
             common_logger -e "${1} could not be started."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -543,8 +543,8 @@ function passwords_restartService() {
             fi
         fi
     elif ps -p 1 -o comm= | grep "init"; then
-        eval "/etc/init.d/${1} restart ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        eval "/etc/init.d/${1} restart ${debug}; e_code=\${PIPESTATUS[0]}"
+        if [  "${e_code}" != 0  ]; then
             common_logger -e "${1} could not be started."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -586,8 +586,8 @@ function passwords_restartService() {
             fi
         fi
     elif [ -x "/etc/rc.d/init.d/${1}" ] ; then
-        eval "/etc/rc.d/init.d/${1} restart ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        eval "/etc/rc.d/init.d/${1} restart ${debug}; e_code=\${PIPESTATUS[0]}"
+        if [  "${e_code}" != 0  ]; then
             common_logger -e "${1} could not be started."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -653,8 +653,8 @@ function passwords_runSecurityAdmin() {
     fi
 
     common_logger -d "Loading new passwords changes."
-    eval "OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -f /etc/wazuh-indexer/backup/internal_users.yml -t internalusers -p 9200 -nhnv -cacert ${capem} -cert ${adminpem} -key ${adminkey} -icl -h ${IP} ${debug}"
-    if [  "${PIPESTATUS[0]}" != 0  ]; then
+    eval "OPENSEARCH_CONF_DIR=/etc/wazuh-indexer /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh -f /etc/wazuh-indexer/backup/internal_users.yml -t internalusers -p 9200 -nhnv -cacert ${capem} -cert ${adminpem} -key ${adminkey} -icl -h ${IP} ${debug}; e_code=\${PIPESTATUS[0]}"
+    if [  "${e_code}" != 0  ]; then
         common_logger -e "Could not load the changes."
         passwords_removeBackUp
         exit 1;

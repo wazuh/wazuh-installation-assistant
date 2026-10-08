@@ -2,7 +2,8 @@
 Unit tests for install_functions/installCommon.sh
 
 Covers: installCommon_getConfig, installCommon_installPrerequisites,
-        installCommon_startService, installCommon_placeFromTar,
+        installCommon_startService, installCommon_restartService,
+        installCommon_createInstallFiles, installCommon_placeFromTar,
         installCommon_placeCredentials, installCommon_createPasswords,
         installCommon_scanDependencies, installCommon_extractConfig,
         installCommon_createCertificates
@@ -14,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit.conftest import assert_failure, assert_success, run_bash_function
+from tests.unit.conftest import VERBOSE_DEBUG, assert_failure, assert_success, run_bash_function
 
 INSTALL_COMMON = "install_functions/installCommon.sh"
 COMMON = "common_functions/common.sh"
@@ -207,7 +208,7 @@ class TestInstallCommonStartService:
     We mock systemctl so no real service management occurs.
     """
 
-    def _run(self, service_name, systemctl_success=True, extra_mocks=None):
+    def _run(self, service_name, systemctl_success=True, extra_mocks=None, debug=""):
         systemctl_mock = "true" if systemctl_success else "return 1"
         mocks = {
             **IGNORE_LOGGER,
@@ -222,7 +223,7 @@ class TestInstallCommonStartService:
             BASE_SOURCES,
             f"installCommon_startService {service_name}",
             mocks,
-            {"debug": ""},
+            {"debug": debug, "logfile": "/dev/null"},
         )
 
     def test_fail_no_arguments(self):
@@ -241,9 +242,71 @@ class TestInstallCommonStartService:
         result = self._run("wazuh-indexer")
         assert_success(result)
 
-    def test_fail_service_start_error(self):
-        result = self._run("wazuh-manager", systemctl_success=False)
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_success_start_with_any_debug(self, debug):
+        assert_success(self._run("wazuh-manager", debug=debug))
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_fail_service_start_error(self, debug):
+        """With -v, the failure of systemctl must not be hidden by tee (#1119)."""
+        result = self._run(
+            "wazuh-manager",
+            systemctl_success=False,
+            extra_mocks={"common_logger": 'echo "LOG:$*"', "installCommon_rollBack": 'echo "ROLLBACK"'},
+            debug=debug,
+        )
         assert_failure(result)
+        assert "LOG:-e wazuh-manager could not be started." in result.stdout
+        assert "ROLLBACK" in result.stdout
+        assert "service started" not in result.stdout
+
+
+class TestInstallCommonRestartService:
+    """Tests for installCommon_restartService."""
+
+    def _run(self, systemctl_success, debug):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "systemctl": "true" if systemctl_success else "return 1",
+            "journalctl": "true",
+            "installCommon_rollBack": 'echo "ROLLBACK"',
+        }
+        return run_bash_function(
+            BASE_SOURCES,
+            "installCommon_restartService wazuh-manager",
+            mocks,
+            {"debug": debug, "logfile": "/dev/null"},
+        )
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_success(self, debug):
+        result = self._run(True, debug)
+        assert_success(result)
+        assert "LOG:wazuh-manager service restarted." in result.stdout
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_fail_restart_error(self, debug):
+        result = self._run(False, debug)
+        assert_failure(result)
+        assert "LOG:-e wazuh-manager could not be restarted." in result.stdout
+        assert "ROLLBACK" in result.stdout
+
+
+class TestInstallCommonCreateInstallFiles:
+    """installCommon_createInstallFiles stops when it cannot create its directory."""
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_fail_when_mkdir_fails(self, debug):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "installCommon_createInstallFiles",
+            {"common_logger": 'echo "LOG:$*"', "rm": "true", "mkdir": "return 1",
+             "installCommon_createCertificates": 'echo "CERTS_CREATED"'},
+            {"debug": debug},
+        )
+        assert_failure(result)
+        assert "LOG:-e Unable to create /tmp/wazuh-install-files" in result.stdout
+        assert "CERTS_CREATED" not in result.stdout
 
 
 class TestInstallCommonDownloadArtifactURLs:
@@ -260,6 +323,7 @@ class TestInstallCommonDownloadArtifactURLs:
         staging_url_stage="",
         curl_success=True,
         extra_mocks=None,
+        debug="",
     ):
         """Helper to run installCommon_downloadArtifactURLs with configurable scenario.
 
@@ -294,7 +358,8 @@ class TestInstallCommonDownloadArtifactURLs:
             "wazuh_major": "5",
             "bucket": "packages.wazuh.com",
             "base_path": str(tmp_path),
-            "debug": "",
+            "debug": debug,
+            "logfile": "/dev/null",
         }
 
         if devrepo:
@@ -359,9 +424,10 @@ class TestInstallCommonDownloadArtifactURLs:
         expected_file = tmp_path / expected_filename
         assert expected_file.exists()
 
-    def test_curl_failure_returns_error(self, tmp_path):
-        """Function should fail when curl fails to download"""
-        result = self._run(tmp_path, curl_success=False)
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_curl_failure_returns_error(self, tmp_path, debug):
+        """Function should fail when curl fails to download, also with -v"""
+        result = self._run(tmp_path, curl_success=False, debug=debug)
         assert_failure(result)
 
     def test_file_written_to_base_path(self, tmp_path):
