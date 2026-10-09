@@ -457,6 +457,16 @@ function checks_specifications() {
 
 }
 
+# Returns 0 if something is listening on the TCP port given as first argument.
+function checks_portInUse() {
+    if command -v lsof > /dev/null; then
+        lsof -sTCP:LISTEN -i:"${1}" > /dev/null
+    else
+        # ss always exits 0, so look at its output (the first line is the header)
+        [ -n "$(ss -ltn "sport = :${1}" 2>/dev/null | tail -n +2)" ]
+    fi
+}
+
 function checks_ports() {
 
     common_logger -d "Checking ports availability."
@@ -465,15 +475,13 @@ function checks_ports() {
 
     checks_firewall "${ports[@]}"
 
-    if command -v lsof > /dev/null; then
-        port_command="lsof -sTCP:LISTEN  -i:"
-    else
-        common_logger -w "Cannot find lsof. Port checking will be skipped."
+    if ! command -v lsof > /dev/null && ! command -v ss > /dev/null; then
+        common_logger -w "Cannot find lsof or ss. Port checking will be skipped."
         return 1
     fi
 
     for i in "${!ports[@]}"; do
-        if ${port_command}"${ports[i]}" > /dev/null; then
+        if checks_portInUse "${ports[i]}"; then
             used_port=1
             common_logger -e "Port ${ports[i]} is being used by another process. Please, check it before installing Wazuh."
         fi
