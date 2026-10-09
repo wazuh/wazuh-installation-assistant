@@ -523,7 +523,7 @@ install -m 0640 wazuh-certificates/$NODE_NAME-apid-key.pem /var/wazuh-manager/et
 rm -rf wazuh-certificates
 ```
 
-The package uses these files instead of issuing its own, copies `root-ca.pem` to `/var/wazuh-manager/etc/certs`, and gives each file its owner. `remoted.pem` is served to the agents by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515. `apid.pem` is served by the Server API on port 55000.
+The package uses these files instead of issuing its own, copies `root-ca.pem` to `/var/wazuh-manager/etc/certs`, and gives the `remoted` and `apid` pairs their owner. `remoted.pem` is served to the agents by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515. `apid.pem` is served by the Server API on port 55000.
 
 **Recommended action**: If no other Wazuh components will be installed on this node, remove the `wazuh-certificates.tar` file.
 
@@ -605,7 +605,14 @@ yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
 
 ### Configuring the Wazuh manager
 
-1. In the `<indexer>` block of `/var/wazuh-manager/etc/wazuh-manager.conf`, replace `127.0.0.1` with the addresses of the Wazuh indexer nodes, one `<host>` per node. Do it on the master node and on every worker node: the cluster does not synchronize this block. Leave the `<ssl>` settings as the package wrote them. The credentials are not configured here: the package stored them in the keystore of the Wazuh manager.
+1. Give the indexer connector pair to the `wazuh-manager` group. The package does not set the owner of the indexer connector pair placed before installing it, and the Wazuh manager then cannot read it:
+
+    ```bash
+    chown root:wazuh-manager /var/wazuh-manager/etc/certs/indexer-connector.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+    chmod 0640 /var/wazuh-manager/etc/certs/indexer-connector.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+    ```
+
+2. In the `<indexer>` block of `/var/wazuh-manager/etc/wazuh-manager.conf`, replace `127.0.0.1` with the addresses of the Wazuh indexer nodes, one `<host>` per node. Do it on the master node and on every worker node: the cluster does not synchronize this block. Leave the `<ssl>` settings as the package wrote them. The credentials are not configured here: the package stored them in the keystore of the Wazuh manager.
 
     ```xml
     <indexer>
@@ -615,7 +622,7 @@ yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
       </hosts>
     ```
 
-2. Configure the cluster. Create a key on the master node, and use the same one on every worker node. It must be 32 characters long:
+3. Configure the cluster. Create a key on the master node, and use the same one on every worker node. It must be 32 characters long:
 
     ```bash
     openssl rand -hex 16

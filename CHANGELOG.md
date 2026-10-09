@@ -106,6 +106,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1130](https://github.com/wazuh/wazuh-installation-assistant/issues/1130) | Give the manager indexer connector certificate pair the `root:wazuh-manager` owner on a distributed install, so the manager can connect to the indexer |
 | [#1054](https://github.com/wazuh/wazuh-installation-assistant/issues/1054) | Fix small installer points after install-time credentials |
 | [#1107](https://github.com/wazuh/wazuh-installation-assistant/issues/1107) | Repository bumper only replaces the stage when it is attached to the bumped version |
 | [#1111](https://github.com/wazuh/wazuh-installation-assistant/issues/1111) | Align the hardware check with the documented minimums, add up the components already installed on the host, and write GB in the warning |
