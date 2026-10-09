@@ -87,11 +87,12 @@ function getHelp() {
 
 function main() {
     umask 177
-    local -r run_options="$*"
 
     if [ -z "${1}" ]; then
         getHelp
     fi
+
+    installCommon_logRunHeader "$@"
 
     declare -a agent_san=()
     declare -a api_san=()
@@ -238,8 +239,6 @@ function main() {
     if [ -z "${download}" ] && [ -z "${showVersion}" ]; then
         common_checkRoot
     fi
-
-    installCommon_logRunHeader "${run_options}"
 
     if [ -n "${showVersion}" ]; then
         common_logger "Wazuh version: ${wazuh_version}"
