@@ -471,6 +471,17 @@ function installCommon_installList(){
 
 }
 
+function installCommon_logRunHeader() {
+
+    local header
+    header="$(date +'%d/%m/%Y %H:%M:%S') INFO: --- Wazuh installation assistant ${wazuh_install_vesion} (Wazuh ${wazuh_version}). Options: ${*:-none} ---"
+    if [ -s "${logfile}" ]; then
+        header=$'\n'"${header}"
+    fi
+    { printf "%s\n" "${header}" >> "${logfile}"; } 2>/dev/null || true
+
+}
+
 function installCommon_removeCentOSrepositories() {
 
     eval "rm -f ${centos_repo} ${debug}"

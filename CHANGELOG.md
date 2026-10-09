@@ -38,6 +38,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1112](https://github.com/wazuh/wazuh-installation-assistant/issues/1112) | Keep the log of every run in `/var/log/wazuh-install.log`: each run appends to it with a header line (date, assistant version and options) instead of emptying it |
 | [#1105](https://github.com/wazuh/wazuh-installation-assistant/issues/1105) | Rename the Wazuh server API user `wazuh-wui` to `wazuh-internal-client`. The `WAZUH_MANAGER_WUI_PASSWORD` key keeps its name |
 | [#1110](https://github.com/wazuh/wazuh-installation-assistant/issues/1110) | Start the OVA and AMI integration tests from PR labels |
 | [#1092](https://github.com/wazuh/wazuh-installation-assistant/issues/1092) | Say how to share the CA when the credentials library creates a new one |
