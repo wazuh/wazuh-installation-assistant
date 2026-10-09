@@ -85,6 +85,7 @@ function offline_extractFiles() {
     fi
 
     offline_packages_path="${base_path}/wazuh-offline/wazuh-packages"
+    required_files=("${base_path}/wazuh-offline/GPG-KEY-WAZUH")
 
     if [ "${sys_type}" == "apt-get" ]; then
         required_files+=("${offline_packages_path}/wazuh-dashboard*.deb" "${offline_packages_path}/wazuh-indexer*.deb" "${offline_packages_path}/wazuh-manager*.deb")

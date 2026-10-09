@@ -181,6 +181,12 @@ class TestChecksArguments:
         )
         assert_success(result)
 
+    def test_fail_skip_signature_check_without_development(self):
+        assert_failure(self._run(env_vars={"skip_signature_check": "1", "wazuh": "1"}))
+
+    def test_success_skip_signature_check_with_development(self):
+        assert_success(self._run(env_vars={"skip_signature_check": "1", "development": "1", "wazuh": "1"}))
+
     def test_fail_uninstall_and_aio(self):
         assert_failure(self._run(env_vars={"uninstall": "1", "AIO": "1"}))
 
@@ -250,48 +256,55 @@ class TestChecksArguments:
 # ---------------------------------------------------------------------------
 
 class TestChecksHealth:
+    MOCKS = {
+        "common_logger": 'if [ "$1" = "-w" ]; then echo "$2"; fi',
+        "checks_specifications": "true",
+    }
+
     def _run(self, env_vars=None):
-        mocks = {**IGNORE_LOGGER, "checks_specifications": "true"}
-        return run_bash_function(BASE_SOURCES, "checks_health", mocks, env_vars)
+        return run_bash_function(BASE_SOURCES, "checks_health", self.MOCKS, env_vars)
+
+    def _assert_warns(self, env_vars, ram, cores):
+        result = self._run(env_vars)
+        assert_success(result)
+        assert f"of {ram} GB of RAM and {cores} CPU cores" in result.stdout
+
+    def _assert_no_warning(self, env_vars):
+        result = self._run(env_vars)
+        assert_success(result)
+        assert "does not meet" not in result.stdout
 
     def test_success_no_installation(self):
-        assert_success(self._run())
+        self._assert_no_warning({"cores": "1", "ram_gb": "100"})
 
-    def test_warn_aio_1_core(self):
-        assert_success(self._run({"AIO": "1", "cores": "1", "ram_gb": "7300"}))
+    @pytest.mark.parametrize("env", [
+        {"AIO": "1", "cores": "4", "ram_gb": "7300"},
+        {"indexer": "1", "cores": "4", "ram_gb": "7300"},
+        {"wazuh": "1", "cores": "4", "ram_gb": "7300"},
+        {"dashboard": "1", "cores": "2", "ram_gb": "3300"},
+        {"dashboard": "1", "indexer_installed": "1", "wazuh_installed": "1", "cores": "4", "ram_gb": "7300"},
+    ], ids=["aio", "indexer", "wazuh", "dashboard", "dashboard_with_indexer_and_wazuh_installed"])
+    def test_success_documented_minimum(self, env):
+        self._assert_no_warning(env)
 
-    def test_warn_aio_insufficient_ram(self):
-        assert_success(self._run({"AIO": "1", "cores": "4", "ram_gb": "3700"}))
+    @pytest.mark.parametrize("env", [
+        {"AIO": "1", "cores": "3", "ram_gb": "7300"},
+        {"AIO": "1", "cores": "4", "ram_gb": "7299"},
+        {"indexer": "1", "cores": "2", "ram_gb": "3700"},
+        {"wazuh": "1", "cores": "2", "ram_gb": "2000"},
+        {"dashboard": "1", "indexer_installed": "1", "cores": "4", "ram_gb": "3476"},
+        {"dashboard": "1", "indexer_installed": "1", "wazuh_installed": "1", "cores": "4", "ram_gb": "5914"},
+    ], ids=["aio_3_cores", "aio_insufficient_ram", "indexer_2_cores_4gb", "wazuh_2_cores_2gb",
+            "dashboard_with_indexer_installed", "dashboard_with_indexer_and_wazuh_installed"])
+    def test_warn_below_8gb_4_cores(self, env):
+        self._assert_warns(env, 8, 4)
 
-    def test_success_aio_4_cores_8gb(self):
-        assert_success(self._run({"AIO": "1", "cores": "4", "ram_gb": "7300"}))
-
-    def test_warn_indexer_1_core(self):
-        assert_success(self._run({"indexer": "1", "cores": "1", "ram_gb": "3700"}))
-
-    def test_warn_indexer_insufficient_ram(self):
-        assert_success(self._run({"indexer": "1", "cores": "2", "ram_gb": "3300"}))
-
-    def test_success_indexer_2_cores_4gb(self):
-        assert_success(self._run({"indexer": "1", "cores": "2", "ram_gb": "3700"}))
-
-    def test_warn_dashboard_1_core(self):
-        assert_success(self._run({"dashboard": "1", "cores": "1", "ram_gb": "3700"}))
-
-    def test_warn_dashboard_insufficient_ram(self):
-        assert_success(self._run({"dashboard": "1", "cores": "2", "ram_gb": "3000"}))
-
-    def test_success_dashboard_2_cores_enough_ram(self):
-        assert_success(self._run({"dashboard": "1", "cores": "2", "ram_gb": "3300"}))
-
-    def test_warn_wazuh_1_core(self):
-        assert_success(self._run({"wazuh": "1", "cores": "1", "ram_gb": "3700"}))
-
-    def test_warn_wazuh_insufficient_ram(self):
-        assert_success(self._run({"wazuh": "1", "cores": "2", "ram_gb": "3300"}))
-
-    def test_success_wazuh_2_cores_4gb(self):
-        assert_success(self._run({"wazuh": "1", "cores": "2", "ram_gb": "3700"}))
+    @pytest.mark.parametrize("env", [
+        {"dashboard": "1", "cores": "1", "ram_gb": "3700"},
+        {"dashboard": "1", "cores": "2", "ram_gb": "3299"},
+    ], ids=["dashboard_1_core", "dashboard_insufficient_ram"])
+    def test_warn_dashboard_below_4gb_2_cores(self, env):
+        self._assert_warns(env, 4, 2)
 
 
 # ---------------------------------------------------------------------------
@@ -317,6 +330,7 @@ class TestChecksPreviousCertificate:
         "config.yml", "root-ca.pem", "admin.pem", "admin-key.pem",
         "indexer1.pem", "indexer1-key.pem", "dashboard1.pem", "dashboard1-key.pem",
         "wazuh1.pem", "wazuh1-key.pem", "wazuh1-remoted.pem", "wazuh1-remoted-key.pem",
+        "wazuh1-apid.pem", "wazuh1-apid-key.pem",
     ]
 
     def _tar(self, tmp_path, files=None, passwords=None):
@@ -356,6 +370,10 @@ class TestChecksPreviousCertificate:
 
     def test_fail_manager_remoted_pair_missing(self, tmp_path):
         tar = self._tar(tmp_path, files=[f for f in self.FILES if f != "wazuh1-remoted.pem"])
+        assert_failure(self._run(tar, winame="wazuh1"))
+
+    def test_fail_manager_apid_pair_missing(self, tmp_path):
+        tar = self._tar(tmp_path, files=[f for f in self.FILES if f != "wazuh1-apid-key.pem"])
         assert_failure(self._run(tar, winame="wazuh1"))
 
     def test_fail_password_missing(self, tmp_path):
@@ -435,3 +453,66 @@ class TestChecksPorts:
     def test_lsof_preferred_when_both_available(self):
         result = self._run({"lsof": "return 1", "ss": SS_BUSY})
         assert_success(result)
+
+
+# ---------------------------------------------------------------------------
+# checks_ArtifactURLs_format
+# ---------------------------------------------------------------------------
+
+class TestChecksArtifactURLsFormat:
+    def _run(self, tmp_path, url):
+        (tmp_path / "artifact_urls.yaml").write_text(f'wazuh_manager_x86_64_rpm: "{url}"\n')
+        env = {"base_path": str(tmp_path), "artifact_urls_file_name": "artifact_urls.yaml"}
+        return run_bash_function(BASE_SOURCES, "checks_ArtifactURLs_format", IGNORE_LOGGER, env)
+
+    def test_success_https(self, tmp_path):
+        assert_success(self._run(tmp_path, "https://example.com/wazuh-manager.rpm"))
+
+    def test_fail_http(self, tmp_path):
+        assert_failure(self._run(tmp_path, "http://example.com/wazuh-manager.rpm"))
+
+
+# ---------------------------------------------------------------------------
+# checks_uninstallComponents
+# ---------------------------------------------------------------------------
+
+class TestChecksUninstallComponents:
+    NOT_FOUND = {
+        "wazuh_installed": "",
+        "wazuh_remaining_files": "",
+        "indexer_installed": "",
+        "indexer_remaining_files": "",
+        "dashboard_installed": "",
+        "dashboard_remaining_files": "",
+    }
+
+    def _run(self, env_vars=None):
+        mocks = {"common_logger": 'echo "$@"'}
+        return run_bash_function(BASE_SOURCES, "checks_uninstallComponents", mocks, {**self.NOT_FOUND, **(env_vars or {})})
+
+    def test_nothing_installed_reports_the_three_components_and_fails(self):
+        result = self._run()
+        assert_failure(result)
+        assert result.stdout.splitlines() == [
+            "Wazuh manager not found in the system so it was not uninstalled.",
+            "Wazuh indexer not found in the system so it was not uninstalled.",
+            "Wazuh dashboard not found in the system so it was not uninstalled.",
+        ]
+
+    def test_everything_installed_prints_nothing_and_succeeds(self):
+        result = self._run({"wazuh_installed": "1", "indexer_installed": "1", "dashboard_installed": "1"})
+        assert_success(result)
+        assert result.stdout == ""
+
+    def test_partial_installation_reports_only_the_missing_components(self):
+        result = self._run({"indexer_installed": "1"})
+        assert_success(result)
+        assert result.stdout.splitlines() == [
+            "Wazuh manager not found in the system so it was not uninstalled.",
+            "Wazuh dashboard not found in the system so it was not uninstalled.",
+        ]
+
+    def test_remaining_files_count_as_something_to_uninstall(self):
+        result = self._run({"dashboard_remaining_files": "/etc/wazuh-dashboard"})
+        assert_success(result)
+        assert "Wazuh dashboard not found" not in result.stdout

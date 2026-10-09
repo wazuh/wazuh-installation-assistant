@@ -1,7 +1,7 @@
 # Generate Artifacts Automatically
 
 This section covers the process for generating artifacts for the Installation Assistant tools automatically using the GitHub Actions workflow called `Build Installation Assistant`.
-The workflow is defined in the `.github/workflows/builder_installation_assistant.yml` file.
+The workflow is defined in the `.github/workflows/5_builder_installation_assistant.yml` file.
 
 This workflow builds all artifacts in the same execution. Once the execution is complete, the generated artifacts are uploaded to an S3 bucket in AWS. If you need more information about where they are stored, please contact the **DevOps** team.
 

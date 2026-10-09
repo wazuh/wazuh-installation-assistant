@@ -1,6 +1,6 @@
 # Installation Assistant Integration Tests
 
-Workflow file: `.github/workflows/check_integration_tools.yaml`
+Workflow file: `.github/workflows/5_check_integration_tools.yaml`
 
 This workflow builds the installation assistant scripts from the PR branch, provisions one AWS VM per target OS, installs Wazuh using the built scripts (AIO, distributed, or offline mode), and runs the integration test suite against the live installation. Each OS in the test matrix runs independently.
 
@@ -10,40 +10,45 @@ This workflow builds the installation assistant scripts from the PR branch, prov
 
 | Mode | Trigger | Who can trigger |
 |---|---|---|
-| PR comment | `issue_comment` on an open, non-draft PR | Any repo collaborator |
+| PR label | `pull_request` (`labeled`) on a non-draft PR opened from a branch of this repository | Anyone who can add labels (triage access or higher) |
 | Manual | `workflow_dispatch` | Anyone with repo write access |
+
+To run the tests on a pull request, add one of the labels listed in [pull_request (label) flow](#pull_request-label-flow). Each label added starts one run against the PR head at that moment:
+
+- To run the tests again (for example after pushing new commits), remove the label and add it again.
+- Labels added while the PR is a draft are ignored. Mark the PR as ready for review and add the label again.
+- PRs opened from forks do not run: GitHub does not pass secrets or the OIDC token to `pull_request` runs from forks. Push the branch to this repository to test it.
 
 ---
 
 ## Execution Flows
 
-### issue_comment flow
+### pull_request (label) flow
 
 ```mermaid
 flowchart TD
-    A[PR comment posted] --> B{Recognized command\non open non-draft PR?}
+    A[Label added to PR] --> B{Test label on a non-draft\nPR from this repository?}
     B -- No --> Z[Ignored]
-    B -- Yes --> C[get_pr_info\nReact · Extract PR data\nParse command · Create Check Run]
+    B -- Yes --> C[get_pr_info\nExtract PR data · Parse label]
     C --> D[build_tools\nBuild scripts · Generate presigned URLs\nUpload artifact]
     D --> E{systems matrix}
     E --> F[vm_test\nubuntu-24-amd64]
     E --> G[vm_test\nubuntu-24-arm64]
     E --> H[vm_test\n...]
-    F & G & H --> I[update_check]
 ```
 
-**Recognized commands:**
+**Labels:**
 
-| Comment | `tool_type` | `install_mode` | Check name |
+| Label | `tool_type` | `install_mode` | Check name |
 |---|---|---|---|
-| `/test-install` | `installer` | `aio` | Installation Assistant Check |
-| `/test-install-distributed` | `installer` | `distributed` | Installation Assistant Check (Distributed) |
-| `/test-install-offline` | `installer` | `offline` | Installation Assistant Check (Offline) |
-| `/test-cert-tool` | `cert-tool` | `aio` | Certificates Tool Check |
-| `/test-passwords-tool` | `passwords-tool` | `aio` | Passwords Tool Check |
-| `/test-assistant` | `all` | `aio` | Full Integration Check |
+| `test/install` | `installer` | `aio` | Installation Assistant Check |
+| `test/install-distributed` | `installer` | `distributed` | Installation Assistant Check (Distributed) |
+| `test/install-offline` | `installer` | `offline` | Installation Assistant Check (Offline) |
+| `test/cert-tool` | `cert-tool` | `aio` | Certificates Tool Check |
+| `test/passwords-tool` | `passwords-tool` | `aio` | Passwords Tool Check |
+| `test/assistant` | `all` | `aio` | Full Integration Check |
 
-When triggered by PR comment, the OS matrix always expands to all 8 supported systems and `package_type` is always `staging`.
+When triggered by a PR label, the OS matrix always expands to all 8 supported systems and `package_type` is always `staging`.
 
 ### workflow_dispatch flow
 
@@ -70,13 +75,13 @@ flowchart TD
 | `package_type` | No | `staging` | `staging` (dev packages) or `production` (official packages) |
 | `systems` | No | `all` | Comma-separated OS identifiers (e.g. `ubuntu-24-amd64,redhat-9-arm64`) or `all` |
 
-### issue_comment parameters
+### pull_request (label) parameters
 
 | Parameter | Source |
 |---|---|
-| `pr_head_ref` | PR head branch from GitHub API |
-| `tool_type` | Parsed from comment command |
-| `install_mode` | Parsed from comment command |
+| `pr_head_ref` | PR head branch from the event payload |
+| `tool_type` | Mapped from the label name |
+| `install_mode` | Mapped from the label name |
 | `package_type` | Fixed: `staging` |
 | `systems` | Fixed: all 8 supported OSes |
 | `automation_reference` | Defaults to `main` |
@@ -102,14 +107,12 @@ The full OS matrix (`all`) expands to:
 
 ## Job Details
 
-### Job 1 — `get_pr_info` (issue_comment only)
+### Job 1 — `get_pr_info` (pull_request only)
 
 | Step | What it does |
 |---|---|
-| React to comment | Adds a 🚀 reaction to the triggering PR comment |
-| Extract PR data | Calls GitHub API to get PR `head_ref` and `head_sha` |
-| Parse command | Maps comment text → `tool_type`, `install_mode`, and `check_name` |
-| Create Check Run | Creates a GitHub Check Run in `in_progress` state on the PR head SHA |
+| Extract PR data | Reads the PR number, head branch and head SHA from the event payload |
+| Parse label | Maps the label name → `tool_type`, `install_mode` |
 
 ### Job 2 — `build_tools` (both triggers)
 
@@ -217,7 +220,7 @@ After any installation mode completes:
 - **Disable host firewall**: `ufw disable` on Ubuntu; `systemctl stop firewalld` on RedHat
 - **Wait for dashboard** (installer/all only): polls `https://localhost/status` with the `admin` password read from `/etc/wazuh/credentials.env` up to 5 minutes until HTTP 200
 - **Run cert-tool** (cert-tool/all only): copies `config.yml` and runs `sudo bash /tmp/wazuh-certs-tool.sh -A`
-- **Run passwords-tool** (passwords-tool/all only): saves the `admin` password set by the installation as `WAZUH_OLD_PASSWORD` (masked), runs `wazuh-passwords-tool.sh -u <user> -p` with the new password on the standard input for `admin`, `kibanaserver`, `wazuh-manager`, `wazuh` and `wazuh-wui`, restarts services, then polls indexer port 9200, dashboard port 443, and manager API port 55000 until all accept the new credentials
+- **Run passwords-tool** (passwords-tool/all only): saves the `admin` password set by the installation as `WAZUH_OLD_PASSWORD` (masked), runs `wazuh-passwords-tool.sh -u <user> -p` with the new password on the standard input for `admin`, `kibanaserver`, `wazuh-manager`, `wazuh` and `wazuh-internal-client`, restarts services, then polls indexer port 9200, dashboard port 443, and manager API port 55000 until all accept the new credentials
 
 #### Test execution
 
@@ -253,7 +256,7 @@ For details on what each test type validates, see the `Integration Test Module �
 | Output | When | Content |
 |---|---|---|
 | Step summary | Always | Main and uninstall test results for this OS |
-| PR comment | `issue_comment` trigger only | Posts or updates a comment (marker: `<!-- integration-check-{tool_type}-{install_mode}-{system} -->`) with ✅/❌ and results |
+| PR comment | `pull_request` trigger only | Posts or updates a comment (marker: `<!-- integration-check-{tool_type}-{install_mode}-{system} -->`) with ✅/❌ and results |
 | Artifact: `test-results-{tool_type}-{install_mode}-{system}` | Always | Results files, retained 7 days |
 
 #### Cleanup (always runs, even on failure)
@@ -266,16 +269,6 @@ python3 wazuh-automation/deployability/modules/allocation/main.py \
   --track-output {ALLOCATOR_PATH}/track.yml
 ```
 
-### Job 4 — `update_check` (issue_comment only)
-
-Updates the GitHub Check Run created in Job 1:
-
-| `vm_test` result | Check conclusion |
-|---|---|
-| `success` | `success` — ✅ All integration tests passed on all matrix OS |
-| `failure` | `failure` — ❌ One or more tests failed |
-| `cancelled` | `cancelled` |
-
 ---
 
 ## Required Secrets and Variables
@@ -286,7 +279,7 @@ Updates the GitHub Check Run created in Job 1:
 |---|---|
 | `AWS_IAM_ROLE` | OIDC role for AWS operations (allocator, ECR, EC2 SG changes) |
 | `GH_CLONE_TOKEN` | Checkout `wazuh-automation` |
-| `GITHUB_TOKEN` | PR comments and Check Run updates (built-in) |
+| `GITHUB_TOKEN` | PR comments (built-in) |
 
 ### Repository variables
 
@@ -305,7 +298,6 @@ Updates the GitHub Check Run created in Job 1:
 | `contents: read` | Checkout repository |
 | `pull-requests: write` | Post PR comments |
 | `issues: write` | Post comments via issues API |
-| `checks: write` | Create and update GitHub Check Runs |
 
 ---
 
