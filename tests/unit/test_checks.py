@@ -402,3 +402,49 @@ class TestChecksArtifactURLsFormat:
 
     def test_fail_http(self, tmp_path):
         assert_failure(self._run(tmp_path, "http://example.com/wazuh-manager.rpm"))
+
+
+# ---------------------------------------------------------------------------
+# checks_uninstallComponents
+# ---------------------------------------------------------------------------
+
+class TestChecksUninstallComponents:
+    NOT_FOUND = {
+        "wazuh_installed": "",
+        "wazuh_remaining_files": "",
+        "indexer_installed": "",
+        "indexer_remaining_files": "",
+        "dashboard_installed": "",
+        "dashboard_remaining_files": "",
+    }
+
+    def _run(self, env_vars=None):
+        mocks = {"common_logger": 'echo "$@"'}
+        return run_bash_function(BASE_SOURCES, "checks_uninstallComponents", mocks, {**self.NOT_FOUND, **(env_vars or {})})
+
+    def test_nothing_installed_reports_the_three_components_and_fails(self):
+        result = self._run()
+        assert_failure(result)
+        assert result.stdout.splitlines() == [
+            "Wazuh manager not found in the system so it was not uninstalled.",
+            "Wazuh indexer not found in the system so it was not uninstalled.",
+            "Wazuh dashboard not found in the system so it was not uninstalled.",
+        ]
+
+    def test_everything_installed_prints_nothing_and_succeeds(self):
+        result = self._run({"wazuh_installed": "1", "indexer_installed": "1", "dashboard_installed": "1"})
+        assert_success(result)
+        assert result.stdout == ""
+
+    def test_partial_installation_reports_only_the_missing_components(self):
+        result = self._run({"indexer_installed": "1"})
+        assert_success(result)
+        assert result.stdout.splitlines() == [
+            "Wazuh manager not found in the system so it was not uninstalled.",
+            "Wazuh dashboard not found in the system so it was not uninstalled.",
+        ]
+
+    def test_remaining_files_count_as_something_to_uninstall(self):
+        result = self._run({"dashboard_remaining_files": "/etc/wazuh-dashboard"})
+        assert_success(result)
+        assert "Wazuh dashboard not found" not in result.stdout

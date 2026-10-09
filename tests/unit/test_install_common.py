@@ -936,3 +936,47 @@ class TestInstallCommonDownloadDirectory:
         result = self._run(tmp_path)
         assert_failure(result)
         assert "must belong" in result.stdout
+
+
+class TestInstallCommonRollBack:
+    """Tests for installCommon_rollBack: the section header and the closing message."""
+
+    HEADER = "--- Removing existing Wazuh installation ---"
+    MOCKS = {
+        "common_logger": 'echo "$@"',
+        "installCommon_removeWIADependencies": "true",
+        "systemctl": "true",
+        "rm": "true",
+    }
+
+    def _run(self, env_vars=None):
+        return run_bash_function(BASE_SOURCES, "installCommon_rollBack", self.MOCKS, env_vars)
+
+    def test_failed_installation_prints_the_header_first(self):
+        result = self._run({"dashboard_installed": "1", "dashboard": "1", "rollback_conf": "1"})
+        assert_success(result)
+        lines = result.stdout.splitlines()
+        assert lines[0] == self.HEADER
+        assert lines[-1] == "Installation cleaned."
+
+    def test_uninstall_leaves_the_header_to_the_caller(self):
+        result = self._run({"dashboard_installed": "1", "uninstall": "1"})
+        assert_success(result)
+        assert self.HEADER not in result.stdout
+        assert result.stdout.splitlines() == ["Removing Wazuh dashboard.", "Wazuh dashboard removed."]
+
+    def test_uninstall_on_an_empty_host_still_runs_the_unconditional_cleanup(self):
+        mocks = {**self.MOCKS, "installCommon_removeWIADependencies": 'echo "deps"', "systemctl": 'echo "systemctl $@"'}
+        result = run_bash_function(BASE_SOURCES, "installCommon_rollBack", mocks, {"uninstall": "1"})
+        assert_success(result)
+        assert result.stdout.splitlines() == ["deps", "systemctl daemon-reload"]
+
+    def test_removing_dependencies_is_a_noop_when_none_were_scanned(self):
+        # The uninstall flow never runs installCommon_scanDependencies, so nothing is removed
+        mocks = {"common_logger": 'echo "$@"', "yum": "exit 1", "apt-get": "exit 1"}
+        for sys_type in ("yum", "apt-get"):
+            result = run_bash_function(
+                BASE_SOURCES, "installCommon_removeWIADependencies", mocks, {"sys_type": sys_type}
+            )
+            assert_success(result)
+            assert result.stdout == ""
