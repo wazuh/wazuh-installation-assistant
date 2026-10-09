@@ -243,7 +243,8 @@ function installCommon_createInstallFiles() {
 
     # mkdir fails if another user creates the directory first. The mode is the one the
     # directory has in the tar.
-    if eval "mkdir -m 755 /tmp/wazuh-install-files ${debug}"; then
+    eval "mkdir -m 755 /tmp/wazuh-install-files ${debug}; e_code=\${PIPESTATUS[0]}"
+    if [ "${e_code}" == 0 ]; then
         common_logger "Generating configuration files."
 
         if [ -n "${configurations}" ]; then
@@ -295,9 +296,8 @@ function installCommon_downloadArtifactURLs() {
         artifact_urls_file_name="artifact_urls_${wazuh_version}.yaml"
         artifact_url="https://${bucket}/production/${wazuh_major}.x/${artifact_urls_bucket_folder}/${artifact_urls_file_name}"
     fi
-    eval "common_curl -sSo ${base_path}/${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
+    eval "common_curl -sSo ${base_path}/${artifact_urls_file_name} ${artifact_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}; curl_exit_code=\${PIPESTATUS[0]}"
 
-    curl_exit_code="${PIPESTATUS[0]}"
     if [ "${curl_exit_code}" -ne 0 ]; then
         common_logger -e "Failed to download artifact URLs from ${artifact_url}. Exit code: ${curl_exit_code}"
         exit 1
@@ -694,8 +694,8 @@ function installCommon_startService() {
     if [[ -d /run/systemd/system ]]; then
         eval "systemctl daemon-reload ${debug}"
         eval "systemctl enable ${1}.service ${debug}"
-        eval "systemctl start ${1}.service ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        eval "systemctl start ${1}.service ${debug}; e_code=\${PIPESTATUS[0]}"
+        if [  "${e_code}" != 0  ]; then
             common_logger -e "${1} could not be started."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -708,8 +708,8 @@ function installCommon_startService() {
     elif ps -p 1 -o comm= | grep "init"; then
         eval "chkconfig ${1} on ${debug}"
         eval "service ${1} start ${debug}"
-        eval "/etc/init.d/${1} start ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        eval "/etc/init.d/${1} start ${debug}; e_code=\${PIPESTATUS[0]}"
+        if [  "${e_code}" != 0  ]; then
             common_logger -e "${1} could not be started."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -720,8 +720,8 @@ function installCommon_startService() {
             common_logger "${1} service started."
         fi
     elif [ -x "/etc/rc.d/init.d/${1}" ] ; then
-        eval "/etc/rc.d/init.d/${1} start ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        eval "/etc/rc.d/init.d/${1} start ${debug}; e_code=\${PIPESTATUS[0]}"
+        if [  "${e_code}" != 0  ]; then
             common_logger -e "${1} could not be started."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -748,8 +748,8 @@ function installCommon_restartService() {
     common_logger "Restarting service ${1}."
 
     if [[ -d /run/systemd/system ]]; then
-        eval "systemctl restart ${1}.service ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        eval "systemctl restart ${1}.service ${debug}; e_code=\${PIPESTATUS[0]}"
+        if [  "${e_code}" != 0  ]; then
             common_logger -e "${1} could not be restarted."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -762,8 +762,8 @@ function installCommon_restartService() {
     elif ps -p 1 -o comm= | grep "init"; then
         eval "chkconfig ${1} on ${debug}"
         eval "service ${1} restart ${debug}"
-        eval "/etc/init.d/${1} restart ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        eval "/etc/init.d/${1} restart ${debug}; e_code=\${PIPESTATUS[0]}"
+        if [  "${e_code}" != 0  ]; then
             common_logger -e "${1} could not be restarted."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
@@ -774,8 +774,8 @@ function installCommon_restartService() {
             common_logger "${1} service restarted."
         fi
     elif [ -x "/etc/rc.d/init.d/${1}" ] ; then
-        eval "/etc/rc.d/init.d/${1} restart ${debug}"
-        if [  "${PIPESTATUS[0]}" != 0  ]; then
+        eval "/etc/rc.d/init.d/${1} restart ${debug}; e_code=\${PIPESTATUS[0]}"
+        if [  "${e_code}" != 0  ]; then
             common_logger -e "${1} could not be restarted."
             if [ -n "$(command -v journalctl)" ]; then
                 eval "journalctl -u ${1} >> ${logfile}"
