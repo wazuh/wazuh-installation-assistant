@@ -187,7 +187,7 @@ The `config.yml` used defines three nodes (`indexer`, `manager`, `dashboard`) al
 Runs after an AIO installation. The installation generates random passwords and saves them in `/etc/wazuh/credentials.env`. The workflow first reads the `admin` password set by the installation (`WAZUH_INDEXER_ADMIN_PASSWORD`), masks it in the log and passes it to the tests as `WAZUH_OLD_PASSWORD`. It then sets the same new password for every user the tool supports, passing it on the standard input with `-p`:
 
 ```bash
-for user in admin kibanaserver wazuh-manager wazuh wazuh-wui; do
+for user in admin kibanaserver wazuh-manager wazuh wazuh-internal-client; do
   printf '%s\n' "$WAZUH_NEW_PASSWORD" | sudo bash wazuh-passwords-tool.sh -u "$user" -p
 done
 ```
@@ -197,7 +197,7 @@ All services are restarted after the password changes. The workflow then waits f
 | Test module | What it checks |
 | ----------- | -------------- |
 | `test_services` | Services are still active and health endpoints are reachable using the new password |
-| `test_passwords` | New password is accepted by indexer (`https://localhost:9200`) and dashboard (`https://localhost/status`) with HTTP 200, old password (`WAZUH_OLD_PASSWORD`, the `admin` password set by the installation) is rejected with HTTP 401, Wazuh Manager API accepts the new `wazuh-wui` credentials at `https://localhost:55000/security/user/authenticate` |
+| `test_passwords` | New password is accepted by indexer (`https://localhost:9200`) and dashboard (`https://localhost/status`) with HTTP 200, old password (`WAZUH_OLD_PASSWORD`, the `admin` password set by the installation) is rejected with HTTP 401, Wazuh Manager API accepts the new `wazuh-internal-client` credentials at `https://localhost:55000/security/user/authenticate` |
 
 ### `uninstall` — validate complete removal
 

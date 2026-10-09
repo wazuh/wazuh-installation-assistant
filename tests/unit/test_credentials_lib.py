@@ -156,14 +156,14 @@ HEADER = [
     "# To change a password: wazuh-passwords-tool.sh -u <user>",
     "# A host only holds the keys of the components installed on it.",
     "#",
-    "#                 User           Key                                  Used for",
+    "#                 User                   Key                                  Used for",
     "# Logins:",
-    "#                 admin          WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API",
-    "#                 wazuh          WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)",
+    "#                 admin                  WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API",
+    "#                 wazuh                  WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)",
     "# Service accounts the components connect with, not logins:",
-    "#                 kibanaserver   WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer",
-    "#                 wazuh-manager  WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer",
-    "#                 wazuh-wui      WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API",
+    "#                 kibanaserver           WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer",
+    "#                 wazuh-manager          WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer",
+    "#                 wazuh-internal-client  WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API",
     "#",
 ]
 
@@ -211,6 +211,22 @@ class TestCredentialsEnvWriter:
         )
         out = _awk(old, "WAZUH_MANAGER_API_PASSWORD", tmp_path, "Ee5.api-pass")
         assert out.splitlines() == _expected({ADMIN: '"Dd4.old-quoted"', "WAZUH_MANAGER_API_PASSWORD": "Ee5.api-pass"})
+
+    def test_the_header_with_the_wazuh_wui_user_is_replaced(self, tmp_path):
+        old_table = [
+            "#                 User           Key                                  Used for",
+            "# Logins:",
+            "#                 admin          WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API",
+            "#                 wazuh          WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)",
+            "# Service accounts the components connect with, not logins:",
+            "#                 kibanaserver   WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer",
+            "#                 wazuh-manager  WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer",
+            "#                 wazuh-wui      WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API",
+            "#",
+        ]
+        old = "\n".join([BEGIN, *HEADER[:4], *old_table, f"{ADMIN}=Gg7.old-pass", END]) + "\n"
+        out = _awk(old, "WAZUH_MANAGER_WUI_PASSWORD", tmp_path, "Hh8.wui-pass")
+        assert out.splitlines() == _expected({ADMIN: "Gg7.old-pass", "WAZUH_MANAGER_WUI_PASSWORD": "Hh8.wui-pass"})
 
     def test_lines_outside_the_block_are_kept(self, tmp_path):
         out = _awk("# operator note\nCUSTOM=1\n", ADMIN, tmp_path, "Ff6.password-x")

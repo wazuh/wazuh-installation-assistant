@@ -12,6 +12,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | `-as`, `--agent-san <ip\|dns>` | Adds an extra address to the subject alternative name of the agent listener certificate of every Wazuh manager node. Repeat it for more than one. Use it for the address agents dial when the host cannot know it: a load balancer shared by a cluster, a published name, a NAT address. Must be used along with `-a` or `-g`. |
 | `-ap`, `--api-san <ip\|dns>` | Adds an extra address to the subject alternative name of the Server API certificate of every Wazuh manager node. Repeat it for more than one. Use it for the address API clients dial when the host cannot know it: a load balancer, a published name, a NAT address. Must be used along with `-a` or `-g`. |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.0.0.sh. See [Use development packages](../getting-started/usage.md#use-development-packages). |
+| `--skip-signature-check` | Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with `-d`. See [Use development packages](../getting-started/usage.md#use-development-packages). |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
 | `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
@@ -60,7 +61,7 @@ The `wazuh-passwords-tool-5.0.0.sh` script provides the following options for ma
 | Options | Purpose |
 | --------- | --------- |
 | `-a\|--change-all` | Changes the passwords of all the Wazuh indexer and Wazuh server API users installed on the host. The new passwords are generated and saved in `/etc/wazuh/credentials.env`. |
-| `-u\|--user <USER>` | Indicates the name of the user whose password will be changed: a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh server API user (`wazuh`, `wazuh-wui`). If `-p\|--password` is not used, a random password is generated and saved in `/etc/wazuh/credentials.env`. |
+| `-u\|--user <USER>` | Indicates the name of the user whose password will be changed: a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh server API user (`wazuh`, `wazuh-internal-client`). If `-p\|--password` is not used, a random password is generated and saved in `/etc/wazuh/credentials.env`. |
 | `-p\|--password` | Reads the new password from the standard input. Takes no value. Must be used with option `-u\|--user <USER>`. For example: `printf '%s\n' "$NEW_PASSWORD" \| sudo bash wazuh-passwords-tool-5.0.0.sh -u admin -p`. |
 | `-v\|--verbose` | Shows the complete script execution output. |
 | `-h\|--help` | Shows help. |
