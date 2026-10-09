@@ -108,18 +108,6 @@ function checks_arguments() {
             exit 1
         fi
 
-        if [ -z "${wazuh_installed}" ] && [ -z "${wazuh_remaining_files}" ]; then
-            common_logger "Wazuh manager not found in the system so it was not uninstalled."
-        fi
-
-        if [ -z "${indexer_installed}" ] && [ -z "${indexer_remaining_files}" ]; then
-            common_logger "Wazuh indexer not found in the system so it was not uninstalled."
-        fi
-
-        if [ -z "${dashboard_installed}" ] && [ -z "${dashboard_remaining_files}" ]; then
-            common_logger "Wazuh dashboard not found in the system so it was not uninstalled."
-        fi
-
     fi
 
     # -------------- All-In-One -------------------------------------
@@ -258,6 +246,34 @@ function check_dist() {
     fi
     common_logger -d "Detected distribution name: ${DIST_NAME}"
     common_logger -d "Detected distribution version: ${DIST_VER}"
+
+}
+
+# Reports the components that -u|--uninstall has nothing to remove for.
+# Returns 0 if any component, or any of its remaining files, was found, 1 otherwise.
+function checks_uninstallComponents() {
+
+    local found=1
+
+    if [ -z "${wazuh_installed}" ] && [ -z "${wazuh_remaining_files}" ]; then
+        common_logger "Wazuh manager not found in the system so it was not uninstalled."
+    else
+        found=0
+    fi
+
+    if [ -z "${indexer_installed}" ] && [ -z "${indexer_remaining_files}" ]; then
+        common_logger "Wazuh indexer not found in the system so it was not uninstalled."
+    else
+        found=0
+    fi
+
+    if [ -z "${dashboard_installed}" ] && [ -z "${dashboard_remaining_files}" ]; then
+        common_logger "Wazuh dashboard not found in the system so it was not uninstalled."
+    else
+        found=0
+    fi
+
+    return ${found}
 
 }
 

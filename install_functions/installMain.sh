@@ -268,7 +268,14 @@ function main() {
     fi
 
     if [ -n "${uninstall}" ]; then
+        common_logger "--- Removing existing Wazuh installation ---"
+        checks_uninstallComponents && uninstall_found=1
         installCommon_rollBack
+        if [ -n "${uninstall_found}" ]; then
+            common_logger "Uninstall finished."
+        else
+            common_logger "Nothing to uninstall."
+        fi
         exit 0
     fi
 
