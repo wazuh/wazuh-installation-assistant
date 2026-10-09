@@ -87,6 +87,7 @@ function getHelp() {
 
 function main() {
     umask 177
+    local -r run_options="$*"
 
     if [ -z "${1}" ]; then
         getHelp
@@ -234,11 +235,11 @@ function main() {
         esac
     done
 
-    cat /dev/null > "${logfile}"
-
     if [ -z "${download}" ] && [ -z "${showVersion}" ]; then
         common_checkRoot
     fi
+
+    installCommon_logRunHeader "${run_options}"
 
     if [ -n "${showVersion}" ]; then
         common_logger "Wazuh version: ${wazuh_version}"
