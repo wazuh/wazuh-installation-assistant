@@ -105,6 +105,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1111](https://github.com/wazuh/wazuh-installation-assistant/issues/1111) | Align the hardware check with the documented minimums, add up the components already installed on the host, and write GB in the warning |
 | [#1113](https://github.com/wazuh/wazuh-installation-assistant/issues/1113) | Fix the final messages of the offline download and link the offline installation guide of the assistant's own version |
 | [#1108](https://github.com/wazuh/wazuh-installation-assistant/issues/1108) | Update the offline installation guide: no `-g` or `wazuh-install-files.tar` for all-in-one, `--agent-san` for distributed, dependency lists and dashboard password |
 | [#1049](https://github.com/wazuh/wazuh-installation-assistant/issues/1049) | Warn when wazuh-certs-tool.sh creates a new root CA, and document how to add a Wazuh manager worker to an existing deployment with its root CA |
