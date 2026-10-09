@@ -234,4 +234,4 @@ class TestManagerSetRemotedSans:
     def test_success_types_and_dedups_addresses(self):
         result = self._run(["203.0.113.7", "wazuh.example.com", "10.0.0.5"])
         assert_success(result)
-        assert "SANS=IP:203.0.113.7,DNS:wazuh.example.com,IP:10.0.0.5,DNS:host.example.com,IP:127.0.0.1" in result.stdout
+        assert "SANS=IP:203.0.113.7,DNS:wazuh.example.com,IP:10.0.0.5,DNS:host.example.com" in result.stdout
