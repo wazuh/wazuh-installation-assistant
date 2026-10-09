@@ -20,22 +20,22 @@ Each tool is built from the PR branch by `builder.sh` before being deployed to t
 
 ## Trigger methods
 
-Integration tests are not run automatically on every push. They must be triggered explicitly, either via a PR comment command or manually via workflow dispatch.
+Integration tests are not run automatically on every push. They must be triggered explicitly, either by adding a label to the PR or manually via workflow dispatch.
 
-### PR comment commands
+### PR labels
 
-Post one of the following commands as a comment on an open, non-draft pull request. The workflow reacts with a 🚀 emoji and creates a GitHub check run that tracks the result.
+Add one of the following labels to a non-draft pull request opened from a branch of this repository. Each label added starts one run against the PR head at that moment, and the run shows up in the PR checks.
 
-| Comment | Tool tested | Installation mode |
-| ------- | ----------- | ----------------- |
-| `/test-install` | Installation assistant | AIO |
-| `/test-install-distributed` | Installation assistant | Distributed |
-| `/test-install-offline` | Installation assistant | Offline |
-| `/test-cert-tool` | Certificates tool | — |
-| `/test-passwords-tool` | Passwords tool | — |
-| `/test-assistant` | All three tools in sequence | AIO |
+| Label | Tool tested | Installation mode |
+| ----- | ----------- | ----------------- |
+| `test/install` | Installation assistant | AIO |
+| `test/install-distributed` | Installation assistant | Distributed |
+| `test/install-offline` | Installation assistant | Offline |
+| `test/cert-tool` | Certificates tool | — |
+| `test/passwords-tool` | Passwords tool | — |
+| `test/assistant` | All three tools in sequence | AIO |
 
-> **note**: Comments on draft PRs or closed PRs are ignored.
+> **note**: To run the tests again (for example after pushing new commits), remove the label and add it again. Labels added while the PR is a draft are ignored: mark the PR as ready for review and add the label again. PRs opened from forks do not run, because GitHub does not pass secrets to `pull_request` runs from forks.
 
 ### Manual dispatch (workflow_dispatch)
 
@@ -58,8 +58,6 @@ gh workflow run 5_check_integration_tools.yaml \
 | `install_mode` | Installation mode (installer only) | `aio` / `distributed` / `offline` | `aio` |
 | `package_type` | Package source | `staging` / `production` | `staging` |
 | `systems` | Comma-separated list of systems to test, or `all` | see table below | `all` |
-
-> **note**: GitHub runs the `issue_comment` trigger with the workflow file of the default branch (`main`), and the PR comment commands use the `main` branch of `wazuh-automation`, so a change to this workflow reaches the PR comment commands only after it is merged up to `main`. Use the manual dispatch with `--ref` and `automation_reference` to test a change before that.
 
 By default all supported systems are tested in parallel. To test a subset, pass a comma-separated list to the `systems` input:
 
@@ -87,7 +85,7 @@ One independent job runs per system, in parallel (`fail-fast: false`), so a fail
 
 ## Installation modes
 
-The installation assistant supports three deployment modes. The mode is selected by the `install_mode` input (or inferred from the PR comment command). All modes install Wazuh on a single AWS EC2 instance with `127.0.0.1` as the node IP.
+The installation assistant supports three deployment modes. The mode is selected by the `install_mode` input (or inferred from the PR label). All modes install Wazuh on a single AWS EC2 instance with `127.0.0.1` as the node IP.
 
 ### AIO (All-In-One)
 
@@ -175,7 +173,7 @@ Runs after any installation mode (AIO, distributed, offline). Verifies that all 
 | `test_certificates` | Certificate files exist in the expected paths for each component, file permissions are `400`, certificates are not expired, subject and issuer fields match the expected patterns. The common name of the node certificates depends on the mode: the node names of `config.yml` (`CN=indexer`, `CN=dashboard`, `CN=manager`) for distributed, and the short host name (`hostname -s`) for AIO and offline, where the packages issue them |
 | `test_logs` | Log files exist for each component, no critical error patterns (`ERROR`, `CRITICAL`, `FATAL`, `Failed to`) found in recent log entries, known false positives (e.g. `ErrorDocument`) are excluded |
 | `test_version` | The installed version and revision reported by each component match the expected values from `VERSION.json` |
-| `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401: `admin:admin` on the indexer and the dashboard, `wazuh:wazuh` and `wazuh-wui:wazuh-wui` on the Wazuh server API |
+| `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401: `admin:admin` on the indexer and the dashboard, `wazuh:wazuh` and `wazuh-internal-client:wazuh-wui` (the default password of the account, named `wazuh-wui` before) on the Wazuh server API |
 
 There are no default passwords: the packages save the generated ones in `/etc/wazuh/credentials.env`, and `test_runner` reads them from there over SSH.
 
@@ -196,7 +194,7 @@ The `config.yml` used defines three nodes (`indexer`, `manager`, `dashboard`) al
 Runs after an AIO installation. The installation generates random passwords and saves them in `/etc/wazuh/credentials.env`. The workflow first reads the `admin` password set by the installation (`WAZUH_INDEXER_ADMIN_PASSWORD`), masks it in the log and passes it to the tests as `WAZUH_OLD_PASSWORD`. It then sets the same new password for every user the tool supports, passing it on the standard input with `-p`:
 
 ```bash
-for user in admin kibanaserver wazuh-manager wazuh wazuh-wui; do
+for user in admin kibanaserver wazuh-manager wazuh wazuh-internal-client; do
   printf '%s\n' "$WAZUH_NEW_PASSWORD" | sudo bash wazuh-passwords-tool.sh -u "$user" -p
 done
 ```
@@ -208,7 +206,7 @@ All services are restarted after the password changes. The workflow then waits f
 | Test module | What it checks |
 | ----------- | -------------- |
 | `test_services` | Services are still active and health endpoints are reachable using the new password |
-| `test_passwords` | New password is accepted by indexer (`https://localhost:9200`) and dashboard (`https://localhost/status`) with HTTP 200, old password (`WAZUH_OLD_PASSWORD`, the `admin` password set by the installation) is rejected with HTTP 401, Wazuh Manager API accepts the new `wazuh-wui` credentials at `https://localhost:55000/security/user/authenticate`. Without `WAZUH_OLD_PASSWORD` the old-password check fails |
+| `test_passwords` | New password is accepted by indexer (`https://localhost:9200`) and dashboard (`https://localhost/status`) with HTTP 200, old password (`WAZUH_OLD_PASSWORD`, the `admin` password set by the installation) is rejected with HTTP 401, Wazuh Manager API accepts the new `wazuh-internal-client` credentials at `https://localhost:55000/security/user/authenticate`. Without `WAZUH_OLD_PASSWORD` the old-password check fails |
 | `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401 |
 
 ### `uninstall` — validate complete removal
@@ -221,7 +219,7 @@ Runs automatically after every `installer` or `all` test. Executes `wazuh-instal
 
 ### `all` — full end-to-end sequence
 
-Triggered by `/test-assistant`. Runs all three tools on the same AIO installation in sequence:
+Triggered by the `test/assistant` label. Runs all three tools on the same AIO installation in sequence:
 
 1. AIO install → `installer` validation
 2. `wazuh-certs-tool.sh` → `cert-tool` validation
@@ -240,14 +238,12 @@ Triggered by `/test-assistant`. Runs all three tools on the same AIO installatio
 
 ## Workflow jobs
 
-The workflow is composed of four jobs.
+The workflow is composed of three jobs.
 
-### Job 1 — `get_pr_info` (comment trigger only)
+### Job 1 — `get_pr_info` (label trigger only)
 
-1. Adds a 🚀 reaction to the triggering comment.
-2. Fetches the PR head branch and commit SHA via the GitHub API.
-3. Maps the comment body to a `tool_type` and `install_mode`.
-4. Creates a GitHub check run in `in_progress` state, visible on the PR commits view.
+1. Reads the PR number, head branch and commit SHA from the event payload.
+2. Maps the label name to a `tool_type` and `install_mode`.
 
 ### Job 2 — `build_tools`
 
@@ -270,14 +266,10 @@ The main job. Runs in parallel for each OS:
 4. Runs the installation according to the selected mode.
 5. Runs `test_runner` against the instance via SSH.
 6. For `installer` and `all`: runs uninstall and `test_runner --test-type uninstall`.
-7. Posts a per-OS result comment on the PR (comment trigger only).
+7. Posts a per-OS result comment on the PR (label trigger only).
 8. Uploads test result files as artifacts (7-day retention).
 9. **Always** deallocates the instance, even if previous steps failed.
 10. Fails the job when `test_runner` reported a failed test. The test steps continue on error so that the results are reported and the instance is deallocated first.
-
-### Job 4 — `update_check` (comment trigger only)
-
-Updates the GitHub check run from Job 1 with the final conclusion (`success`, `failure`, or `cancelled`) based on the overall result of Job 3.
 
 ## Environment variables for `test_runner`
 
@@ -303,20 +295,11 @@ After each OS job completes, a bot comment is posted (or updated if one already 
 - Detailed test output from `test_runner`.
 - A link to the workflow run.
 
-For the `all` command, a separate uninstall result section is appended to the same comment.
+For the `test/assistant` label, a separate uninstall result section is appended to the same comment.
 
-### GitHub check run
+### GitHub checks
 
-When triggered via PR comment, a named check run is created on the PR commit and updated when all OS jobs finish. Check run names:
-
-| Command | Check run name |
-| ------- | -------------- |
-| `/test-install` | Installation Assistant Check |
-| `/test-install-distributed` | Installation Assistant Check (Distributed) |
-| `/test-install-offline` | Installation Assistant Check (Offline) |
-| `/test-cert-tool` | Certificates Tool Check |
-| `/test-passwords-tool` | Passwords Tool Check |
-| `/test-assistant` | Full Integration Check |
+When triggered by a label, each job of the run shows up in the PR checks with its own result.
 
 ### Artifacts
 
@@ -330,42 +313,42 @@ For example: `test-results-installer-aio-ubuntu-24-amd64`
 
 ## Examples
 
-### Trigger via PR comment
+### Trigger via PR label
 
-Post any of the following as a comment on an open, non-draft PR:
+Add any of the following labels to a non-draft PR:
 
 ```
-/test-install
+test/install
 ```
 
 Test the AIO installer and validate services, certificates, logs, and version. Runs on all supported systems.
 
 ```
-/test-install-distributed
+test/install-distributed
 ```
 
 Test the distributed installation flow (separate install of each component). Runs on all supported systems.
 
 ```
-/test-install-offline
+test/install-offline
 ```
 
 Test the offline installation flow (no internet access on the instance during install). Runs on all supported systems.
 
 ```
-/test-cert-tool
+test/cert-tool
 ```
 
 Test certificate generation only. No Wazuh installation is performed. Runs on all supported systems.
 
 ```
-/test-passwords-tool
+test/passwords-tool
 ```
 
 Perform an AIO installation, rotate passwords for all internal users, and validate the new credentials. Runs on all supported systems.
 
 ```
-/test-assistant
+test/assistant
 ```
 
 Run the full end-to-end sequence: AIO install → cert-tool → passwords-tool → uninstall. Runs on all supported systems.

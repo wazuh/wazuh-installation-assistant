@@ -206,6 +206,8 @@ Follow these steps on the master node and on every worker node.
     install -m 0640 wazuh-install-files/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
     install -m 0640 wazuh-install-files/$NODE_NAME-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem
     install -m 0640 wazuh-install-files/$NODE_NAME-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-apid.pem /var/wazuh-manager/etc/certs/apid.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-apid-key.pem /var/wazuh-manager/etc/certs/apid-key.pem
     ```
 
 2. Install the Wazuh manager. The package uses the files you placed instead of issuing its own, and gives each one its owner.
@@ -321,7 +323,7 @@ Follow these steps on the master node and on every worker node.
 
    - `server.host`: This setting specifies the host of the Wazuh dashboard server. To allow remote users to connect, set the value to the IP address or DNS name of the Wazuh dashboard server. The value `0.0.0.0` will accept all the available IP addresses of the host.
    - `opensearch.hosts`: The URLs of the Wazuh indexer nodes.
-   - `wazuh_core.hosts`: The Wazuh server API that the dashboard queries. `url` must be the Wazuh server API of the **master node**: it only runs there. Do not set a `password`: the package stored the `wazuh-wui` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it. Leave `run_as` as the package wrote it.
+   - `wazuh_core.hosts`: The Wazuh server API that the dashboard queries. `url` must be the Wazuh server API of the **master node**: it only runs there. Do not set a `password`: the package stored the `wazuh-internal-client` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it. Leave `run_as` as the package wrote it.
 
     ```yaml
     server.host: 0.0.0.0
@@ -332,7 +334,7 @@ Follow these steps on the master node and on every worker node.
       default:
         url: https://<MASTER_NODE_IP>
         port: 55000
-        username: wazuh-wui
+        username: wazuh-internal-client
     ```
 
 6. Enable and start the Wazuh dashboard.

@@ -84,6 +84,33 @@ function manager_setRemotedSans() {
 
 }
 
+# Same for the Server API certificate, apid.pem: addresses given with -ap|--api-san reach
+# the package through WAZUH_MANAGER_APID_CERT_SANS, which replaces the discovered list, so
+# the host addresses go in too. The package always adds loopback.
+function manager_setApidSans() {
+
+    local san
+    local -a sans=()
+
+    if [ "${#api_san[@]}" -eq 0 ]; then
+        return 0
+    fi
+
+    while IFS= read -r san; do
+        [ -n "${san}" ] || continue
+        if cert_isIP "${san}"; then
+            sans+=("IP:${san}")
+        else
+            sans+=("DNS:${san}")
+        fi
+    done < <(printf '%s\n' "${api_san[@]}"; cert_hostAddresses)
+
+    WAZUH_MANAGER_APID_CERT_SANS=$(printf '%s\n' "${sans[@]}" | awk '!seen[$0]++' | paste -sd, -)
+    export WAZUH_MANAGER_APID_CERT_SANS
+    common_logger -d "Server API addresses: ${WAZUH_MANAGER_APID_CERT_SANS}"
+
+}
+
 function manager_install() {
 
     common_logger "Starting the Wazuh manager installation."
@@ -121,9 +148,9 @@ function manager_install() {
     fi
 }
 
-# Places the indexer connector and agent listener pairs of this node from the tar before
-# the package is installed, with the names the package expects. The package uses them
-# instead of issuing its own and sets their owner and mode.
+# Places the indexer connector, agent listener and Server API pairs of this node from the
+# tar before the package is installed, with the names the package expects. The package
+# uses them instead of issuing its own and sets their owner and mode.
 function manager_copyCertificates() {
 
     common_logger -d "Placing the Wazuh manager certificates."
@@ -134,5 +161,7 @@ function manager_copyCertificates() {
     installCommon_placeFromTar "${winame}-key.pem" "${manager_cert_path}/indexer-connector-key.pem" root root 0640
     installCommon_placeFromTar "${winame}-remoted.pem" "${manager_cert_path}/remoted.pem" root root 0640
     installCommon_placeFromTar "${winame}-remoted-key.pem" "${manager_cert_path}/remoted-key.pem" root root 0640
+    installCommon_placeFromTar "${winame}-apid.pem" "${manager_cert_path}/apid.pem" root root 0640
+    installCommon_placeFromTar "${winame}-apid-key.pem" "${manager_cert_path}/apid-key.pem" root root 0640
 
 }

@@ -124,6 +124,44 @@ function cert_cleanFiles() {
 
 }
 
+# Creates the temporary directory of the certificates. Without -tmp it is a new
+# directory with a random name in /tmp. A path given with -tmp must not exist, or must
+# be an empty directory of this user, so no other user can read the keys written there.
+function cert_createTmpDir() {
+
+    if [ -z "${cert_tmp_path}" ]; then
+        if ! cert_tmp_path="$(mktemp -d /tmp/wazuh-certificates.XXXXXXXXXX)"; then
+            common_logger -e "Could not create a temporary directory for the certificates."
+            exit 1
+        fi
+        return 0
+    fi
+
+    # Without the trailing slashes, -L checks the link itself and not its target.
+    while [[ "${cert_tmp_path}" == */ && "${cert_tmp_path}" != "/" ]]; do
+        cert_tmp_path="${cert_tmp_path%/}"
+    done
+
+    if [ -L "${cert_tmp_path}" ]; then
+        common_logger -e "The temporary directory ${cert_tmp_path} is a symbolic link. Use another path."
+        exit 1
+    fi
+
+    # The last mkdir has no -p, so it fails if another user creates the directory first.
+    if [ -e "${cert_tmp_path}" ]; then
+        if [ ! -d "${cert_tmp_path}" ] || [ "$(stat -c %u "${cert_tmp_path}")" != "$(id -u)" ] || [ -n "$(ls -A "${cert_tmp_path}")" ]; then
+            common_logger -e "The temporary directory ${cert_tmp_path} must be an empty directory owned by root. Remove it or use another path."
+            exit 1
+        fi
+    elif ! mkdir -p "$(dirname "${cert_tmp_path}")" || ! mkdir "${cert_tmp_path}"; then
+        common_logger -e "Could not create the temporary directory ${cert_tmp_path}."
+        exit 1
+    fi
+
+    chmod 700 "${cert_tmp_path}"
+
+}
+
 # Checks OpenSSL and the commands the shared credentials library needs to create and
 # validate the root CA. Without them the CA check fails with a misleading error.
 function cert_checkOpenSSL() {
@@ -404,6 +442,9 @@ function cert_generateManagercertificates() {
             # addresses given with --agent-san, which every node shares. Only this leaf
             # gets them; the manager certificate above keeps the node SAN alone.
             cert_generateRemotedcertificate "${manager_name}" "${manager_san[@]}" "${agent_san[@]}"
+            # Server API leaf: the node SAN, loopback and the addresses given with
+            # --api-san. It never takes the --agent-san addresses.
+            cert_generateApidcertificate "${manager_name}" "${manager_san[@]}" localhost 127.0.0.1 ::1 "${api_san[@]}"
         done
     else
         return 1
@@ -619,13 +660,28 @@ function cert_generateRemotedcertificate() {
 
 }
 
-# Every listener leaf must chain to the CA written next to it; a failure here means
-# remoted would serve a bundle agents cannot validate. Takes the directory holding
-# the issued certificates as first argument.
+# Issues the Server API pair of a manager node: <name>-apid.pem and <name>-apid-key.pem,
+# deployed as etc/certs/apid.pem and apid-key.pem. Same profile as the agent listener
+# leaf, with its own SAN list. Takes the node name followed by the SAN entries.
+function cert_generateApidcertificate() {
+
+    local node_name="$1"
+    shift
+
+    common_logger -d "Creating the Server API certificate for ${node_name}."
+
+    cert_generateServerLeaf "${node_name}-apid" "${node_name}" "$@"
+
+}
+
+# Every listener leaf, agent listener and Server API, must chain to the CA written next
+# to it; a failure here means the manager would serve a bundle its clients cannot
+# validate. Takes the directory holding the issued certificates as first argument.
 function cert_verifyRemotedcertificates() {
 
     local certs_dir="${1}"
     local manager_name
+    local leaf
 
     if [ ${#manager_node_names[@]} -eq 0 ]; then
         return 0
@@ -637,11 +693,13 @@ function cert_verifyRemotedcertificates() {
     fi
 
     for manager_name in "${manager_node_names[@]}"; do
-        if ! openssl verify -CAfile "${certs_dir}/root-ca.pem" "${certs_dir}/${manager_name}-remoted.pem" > /dev/null 2>&1; then
-            common_logger -e "The certificate ${certs_dir}/${manager_name}-remoted.pem does not verify against ${certs_dir}/root-ca.pem."
-            exit 1
-        fi
-        common_logger -d "Verified ${manager_name}-remoted.pem against root-ca.pem."
+        for leaf in "${manager_name}-remoted" "${manager_name}-apid"; do
+            if ! openssl verify -CAfile "${certs_dir}/root-ca.pem" "${certs_dir}/${leaf}.pem" > /dev/null 2>&1; then
+                common_logger -e "The certificate ${certs_dir}/${leaf}.pem does not verify against ${certs_dir}/root-ca.pem."
+                exit 1
+            fi
+            common_logger -d "Verified ${leaf}.pem against root-ca.pem."
+        done
     done
 
 }
@@ -1072,7 +1130,7 @@ function cert_isIPv4() {
 function cert_isIPv6() {
 
     local ip="$1"
-    [[ ${ip} =~ ^(([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,7}:|:([0-9A-Fa-f]{1,4}:){1,7}|([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2}|([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3}|([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4}|([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:((:[0-9A-Fa-f]{1,4}){1,6})|::)$ ]]
+    [[ ${ip} =~ ^(([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,7}:|:([0-9A-Fa-f]{1,4}:){1,7}|([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2}|([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3}|([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4}|([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:((:[0-9A-Fa-f]{1,4}){1,6})|:(:[0-9A-Fa-f]{1,4}){1,7}|::)$ ]]
 
 }
 
@@ -1215,6 +1273,30 @@ function cert_validateAgentSan() {
     for san in "${agent_san[@]}"; do
         if ! cert_isIP "${san}" && ! cert_isDNS "${san}"; then
             common_logger -e "Invalid IP or DNS in -as|--agent-san: ${san}."
+            exit 1
+        fi
+    done
+
+}
+
+# Validates the addresses given with -ap|--api-san: the names API clients dial, such as
+# a published name or the address of a load balancer in front of the Server API.
+function cert_validateApiSan() {
+
+    local san
+
+    if [ "${#api_san[@]}" -eq 0 ]; then
+        return 0
+    fi
+
+    if [[ -z "${all}" && -z "${cmanager}" && -z "${AIO}" && -z "${configurations}" ]]; then
+        common_logger -e "The option -ap|--api-san must be used along with one of these options: -A, -wm in wazuh-certs-tool.sh, or -a, -g in wazuh-install.sh"
+        exit 1
+    fi
+
+    for san in "${api_san[@]}"; do
+        if ! cert_isIP "${san}" && ! cert_isDNS "${san}"; then
+            common_logger -e "Invalid IP or DNS in -ap|--api-san: ${san}."
             exit 1
         fi
     done
@@ -1485,7 +1567,7 @@ function cert_setpermisions() {
 
 function cert_convertCRLFtoLF() {
     local config_file_path="$1"
-    local temp_dir="/tmp/wazuh-install-files"
+    local temp_file
 
     # Validate input file path
     if ! cert_validatePath "${config_file_path}" "file"; then
@@ -1493,29 +1575,19 @@ function cert_convertCRLFtoLF() {
         return 1
     fi
 
-    # Create temp directory if it doesn't exist
-    if [[ ! -d "${temp_dir}" ]]; then
-        if [ -n "${debugEnabled}" ]; then
-            mkdir "${temp_dir}"
-        else
-            mkdir "${temp_dir}" > /dev/null 2>&1
-        fi
-    fi
-
-    # Set permissions on temp directory
-    if [ -n "${debugEnabled}" ]; then
-        chmod -R 755 "${temp_dir}"
-    else
-        chmod -R 755 "${temp_dir}" > /dev/null 2>&1
+    # A new file with a random name, so no other user can create it or link it first.
+    if ! temp_file="$(mktemp)"; then
+        common_logger -e "Could not create a temporary file to convert ${config_file_path}."
+        return 1
     fi
 
     # Convert CRLF to LF
-    tr -d '\015' < "${config_file_path}" > "${temp_dir}/new_config.yml"
+    tr -d '\015' < "${config_file_path}" > "${temp_file}"
 
     # Move converted file back
     if [ -n "${debugEnabled}" ]; then
-        mv "${temp_dir}/new_config.yml" "${config_file_path}"
+        mv "${temp_file}" "${config_file_path}"
     else
-        mv "${temp_dir}/new_config.yml" "${config_file_path}" > /dev/null 2>&1
+        mv "${temp_file}" "${config_file_path}" > /dev/null 2>&1
     fi
 }

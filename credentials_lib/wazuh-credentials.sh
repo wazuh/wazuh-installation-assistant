@@ -64,6 +64,11 @@ _wazuh_error() (
     printf '%s\n' "wazuh-credentials: $*" >&2
 )
 
+# Notices go to stderr too, so they never mix with the values callers capture.
+_wazuh_info() (
+    printf '%s\n' "wazuh-credentials: $*" >&2
+)
+
 wazuh_base_get_dir() (
     _wazuh_base=${WAZUH_BASE_DIR-/etc/wazuh}
     _wazuh_validate_absolute_path "$_wazuh_base" || return 1
@@ -433,20 +438,30 @@ _wazuh_env_mutate_locked() (
                 "# To change a password: wazuh-passwords-tool.sh -u <user>\n" \
                 "# A host only holds the keys of the components installed on it.\n" \
                 "#\n" \
-                "#                 User           Key                                  Used for\n" \
+                "#                 User                   Key                                  Used for\n" \
                 "# Logins:\n" \
-                "#                 admin          WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API\n" \
-                "#                 wazuh          WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)\n" \
+                "#                 admin                  WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API\n" \
+                "#                 wazuh                  WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)\n" \
                 "# Service accounts the components connect with, not logins:\n" \
-                "#                 kibanaserver   WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer\n" \
-                "#                 wazuh-manager  WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer\n" \
-                "#                 wazuh-wui      WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API\n" \
+                "#                 kibanaserver           WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer\n" \
+                "#                 wazuh-manager          WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer\n" \
+                "#                 wazuh-internal-client  WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API\n" \
                 "#", header, "\n")
             for (i = 1; i <= header_lines; i++)
                 known_header[header[i]] = 1
-            known_header["# Editing a value here does not change the deployment."] = 1
-            known_header["# To rotate, use wazuh-passwords-tool.sh."] = 1
-            known_header["# admin: login of the Wazuh dashboard and administrator of the indexer"] = 1
+            # Header lines of earlier versions.
+            old_header_lines = split("" \
+                "# Editing a value here does not change the deployment.\n" \
+                "# To rotate, use wazuh-passwords-tool.sh.\n" \
+                "# admin: login of the Wazuh dashboard and administrator of the indexer\n" \
+                "#                 User           Key                                  Used for\n" \
+                "#                 admin          WAZUH_INDEXER_ADMIN_PASSWORD         Wazuh dashboard (web UI) and Wazuh indexer API\n" \
+                "#                 wazuh          WAZUH_MANAGER_API_PASSWORD           Wazuh server API (curl, scripts)\n" \
+                "#                 kibanaserver   WAZUH_INDEXER_KIBANASERVER_PASSWORD  dashboard to indexer\n" \
+                "#                 wazuh-manager  WAZUH_INDEXER_MANAGER_PASSWORD       manager to indexer\n" \
+                "#                 wazuh-wui      WAZUH_MANAGER_WUI_PASSWORD           dashboard to server API", old_header, "\n")
+            for (i = 1; i <= old_header_lines; i++)
+                known_header[old_header[i]] = 1
             value = ""
             if (action == "set") {
                 read_status = (getline value < value_file)
@@ -779,7 +794,8 @@ _wazuh_ca_ensure_locked() (
 
     rm -rf -- "$_wazuh_tmp_dir"
     trap - 0 1 2 3 15
-    _wazuh_validate_ca_files "$_wazuh_ca_dir"
+    _wazuh_validate_ca_files "$_wazuh_ca_dir" || return 1
+    _wazuh_info "created a new CA in $_wazuh_ca_dir. Hosts of the same deployment must share one CA: use the installation assistant, or place this CA in $_wazuh_ca_dir on the other hosts before installing their packages."
 )
 
 wazuh_ca_ensure() (

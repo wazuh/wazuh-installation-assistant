@@ -361,6 +361,8 @@ WAZUH_MANAGER_REMOTED_CERT_SANS='IP:<HOST_IP_ADDRESS>,IP:203.0.113.10,DNS:wazuh.
 
 The same applies when you install a downloaded package, for example `yum -y install ./wazuh-manager-5.0.0.x86_64.rpm`.
 
+The package also issues the certificate of the Server API, `apid.pem`, for the addresses it finds on the host plus `localhost`, `127.0.0.1` and `::1`. To add an address API clients dial, set `WAZUH_MANAGER_APID_CERT_SANS` the same way, for example `WAZUH_MANAGER_APID_CERT_SANS='IP:<HOST_IP_ADDRESS>,DNS:api.example.com'`. It is independent from `WAZUH_MANAGER_REMOTED_CERT_SANS`.
+
 ### Configuring the Wazuh manager
 
 There is nothing to configure. The package connects the Wazuh manager to the Wazuh indexer on `127.0.0.1`, with the certificates it issued and the password of its Wazuh indexer user, which it stored in its keystore.
@@ -519,7 +521,7 @@ yum -y install ./wazuh-dashboard-5.0.0-<STAGE>.aarch64.rpm
 The package connects the Wazuh dashboard to the Wazuh indexer and to the Wazuh server API on this host, and stores their passwords in its keystore. There is nothing to change in `/etc/wazuh-dashboard/opensearch_dashboards.yml`, except:
 
 - `server.host`: This setting specifies the host of the Wazuh dashboard server. The package sets `0.0.0.0`, which accepts all the available IP addresses of the host. To restrict it, set the IP address or DNS name of the Wazuh dashboard server.
-- Do not add a `password` under `wazuh_core.hosts`. The package stored the `wazuh-wui` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it.
+- Do not add a `password` under `wazuh_core.hosts`. The package stored the `wazuh-internal-client` password in the keystore of the Wazuh dashboard, and a value in the file takes precedence over it.
 
 The file already holds these values, among others:
 
@@ -531,7 +533,7 @@ wazuh_core.hosts:
   default:
     url: https://localhost
     port: 55000
-    username: wazuh-wui
+    username: wazuh-internal-client
 ```
 
 ### Starting the Wazuh dashboard service
@@ -606,9 +608,9 @@ Once the three components are installed and running, the passwords are stored in
     curl -k -u admin https://127.0.0.1:9200/_cluster/health?pretty
     curl -k -u kibanaserver https://127.0.0.1:9200/_plugins/_security/authinfo?pretty
     curl -k -u wazuh-manager https://127.0.0.1:9200/_plugins/_security/authinfo?pretty
-    # Wazuh server API: wazuh (WAZUH_MANAGER_API_PASSWORD) and wazuh-wui (WAZUH_MANAGER_WUI_PASSWORD)
+    # Wazuh server API: wazuh (WAZUH_MANAGER_API_PASSWORD) and wazuh-internal-client (WAZUH_MANAGER_WUI_PASSWORD)
     curl -k -u wazuh -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
-    curl -k -u wazuh-wui -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
+    curl -k -u wazuh-internal-client -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
     ```
 
     Log in to the Wazuh dashboard, and check that it reaches the Wazuh server API: the dashboard shows an error of the Wazuh server API connection otherwise.

@@ -26,8 +26,18 @@ function getHelp() {
     echo -e "                it: a load balancer shared by a cluster, a published name, a NAT"
     echo -e "                address. Must be used along with one of these options: -a, -g"
     echo -e ""
+    echo -e "        -ap, --api-san <ip|dns>"
+    echo -e "                Adds an extra address to the subject alternative name of the Server"
+    echo -e "                API certificate of every Wazuh manager node. Repeat it for more than"
+    echo -e "                one. Use it for the address API clients dial when the host cannot know"
+    echo -e "                it: a load balancer, a published name, a NAT address."
+    echo -e "                Must be used along with one of these options: -a, -g"
+    echo -e ""
     echo -e "        -d [pre-release|local],  --development"
     echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0.sh."
+    echo -e ""
+    echo -e "        --skip-signature-check"
+    echo -e "                Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with -d."
     echo -e ""
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
@@ -83,6 +93,7 @@ function main() {
     fi
 
     declare -a agent_san=()
+    declare -a api_san=()
 
     while [ -n "${1}" ]
     do
@@ -98,6 +109,16 @@ function main() {
                     exit 1
                 else
                     agent_san+=("${2}")
+                    shift 2
+                fi
+                ;;
+            "-ap"|"--api-san")
+                if [[ -z "${2}" || "${2}" == -* ]]; then
+                    common_logger -e "Error on arguments. Probably missing <ip|dns> after -ap|--api-san"
+                    getHelp
+                    exit 1
+                else
+                    api_san+=("${2}")
                     shift 2
                 fi
                 ;;
@@ -130,6 +151,10 @@ function main() {
                 ;;
             "-o"|"--overwrite")
                 overwrite=1
+                shift 1
+                ;;
+            "--skip-signature-check")
+                skip_signature_check=1
                 shift 1
                 ;;
             "-of"|"--offline-installation")
@@ -230,6 +255,7 @@ function main() {
     common_checkInstalled
     checks_arguments
     cert_validateAgentSan
+    cert_validateApiSan
     check_dist
 
     if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
@@ -318,7 +344,6 @@ function main() {
 
     if [ -z "${configurations}" ] && [ -z "${AIO}" ] && [ -z "${download}" ]; then
         installCommon_extractConfig
-        config_file="/tmp/wazuh-install-files/config.yml"
         cert_readConfig
     fi
 
@@ -331,17 +356,22 @@ function main() {
         installCommon_removeWIADependencies
     fi
 
+# -------------- Packages ------------------------------------------
+
+    # Every package is downloaded and its signature checked before any of them is installed.
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+        installCommon_getPackages
+    fi
+
 # -------------- Wazuh indexer case -------------------------------
 
     if [ -n "${indexer}" ]; then
         common_logger "--- Wazuh indexer ---"
-        installCommon_downloadComponent "wazuh_indexer"
         installCommon_placeCredentials "${indexer_credential_keys[@]}"
         indexer_copyCertificates
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
-        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
     fi
 
@@ -356,14 +386,12 @@ function main() {
 
     if [ -n "${dashboard}" ]; then
         common_logger "--- Wazuh dashboard ----"
-        installCommon_downloadComponent "wazuh_dashboard"
         installCommon_placeCredentials "${dashboard_credential_keys[@]}"
         dashboard_copyCertificates
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
         dashboard_initialize
-        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
     fi
@@ -372,7 +400,6 @@ function main() {
 
     if [ -n "${wazuh}" ]; then
         common_logger "--- Wazuh manager ---"
-        installCommon_downloadComponent "wazuh_manager"
         installCommon_placeCredentials "${manager_credential_keys[@]}"
         manager_copyCertificates
         manager_install
@@ -389,22 +416,19 @@ function main() {
     if [ -n "${AIO}" ]; then
 
         common_logger "--- Wazuh indexer ---"
-        installCommon_downloadComponent "wazuh_indexer"
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_startCluster
         common_logger "--- Wazuh manager ---"
-        installCommon_downloadComponent "wazuh_manager"
         manager_setRemotedSans
+        manager_setApidSans
         manager_install
         installCommon_startService "wazuh-manager"
         common_logger "--- Wazuh dashboard ---"
-        installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install
         installCommon_startService "wazuh-dashboard"
         dashboard_initialize
-        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
     fi
@@ -426,8 +450,12 @@ function main() {
 
 # -------------------------------------------------------------------
 
+    if [ -n "${install_tmp_path}" ]; then
+        eval "rm -rf ${install_tmp_path} ${debug}"
+    fi
+
     if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
-        eval "rm -rf /tmp/wazuh-install-files ${debug}"
+        installCommon_removeDownloadPackagesDirectory
         common_logger "Installation finished."
     elif [ -n "${start_indexer_cluster}" ]; then
         common_logger "Wazuh indexer cluster started."

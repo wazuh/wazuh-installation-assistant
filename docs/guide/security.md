@@ -15,8 +15,9 @@ The installation bundle (`wazuh-install-files.tar`) is created once with `wazuh-
 - An admin certificate (`admin.pem` and `admin-key.pem`) for cluster security initialization
 - Individual node certificates for each Wazuh Indexer, Manager, and Dashboard node
 - For each Wazuh Manager node, the certificate of the agent listener (`<node>-remoted.pem` and `<node>-remoted-key.pem`), deployed as `remoted.pem` and `remoted-key.pem`
+- For each Wazuh Manager node, the certificate of the Server API (`<node>-apid.pem` and `<node>-apid-key.pem`), deployed as `apid.pem` and `apid-key.pem`
 
-The Wazuh manager package issues its certificates when it is installed on a host whose `/etc/wazuh/ca` holds the root CA and its private key, as in an all-in-one installation. In a distributed deployment the node receives them in the bundle instead, and the Wazuh manager does not start until `remoted.pem` and `remoted-key.pem` are present in `/var/wazuh-manager/etc/certs`. That pair is served by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, so agents can verify the manager they dial by pinning `root-ca.pem`. `<node>-remoted.pem` is a chain: the leaf followed by the root CA, and its `notBefore` is backdated one day so an agent whose clock lags does not reject a freshly issued certificate. Unlike the rest of the trust material, which is read as `root`, the listener pair is opened after dropping privileges and is therefore owned by `wazuh-manager:wazuh-manager` with mode `640`.
+The Wazuh manager package issues its certificates when it is installed on a host whose `/etc/wazuh/ca` holds the root CA and its private key, as in an all-in-one installation. In a distributed deployment the node receives them in the bundle instead, and the Wazuh manager does not start until `remoted.pem` and `remoted-key.pem` are present in `/var/wazuh-manager/etc/certs`. That pair is served by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, so agents can verify the manager they dial by pinning `root-ca.pem`. `<node>-remoted.pem` is a chain: the leaf followed by the root CA, and its `notBefore` is backdated one day so an agent whose clock lags does not reject a freshly issued certificate. Unlike the rest of the trust material, which is read as `root`, the listener pair is opened after dropping privileges and is therefore owned by `wazuh-manager:wazuh-manager` with mode `640`. The Server API pair, `apid.pem` and `apid-key.pem`, has the same profile, owner and mode, and is served by `wazuh-manager-apid` on port 55000. The Wazuh manager does not self-sign it: when the pair is missing, the Server API does not start.
 
 The root CA private key (`root-ca.key`) is not in the bundle: it stays in `/etc/wazuh/ca` of the node where the bundle was generated. Anyone holding it can issue a certificate with `CN=admin`, which the Wazuh indexer accepts as its superuser without a password, and a certificate issued that way cannot be revoked. Keeping it on one node, instead of on every node, limits that exposure to a single host. Back up `/etc/wazuh/ca` of that node in a safe place: the key is only needed to add nodes or renew certificates with `wazuh-certs-tool-5.0.0.sh`.
 
@@ -48,7 +49,7 @@ To change a specific user's password, reading the new one from the standard inpu
 bash wazuh-passwords-tool-5.0.0.sh -u <USER> -p
 ```
 
-`<USER>` is a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh API user (`wazuh`, `wazuh-wui`). The Wazuh API passwords are changed with `rbac_control`, so no admin credentials are needed. Without `-p`, a random password is generated.
+`<USER>` is a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh API user (`wazuh`, `wazuh-internal-client`). The Wazuh API passwords are changed with `rbac_control`, so no admin credentials are needed. Without `-p`, a random password is generated.
 
 The tool never prints a password. Generated passwords are saved in `/etc/wazuh/credentials.env` (mode `0600`), the same file the Wazuh packages use.
 
@@ -64,7 +65,7 @@ A deployment installed step by step does not need the Wazuh installation assista
     /usr/share/wazuh-indexer/tools/wazuh-passwords-tool.sh -u <USER> -p
     ```
 
-- **Wazuh server API users** (`wazuh`, `wazuh-wui`): on the master node, run `rbac_control`. Every node keeps its own `rbac.db` and the cluster does not synchronize it, so repeat the change on any node that may become the master:
+- **Wazuh server API users** (`wazuh`, `wazuh-internal-client`): on the master node, run `rbac_control`. Every node keeps its own `rbac.db` and the cluster does not synchronize it, so repeat the change on any node that may become the master:
 
     ```bash
     /var/wazuh-manager/bin/rbac_control change-password
@@ -72,7 +73,7 @@ A deployment installed step by step does not need the Wazuh installation assista
 
 - **The nodes that use the changed password** keep the previous one in their keystores until you update them and restart the service:
   - After changing `wazuh-manager`, on every Wazuh manager node, as described in [Update the Wazuh manager nodes](../ref/getting-started/usage.md#update-the-wazuh-manager-nodes).
-  - After changing `kibanaserver` or `wazuh-wui`, on every Wazuh dashboard node (keystore entries `opensearch.password` and `wazuh_core.hosts.default.password`), as described in [Update the Wazuh dashboard nodes](../ref/getting-started/usage.md#update-the-wazuh-dashboard-nodes).
+  - After changing `kibanaserver` or `wazuh-internal-client`, on every Wazuh dashboard node (keystore entries `opensearch.password` and `wazuh_core.hosts.default.password`), as described in [Update the Wazuh dashboard nodes](../ref/getting-started/usage.md#update-the-wazuh-dashboard-nodes).
 
 ## Least privilege
 

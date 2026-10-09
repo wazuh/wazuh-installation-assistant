@@ -4,17 +4,29 @@ Unit tests for install_functions/installCommon.sh
 Covers: installCommon_getConfig, installCommon_installPrerequisites,
         installCommon_startService, installCommon_placeFromTar,
         installCommon_placeCredentials, installCommon_createPasswords,
-        installCommon_scanDependencies
+        installCommon_scanDependencies, installCommon_extractConfig,
+        installCommon_createCertificates
 """
+
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
 
 from tests.unit.conftest import assert_failure, assert_success, run_bash_function
 
 INSTALL_COMMON = "install_functions/installCommon.sh"
 COMMON = "common_functions/common.sh"
 COMMON_VARS = "common_functions/commonVariables.sh"
+CERT = "cert_tool/certFunctions.sh"
 BASE_SOURCES = [COMMON_VARS, COMMON, INSTALL_COMMON]
 
 IGNORE_LOGGER = {"common_logger": "true"}
+
+KEY_FIXTURE = Path(__file__).parent / "fixtures" / "GPG-KEY-WAZUH"
+WAZUH_KEY = KEY_FIXTURE.read_text()
+WAZUH_FINGERPRINT = "0DCFCA5547B19D2A6099506096B3EE5F29111145"
 
 
 class TestInstallCommonGetConfig:
@@ -332,12 +344,12 @@ class TestInstallCommonDownloadArtifactURLs:
         assert expected_file.exists()
 
     def test_prerelease_mode_constructs_correct_url(self, tmp_path):
-        """Pre-release mode: URL should be https://bucket/pre-release/5.x/artifact-urls/artifact_urls_5.0.0-rc1.yaml"""
-        result = self._run(tmp_path, devrepo="pre-release", staging_url_stage="rc1")
+        """Pre-release mode: URL should be https://bucket/pre-release/5.x/artifact-urls/artifact_urls_5.0.0-rc2.yaml"""
+        result = self._run(tmp_path, devrepo="pre-release", staging_url_stage="rc2")
         assert_success(result)
 
         # Check that the correct file was created
-        expected_filename = "artifact_urls_5.0.0-rc1.yaml"
+        expected_filename = "artifact_urls_5.0.0-rc2.yaml"
         expected_file = tmp_path / expected_filename
         assert expected_file.exists(), f"Expected {expected_filename} to be created"
         assert expected_file.read_text() == "mock yaml content\n"
@@ -419,6 +431,94 @@ class TestInstallCommonPlaceFromTar:
         result, destination = self._run(tmp_path, existing="another-ca")
         assert_failure(result)
         assert destination.read_text() == "another-ca"
+
+
+class TestInstallCommonExtractConfig:
+    """config.yml is extracted to a new directory, not to a fixed path in /tmp."""
+
+    def _tar(self, tmp_path):
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        (staging / "config.yml").write_text("nodes:\n")
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        return tar
+
+    def _run(self, tar):
+        return run_bash_function(
+            BASE_SOURCES,
+            'installCommon_extractConfig && echo "${install_tmp_path}" && echo "${config_file}"',
+            IGNORE_LOGGER,
+            {"tar_file": str(tar), "debug": ""},
+        )
+
+    def test_success_extracts_to_a_new_directory(self, tmp_path):
+        result = self._run(self._tar(tmp_path))
+        install_tmp_path, config_file = (result.stdout.strip().splitlines() + ["", ""])[:2]
+        try:
+            assert_success(result)
+            directory = Path(install_tmp_path)
+            assert directory.name.startswith("wazuh-install-files.")
+            assert directory.parent == Path("/tmp")
+            assert directory.stat().st_mode & 0o077 == 0
+            assert config_file == f"{install_tmp_path}/wazuh-install-files/config.yml"
+            assert Path(config_file).read_text() == "nodes:\n"
+        finally:
+            if install_tmp_path.startswith("/tmp/wazuh-install-files."):
+                shutil.rmtree(install_tmp_path, ignore_errors=True)
+
+    def test_does_not_use_a_precreated_fixed_directory(self, tmp_path):
+        fixed = Path("/tmp/wazuh-install-files")
+        if fixed.exists() or fixed.is_symlink():
+            pytest.skip("/tmp/wazuh-install-files already exists on this host")
+        fixed.mkdir(mode=0o777)
+        (fixed / "config.yml").write_text("attacker")
+        result = self._run(self._tar(tmp_path))
+        install_tmp_path = (result.stdout.strip().splitlines() + [""])[0]
+        try:
+            assert_success(result)
+            assert not result.stdout.strip().endswith("/tmp/wazuh-install-files/config.yml")
+            assert (fixed / "config.yml").read_text() == "attacker"
+        finally:
+            shutil.rmtree(fixed, ignore_errors=True)
+            if install_tmp_path.startswith("/tmp/wazuh-install-files."):
+                shutil.rmtree(install_tmp_path, ignore_errors=True)
+
+    def test_fail_without_config_in_tar(self, tmp_path):
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        (staging / "clusterkey").write_text("key")
+        tar = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        assert_failure(self._run(tar))
+
+
+class TestInstallCommonCreateCertificates:
+    """The certificates of -g are created in a new directory, not in /tmp/wazuh-certificates."""
+
+    def test_success_uses_a_new_directory_and_removes_it(self, tmp_path):
+        record = tmp_path / "cert_tmp_path"
+        mocks = {
+            **IGNORE_LOGGER,
+            "cert_readConfig": "true",
+            "cert_checkListenerReachability": "true",
+            "cert_checkRootCA": "true",
+            "cert_generateAdmincertificate": f'echo "${{cert_tmp_path}}" > "{record}"; touch "${{cert_tmp_path}}/admin-key.pem"',
+            "cert_generateIndexercertificates": "true",
+            "cert_generateManagercertificates": "true",
+            "cert_generateDashboardcertificates": "true",
+            "cert_cleanFiles": "true",
+            "cert_verifyRemotedcertificates": "true",
+            "mv": "true",
+        }
+        result = run_bash_function(
+            [*BASE_SOURCES, CERT], "installCommon_createCertificates", mocks, {"debug": ""}
+        )
+        assert_success(result)
+        used = Path(record.read_text().strip())
+        assert used.name.startswith("wazuh-certificates.")
+        assert used.parent == Path("/tmp")
+        assert not used.exists()
 
 
 class TestInstallCommonCreatePasswords:
@@ -684,3 +784,155 @@ class TestInstallCommonMergeCredentials:
         result, content = self._run_mode(tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n', "check")
         assert_success(result)
         assert content == f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n'
+
+
+class TestInstallCommonVerifyPackageSignature:
+    """Tests for installCommon_verifyPackageSignature on RPM packages.
+
+    The key is mocked as already checked; rpm is mocked: -q reports the key as
+    imported, -qp prints the signer and -K returns the given exit code.
+    """
+
+    WAZUH_SIGNER = "RSA/SHA256, Mon Oct  5 23:35:00 2026, Key ID 96b3ee5f29111145"
+
+    def _run(self, signer, checksig_rc=0, skip=""):
+        rpm_mock = (
+            'case "$1" in -qp) echo "' + signer + '";; -K) return ' + str(checksig_rc) + ';; esac; return 0'
+        )
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_rollBack": "true",
+            "installCommon_getWazuhGPGKey": "true",
+            "installCommon_getGPGKeyFingerprint": f"echo {WAZUH_FINGERPRINT}",
+            "rpm": rpm_mock,
+        }
+        env = {"skip_signature_check": skip}
+        return run_bash_function(BASE_SOURCES, "installCommon_verifyPackageSignature /tmp/p.rpm", mocks, env)
+
+    def test_success_signed_with_wazuh_key(self):
+        assert_success(self._run(self.WAZUH_SIGNER))
+
+    def test_fail_unsigned(self):
+        assert_failure(self._run("(none)"))
+
+    def test_fail_signed_with_another_key(self):
+        assert_failure(self._run("RSA/SHA256, Mon Oct  5 23:35:00 2026, Key ID 0123456789abcdef"))
+
+    def test_fail_invalid_signature(self):
+        assert_failure(self._run(self.WAZUH_SIGNER, checksig_rc=1))
+
+    def test_success_unsigned_with_skip(self):
+        assert_success(self._run("(none)", skip="1"))
+
+
+class TestInstallCommonGetWazuhGPGKey:
+    """Tests for installCommon_getWazuhGPGKey with the key of the offline bundle.
+
+    The key is only trusted if the file holds a single primary key with a pinned fingerprint.
+    """
+
+    def _run(self, tmp_path, key_text):
+        bundle = tmp_path / "wazuh-offline"
+        bundle.mkdir()
+        (bundle / "GPG-KEY-WAZUH").write_text(key_text)
+        key_dir = tmp_path / "key"
+        key_dir.mkdir()
+        mocks = {**IGNORE_LOGGER, "installCommon_rollBack": "true"}
+        env = {
+            "offline_install": "1",
+            "base_path": str(tmp_path),
+            "wazuh_gpg_key_fingerprints": f"( {WAZUH_FINGERPRINT} )",
+        }
+        return run_bash_function(BASE_SOURCES, f"installCommon_getWazuhGPGKey {key_dir}", mocks, env)
+
+    def test_success_wazuh_key(self, tmp_path):
+        assert_success(self._run(tmp_path, WAZUH_KEY))
+
+    def test_fail_two_keys_in_the_file(self, tmp_path):
+        assert_failure(self._run(tmp_path, WAZUH_KEY + WAZUH_KEY))
+
+    def test_fail_modified_key(self, tmp_path):
+        lines = WAZUH_KEY.splitlines(keepends=True)
+        body = lines.index("\n") + 1
+        lines[body] = ("A" if lines[body][0] != "A" else "B") + lines[body][1:]
+        assert_failure(self._run(tmp_path, "".join(lines)))
+
+    def test_fail_no_key(self, tmp_path):
+        assert_failure(self._run(tmp_path, ""))
+
+
+class TestInstallCommonGetGPGKeyFingerprint:
+    def test_success_wazuh_key(self, tmp_path):
+        result = run_bash_function(
+            BASE_SOURCES,
+            f"sed '1,/^$/d; /^=/,$d; /^-----/d' {KEY_FIXTURE} | base64 -d > {tmp_path}/k.gpg && "
+            f"installCommon_getGPGKeyFingerprint {tmp_path}/k.gpg",
+            IGNORE_LOGGER,
+        )
+        assert_success(result)
+        assert result.stdout.strip() == WAZUH_FINGERPRINT
+
+
+class TestInstallCommonGetPackages:
+    """Tests for installCommon_getPackages with the packages of the offline bundle.
+
+    Every package of the components to install is checked before any of them is installed.
+    """
+
+    PACKAGES = [
+        "wazuh-indexer-5.0.0-1.x86_64.rpm",
+        "wazuh-manager-5.0.0-1.x86_64.rpm",
+        "wazuh-dashboard-5.0.0-1.x86_64.rpm",
+    ]
+
+    def _run(self, tmp_path, packages):
+        for package in packages:
+            (tmp_path / package).touch()
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_rollBack": "true",
+            "installCommon_downloadComponent": "true",
+            "installCommon_verifyPackageSignature": 'echo "checked $(basename $1)"',
+        }
+        env = {"AIO": "1", "offline_install": "1", "offline_packages_path": str(tmp_path), "sys_type": "yum"}
+        return run_bash_function(BASE_SOURCES, "installCommon_getPackages", mocks, env)
+
+    def test_success_checks_every_aio_package(self, tmp_path):
+        result = self._run(tmp_path, self.PACKAGES)
+        assert_success(result)
+        assert result.stdout.split("\n")[:3] == [f"checked {p}" for p in self.PACKAGES]
+
+    def test_fail_missing_package(self, tmp_path):
+        assert_failure(self._run(tmp_path, self.PACKAGES[:2]))
+
+
+class TestInstallCommonDownloadDirectory:
+    """installCommon_downloadComponent refuses a download directory that others can write to."""
+
+    def _run(self, tmp_path):
+        return run_bash_function(
+            BASE_SOURCES,
+            "installCommon_downloadComponent wazuh_manager",
+            {"common_logger": 'echo "$@"', "installCommon_rollBack": "true"},
+            {"base_path": str(tmp_path), "download_packages_directory": "pkgs", "sys_type": "none"},
+        )
+
+    def test_creates_private_directory(self, tmp_path):
+        result = self._run(tmp_path)
+        assert "must belong" not in result.stdout
+        assert (tmp_path / "pkgs").stat().st_mode & 0o777 == 0o700
+
+    @pytest.mark.parametrize("mode", [0o777, 0o775])
+    def test_fail_writable_by_others(self, tmp_path, mode):
+        (tmp_path / "pkgs").mkdir()
+        (tmp_path / "pkgs").chmod(mode)
+        result = self._run(tmp_path)
+        assert_failure(result)
+        assert "must belong" in result.stdout
+
+    def test_fail_symlink(self, tmp_path):
+        (tmp_path / "real").mkdir(mode=0o700)
+        (tmp_path / "pkgs").symlink_to(tmp_path / "real")
+        result = self._run(tmp_path)
+        assert_failure(result)
+        assert "must belong" in result.stdout

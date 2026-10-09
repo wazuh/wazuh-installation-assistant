@@ -69,12 +69,8 @@ function installCommon_createCertificates() {
 
     cert_checkListenerReachability
 
-    if [ -d /tmp/wazuh-certificates/ ]; then
-        eval "rm -rf /tmp/wazuh-certificates/ ${debug}"
-    fi
-    eval "mkdir /tmp/wazuh-certificates/ ${debug}"
-
-    cert_tmp_path="/tmp/wazuh-certificates/"
+    cert_tmp_path=""
+    cert_createTmpDir
 
     cert_checkRootCA "create"
     cert_generateAdmincertificate
@@ -82,9 +78,9 @@ function installCommon_createCertificates() {
     cert_generateManagercertificates
     cert_generateDashboardcertificates
     cert_cleanFiles
-    eval "chmod 400 /tmp/wazuh-certificates/* ${debug}"
-    eval "mv /tmp/wazuh-certificates/* /tmp/wazuh-install-files ${debug}"
-    eval "rm -rf /tmp/wazuh-certificates/ ${debug}"
+    eval "chmod 400 ${cert_tmp_path}/* ${debug}"
+    eval "mv ${cert_tmp_path}/* /tmp/wazuh-install-files ${debug}"
+    eval "rm -rf ${cert_tmp_path} ${debug}"
     cert_verifyRemotedcertificates "/tmp/wazuh-install-files"
 
 }
@@ -245,7 +241,9 @@ function installCommon_createInstallFiles() {
         eval "rm -rf /tmp/wazuh-install-files ${debug}"
     fi
 
-    if eval "mkdir /tmp/wazuh-install-files ${debug}"; then
+    # mkdir fails if another user creates the directory first. The mode is the one the
+    # directory has in the tar.
+    if eval "mkdir -m 755 /tmp/wazuh-install-files ${debug}"; then
         common_logger "Generating configuration files."
 
         if [ -n "${configurations}" ]; then
@@ -329,11 +327,17 @@ function installCommon_downloadComponent() {
 
     # Create download directory if it doesn't exist
     if [ ! -d "${download_dir}" ]; then
-        eval "mkdir -p ${download_dir} ${debug}"
+        eval "mkdir -m 700 -p ${download_dir} ${debug}"
         if [ ! -d "${download_dir}" ]; then
             common_logger -e "Failed to create download directory: ${download_dir}"
             exit 1
         fi
+    fi
+
+    # Packages are checked before installing them, so no other user may be able to replace them in between
+    if [ -L "${download_dir}" ] || [ ! -O "${download_dir}" ] || [ -n "$(find "${download_dir}" -maxdepth 0 \( -perm -020 -o -perm -002 \))" ]; then
+        common_logger -e "The download directory ${download_dir} must belong to the current user and not be writable by others."
+        exit 1
     fi
 
     # Determine package type based on system
@@ -398,7 +402,14 @@ function installCommon_extractConfig() {
         common_logger -e "There is no config.yml file in ${tar_file}."
         exit 1
     fi
-    eval "tar -xf ${tar_file} -C /tmp wazuh-install-files/config.yml ${debug}"
+    # A new directory with a random name, so no other user can create it or change
+    # config.yml before it is read.
+    if ! install_tmp_path="$(mktemp -d /tmp/wazuh-install-files.XXXXXXXXXX)"; then
+        common_logger -e "Could not create a temporary directory to extract config.yml."
+        exit 1
+    fi
+    eval "tar -xf ${tar_file} -C ${install_tmp_path} wazuh-install-files/config.yml ${debug}"
+    config_file="${install_tmp_path}/wazuh-install-files/config.yml"
 
 }
 
@@ -895,6 +906,212 @@ function installCommon_removeDownloadPackagesDirectory() {
     else
         common_logger -w "Download packages directory does not exist: ${download_dir}"
     fi
+
+}
+
+# Downloads the packages of the components to install, or finds them in the offline bundle,
+# and checks all their signatures before any of them is installed.
+function installCommon_getPackages() {
+
+    components=()
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ]; then
+        components+=("wazuh_indexer")
+    fi
+    if [ -n "${AIO}" ] || [ -n "${wazuh}" ]; then
+        components+=("wazuh_manager")
+    fi
+    if [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
+        components+=("wazuh_dashboard")
+    fi
+
+    if [ -n "${offline_install}" ]; then
+        packages_dir="${offline_packages_path}"
+    else
+        packages_dir="${base_path}/${download_packages_directory}"
+    fi
+    if [ "${sys_type}" == "yum" ]; then
+        package_extension="rpm"
+    else
+        package_extension="deb"
+    fi
+
+    for component in "${components[@]}"; do
+        installCommon_downloadComponent "${component}"
+    done
+    for component in "${components[@]}"; do
+        package_file=$(ls "${packages_dir}/${component//_/-}"*."${package_extension}" 2>/dev/null | head -n 1)
+        if [ -z "${package_file}" ]; then
+            common_logger -e "The ${component//_/ } package was not found in ${packages_dir}."
+            installCommon_rollBack
+            exit 1
+        fi
+        installCommon_verifyPackageSignature "${package_file}"
+    done
+
+}
+
+# Checks that a downloaded Wazuh package is signed with the Wazuh key before installing it.
+# Unsigned packages only pass with --skip-signature-check, which needs -d.
+function installCommon_verifyPackageSignature() {
+
+    package_file="${1}"
+    if [ -n "${skip_signature_check}" ]; then
+        common_logger -w "Skipping the signature check of ${package_file}. Use it only with development packages."
+        return 0
+    fi
+
+    common_logger -d "Checking the signature of ${package_file}."
+    verify_dir=$(mktemp -d)
+    installCommon_getWazuhGPGKey "${verify_dir}"
+    if [[ "${package_file}" == *.rpm ]]; then
+        installCommon_verifyRpmSignature "${package_file}"
+    elif [[ "${package_file}" == *.deb ]]; then
+        installCommon_verifyDebSignature "${package_file}"
+    fi
+    rm -rf "${verify_dir}"
+
+}
+
+# Leaves the Wazuh key in ${1}/wazuh.asc and as a binary keyring in ${1}/wazuh.gpg. The key
+# comes from the offline bundle or from packages.wazuh.com, and is only trusted if it holds a
+# single primary key whose fingerprint is in wazuh_gpg_key_fingerprints: a key whose expiry
+# date was extended keeps its fingerprint and still passes.
+function installCommon_getWazuhGPGKey() {
+
+    key_dir="${1}"
+    if [ -n "${offline_install}" ]; then
+        eval "cp ${base_path}/wazuh-offline/GPG-KEY-WAZUH ${key_dir}/wazuh.asc ${debug}"
+    else
+        eval "common_curl -sSo ${key_dir}/wazuh.asc ${wazuh_gpg_key_url} --max-time 300 --retry 5 --retry-delay 5 --fail ${debug}"
+    fi
+    if [ ! -s "${key_dir}/wazuh.asc" ]; then
+        installCommon_signatureCheckFailed "Could not get the Wazuh GPG key."
+    fi
+    # rpm --import would also take a second key appended to the file.
+    if [ "$(grep -c -- '-----BEGIN PGP PUBLIC KEY BLOCK-----' "${key_dir}/wazuh.asc")" -ne 1 ]; then
+        installCommon_signatureCheckFailed "The Wazuh GPG key file must hold a single key."
+    fi
+
+    # The armored body is the base64 of the binary keyring that gpgv reads.
+    sed '1,/^$/d; /^=/,$d; /^-----/d' "${key_dir}/wazuh.asc" | base64 -d > "${key_dir}/wazuh.gpg" 2>/dev/null
+    key_fingerprint=$(installCommon_getGPGKeyFingerprint "${key_dir}/wazuh.gpg")
+    if [ -z "${key_fingerprint}" ] || [[ " ${wazuh_gpg_key_fingerprints[*]} " != *" ${key_fingerprint} "* ]]; then
+        installCommon_signatureCheckFailed "The Wazuh GPG key does not have the expected fingerprint."
+    fi
+
+}
+
+# Prints the fingerprint of the binary key in ${1}, or nothing if it does not hold exactly
+# one primary key. Computed with coreutils, since gpg is not installed everywhere: the v4
+# fingerprint is the SHA-1 of 0x99, the two-octet body length and the public key packet body.
+function installCommon_getGPGKeyFingerprint() {
+
+    key_bytes=( $(od -An -v -tu1 "${1}") )
+    packet_start=0
+    primary_keys=0
+    primary_fingerprint=""
+    while [ "${packet_start}" -lt "${#key_bytes[@]}" ]; do
+        packet_tag_byte=${key_bytes[packet_start]}
+        if (( (packet_tag_byte & 0x80) == 0 )); then
+            return 0
+        elif (( packet_tag_byte & 0x40 )); then
+            packet_tag=$(( packet_tag_byte & 0x3f ))
+            length_byte=${key_bytes[packet_start + 1]}
+            if (( length_byte < 192 )); then
+                packet_length=${length_byte}; header_length=2
+            elif (( length_byte < 224 )); then
+                packet_length=$(( ((length_byte - 192) << 8) + key_bytes[packet_start + 2] + 192 )); header_length=3
+            elif (( length_byte == 255 )); then
+                packet_length=$(( (key_bytes[packet_start + 2] << 24) + (key_bytes[packet_start + 3] << 16) + (key_bytes[packet_start + 4] << 8) + key_bytes[packet_start + 5] )); header_length=6
+            else
+                return 0
+            fi
+        else
+            packet_tag=$(( (packet_tag_byte >> 2) & 0x0f ))
+            case $(( packet_tag_byte & 3 )) in
+                0) packet_length=${key_bytes[packet_start + 1]}; header_length=2 ;;
+                1) packet_length=$(( (key_bytes[packet_start + 1] << 8) + key_bytes[packet_start + 2] )); header_length=3 ;;
+                2) packet_length=$(( (key_bytes[packet_start + 1] << 24) + (key_bytes[packet_start + 2] << 16) + (key_bytes[packet_start + 3] << 8) + key_bytes[packet_start + 4] )); header_length=5 ;;
+                *) return 0 ;;
+            esac
+        fi
+        if [ "${packet_tag}" -eq 6 ]; then
+            primary_keys=$(( primary_keys + 1 ))
+            primary_fingerprint=$( { printf "\\x99\\x$(printf %02x $(( packet_length >> 8 )))\\x$(printf %02x $(( packet_length & 255 )))"; tail -c +$(( packet_start + header_length + 1 )) "${1}" | head -c "${packet_length}"; } | sha1sum | awk '{print toupper($1)}')
+        fi
+        packet_start=$(( packet_start + header_length + packet_length ))
+    done
+    if [ "${primary_keys}" -eq 1 ]; then
+        echo "${primary_fingerprint}"
+    fi
+
+}
+
+# rpm -K passes on unsigned packages, so the signer key is checked first. rpm keeps
+# verifying with an expired copy of the key, as long as the package was signed before.
+function installCommon_verifyRpmSignature() {
+
+    package_file="${1}"
+    key_fingerprint=$(installCommon_getGPGKeyFingerprint "${verify_dir}/wazuh.gpg")
+    key_id="${key_fingerprint: -16}"
+    if ! rpm -q "gpg-pubkey-${key_id: -8}" --quiet; then
+        eval "rpm --import ${verify_dir}/wazuh.asc ${debug}"
+    fi
+
+    signature=$(rpm -qp --qf '%{RSAHEADER:pgpsig}' "${package_file}" 2>/dev/null)
+    if [[ "${signature,,}" != *"key id ${key_id,,}"* ]]; then
+        installCommon_signatureCheckFailed "${package_file} is not signed with the Wazuh key."
+    fi
+    if ! rpm -K "${package_file}" >/dev/null 2>&1; then
+        installCommon_signatureCheckFailed "The signature of ${package_file} is not valid."
+    fi
+
+}
+
+# apt ignores the signature embedded in a .deb, so the _gpgbuilder member is checked with
+# gpgv and the hashes it signs are compared with the other members. The .deb is an ar
+# archive, read with coreutils because binutils is not always installed.
+function installCommon_verifyDebSignature() {
+
+    package_file="${1}"
+    package_size=$(stat -c %s "${package_file}")
+    offset=8
+    touch "${verify_dir}/members"
+    while [ "${offset}" -lt "${package_size}" ]; do
+        member_header=$(dd if="${package_file}" bs=1 skip="${offset}" count=60 2>/dev/null)
+        member_name=$(echo "${member_header:0:16}" | sed 's/[ /]*$//')
+        member_size=$(echo "${member_header:48:10}" | tr -d ' ')
+        member_start=$((offset + 61))
+        if [ "${member_name}" == "_gpgbuilder" ]; then
+            tail -c +"${member_start}" "${package_file}" | head -c "${member_size}" > "${verify_dir}/_gpgbuilder"
+        elif [[ "${member_name}" != _gpg* ]]; then
+            member_sha1=$(tail -c +"${member_start}" "${package_file}" | head -c "${member_size}" | sha1sum | awk '{print $1}')
+            echo "${member_sha1} ${member_size} ${member_name}" >> "${verify_dir}/members"
+        fi
+        offset=$((offset + 60 + member_size + member_size % 2))
+    done
+
+    if [ ! -s "${verify_dir}/_gpgbuilder" ]; then
+        installCommon_signatureCheckFailed "${package_file} is not signed."
+    fi
+    if ! gpgv --keyring "${verify_dir}/wazuh.gpg" --output "${verify_dir}/signed" "${verify_dir}/_gpgbuilder" >/dev/null 2>&1; then
+        installCommon_signatureCheckFailed "${package_file} is not signed with the Wazuh key."
+    fi
+    # Signed lines: <md5> <sha1> <size> <member>
+    signed_members=$(awk 'NF == 4 && length($1) == 32 && $1 ~ /^[0-9a-f]+$/ {print $2, $3, $4}' "${verify_dir}/signed" | sort)
+    if [ -z "${signed_members}" ] || [ "${signed_members}" != "$(sort "${verify_dir}/members")" ]; then
+        installCommon_signatureCheckFailed "The contents of ${package_file} do not match its signature."
+    fi
+
+}
+
+function installCommon_signatureCheckFailed() {
+
+    common_logger -e "${1}"
+    common_logger -e "Wazuh packages are signed. Use --skip-signature-check along with -d only for unsigned development packages."
+    rm -rf "${verify_dir}"
+    installCommon_rollBack
+    exit 1
 
 }
 
