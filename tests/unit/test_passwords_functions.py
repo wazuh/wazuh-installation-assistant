@@ -10,12 +10,13 @@ Covers: passwords_checkPassword, passwords_generatePassword,
         passwords_updateDashboardKeystore,
         passwords_updateManagerKeystore, passwords_restartPendingServices,
         passwords_generatePasswords, passwords_generateHash (changeall),
-        passwords_runSecurityAdmin
+        passwords_runSecurityAdmin, passwords_createBackUp,
+        passwords_restartService
 """
 
 import pytest
 
-from tests.unit.conftest import assert_failure, assert_success, run_bash_function
+from tests.unit.conftest import VERBOSE_DEBUG, assert_failure, assert_success, run_bash_function
 from tests.unit.test_credentials_lib import CHARSET, OUTSIDE_CHARSET
 
 PASSWORDS = "passwords_tool/passwordsFunctions.sh"
@@ -170,7 +171,7 @@ class TestPasswordsCheckUser:
 
     Only the accounts of the Wazuh packages are supported: the Wazuh indexer
     users admin, kibanaserver and wazuh-manager, and the Wazuh API users
-    wazuh and wazuh-wui.
+    wazuh and wazuh-internal-client.
     """
 
     def _run(self, nuser, env=None):
@@ -196,7 +197,7 @@ class TestPasswordsCheckUser:
         assert "The Wazuh indexer is not installed" in result.stdout
 
     def test_success_api_user_sets_api(self):
-        result = self._run("wazuh-wui", {"wazuh_installed": "1"})
+        result = self._run("wazuh-internal-client", {"wazuh_installed": "1"})
         assert_success(result)
         assert "api:[1]" in result.stdout
 
@@ -250,7 +251,7 @@ class TestPasswordsGetEnvKey:
             "kibanaserver": "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
             "wazuh-manager": "WAZUH_INDEXER_MANAGER_PASSWORD",
             "wazuh": "WAZUH_MANAGER_API_PASSWORD",
-            "wazuh-wui": "WAZUH_MANAGER_WUI_PASSWORD",
+            "wazuh-internal-client": "WAZUH_MANAGER_WUI_PASSWORD",
         }
         for user, key in expected.items():
             result = run_bash_function(BASE_SOURCES, f"passwords_getEnvKey {user}")
@@ -301,7 +302,7 @@ class TestPasswordsSaveCredential:
         assert "status:0" in result.stdout
 
     def test_api_user_uses_the_manager_key(self):
-        result = self._run(generated="1", file_exists=False, user="wazuh-wui")
+        result = self._run(generated="1", file_exists=False, user="wazuh-internal-client")
         assert "SET:WAZUH_MANAGER_WUI_PASSWORD" in result.stdout
 
     def test_failed_write_is_reported(self):
@@ -658,22 +659,22 @@ class TestPasswordsChangePasswordApi:
         assert "status:1" in result.stdout
         assert "Cannot find /nonexistent/rbac_control" in result.stdout
 
-    def test_wazuh_wui_updates_the_dashboard_keystore(self):
-        result = self._run({"nuser": "wazuh-wui", "password": "NewWuiPass123", "dashboard_installed": "1"})
+    def test_wazuh_internal_client_updates_the_dashboard_keystore(self):
+        result = self._run({"nuser": "wazuh-internal-client", "password": "NewWuiPass123", "dashboard_installed": "1"})
         assert "DASHBOARD_KEYSTORE:wazuh_core.hosts.default.password:NewWuiPass123" in result.stdout
         assert "status:0 pending:[1]" in result.stdout
 
-    def test_wazuh_wui_is_saved_before_the_dashboard_is_updated(self):
-        result = self._run({"nuser": "wazuh-wui", "password": "NewWuiPass123", "dashboard_installed": "1"})
-        assert result.stdout.index("SAVE:wazuh-wui") < result.stdout.index("DASHBOARD_KEYSTORE:")
+    def test_wazuh_internal_client_is_saved_before_the_dashboard_is_updated(self):
+        result = self._run({"nuser": "wazuh-internal-client", "password": "NewWuiPass123", "dashboard_installed": "1"})
+        assert result.stdout.index("SAVE:wazuh-internal-client") < result.stdout.index("DASHBOARD_KEYSTORE:")
 
-    def test_wazuh_wui_without_local_dashboard_warns(self):
-        result = self._run({"nuser": "wazuh-wui", "password": "NewWuiPass123"})
+    def test_wazuh_internal_client_without_local_dashboard_warns(self):
+        result = self._run({"nuser": "wazuh-internal-client", "password": "NewWuiPass123"})
         assert "DASHBOARD_KEYSTORE:" not in result.stdout
         assert "The Wazuh dashboard is not installed on this host." in result.stdout
 
     def test_fail_when_the_dashboard_keystore_fails(self):
-        result = self._run({"nuser": "wazuh-wui", "password": "NewWuiPass123", "dashboard_installed": "1"},
+        result = self._run({"nuser": "wazuh-internal-client", "password": "NewWuiPass123", "dashboard_installed": "1"},
                            extra_mocks={"passwords_updateDashboardKeystore": "return 1"})
         assert "status:1 pending:[]" in result.stdout
 
@@ -683,20 +684,20 @@ class TestPasswordsChangePasswordApi:
         assert "pending:[]" in result.stdout
 
     def test_changeall_changes_every_api_user(self):
-        result = self._run({"changeall": "1", "api_users": "(wazuh wazuh-wui)",
+        result = self._run({"changeall": "1", "api_users": "(wazuh wazuh-internal-client)",
                             "api_passwords": "(PassOne12345 PassTwo12345)"})
         assert "status:0" in result.stdout
         assert "ARGS:change-password -u wazuh -p -" in result.calls
-        assert "ARGS:change-password -u wazuh-wui -p -" in result.calls
+        assert "ARGS:change-password -u wazuh-internal-client -p -" in result.calls
         assert "SAVE:wazuh:1" in result.stdout
-        assert "SAVE:wazuh-wui:1" in result.stdout
+        assert "SAVE:wazuh-internal-client:1" in result.stdout
 
     def test_changeall_stops_at_the_first_failure(self):
-        result = self._run({"changeall": "1", "api_users": "(wazuh wazuh-wui)",
+        result = self._run({"changeall": "1", "api_users": "(wazuh wazuh-internal-client)",
                             "api_passwords": "(PassOne12345 PassTwo12345)"},
                            rbac='cat > /dev/null; echo "ARGS:$*" >> "${CALLS}"; return 1')
         assert "status:1" in result.stdout
-        assert "-u wazuh-wui" not in result.calls
+        assert "-u wazuh-internal-client" not in result.calls
 
 
 class TestPasswordsUpdateDashboardKeystore:
@@ -751,7 +752,7 @@ class TestPasswordsGeneratePasswords:
             {**IGNORE_LOGGER},
             {
                 "users": "(wazuh admin kibanaserver)",
-                "api_users": "(wazuh wazuh-wui)",
+                "api_users": "(wazuh wazuh-internal-client)",
             },
         )
         assert_success(result)
@@ -770,7 +771,7 @@ class TestPasswordsGeneratePasswords:
             {**IGNORE_LOGGER, "installCommon_rollBack": "true"},
             {
                 "users": "(wazuh admin)",
-                "api_users": "(wazuh-wui)",
+                "api_users": "(wazuh-internal-client)",
             },
         )
         assert_success(result)
@@ -782,7 +783,7 @@ class TestPasswordsGeneratePasswords:
             {**IGNORE_LOGGER},
             {
                 "users": "(wazuh)",
-                "api_users": "(wazuh-wui)",
+                "api_users": "(wazuh-internal-client)",
             },
         )
         assert_success(result)
@@ -827,7 +828,7 @@ class TestPasswordsRunSecurityAdmin:
     """
 
     def _run(self, env):
-        mocks = {"common_logger": 'echo "LOG:$*"', "eval": "return 0", "cp": "true"}
+        mocks = {"common_logger": 'echo "LOG:$*"', "eval": "e_code=0", "cp": "true"}
         return run_bash_function(BASE_SOURCES, "passwords_runSecurityAdmin", mocks,
                                  {"indexer_installed": "yes", **env})
 
@@ -1172,7 +1173,7 @@ class TestPasswordsBackupDirectoryCleanup:
             "common_logger": 'echo "LOG:$*"',
             "installCommon_rollBack": "true",
             "grep": "true",
-            "eval": 'echo "EVAL:$*"; case "$*" in *securityadmin*) return 1 ;; esac',
+            "eval": 'echo "EVAL:$*"; e_code=0; case "$*" in *securityadmin*) e_code=1 ;; esac',
         }
         return run_bash_function(BASE_SOURCES, call, mocks, {"indexer_installed": "yes"})
 
@@ -1197,7 +1198,7 @@ class TestPasswordsBackupDirectoryCleanup:
             "common_logger": 'echo "LOG:$*"',
             "grep": "true",
             "cp": "true",
-            "eval": 'echo "EVAL:$*"',
+            "eval": 'echo "EVAL:$*"; e_code=0',
             "passwords_updateManagerKeystore": 'echo "KEYSTORE_FAILED"; return 1',
         }
         result = run_bash_function(
@@ -1211,6 +1212,65 @@ class TestPasswordsBackupDirectoryCleanup:
         removed = result.stdout.index("EVAL:rm -rf /etc/wazuh-indexer/backup/")
         assert removed < result.stdout.index("KEYSTORE_FAILED")
 
+
+
+SECURITYADMIN = "/usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh"
+
+
+class TestPasswordsVerboseExitCode:
+    """With -v, debug sends the output through tee. The checks must still see
+    the exit code of the command, not the one of tee (#1119)."""
+
+    def _run(self, call, debug, extra_mocks):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "grep": "true",
+            "mkdir": "true",
+            "journalctl": "true",
+            "passwords_removeBackUp": 'echo "BACKUP_REMOVED"',
+            **extra_mocks,
+        }
+        return run_bash_function(
+            BASE_SOURCES, call, mocks,
+            {"indexer_installed": "yes", "debug": debug, "logfile": "/dev/null"},
+        )
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_backup_fails_when_securityadmin_fails(self, debug):
+        result = self._run("passwords_createBackUp", debug, {SECURITYADMIN: "return 1"})
+        assert_failure(result)
+        assert "LOG:-e The backup could not be created" in result.stdout
+        assert "BACKUP_REMOVED" in result.stdout
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_backup_succeeds_when_securityadmin_succeeds(self, debug):
+        result = self._run("passwords_createBackUp", debug, {SECURITYADMIN: "true"})
+        assert_success(result)
+        assert "LOG:-d Passwords backup created in /etc/wazuh-indexer/backup." in result.stdout
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_load_fails_when_securityadmin_fails(self, debug):
+        result = self._run("passwords_runSecurityAdmin", debug, {SECURITYADMIN: "return 1"})
+        assert_failure(result)
+        assert "LOG:-e Could not load the changes." in result.stdout
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_restart_fails_when_systemctl_fails(self, debug):
+        result = self._run(
+            "passwords_restartService wazuh-manager", debug,
+            {"systemctl": "return 1", "passwords_isServiceActive": "true"},
+        )
+        assert_failure(result)
+        assert "LOG:-e wazuh-manager could not be started." in result.stdout
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_restart_succeeds_when_systemctl_succeeds(self, debug):
+        result = self._run(
+            "passwords_restartService wazuh-manager", debug,
+            {"systemctl": "true", "passwords_isServiceActive": "true"},
+        )
+        assert_success(result)
+        assert "LOG:-d wazuh-manager started." in result.stdout
 
 class TestPasswordsOtherHostsMessages:
     """The tool updates the keystores of the host it runs on. It only warns about
@@ -1265,7 +1325,7 @@ class TestPasswordsOtherHostsMessages:
         assert self.MANAGER_ABSENT in result.stdout
         assert self.DASHBOARD_ABSENT in result.stdout
 
-    def test_wazuh_wui_with_local_dashboard(self):
+    def test_wazuh_internal_client_with_local_dashboard(self):
         mocks = {
             "common_logger": 'echo "LOG:$*"',
             "passwords_saveCredential": "true",
@@ -1278,7 +1338,7 @@ class TestPasswordsOtherHostsMessages:
 cat > /dev/null
 printf '\t%s: UPDATED\n' "$3"
 STUB
-            passwords_changeApiUserPassword wazuh-wui "Wui.Pass12345" ""
+            passwords_changeApiUserPassword wazuh-internal-client "Wui.Pass12345" ""
         """
         result = run_bash_function(BASE_SOURCES, script, mocks, {"dashboard_installed": "1"})
         assert_success(result)

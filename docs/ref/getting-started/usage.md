@@ -10,6 +10,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.0.0.sh. See [Use development packages](#use-development-packages). |
+| `--skip-signature-check` | Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with `-d`. See [Use development packages](#use-development-packages). |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
 | `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
@@ -90,7 +91,7 @@ The steps to perform the installation are as follows:
 
 A freshly completed installation has no default passwords: the passwords of the Wazuh indexer and Wazuh server API users are generated during the installation and saved in `/etc/wazuh/credentials.env`. To rotate them, for example if that file was exposed, the recommended procedure is to change all the passwords in a single command using the `--change-all` option of the passwords tool. See the [Change all default passwords](#change-all-default-passwords) section for details.
 
-This same command also rotates the Wazuh server API users (`wazuh` and `wazuh-wui`) on the host where the Wazuh manager is installed, so there is no need to change them separately. The new passwords are saved in `/etc/wazuh/credentials.env`, never printed.
+This same command also rotates the Wazuh server API users (`wazuh` and `wazuh-internal-client`) on the host where the Wazuh manager is installed, so there is no need to change them separately. The new passwords are saved in `/etc/wazuh/credentials.env`, never printed.
 
 After changing the passwords, remember to use the new `admin` password to log in to the Wazuh dashboard.
 
@@ -197,7 +198,17 @@ sudo bash wazuh-install-5.0.0.sh --all-in-one --development local
 sudo bash wazuh-install-5.0.0.sh -a -d local
 ```
 
-The assistant reads `artifact_urls.yaml` from the directory of the script and downloads the packages from the URLs in it. Without the file, it stops with `Cannot find artifact_urls.yaml in <directory>`.
+The assistant reads `artifact_urls.yaml` from the directory of the script and downloads the packages from the URLs in it. Without the file, it stops with `Cannot find artifact_urls.yaml in <directory>`. Every URL must use `https://`.
+
+#### Package signature check
+
+Before installing a package, the assistant checks that it is signed with the Wazuh key, also in offline installations. It downloads the key from `https://packages.wazuh.com/key/GPG-KEY-WAZUH`, or takes it from `wazuh-offline.tar.gz` in an offline installation, and only trusts it if its fingerprint is `0DCF CA55 47B1 9D2A 6099 5060 96B3 EE5F 2911 1145`. An unsigned package, a package signed with another key, or a modified package stops the installation.
+
+Packages in the nightly, pre-release and production repositories are signed. Development builds that did not go through the signing process are not, and need the `--skip-signature-check` option, which is only accepted along with `-d`:
+
+```bash
+sudo bash wazuh-install-5.0.0.sh -a -d local --skip-signature-check
+```
 
 ## Wazuh certs tool
 
@@ -516,7 +527,9 @@ The tool manages the users of the Wazuh packages only:
 | `kibanaserver` | Wazuh indexer | `WAZUH_INDEXER_KIBANASERVER_PASSWORD` |
 | `wazuh-manager` | Wazuh indexer | `WAZUH_INDEXER_MANAGER_PASSWORD` |
 | `wazuh` | Wazuh server API | `WAZUH_MANAGER_API_PASSWORD` |
-| `wazuh-wui` | Wazuh server API | `WAZUH_MANAGER_WUI_PASSWORD` |
+| `wazuh-internal-client` | Wazuh server API | `WAZUH_MANAGER_WUI_PASSWORD` |
+
+`wazuh-internal-client` is the account the Wazuh dashboard uses to connect to the Wazuh server API. It is not a user to log into the Wazuh dashboard: log in with `admin`.
 
 The tool requires root privileges to run.
 
@@ -561,11 +574,11 @@ INFO: The new password of user kibanaserver was saved in /etc/wazuh/credentials.
 INFO: The new password of user wazuh-manager was saved in /etc/wazuh/credentials.env as WAZUH_INDEXER_MANAGER_PASSWORD.
 INFO: The password of the Wazuh API user wazuh was changed.
 INFO: The new password of user wazuh was saved in /etc/wazuh/credentials.env as WAZUH_MANAGER_API_PASSWORD.
-INFO: The password of the Wazuh API user wazuh-wui was changed.
-INFO: The new password of user wazuh-wui was saved in /etc/wazuh/credentials.env as WAZUH_MANAGER_WUI_PASSWORD.
+INFO: The password of the Wazuh API user wazuh-internal-client was changed.
+INFO: The new password of user wazuh-internal-client was saved in /etc/wazuh/credentials.env as WAZUH_MANAGER_WUI_PASSWORD.
 ```
 
-The tool updates the keystore of the Wazuh manager (`wazuh-manager` user) and the keystore of the Wazuh dashboard (`kibanaserver` and `wazuh-wui` users), and restarts both services once the new passwords have been applied, so the connectivity between components is preserved on the node where the tool runs.
+The tool updates the keystore of the Wazuh manager (`wazuh-manager` user) and the keystore of the Wazuh dashboard (`kibanaserver` and `wazuh-internal-client` users), and restarts both services once the new passwords have been applied, so the connectivity between components is preserved on the node where the tool runs.
 
 > [!NOTE]
 > In a distributed deployment, `-a` only changes the users of the components installed on the host where it runs. Run it on a Wazuh indexer node to change the Wazuh indexer users, and on the Wazuh manager master node to change the Wazuh server API users. Then update the other nodes as described in [Multi-node and distributed deployments](#multi-node-and-distributed-deployments).
@@ -593,7 +606,7 @@ Run the tool on the node given below for each user, then update the nodes of the
 | `kibanaserver` | a Wazuh indexer node | Wazuh dashboard: keystore entry `opensearch.password` | `wazuh-dashboard` |
 | `wazuh-manager` | a Wazuh indexer node | Wazuh manager (master and workers): keystore `-f indexer -k password` | `wazuh-manager` |
 | `wazuh` | the Wazuh manager master node | nothing | nothing |
-| `wazuh-wui` | the Wazuh manager master node | Wazuh dashboard: keystore entry `wazuh_core.hosts.default.password` | `wazuh-dashboard` |
+| `wazuh-internal-client` | the Wazuh manager master node | Wazuh dashboard: keystore entry `wazuh_core.hosts.default.password` | `wazuh-dashboard` |
 
 The Wazuh dashboard steps are needed even with a single Wazuh dashboard, when it is not on the node where the tool runs.
 
@@ -627,7 +640,7 @@ grep 'indexer is reachable' /var/wazuh-manager/logs/wazuh-manager.log | tail -1
 
 #### Update the Wazuh dashboard nodes
 
-After changing `kibanaserver` or `wazuh-wui`, on every Wazuh dashboard node. The keystore belongs to the `wazuh-dashboard` user, so write it as that user:
+After changing `kibanaserver` or `wazuh-internal-client`, on every Wazuh dashboard node. The keystore belongs to the `wazuh-dashboard` user, so write it as that user:
 
 ```bash
 echo '<KIBANASERVER_PASSWORD>' | runuser -u wazuh-dashboard -- /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore add opensearch.password --stdin --force
@@ -644,7 +657,7 @@ Only write the entry of the user that changed. After `-a`, write both and restar
 > curl -k -u admin https://<WAZUH_DASHBOARD_IP_ADDRESS>/api/status
 > ```
 >
-> A wrong `wazuh-wui` password shows as an error of the Wazuh server API connection in the Wazuh dashboard.
+> A wrong `wazuh-internal-client` password shows as an error of the Wazuh server API connection in the Wazuh dashboard.
 
 #### Pass the password without typing it
 
@@ -658,7 +671,7 @@ ssh <WAZUH_INDEXER_NODE> "sudo grep '^WAZUH_INDEXER_MANAGER_PASSWORD=' /etc/wazu
 #### Change all passwords in a distributed deployment
 
 1. On a Wazuh indexer node, run `-a`. It changes `admin`, `kibanaserver` and `wazuh-manager`.
-2. On the Wazuh manager master node, run `-a`. It changes `wazuh` and `wazuh-wui`.
+2. On the Wazuh manager master node, run `-a`. It changes `wazuh` and `wazuh-internal-client`.
 3. On every Wazuh manager node, update the keystore with the `WAZUH_INDEXER_MANAGER_PASSWORD` of the Wazuh indexer node, and restart the service.
 4. On every Wazuh dashboard node, write `opensearch.password` with the `WAZUH_INDEXER_KIBANASERVER_PASSWORD` of the Wazuh indexer node and `wazuh_core.hosts.default.password` with the `WAZUH_MANAGER_WUI_PASSWORD` of the master node, and restart the service once.
 
@@ -686,7 +699,7 @@ INFO: The password of the Wazuh indexer user admin was changed.
 INFO: WAZUH_INDEXER_ADMIN_PASSWORD was updated in /etc/wazuh/credentials.env.
 ```
 
-The tool only warns about what it cannot do on this host: after changing `wazuh-manager`, `kibanaserver` or `wazuh-wui`, it reminds you to update the keystore of the Wazuh manager or Wazuh dashboard nodes on other hosts.
+The tool only warns about what it cannot do on this host: after changing `wazuh-manager`, `kibanaserver` or `wazuh-internal-client`, it reminds you to update the keystore of the Wazuh manager or Wazuh dashboard nodes on other hosts.
 
 ### Change a Wazuh server API password
 
@@ -696,7 +709,7 @@ The Wazuh server API passwords are changed with `rbac_control change-password` o
 sudo ./wazuh-passwords-tool-5.0.0.sh -u <USER> [-p]
 ```
 
-Where `<USER>` is `wazuh` or `wazuh-wui`. `-p` works as for the Wazuh indexer users.
+Where `<USER>` is `wazuh` or `wazuh-internal-client`. `-p` works as for the Wazuh indexer users.
 
 The command output will be similar to the following:
 
@@ -704,4 +717,4 @@ The command output will be similar to the following:
 INFO: The password of the Wazuh API user wazuh was changed.
 ```
 
-When the user is `wazuh-wui` and the Wazuh dashboard is installed on the same host, the tool also writes the new password into the `wazuh_core.hosts.default.password` entry of the Wazuh dashboard keystore and restarts the Wazuh dashboard. Otherwise, update the Wazuh dashboard nodes as described in [Multi-node and distributed deployments](#multi-node-and-distributed-deployments).
+When the user is `wazuh-internal-client` and the Wazuh dashboard is installed on the same host, the tool also writes the new password into the `wazuh_core.hosts.default.password` entry of the Wazuh dashboard keystore and restarts the Wazuh dashboard. Otherwise, update the Wazuh dashboard nodes as described in [Multi-node and distributed deployments](#multi-node-and-distributed-deployments).

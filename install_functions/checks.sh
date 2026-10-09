@@ -30,6 +30,11 @@ function checks_arguments() {
         fi
     fi
 
+    if [ -n "${skip_signature_check}" ] && [ -z "${development}" ]; then
+        common_logger -e "The --skip-signature-check option must be used with -d|--development."
+        exit 1
+    fi
+
     # -------------- Offline installation ---------------------
 
     if [ -n "${offline_install}" ]; then
@@ -101,18 +106,6 @@ function checks_arguments() {
         if [ -n "$AIO" ] || [ -n "$indexer" ] || [ -n "$dashboard" ] || [ -n "$wazuh" ]; then
             common_logger -e "It is not possible to uninstall and install in the same operation. If you want to overwrite the components use -o|--overwrite."
             exit 1
-        fi
-
-        if [ -z "${wazuh_installed}" ] && [ -z "${wazuh_remaining_files}" ]; then
-            common_logger "Wazuh manager not found in the system so it was not uninstalled."
-        fi
-
-        if [ -z "${indexer_installed}" ] && [ -z "${indexer_remaining_files}" ]; then
-            common_logger "Wazuh indexer not found in the system so it was not uninstalled."
-        fi
-
-        if [ -z "${dashboard_installed}" ] && [ -z "${dashboard_remaining_files}" ]; then
-            common_logger "Wazuh dashboard not found in the system so it was not uninstalled."
         fi
 
     fi
@@ -256,35 +249,79 @@ function check_dist() {
 
 }
 
+# Reports the components that -u|--uninstall has nothing to remove for.
+# Returns 0 if any component, or any of its remaining files, was found, 1 otherwise.
+function checks_uninstallComponents() {
+
+    local found=1
+
+    if [ -z "${wazuh_installed}" ] && [ -z "${wazuh_remaining_files}" ]; then
+        common_logger "Wazuh manager not found in the system so it was not uninstalled."
+    else
+        found=0
+    fi
+
+    if [ -z "${indexer_installed}" ] && [ -z "${indexer_remaining_files}" ]; then
+        common_logger "Wazuh indexer not found in the system so it was not uninstalled."
+    else
+        found=0
+    fi
+
+    if [ -z "${dashboard_installed}" ] && [ -z "${dashboard_remaining_files}" ]; then
+        common_logger "Wazuh dashboard not found in the system so it was not uninstalled."
+    else
+        found=0
+    fi
+
+    return ${found}
+
+}
+
 function checks_health() {
 
     checks_specifications
 
     common_logger -d "CPU cores detected: ${cores}"
-    common_logger -d "Free RAM memory detected: ${ram_gb}"
+    common_logger -d "Total RAM memory detected: ${ram_gb} MB"
 
-    if [ -n "${indexer}" ]; then
-        if [ "${cores}" -lt 2 ] || [ "${ram_gb}" -lt 3300 ]; then
-            common_logger -w "Your system does not meet the recommended minimum hardware requirements of 4Gb of RAM and 2 CPU cores. The installation will continue, but it may not work properly."
-        fi
+    if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${dashboard}" ]; then
+        return 0
     fi
 
-    if [ -n "${dashboard}" ]; then
-        if [ "${cores}" -lt 2 ] || [ "${ram_gb}" -lt 3300 ]; then
-            common_logger -w "Your system does not meet the recommended minimum hardware requirements of 4Gb of RAM and 2 CPU cores. The installation will continue, but it may not work properly."
-        fi
+    # Components the host will hold: the ones being installed plus the ones
+    # already installed (assisted per-component installs on the same host).
+    local host_components=()
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${indexer_installed}" ]; then
+        host_components+=("Wazuh indexer")
+    fi
+    if [ -n "${AIO}" ] || [ -n "${wazuh}" ] || [ -n "${wazuh_installed}" ]; then
+        host_components+=("Wazuh manager")
+    fi
+    if [ -n "${AIO}" ] || [ -n "${dashboard}" ] || [ -n "${dashboard_installed}" ]; then
+        host_components+=("Wazuh dashboard")
     fi
 
-    if [ -n "${wazuh}" ]; then
-        if [ "${cores}" -lt 2 ] || [ "${ram_gb}" -lt 3300 ]; then
-            common_logger -w "Your system does not meet the recommended minimum hardware requirements of 4Gb of RAM and 2 CPU cores. The installation will continue, but it may not work properly."
-        fi
-    fi
+    # Documented minimums: Wazuh indexer and Wazuh manager 8 GB and 4 cores,
+    # Wazuh dashboard 4 GB and 2 cores. Co-located components add up, capped
+    # at the documented all-in-one minimum (8 GB and 4 cores).
+    local required_ram=0 required_cores=0 component
+    for component in "${host_components[@]}"; do
+        case "${component}" in
+            "Wazuh dashboard") required_ram=$((required_ram + 4)); required_cores=$((required_cores + 2)) ;;
+            *) required_ram=$((required_ram + 8)); required_cores=$((required_cores + 4)) ;;
+        esac
+    done
+    if [ "${required_ram}" -gt 8 ]; then required_ram=8; fi
+    if [ "${required_cores}" -gt 4 ]; then required_cores=4; fi
 
-    if [ -n "${AIO}" ]; then
-        if [ "${cores}" -lt 4 ] || [ "${ram_gb}" -lt 7300 ]; then
-            common_logger -w "Your system does not meet the recommended minimum hardware requirements of 8Gb of RAM and 4 CPU cores. The installation will continue, but it may not work properly."
-        fi
+    # free -m reports less than the nominal size (kernel and firmware reserve
+    # memory), so allow 700 MB below each GB figure: 8 GB -> 7300 MB.
+    local required_ram_mb=$((required_ram * 1000 - 700))
+
+    common_logger -d "Components on this host: ${host_components[*]}. Required: ${required_ram} GB of RAM (${required_ram_mb} MB detected threshold) and ${required_cores} CPU cores."
+
+    if [ "${cores}" -lt "${required_cores}" ] || [ "${ram_gb}" -lt "${required_ram_mb}" ]; then
+        common_logger -w "Your system does not meet the recommended minimum hardware requirements of ${required_ram} GB of RAM and ${required_cores} CPU cores for the components on this host. The installation will continue, but it may not work properly."
     fi
 
 }
@@ -479,10 +516,10 @@ function checks_ArtifactURLs_format() {
         # Remove quotes and whitespace from value
         value=$(echo "$value" | tr -d '"' | xargs)
 
-        # Validate URL format (must start with http:// or https://)
-        if [[ ! "$value" =~ ^https?:// ]]; then
+        # Validate URL format (must start with https://)
+        if [[ ! "$value" =~ ^https:// ]]; then
             common_logger -e "Invalid URL format for key '${key}': ${value}"
-            common_logger -e "All values in ${artifact_urls_file_name} must be valid URLs starting with http:// or https://"
+            common_logger -e "All values in ${artifact_urls_file_name} must be valid URLs starting with https://"
             exit 1
         fi
     done < "$artifact_file"

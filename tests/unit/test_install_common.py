@@ -2,7 +2,8 @@
 Unit tests for install_functions/installCommon.sh
 
 Covers: installCommon_getConfig, installCommon_installPrerequisites,
-        installCommon_startService, installCommon_placeFromTar,
+        installCommon_startService, installCommon_restartService,
+        installCommon_createInstallFiles, installCommon_placeFromTar,
         installCommon_placeCredentials, installCommon_createPasswords,
         installCommon_scanDependencies, installCommon_extractConfig,
         installCommon_createCertificates
@@ -14,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit.conftest import assert_failure, assert_success, run_bash_function
+from tests.unit.conftest import VERBOSE_DEBUG, assert_failure, assert_success, run_bash_function
 
 INSTALL_COMMON = "install_functions/installCommon.sh"
 COMMON = "common_functions/common.sh"
@@ -23,6 +24,10 @@ CERT = "cert_tool/certFunctions.sh"
 BASE_SOURCES = [COMMON_VARS, COMMON, INSTALL_COMMON]
 
 IGNORE_LOGGER = {"common_logger": "true"}
+
+KEY_FIXTURE = Path(__file__).parent / "fixtures" / "GPG-KEY-WAZUH"
+WAZUH_KEY = KEY_FIXTURE.read_text()
+WAZUH_FINGERPRINT = "0DCFCA5547B19D2A6099506096B3EE5F29111145"
 
 
 class TestInstallCommonGetConfig:
@@ -207,7 +212,7 @@ class TestInstallCommonStartService:
     We mock systemctl so no real service management occurs.
     """
 
-    def _run(self, service_name, systemctl_success=True, extra_mocks=None):
+    def _run(self, service_name, systemctl_success=True, extra_mocks=None, debug=""):
         systemctl_mock = "true" if systemctl_success else "return 1"
         mocks = {
             **IGNORE_LOGGER,
@@ -222,7 +227,7 @@ class TestInstallCommonStartService:
             BASE_SOURCES,
             f"installCommon_startService {service_name}",
             mocks,
-            {"debug": ""},
+            {"debug": debug, "logfile": "/dev/null"},
         )
 
     def test_fail_no_arguments(self):
@@ -241,9 +246,71 @@ class TestInstallCommonStartService:
         result = self._run("wazuh-indexer")
         assert_success(result)
 
-    def test_fail_service_start_error(self):
-        result = self._run("wazuh-manager", systemctl_success=False)
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_success_start_with_any_debug(self, debug):
+        assert_success(self._run("wazuh-manager", debug=debug))
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_fail_service_start_error(self, debug):
+        """With -v, the failure of systemctl must not be hidden by tee (#1119)."""
+        result = self._run(
+            "wazuh-manager",
+            systemctl_success=False,
+            extra_mocks={"common_logger": 'echo "LOG:$*"', "installCommon_rollBack": 'echo "ROLLBACK"'},
+            debug=debug,
+        )
         assert_failure(result)
+        assert "LOG:-e wazuh-manager could not be started." in result.stdout
+        assert "ROLLBACK" in result.stdout
+        assert "service started" not in result.stdout
+
+
+class TestInstallCommonRestartService:
+    """Tests for installCommon_restartService."""
+
+    def _run(self, systemctl_success, debug):
+        mocks = {
+            "common_logger": 'echo "LOG:$*"',
+            "systemctl": "true" if systemctl_success else "return 1",
+            "journalctl": "true",
+            "installCommon_rollBack": 'echo "ROLLBACK"',
+        }
+        return run_bash_function(
+            BASE_SOURCES,
+            "installCommon_restartService wazuh-manager",
+            mocks,
+            {"debug": debug, "logfile": "/dev/null"},
+        )
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_success(self, debug):
+        result = self._run(True, debug)
+        assert_success(result)
+        assert "LOG:wazuh-manager service restarted." in result.stdout
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_fail_restart_error(self, debug):
+        result = self._run(False, debug)
+        assert_failure(result)
+        assert "LOG:-e wazuh-manager could not be restarted." in result.stdout
+        assert "ROLLBACK" in result.stdout
+
+
+class TestInstallCommonCreateInstallFiles:
+    """installCommon_createInstallFiles stops when it cannot create its directory."""
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_fail_when_mkdir_fails(self, debug):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "installCommon_createInstallFiles",
+            {"common_logger": 'echo "LOG:$*"', "rm": "true", "mkdir": "return 1",
+             "installCommon_createCertificates": 'echo "CERTS_CREATED"'},
+            {"debug": debug},
+        )
+        assert_failure(result)
+        assert "LOG:-e Unable to create /tmp/wazuh-install-files" in result.stdout
+        assert "CERTS_CREATED" not in result.stdout
 
 
 class TestInstallCommonDownloadArtifactURLs:
@@ -260,6 +327,7 @@ class TestInstallCommonDownloadArtifactURLs:
         staging_url_stage="",
         curl_success=True,
         extra_mocks=None,
+        debug="",
     ):
         """Helper to run installCommon_downloadArtifactURLs with configurable scenario.
 
@@ -294,7 +362,8 @@ class TestInstallCommonDownloadArtifactURLs:
             "wazuh_major": "5",
             "bucket": "packages.wazuh.com",
             "base_path": str(tmp_path),
-            "debug": "",
+            "debug": debug,
+            "logfile": "/dev/null",
         }
 
         if devrepo:
@@ -361,9 +430,10 @@ class TestInstallCommonDownloadArtifactURLs:
         expected_file = tmp_path / expected_filename
         assert expected_file.exists()
 
-    def test_curl_failure_returns_error(self, tmp_path):
-        """Function should fail when curl fails to download"""
-        result = self._run(tmp_path, curl_success=False)
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_curl_failure_returns_error(self, tmp_path, debug):
+        """Function should fail when curl fails to download, also with -v"""
+        result = self._run(tmp_path, curl_success=False, debug=debug)
         assert_failure(result)
 
     def test_file_written_to_base_path(self, tmp_path):
@@ -782,3 +852,199 @@ class TestInstallCommonMergeCredentials:
         result, content = self._run_mode(tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n', "check")
         assert_success(result)
         assert content == f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n'
+
+
+class TestInstallCommonVerifyPackageSignature:
+    """Tests for installCommon_verifyPackageSignature on RPM packages.
+
+    The key is mocked as already checked; rpm is mocked: -q reports the key as
+    imported, -qp prints the signer and -K returns the given exit code.
+    """
+
+    WAZUH_SIGNER = "RSA/SHA256, Mon Oct  5 23:35:00 2026, Key ID 96b3ee5f29111145"
+
+    def _run(self, signer, checksig_rc=0, skip=""):
+        rpm_mock = (
+            'case "$1" in -qp) echo "' + signer + '";; -K) return ' + str(checksig_rc) + ';; esac; return 0'
+        )
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_rollBack": "true",
+            "installCommon_getWazuhGPGKey": "true",
+            "installCommon_getGPGKeyFingerprint": f"echo {WAZUH_FINGERPRINT}",
+            "rpm": rpm_mock,
+        }
+        env = {"skip_signature_check": skip}
+        return run_bash_function(BASE_SOURCES, "installCommon_verifyPackageSignature /tmp/p.rpm", mocks, env)
+
+    def test_success_signed_with_wazuh_key(self):
+        assert_success(self._run(self.WAZUH_SIGNER))
+
+    def test_fail_unsigned(self):
+        assert_failure(self._run("(none)"))
+
+    def test_fail_signed_with_another_key(self):
+        assert_failure(self._run("RSA/SHA256, Mon Oct  5 23:35:00 2026, Key ID 0123456789abcdef"))
+
+    def test_fail_invalid_signature(self):
+        assert_failure(self._run(self.WAZUH_SIGNER, checksig_rc=1))
+
+    def test_success_unsigned_with_skip(self):
+        assert_success(self._run("(none)", skip="1"))
+
+
+class TestInstallCommonGetWazuhGPGKey:
+    """Tests for installCommon_getWazuhGPGKey with the key of the offline bundle.
+
+    The key is only trusted if the file holds a single primary key with a pinned fingerprint.
+    """
+
+    def _run(self, tmp_path, key_text):
+        bundle = tmp_path / "wazuh-offline"
+        bundle.mkdir()
+        (bundle / "GPG-KEY-WAZUH").write_text(key_text)
+        key_dir = tmp_path / "key"
+        key_dir.mkdir()
+        mocks = {**IGNORE_LOGGER, "installCommon_rollBack": "true"}
+        env = {
+            "offline_install": "1",
+            "base_path": str(tmp_path),
+            "wazuh_gpg_key_fingerprints": f"( {WAZUH_FINGERPRINT} )",
+        }
+        return run_bash_function(BASE_SOURCES, f"installCommon_getWazuhGPGKey {key_dir}", mocks, env)
+
+    def test_success_wazuh_key(self, tmp_path):
+        assert_success(self._run(tmp_path, WAZUH_KEY))
+
+    def test_fail_two_keys_in_the_file(self, tmp_path):
+        assert_failure(self._run(tmp_path, WAZUH_KEY + WAZUH_KEY))
+
+    def test_fail_modified_key(self, tmp_path):
+        lines = WAZUH_KEY.splitlines(keepends=True)
+        body = lines.index("\n") + 1
+        lines[body] = ("A" if lines[body][0] != "A" else "B") + lines[body][1:]
+        assert_failure(self._run(tmp_path, "".join(lines)))
+
+    def test_fail_no_key(self, tmp_path):
+        assert_failure(self._run(tmp_path, ""))
+
+
+class TestInstallCommonGetGPGKeyFingerprint:
+    def test_success_wazuh_key(self, tmp_path):
+        result = run_bash_function(
+            BASE_SOURCES,
+            f"sed '1,/^$/d; /^=/,$d; /^-----/d' {KEY_FIXTURE} | base64 -d > {tmp_path}/k.gpg && "
+            f"installCommon_getGPGKeyFingerprint {tmp_path}/k.gpg",
+            IGNORE_LOGGER,
+        )
+        assert_success(result)
+        assert result.stdout.strip() == WAZUH_FINGERPRINT
+
+
+class TestInstallCommonGetPackages:
+    """Tests for installCommon_getPackages with the packages of the offline bundle.
+
+    Every package of the components to install is checked before any of them is installed.
+    """
+
+    PACKAGES = [
+        "wazuh-indexer-5.0.0-1.x86_64.rpm",
+        "wazuh-manager-5.0.0-1.x86_64.rpm",
+        "wazuh-dashboard-5.0.0-1.x86_64.rpm",
+    ]
+
+    def _run(self, tmp_path, packages):
+        for package in packages:
+            (tmp_path / package).touch()
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_rollBack": "true",
+            "installCommon_downloadComponent": "true",
+            "installCommon_verifyPackageSignature": 'echo "checked $(basename $1)"',
+        }
+        env = {"AIO": "1", "offline_install": "1", "offline_packages_path": str(tmp_path), "sys_type": "yum"}
+        return run_bash_function(BASE_SOURCES, "installCommon_getPackages", mocks, env)
+
+    def test_success_checks_every_aio_package(self, tmp_path):
+        result = self._run(tmp_path, self.PACKAGES)
+        assert_success(result)
+        assert result.stdout.split("\n")[:3] == [f"checked {p}" for p in self.PACKAGES]
+
+    def test_fail_missing_package(self, tmp_path):
+        assert_failure(self._run(tmp_path, self.PACKAGES[:2]))
+
+
+class TestInstallCommonDownloadDirectory:
+    """installCommon_downloadComponent refuses a download directory that others can write to."""
+
+    def _run(self, tmp_path):
+        return run_bash_function(
+            BASE_SOURCES,
+            "installCommon_downloadComponent wazuh_manager",
+            {"common_logger": 'echo "$@"', "installCommon_rollBack": "true"},
+            {"base_path": str(tmp_path), "download_packages_directory": "pkgs", "sys_type": "none"},
+        )
+
+    def test_creates_private_directory(self, tmp_path):
+        result = self._run(tmp_path)
+        assert "must belong" not in result.stdout
+        assert (tmp_path / "pkgs").stat().st_mode & 0o777 == 0o700
+
+    @pytest.mark.parametrize("mode", [0o777, 0o775])
+    def test_fail_writable_by_others(self, tmp_path, mode):
+        (tmp_path / "pkgs").mkdir()
+        (tmp_path / "pkgs").chmod(mode)
+        result = self._run(tmp_path)
+        assert_failure(result)
+        assert "must belong" in result.stdout
+
+    def test_fail_symlink(self, tmp_path):
+        (tmp_path / "real").mkdir(mode=0o700)
+        (tmp_path / "pkgs").symlink_to(tmp_path / "real")
+        result = self._run(tmp_path)
+        assert_failure(result)
+        assert "must belong" in result.stdout
+
+
+class TestInstallCommonRollBack:
+    """Tests for installCommon_rollBack: the section header and the closing message."""
+
+    HEADER = "--- Removing existing Wazuh installation ---"
+    MOCKS = {
+        "common_logger": 'echo "$@"',
+        "installCommon_removeWIADependencies": "true",
+        "systemctl": "true",
+        "rm": "true",
+    }
+
+    def _run(self, env_vars=None):
+        return run_bash_function(BASE_SOURCES, "installCommon_rollBack", self.MOCKS, env_vars)
+
+    def test_failed_installation_prints_the_header_first(self):
+        result = self._run({"dashboard_installed": "1", "dashboard": "1", "rollback_conf": "1"})
+        assert_success(result)
+        lines = result.stdout.splitlines()
+        assert lines[0] == self.HEADER
+        assert lines[-1] == "Installation cleaned."
+
+    def test_uninstall_leaves_the_header_to_the_caller(self):
+        result = self._run({"dashboard_installed": "1", "uninstall": "1"})
+        assert_success(result)
+        assert self.HEADER not in result.stdout
+        assert result.stdout.splitlines() == ["Removing Wazuh dashboard.", "Wazuh dashboard removed."]
+
+    def test_uninstall_on_an_empty_host_still_runs_the_unconditional_cleanup(self):
+        mocks = {**self.MOCKS, "installCommon_removeWIADependencies": 'echo "deps"', "systemctl": 'echo "systemctl $@"'}
+        result = run_bash_function(BASE_SOURCES, "installCommon_rollBack", mocks, {"uninstall": "1"})
+        assert_success(result)
+        assert result.stdout.splitlines() == ["deps", "systemctl daemon-reload"]
+
+    def test_removing_dependencies_is_a_noop_when_none_were_scanned(self):
+        # The uninstall flow never runs installCommon_scanDependencies, so nothing is removed
+        mocks = {"common_logger": 'echo "$@"', "yum": "exit 1", "apt-get": "exit 1"}
+        for sys_type in ("yum", "apt-get"):
+            result = run_bash_function(
+                BASE_SOURCES, "installCommon_removeWIADependencies", mocks, {"sys_type": sys_type}
+            )
+            assert_success(result)
+            assert result.stdout == ""

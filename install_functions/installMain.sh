@@ -36,6 +36,9 @@ function getHelp() {
     echo -e "        -d [pre-release|local],  --development"
     echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0.sh."
     echo -e ""
+    echo -e "        --skip-signature-check"
+    echo -e "                Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with -d."
+    echo -e ""
     echo -e "        -dw,  --download-wazuh <deb|rpm>"
     echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
     echo -e ""
@@ -150,6 +153,10 @@ function main() {
                 overwrite=1
                 shift 1
                 ;;
+            "--skip-signature-check")
+                skip_signature_check=1
+                shift 1
+                ;;
             "-of"|"--offline-installation")
                 offline_install=1
                 shift 1
@@ -261,7 +268,14 @@ function main() {
     fi
 
     if [ -n "${uninstall}" ]; then
+        common_logger "--- Removing existing Wazuh installation ---"
+        checks_uninstallComponents && uninstall_found=1
         installCommon_rollBack
+        if [ -n "${uninstall_found}" ]; then
+            common_logger "Uninstall finished."
+        else
+            common_logger "Nothing to uninstall."
+        fi
         exit 0
     fi
 
@@ -349,17 +363,22 @@ function main() {
         installCommon_removeWIADependencies
     fi
 
+# -------------- Packages ------------------------------------------
+
+    # Every package is downloaded and its signature checked before any of them is installed.
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+        installCommon_getPackages
+    fi
+
 # -------------- Wazuh indexer case -------------------------------
 
     if [ -n "${indexer}" ]; then
         common_logger "--- Wazuh indexer ---"
-        installCommon_downloadComponent "wazuh_indexer"
         installCommon_placeCredentials "${indexer_credential_keys[@]}"
         indexer_copyCertificates
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
-        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
     fi
 
@@ -374,14 +393,12 @@ function main() {
 
     if [ -n "${dashboard}" ]; then
         common_logger "--- Wazuh dashboard ----"
-        installCommon_downloadComponent "wazuh_dashboard"
         installCommon_placeCredentials "${dashboard_credential_keys[@]}"
         dashboard_copyCertificates
         dashboard_install
         dashboard_configure
         installCommon_startService "wazuh-dashboard"
         dashboard_initialize
-        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
     fi
@@ -390,7 +407,6 @@ function main() {
 
     if [ -n "${wazuh}" ]; then
         common_logger "--- Wazuh manager ---"
-        installCommon_downloadComponent "wazuh_manager"
         installCommon_placeCredentials "${manager_credential_keys[@]}"
         manager_copyCertificates
         manager_install
@@ -407,23 +423,19 @@ function main() {
     if [ -n "${AIO}" ]; then
 
         common_logger "--- Wazuh indexer ---"
-        installCommon_downloadComponent "wazuh_indexer"
         indexer_install
         indexer_configure
         installCommon_startService "wazuh-indexer"
         indexer_startCluster
         common_logger "--- Wazuh manager ---"
-        installCommon_downloadComponent "wazuh_manager"
         manager_setRemotedSans
         manager_setApidSans
         manager_install
         installCommon_startService "wazuh-manager"
         common_logger "--- Wazuh dashboard ---"
-        installCommon_downloadComponent "wazuh_dashboard"
         dashboard_install
         installCommon_startService "wazuh-dashboard"
         dashboard_initialize
-        installCommon_removeDownloadPackagesDirectory
         installCommon_removeWIADependencies
 
     fi
@@ -450,6 +462,7 @@ function main() {
     fi
 
     if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+        installCommon_removeDownloadPackagesDirectory
         common_logger "Installation finished."
     elif [ -n "${start_indexer_cluster}" ]; then
         common_logger "Wazuh indexer cluster started."

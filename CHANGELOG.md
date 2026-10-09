@@ -4,6 +4,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#6790](https://github.com/wazuh/internal-devel-requests/issues/6790) | Check that every Wazuh package is signed with the Wazuh key, whose fingerprint is pinned, before installing it; include the key in the offline bundle, refuse `http://` artifact URLs, and add `--skip-signature-check` for unsigned development packages |
 | [#1121](https://github.com/wazuh/wazuh-installation-assistant/issues/1121) | Issue the Server API certificate (`apid.pem`) from root-ca in wazuh-certs-tool, deploy it, and add the `-ap\|--api-san` option |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Publish the shared `wazuh-credentials.sh` library used by the component packages as a build artifact |
 | [#1027](https://github.com/wazuh/wazuh-installation-assistant/issues/1027) | Complete the agent listener certificate: SAN coverage, ip lists, public addresses, and a load balancer leaf |
@@ -37,6 +38,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1105](https://github.com/wazuh/wazuh-installation-assistant/issues/1105) | Rename the Wazuh server API user `wazuh-wui` to `wazuh-internal-client`. The `WAZUH_MANAGER_WUI_PASSWORD` key keeps its name |
 | [#1110](https://github.com/wazuh/wazuh-installation-assistant/issues/1110) | Start the OVA and AMI integration tests from PR labels |
 | [#1092](https://github.com/wazuh/wazuh-installation-assistant/issues/1092) | Say how to share the CA when the credentials library creates a new one |
 | [#1093](https://github.com/wazuh/wazuh-installation-assistant/issues/1093) | Print the real dashboard addresses and the exact command that reads the admin password in the install summary, and log it |
@@ -104,6 +106,9 @@
 | Issue | Comment |
 | - | - |
 | [#1107](https://github.com/wazuh/wazuh-installation-assistant/issues/1107) | Repository bumper only replaces the stage when it is attached to the bumped version |
+| [#1111](https://github.com/wazuh/wazuh-installation-assistant/issues/1111) | Align the hardware check with the documented minimums, add up the components already installed on the host, and write GB in the warning |
+| [#1114](https://github.com/wazuh/wazuh-installation-assistant/issues/1114) | Print the section header of `-u\|--uninstall` before the per-component checks and end the run with "Uninstall finished." or "Nothing to uninstall." |
+| [#1119](https://github.com/wazuh/wazuh-installation-assistant/issues/1119) | With `-v`, the tools read the exit code of `tee` instead of the command, so failed service starts, security initialization and downloads were reported as successful |
 | [#1113](https://github.com/wazuh/wazuh-installation-assistant/issues/1113) | Fix the final messages of the offline download and link the offline installation guide of the assistant's own version |
 | [#1108](https://github.com/wazuh/wazuh-installation-assistant/issues/1108) | Update the offline installation guide: no `-g` or `wazuh-install-files.tar` for all-in-one, `--agent-san` for distributed, dependency lists and dashboard password |
 | [#1049](https://github.com/wazuh/wazuh-installation-assistant/issues/1049) | Warn when wazuh-certs-tool.sh creates a new root CA, and document how to add a Wazuh manager worker to an existing deployment with its root CA |
