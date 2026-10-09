@@ -53,11 +53,13 @@ gh workflow run 5_check_integration_tools.yaml \
 | Input | Description | Options | Default |
 | ----- | ----------- | ------- | ------- |
 | `pr_head_ref` | Branch of the installation assistant to test | any branch name | required |
-| `automation_reference` | Branch of `wazuh-automation` to use | any branch name | `main` |
+| `automation_reference` | Branch of `wazuh-automation` to use | any branch name | `5.0.0` |
 | `tool_type` | Tool to test | `installer` / `cert-tool` / `passwords-tool` / `all` | required |
 | `install_mode` | Installation mode (installer only) | `aio` / `distributed` / `offline` | `aio` |
 | `package_type` | Package source | `staging` / `production` | `staging` |
 | `systems` | Comma-separated list of systems to test, or `all` | see table below | `all` |
+
+> **note**: A label run uses the workflow file of the PR, with its changes, and the `wazuh-automation` branch named as the base branch of the PR (for example `5.0.0`). The manual dispatch uses the workflow file of `--ref` and the `automation_reference` input.
 
 By default all supported systems are tested in parallel. To test a subset, pass a comma-separated list to the `systems` input:
 

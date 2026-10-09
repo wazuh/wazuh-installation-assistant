@@ -84,7 +84,9 @@ flowchart TD
 | `install_mode` | Mapped from the label name |
 | `package_type` | Fixed: `staging` |
 | `systems` | Fixed: all 8 supported OSes |
-| `automation_reference` | Defaults to `main` |
+| `automation_reference` | The base branch of the PR (`github.base_ref`), for example `5.0.0` |
+
+A label run uses the workflow file of the PR, with its changes. The manual dispatch uses the workflow file of `--ref` and the `automation_reference` input.
 
 ---
 
