@@ -210,7 +210,7 @@ Follow these steps on the master node and on every worker node.
     install -m 0640 wazuh-install-files/$NODE_NAME-apid-key.pem /var/wazuh-manager/etc/certs/apid-key.pem
     ```
 
-2. Install the Wazuh manager. The package uses the files you placed instead of issuing its own, and gives each one its owner.
+2. Install the Wazuh manager. The package uses the files you placed instead of issuing its own, and gives the `remoted` and `apid` pairs their owner.
 
     **RPM-based systems:**
 
@@ -224,7 +224,14 @@ Follow these steps on the master node and on every worker node.
     apt install ./wazuh-offline/wazuh-packages/wazuh-manager*.deb
     ```
 
-3. In the `<indexer>` block of `/var/wazuh-manager/etc/wazuh-manager.conf`, replace `127.0.0.1` with the addresses of the Wazuh indexer nodes, one `<host>` per node. Do it on every node: the cluster does not synchronize this block. Leave the `<ssl>` settings as the package wrote them. The credentials are not configured here: the package stored them in the keystore of the Wazuh manager.
+3. Give the indexer connector pair to the `wazuh-manager` group. The package does not set the owner of the indexer connector pair placed before installing it, and the Wazuh manager then cannot read it:
+
+    ```bash
+    chown root:wazuh-manager /var/wazuh-manager/etc/certs/indexer-connector.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+    chmod 0640 /var/wazuh-manager/etc/certs/indexer-connector.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+    ```
+
+4. In the `<indexer>` block of `/var/wazuh-manager/etc/wazuh-manager.conf`, replace `127.0.0.1` with the addresses of the Wazuh indexer nodes, one `<host>` per node. Do it on every node: the cluster does not synchronize this block. Leave the `<ssl>` settings as the package wrote them. The credentials are not configured here: the package stored them in the keystore of the Wazuh manager.
 
     ```xml
     <indexer>
@@ -234,7 +241,7 @@ Follow these steps on the master node and on every worker node.
       </hosts>
     ```
 
-4. Edit the `<cluster>` block of `/var/wazuh-manager/etc/wazuh-manager.conf`. Use the key in `wazuh-install-files/clusterkey` on every node (`cat wazuh-install-files/clusterkey`), `master` as `node_type` on the master node and `worker` on the rest, and a unique `node_name` for each node, such as its name in `config.yml`. Replace `<MASTER_NODE_IP>` with the IP address of the master node. The package writes a `<cluster>` block with a random key of its own, `node_type` `master` and `bind_addr` `127.0.0.1` on every node, so replace the whole block on each of them.
+5. Edit the `<cluster>` block of `/var/wazuh-manager/etc/wazuh-manager.conf`. Use the key in `wazuh-install-files/clusterkey` on every node (`cat wazuh-install-files/clusterkey`), `master` as `node_type` on the master node and `worker` on the rest, and a unique `node_name` for each node, such as its name in `config.yml`. Replace `<MASTER_NODE_IP>` with the IP address of the master node. The package writes a `<cluster>` block with a random key of its own, `node_type` `master` and `bind_addr` `127.0.0.1` on every node, so replace the whole block on each of them.
 
     ```xml
     <cluster>
@@ -251,7 +258,7 @@ Follow these steps on the master node and on every worker node.
     </cluster>
     ```
 
-5. Enable and start the Wazuh manager service, first on the master node and then on the worker nodes.
+6. Enable and start the Wazuh manager service, first on the master node and then on the worker nodes.
 
     ```bash
     systemctl daemon-reload
@@ -259,7 +266,7 @@ Follow these steps on the master node and on every worker node.
     systemctl start wazuh-manager
     ```
 
-6. Check that the Wazuh manager reaches the Wazuh indexer and, on the master node, that every node joined the cluster.
+7. Check that the Wazuh manager reaches the Wazuh indexer and, on the master node, that every node joined the cluster.
 
     ```bash
     grep 'indexer is reachable' /var/wazuh-manager/logs/wazuh-manager.log | tail -1
