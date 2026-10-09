@@ -46,6 +46,12 @@ function manager_configure(){
 
     common_logger -d "Configuring Wazuh manager."
 
+    # The indexer connector pair was placed before the package created the wazuh-manager
+    # group, and the package only sets the owner of the remoted and apid pairs. Its resolver
+    # requires root:wazuh-manager 0640 here, or the manager cannot read the pair.
+    eval "chown root:wazuh-manager ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
+    eval "chmod 640 ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
+
     for i in "${!indexer_node_ips[@]}"; do
         if [ $i -eq 0 ]; then
             eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
@@ -150,7 +156,8 @@ function manager_install() {
 
 # Places the indexer connector, agent listener and Server API pairs of this node from the
 # tar before the package is installed, with the names the package expects. The package
-# uses them instead of issuing its own and sets their owner and mode.
+# uses them instead of issuing its own and sets the owner of the agent listener and
+# Server API pairs; manager_configure sets the owner of the indexer connector pair.
 function manager_copyCertificates() {
 
     common_logger -d "Placing the Wazuh manager certificates."
