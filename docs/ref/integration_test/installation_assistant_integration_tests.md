@@ -84,7 +84,9 @@ flowchart TD
 | `install_mode` | Mapped from the label name |
 | `package_type` | Fixed: `staging` |
 | `systems` | Fixed: all 8 supported OSes |
-| `automation_reference` | Defaults to `main` |
+| `automation_reference` | The base branch of the PR (`github.base_ref`), for example `5.0.0` |
+
+A label run uses the workflow file of the PR, with its changes. The manual dispatch uses the workflow file of `--ref` and the `automation_reference` input.
 
 ---
 
@@ -159,7 +161,7 @@ python3 wazuh-automation/deployability/modules/allocation/main.py \
   --label-termination-date 1d
 ```
 
-The allocator writes `inventory.yml` with SSH connection details (`ansible_host`, `ansible_port`, `ansible_user`, `ansible_ssh_private_key_file`). These are extracted and exported as `SSH_HOST`, `SSH_PORT`, `SSH_USER`, `SSH_KEY` environment variables.
+The allocator writes `inventory.yml` with SSH connection details (`ansible_host`, `ansible_port`, `ansible_user`, `ansible_ssh_private_key_file`). These are extracted and exported as `SSH_HOST`, `SSH_PORT`, `SSH_USER`, `SSH_KEY` environment variables, and `ansible_host_private_ip` as `PRIVATE_IP` (the step fails if the inventory has no private address).
 
 #### Deploy tools to remote instance
 
@@ -169,7 +171,7 @@ The allocator writes `inventory.yml` with SSH connection details (`ansible_host`
    - Always: `wazuh-install.sh`, `artifact_urls.yaml`
    - When `tool_type` is `cert-tool` or `all`: also `wazuh-certs-tool.sh`
    - When `tool_type` is `passwords-tool` or `all`: also `wazuh-passwords-tool.sh`
-4. Generate and copy `config.yml` (when `install_mode` is `distributed` or `offline`, or `tool_type` is `cert-tool` or `all`):
+4. Generate and copy `config.yml` (when `install_mode` is `distributed`, or `tool_type` is `cert-tool` or `all`):
    ```yaml
    nodes:
      indexer:   [{ name: indexer,   ip: 127.0.0.1 }]
@@ -193,7 +195,7 @@ Runs when `install_mode == distributed`. Executes five sequential SSH steps on t
 
 | Step | Command | What it does |
 |---|---|---|
-| Generate certificates | `wazuh-install.sh -g -id` | Creates certificates and install files |
+| Generate certificates | `wazuh-install.sh -g -as {PRIVATE_IP} -id` | Creates certificates and install files. `-g` refuses an agent listener certificate that names only loopback addresses, so `-as` adds the private address; the nodes stay on `127.0.0.1` and the services listen on localhost. The step then checks that `wazuh-install-files.tar` contains `credentials.env`, does not contain `root-ca.key`, and that `manager-remoted.pem` names `{PRIVATE_IP}` |
 | Install indexer | `wazuh-install.sh -wi indexer {DEV_FLAG} -id` | Installs Wazuh Indexer |
 | Initialize security | `wazuh-install.sh -s` | Initializes indexer cluster security settings |
 | Install manager | `wazuh-install.sh -wm manager {DEV_FLAG} -id` | Installs Wazuh Manager |
@@ -208,10 +210,9 @@ Runs when `install_mode == offline`. All package preparation happens on the runn
 1. **Detect package type and arch**: maps OS identifier to `deb`/`rpm` and `amd64`/`arm64`/`x86_64`/`aarch64`
 2. **Install prerequisites on remote**: installs OS-specific packages (`debconf`, `adduser`, `procps`, etc. for deb; `coreutils`, `libcap`, `lsof`, etc. for rpm)
 3. **Download offline packages on runner**: runs `wazuh-install.sh -dw {PKG_TYPE} -da {ARCH} {DEV_FLAG} -id` to produce `wazuh-offline.tar.gz`
-4. **Generate install files on runner**: runs `wazuh-install.sh -g -id` to produce `wazuh-install-files.tar`
-5. **Copy all files to remote**: SCP transfers `wazuh-install.sh`, `wazuh-offline.tar.gz`, `wazuh-install-files.tar`, `artifact_urls.yaml`, and `config.yml`
-6. **Remove internet access**: switches the EC2 instance to the no-internet security group (`AWS_SG_OFFLINE`) via `aws ec2 modify-instance-attribute`
-7. **Run offline installation**: `sudo bash /tmp/wazuh-install.sh -a -of` — Timeout: 60 minutes
+4. **Copy all files to remote**: SCP transfers `wazuh-install.sh`, `wazuh-offline.tar.gz`, and `artifact_urls.yaml`. The offline all-in-one install does not use `wazuh-install-files.tar` nor `config.yml`: the packages create the root CA, the certificates, and the passwords
+5. **Remove internet access**: switches the EC2 instance to the no-internet security group (`AWS_SG_OFFLINE`) via `aws ec2 modify-instance-attribute`
+6. **Run offline installation**: `sudo bash /tmp/wazuh-install.sh -a -of` — Timeout: 60 minutes
 
 #### Post-install steps
 
@@ -219,8 +220,8 @@ After any installation mode completes:
 
 - **Disable host firewall**: `ufw disable` on Ubuntu; `systemctl stop firewalld` on RedHat
 - **Wait for dashboard** (installer/all only): polls `https://localhost/status` with the `admin` password read from `/etc/wazuh/credentials.env` up to 5 minutes until HTTP 200
-- **Run cert-tool** (cert-tool/all only): copies `config.yml` and runs `sudo bash /tmp/wazuh-certs-tool.sh -A`
-- **Run passwords-tool** (passwords-tool/all only): saves the `admin` password set by the installation as `WAZUH_OLD_PASSWORD` (masked), runs `wazuh-passwords-tool.sh -u <user> -p` with the new password on the standard input for `admin`, `kibanaserver`, `wazuh-manager`, `wazuh` and `wazuh-internal-client`, restarts services, then polls indexer port 9200, dashboard port 443, and manager API port 55000 until all accept the new credentials
+- **Run cert-tool** (cert-tool/all only): copies `config.yml`, removes any previous `/tmp/wazuh-certificates` and runs `sudo bash /tmp/wazuh-certs-tool.sh -A`, which uses the root CA in `/etc/wazuh/ca`
+- **Run passwords-tool** (passwords-tool/all only): saves the `admin` password set by the installation as `WAZUH_OLD_PASSWORD` (masked), runs `wazuh-passwords-tool.sh -u kibanaserver` without `-p` and checks that the generated password is saved in `credentials.env`, is accepted by the indexer and replaces the previous one (both masked), then runs `wazuh-passwords-tool.sh -u <user> -p` with the new password on the standard input for `admin`, `kibanaserver`, `wazuh-manager`, `wazuh` and `wazuh-internal-client`, restarts services, then polls indexer port 9200, dashboard port 443, and manager API port 55000 until all accept the new credentials
 
 #### Test execution
 
@@ -242,7 +243,9 @@ test_runner \
 | `--ssh-host/port/key/username` | From allocator inventory | Connects to the allocated VM |
 | `--output github` | — | Emits GitHub Actions annotations |
 
-The step runs with `continue-on-error: true` so cleanup always proceeds regardless of test outcome.
+The step also passes `WAZUH_INSTALL_MODE` (the common name of the node certificates is the node name of `config.yml` with `-g`, and `hostname -s` with `-a`) and the expected versions `WAZUH_{MANAGER,INDEXER,DASHBOARD}_EXPECTED_VERSION`, taken from `VERSION.json` of the branch under test (with `-latest` for staging packages). For `installer` and `cert-tool`, `test_runner` reads the passwords from `/etc/wazuh/credentials.env` on the VM and masks them in the log.
+
+The step runs with `continue-on-error: true` so the results are reported and cleanup always proceeds regardless of test outcome; the last step of the job fails it when the main or the uninstall tests failed.
 
 For `installer` and `all` tool types, the workflow also runs an **uninstall phase** after the main tests:
 
@@ -268,6 +271,8 @@ python3 wazuh-automation/deployability/modules/allocation/main.py \
   --action delete \
   --track-output {ALLOCATOR_PATH}/track.yml
 ```
+
+After the cleanup, the job fails when `test_runner` reported a failed test (`run_tests` or `run_tests_uninstall` outcome `failure`), so that the check of the PR fails.
 
 ---
 
