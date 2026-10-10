@@ -657,10 +657,19 @@ jobs:
           [ -n "$GENERATED_PW" ] && echo "::add-mask::${GENERATED_PW}"
           [ -n "$GENERATED_PW" ] && [ "$GENERATED_PW" != "$KIBANASERVER_PW" ] \
             || { echo 'ERROR: the password generated for kibanaserver was not saved to /etc/wazuh/credentials.env'; exit 1; }
-          code=$(kibanaserver_http_code "$GENERATED_PW") || true
-          [ "$code" = "200" ] || { echo "ERROR: the generated kibanaserver password is rejected (HTTP ${code})"; exit 1; }
-          code=$(kibanaserver_http_code "$KIBANASERVER_PW") || true
-          [ "$code" = "401" ] || { echo "ERROR: the previous kibanaserver password is still accepted (HTTP ${code})"; exit 1; }
+          # The indexer can take a few seconds to apply the change, so each check waits up to 2 minutes
+          wait_kibanaserver_http_code() {
+            for _ in $(seq 1 24); do
+              code=$(kibanaserver_http_code "$1") || true
+              [ "$code" = "$2" ] && return 0
+              sleep 5
+            done
+            return 1
+          }
+          wait_kibanaserver_http_code "$GENERATED_PW" 200 \
+            || { echo "ERROR: the generated kibanaserver password is rejected after 2 minutes (HTTP ${code})"; exit 1; }
+          wait_kibanaserver_http_code "$KIBANASERVER_PW" 401 \
+            || { echo "ERROR: the previous kibanaserver password is still accepted after 2 minutes (HTTP ${code})"; exit 1; }
           echo "The password generated for kibanaserver is saved to credentials.env and replaces the previous one"
           # The passwords tool reads the new password from the standard input with -p
           for user in admin kibanaserver wazuh-manager wazuh wazuh-internal-client; do
