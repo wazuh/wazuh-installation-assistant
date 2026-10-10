@@ -92,6 +92,8 @@ function main() {
         getHelp
     fi
 
+    installCommon_logRunHeader "$@"
+
     declare -a agent_san=()
     declare -a api_san=()
 
@@ -233,8 +235,6 @@ function main() {
                 getHelp
         esac
     done
-
-    cat /dev/null > "${logfile}"
 
     if [ -z "${download}" ] && [ -z "${showVersion}" ]; then
         common_checkRoot

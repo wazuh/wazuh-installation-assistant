@@ -39,6 +39,7 @@
 | Issue | Comment |
 | - | - |
 | [#3870](https://github.com/wazuh/wazuh-automation/issues/3870) | Adapt the integration tests to install-time credentials: agent listener address in the distributed flow, no install files in the offline flow, password generated without -p, expected version of the branch, and fail the job when a test fails |
+| [#1112](https://github.com/wazuh/wazuh-installation-assistant/issues/1112) | Keep the log of every run in `/var/log/wazuh-install.log`: each run appends to it with a header line (date, assistant version and options) instead of emptying it |
 | [#1105](https://github.com/wazuh/wazuh-installation-assistant/issues/1105) | Rename the Wazuh server API user `wazuh-wui` to `wazuh-internal-client`. The `WAZUH_MANAGER_WUI_PASSWORD` key keeps its name |
 | [#1110](https://github.com/wazuh/wazuh-installation-assistant/issues/1110) | Start the OVA and AMI integration tests from PR labels |
 | [#1092](https://github.com/wazuh/wazuh-installation-assistant/issues/1092) | Say how to share the CA when the credentials library creates a new one |
@@ -106,6 +107,8 @@
 
 | Issue | Comment |
 | - | - |
+| [#1054](https://github.com/wazuh/wazuh-installation-assistant/issues/1054) | Fix small installer points after install-time credentials |
+| [#1107](https://github.com/wazuh/wazuh-installation-assistant/issues/1107) | Repository bumper only replaces the stage when it is attached to the bumped version |
 | [#1111](https://github.com/wazuh/wazuh-installation-assistant/issues/1111) | Align the hardware check with the documented minimums, add up the components already installed on the host, and write GB in the warning |
 | [#1114](https://github.com/wazuh/wazuh-installation-assistant/issues/1114) | Print the section header of `-u\|--uninstall` before the per-component checks and end the run with "Uninstall finished." or "Nothing to uninstall." |
 | [#1119](https://github.com/wazuh/wazuh-installation-assistant/issues/1119) | With `-v`, the tools read the exit code of `tee` instead of the command, so failed service starts, security initialization and downloads were reported as successful |
