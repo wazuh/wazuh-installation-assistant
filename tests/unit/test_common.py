@@ -1,10 +1,12 @@
 """
 Unit tests for common_functions/common.sh
 
-Covers: common_checkSystem, common_checkInstalled
+Covers: common_checkSystem, common_checkInstalled, common_curl
 """
 
-from tests.unit.conftest import assert_failure, assert_success, run_bash_function
+import pytest
+
+from tests.unit.conftest import VERBOSE_DEBUG, assert_failure, assert_success, run_bash_function
 
 COMMON = "common_functions/common.sh"
 COMMON_VARS = "common_functions/commonVariables.sh"
@@ -61,3 +63,35 @@ class TestCommonCheckInstalled:
         }
         result = self._run(env_vars={"sys_type": "yum"}, extra_mocks=mocks)
         assert_success(result)
+
+
+class TestCommonCurl:
+    """common_curl returns the exit code of curl, also when debug sends the
+    output through tee (-v)."""
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    @pytest.mark.parametrize("connrefused", ["", "1"])
+    def test_returns_the_curl_error(self, debug, connrefused):
+        result = run_bash_function(
+            BASE_SOURCES,
+            'common_curl -sS https://localhost --fail ${debug}',
+            {**IGNORE_LOGGER, "curl": "return 22"},
+            {"debug": debug, "curl_has_connrefused": connrefused},
+        )
+        assert result.returncode == 22
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_retries_when_the_connection_is_refused(self, tmp_path, debug):
+        calls = tmp_path / "calls"
+        result = run_bash_function(
+            BASE_SOURCES,
+            'common_curl -sS https://localhost --fail ${debug}',
+            {
+                **IGNORE_LOGGER,
+                "sleep": "true",
+                "curl": f'echo call >> {calls}; [ "$(wc -l < {calls})" -ge 2 ] && return 0; return 7',
+            },
+            {"debug": debug, "curl_has_connrefused": ""},
+        )
+        assert_success(result)
+        assert calls.read_text().count("call") == 2

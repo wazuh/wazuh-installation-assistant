@@ -160,7 +160,7 @@ class TestPasswordsMainChangeAllManagerOnly:
 
     def test_takes_api_path_for_both_api_users(self):
         result = self._run_manager()
-        assert "CHANGEPASSWORDAPI_CALLED:wazuh wazuh-wui" in result.stdout
+        assert "CHANGEPASSWORDAPI_CALLED:wazuh wazuh-internal-client" in result.stdout
 
     def test_does_not_take_indexer_path(self):
         result = self._run_manager()
@@ -186,7 +186,7 @@ class TestPasswordsMainChangeAllEverything:
     def test_takes_both_paths(self):
         result = self._run_all()
         assert "RUNSECURITYADMIN_CALLED" in result.stdout
-        assert "CHANGEPASSWORDAPI_CALLED:wazuh wazuh-wui" in result.stdout
+        assert "CHANGEPASSWORDAPI_CALLED:wazuh wazuh-internal-client" in result.stdout
 
     def test_restarts_run_after_security_admin(self):
         """The services must not be restarted until the new passwords have
@@ -325,7 +325,7 @@ class TestPasswordsMainSingleApiUser:
 
     def test_takes_only_the_api_path(self):
         result = _run(
-            "-u wazuh-wui -p",
+            "-u wazuh-internal-client -p",
             extra_mocks={"passwords_checkUser": 'echo "CHECKUSER_CALLED"; api=1'},
             checkinstalled="indexer_installed=1; wazuh_installed=1",
         )

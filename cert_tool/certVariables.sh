@@ -9,6 +9,7 @@
 readonly base_path="$(dirname "$(readlink -f "$0")")"
 readonly config_file="${base_path}/config.yml"
 readonly logfile="${base_path}/wazuh-certificates-tool.log"
-cert_tmp_path="/tmp/wazuh-certificates"
+# Empty means a new directory with a random name in /tmp. Set with -tmp.
+cert_tmp_path=""
 debug=">> ${logfile} 2>&1"
 readonly cert_tool_script_name=".*certs.*\.sh"
