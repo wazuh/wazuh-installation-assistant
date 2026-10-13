@@ -1,12 +1,12 @@
 run-name: >-
   ${{ github.event_name == 'workflow_dispatch'
     && format('Test Integration Tools - Manual {0} [{1}] on {2}', inputs.tool_type, inputs.install_mode, inputs.pr_head_ref)
-    || format('Test Integration Tools - #{0} {1}', github.event.issue.number, github.event.issue.title) }}
+    || format('Test Integration Tools - #{0} {1}', github.event.pull_request.number, github.event.pull_request.title) }}
 name: (5.x) PR Check - Test Integration Tools
 
 on:
-  issue_comment:
-    types: [created]
+  pull_request:
+    types: [labeled]
   workflow_dispatch:
     inputs:
       pr_head_ref:
@@ -55,10 +55,10 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
-  checks: write
 
 env:
-  AUTOMATION_REFERENCE: ${{ inputs.automation_reference || 'main' }}
+  # A label run uses the wazuh-automation branch named as the base branch of the PR
+  AUTOMATION_REFERENCE: ${{ inputs.automation_reference || github.base_ref || 'main' }}
   ALLOCATOR_PATH: /tmp/allocator_instance
   REGION: us-east-1
   GENERATE_PRESIGNED_URLS_SCRIPT_PATH: wazuh-automation/tools/sign_urls/generate_presigned_dev_urls.py
@@ -67,116 +67,78 @@ env:
 
 jobs:
   # -------------------------------------------------------------------------
-  # Job 1: Parse PR info and determine which tool to test
+  # Job 1: Parse the PR label and determine which tool to test
   #
-  # Available commands:
-  #   /test-install              — test the installation assistant (AIO)
-  #   /test-install-distributed  — test the installation assistant (Distributed)
-  #   /test-install-offline      — test the installation assistant (Offline)
-  #   /test-cert-tool            — test the certificates tool only
-  #   /test-passwords-tool       — test the passwords tool only
-  #   /test-assistant            — test all three tools in sequence (AIO, cert-tool, passwords-tool)
+  # Runs when one of these labels is added to a non-draft PR opened from a
+  # branch of this repository:
+  #   test/install              — test the installation assistant (AIO)
+  #   test/install-distributed  — test the installation assistant (Distributed)
+  #   test/install-offline      — test the installation assistant (Offline)
+  #   test/cert-tool            — test the certificates tool only
+  #   test/passwords-tool       — test the passwords tool only
+  #   test/assistant            — test all three tools in sequence (AIO, cert-tool, passwords-tool)
   # -------------------------------------------------------------------------
   get_pr_info:
     if: |
-      github.event_name == 'issue_comment' &&
-      github.event.issue.pull_request &&
-      github.event.issue.state == 'open' &&
-      !github.event.issue.draft &&
-      (contains(github.event.comment.body, '/test-install') ||
-       contains(github.event.comment.body, '/test-cert-tool') ||
-       contains(github.event.comment.body, '/test-passwords-tool') ||
-       contains(github.event.comment.body, '/test-assistant'))
+      github.event_name == 'pull_request' &&
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["test/install","test/install-distributed","test/install-offline","test/cert-tool","test/passwords-tool","test/assistant"]'), github.event.label.name)
     runs-on: ubuntu-24.04
     outputs:
       pr_number: ${{ steps.pr_data.outputs.pr_number }}
       pr_head_ref: ${{ steps.pr_data.outputs.pr_head_ref }}
       pr_head_sha: ${{ steps.pr_data.outputs.pr_head_sha }}
-      check_run_id: ${{ steps.create_check.outputs.result }}
-      tool_type: ${{ steps.parse_command.outputs.tool_type }}
-      install_mode: ${{ steps.parse_command.outputs.install_mode }}
-      check_name: ${{ steps.parse_command.outputs.check_name }}
+      tool_type: ${{ steps.parse_label.outputs.tool_type }}
+      install_mode: ${{ steps.parse_label.outputs.install_mode }}
 
     steps:
-      - name: React to comment
-        uses: actions/github-script@v8
-        with:
-          script: |
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: 'rocket'
-            });
-
       - name: Extract PR data
         id: pr_data
         env:
-          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          PR_NUMBER="${{ github.event.issue.number }}"
-          PR_DATA=$(gh api repos/${{ github.repository }}/pulls/${PR_NUMBER})
-          PR_HEAD_REF=$(echo "$PR_DATA" | jq -r '.head.ref')
-          PR_HEAD_SHA=$(echo "$PR_DATA" | jq -r '.head.sha')
-          echo "pr_number=${PR_NUMBER}" >> $GITHUB_OUTPUT
+          echo "pr_number=${PR_NUMBER}"     >> $GITHUB_OUTPUT
           echo "pr_head_ref=${PR_HEAD_REF}" >> $GITHUB_OUTPUT
           echo "pr_head_sha=${PR_HEAD_SHA}" >> $GITHUB_OUTPUT
 
-      - name: Parse command and set tool metadata
-        id: parse_command
-        run: |
-          COMMENT_BODY="${{ github.event.comment.body }}"
-          if echo "$COMMENT_BODY" | grep -q '/test-assistant'; then
-            echo "tool_type=all"                       >> $GITHUB_OUTPUT
-            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
-            echo "check_name=Full Integration Check"   >> $GITHUB_OUTPUT
-          elif echo "$COMMENT_BODY" | grep -q '/test-install-distributed'; then
-            echo "tool_type=installer"                 >> $GITHUB_OUTPUT
-            echo "install_mode=distributed"            >> $GITHUB_OUTPUT
-            echo "check_name=Installation Assistant Check (Distributed)" >> $GITHUB_OUTPUT
-          elif echo "$COMMENT_BODY" | grep -q '/test-install-offline'; then
-            echo "tool_type=installer"                 >> $GITHUB_OUTPUT
-            echo "install_mode=offline"                >> $GITHUB_OUTPUT
-            echo "check_name=Installation Assistant Check (Offline)" >> $GITHUB_OUTPUT
-          elif echo "$COMMENT_BODY" | grep -q '/test-install'; then
-            echo "tool_type=installer"                 >> $GITHUB_OUTPUT
-            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
-            echo "check_name=Installation Assistant Check" >> $GITHUB_OUTPUT
-          elif echo "$COMMENT_BODY" | grep -q '/test-cert-tool'; then
-            echo "tool_type=cert-tool"                 >> $GITHUB_OUTPUT
-            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
-            echo "check_name=Certificates Tool Check"  >> $GITHUB_OUTPUT
-          elif echo "$COMMENT_BODY" | grep -q '/test-passwords-tool'; then
-            echo "tool_type=passwords-tool"            >> $GITHUB_OUTPUT
-            echo "install_mode=aio"                    >> $GITHUB_OUTPUT
-            echo "check_name=Passwords Tool Check"     >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create check run
-        id: create_check
-        uses: actions/github-script@v8
+      - name: Parse label and set test metadata
+        id: parse_label
         env:
-          HEAD_SHA: ${{ steps.pr_data.outputs.pr_head_sha }}
-          CHECK_NAME: ${{ steps.parse_command.outputs.check_name }}
-          COMMENT_BODY: ${{ github.event.comment.body }}
-        with:
-          script: |
-            const { data: check } = await github.rest.checks.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: process.env.CHECK_NAME,
-              head_sha: process.env.HEAD_SHA,
-              status: 'in_progress',
-              started_at: new Date().toISOString(),
-              details_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              output: {
-                title: `🔨 Running ${process.env.CHECK_NAME}...`,
-                summary: `Triggered by comment: \`${process.env.COMMENT_BODY}\``,
-                text: 'Allocating instances and running tool tests'
-              }
-            });
-            console.log('Check run created:', check.id);
-            return check.id;
+          LABEL_NAME: ${{ github.event.label.name }}
+        run: |
+          case "$LABEL_NAME" in
+            test/install)
+              echo 'tool_type=installer' >> $GITHUB_OUTPUT
+              echo 'install_mode=aio' >> $GITHUB_OUTPUT
+              ;;
+            test/install-distributed)
+              echo 'tool_type=installer' >> $GITHUB_OUTPUT
+              echo 'install_mode=distributed' >> $GITHUB_OUTPUT
+              ;;
+            test/install-offline)
+              echo 'tool_type=installer' >> $GITHUB_OUTPUT
+              echo 'install_mode=offline' >> $GITHUB_OUTPUT
+              ;;
+            test/cert-tool)
+              echo 'tool_type=cert-tool' >> $GITHUB_OUTPUT
+              echo 'install_mode=aio' >> $GITHUB_OUTPUT
+              ;;
+            test/passwords-tool)
+              echo 'tool_type=passwords-tool' >> $GITHUB_OUTPUT
+              echo 'install_mode=aio' >> $GITHUB_OUTPUT
+              ;;
+            test/assistant)
+              echo 'tool_type=all' >> $GITHUB_OUTPUT
+              echo 'install_mode=aio' >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "::error::Unsupported label: ${LABEL_NAME}"
+              exit 1
+              ;;
+          esac
 
   # -------------------------------------------------------------------------
   # Job 2: Build tool(s) from the PR branch, generate presigned artifact
@@ -199,8 +161,11 @@ jobs:
     steps:
       - name: Resolve context
         id: ctx
+        env:
+          PR_TOOL_TYPE: ${{ needs.get_pr_info.outputs.tool_type }}
+          PR_INSTALL_MODE: ${{ needs.get_pr_info.outputs.install_mode }}
+          PR_HEAD_REF: ${{ needs.get_pr_info.outputs.pr_head_ref }}
         run: |
-          ALL_SYSTEMS='${{ env.ALL_SYSTEMS }}'
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "tool_type=${{ inputs.tool_type }}"         >> $GITHUB_OUTPUT
             echo "install_mode=${{ inputs.install_mode }}"   >> $GITHUB_OUTPUT
@@ -214,10 +179,10 @@ jobs:
               echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
             fi
           else
-            echo "tool_type=${{ needs.get_pr_info.outputs.tool_type }}"         >> $GITHUB_OUTPUT
-            echo "install_mode=${{ needs.get_pr_info.outputs.install_mode }}"   >> $GITHUB_OUTPUT
+            echo "tool_type=${PR_TOOL_TYPE}"                                     >> $GITHUB_OUTPUT
+            echo "install_mode=${PR_INSTALL_MODE}"                               >> $GITHUB_OUTPUT
             echo "package_type=staging"                                          >> $GITHUB_OUTPUT
-            echo "pr_head_ref=${{ needs.get_pr_info.outputs.pr_head_ref }}"     >> $GITHUB_OUTPUT
+            echo "pr_head_ref=${PR_HEAD_REF}"                                    >> $GITHUB_OUTPUT
             echo "matrix=${ALL_SYSTEMS}"                                         >> $GITHUB_OUTPUT
           fi
 
@@ -367,6 +332,9 @@ jobs:
           echo "SSH_PORT=$ansible_port"                >> $GITHUB_ENV
           echo "SSH_USER=$ansible_user"                >> $GITHUB_ENV
           echo "SSH_KEY=$ansible_ssh_private_key_file" >> $GITHUB_ENV
+          # Address agents dial: -g adds it to the agent listener certificate with -as
+          [ -n "${ansible_host_private_ip:-}" ] || { echo 'ERROR: no private IP in the allocator inventory'; exit 1; }
+          echo "PRIVATE_IP=$ansible_host_private_ip"   >> "$GITHUB_ENV"
 
       # -----------------------------------------------------------------------
       # Deploy: copy built tools and artifact URLs to remote instance
@@ -403,7 +371,6 @@ jobs:
       - name: Create config.yml and copy to remote instance
         if: |
           needs.build_tools.outputs.install_mode == 'distributed' ||
-          needs.build_tools.outputs.install_mode == 'offline' ||
           needs.build_tools.outputs.tool_type == 'cert-tool' ||
           needs.build_tools.outputs.tool_type == 'all'
         run: |
@@ -419,11 +386,7 @@ jobs:
               - name: dashboard
                 ip: 127.0.0.1
           EOF
-          if [ "${{ needs.build_tools.outputs.install_mode }}" = "offline" ]; then
-            cp /tmp/config.yml /tmp/built-tools/config.yml
-          else
-            scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
-          fi
+          scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
 
       # -----------------------------------------------------------------------
       # Install with assistant AIO
@@ -453,15 +416,28 @@ jobs:
         if: needs.build_tools.outputs.install_mode == 'distributed'
         timeout-minutes: 60
         run: |
-          # Generate install files (certificates + config) from config.yml
+          # Generate install files (certificates + config) from config.yml. config.yml keeps the
+          # nodes on 127.0.0.1, so the services listen on localhost, and -as adds the address agents
+          # dial to the agent listener certificate, which -g refuses to issue for loopback only.
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Generating certificates and config...\"; sleep 60; done } &
             HB=\$!
-            sudo bash /tmp/wazuh-install.sh -g -id 2>&1 | tee /tmp/install-g.log
+            sudo bash /tmp/wazuh-install.sh -g -as ${{ env.PRIVATE_IP }} -id 2>&1 | tee /tmp/install-g.log
             RESULT=\${PIPESTATUS[0]}; kill \$HB 2>/dev/null || true
             [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; }
             exit \$RESULT
           "
+          # The tar carries the credentials file and not the root CA key, and the agent listener
+          # certificate names the address agents dial
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" '
+            members=$(sudo tar -tf /tmp/wazuh-install-files.tar) || exit 1
+            grep -qx "wazuh-install-files/credentials.env" <<< "$members" || { echo "ERROR: credentials.env missing from wazuh-install-files.tar"; exit 1; }
+            if grep -q "root-ca.key" <<< "$members"; then echo "ERROR: root-ca.key must not be in wazuh-install-files.tar"; exit 1; fi
+            sudo tar -xOf /tmp/wazuh-install-files.tar wazuh-install-files/manager-remoted.pem | openssl x509 -noout -ext subjectAltName \
+              | tr "," "\n" | sed "s/^ *//" | grep -qx "IP Address:${{ env.PRIVATE_IP }}" \
+              || { echo "ERROR: the agent listener certificate does not name ${{ env.PRIVATE_IP }}"; exit 1; }
+            echo "wazuh-install-files.tar: credentials.env present, root-ca.key absent, agent listener certificate names ${{ env.PRIVATE_IP }}"
+          '
           # Install indexer
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
             { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] Installing wazuh-indexer...\"; sleep 60; done } &
@@ -554,23 +530,15 @@ jobs:
           sudo bash wazuh-install.sh -dw "${{ env.PKG_TYPE }}" -da "${{ env.ARCH }}" ${{ env.DEV_FLAG }} -id
           sudo chmod 644 wazuh-offline.tar.gz
 
-      - name: Generate install files on runner (Offline installation)
-        if: needs.build_tools.outputs.install_mode == 'offline'
-        run: |
-          cd /tmp/built-tools
-          sudo bash wazuh-install.sh -g -id 2>&1 | tee /tmp/install-g.log
-          [ ${PIPESTATUS[0]} -ne 0 ] && { echo '--- Last 50 lines ---'; tail -50 /tmp/install-g.log; exit 1; }
-          sudo chmod 644 wazuh-install-files.tar
-
+      # The offline all-in-one install (-a -of) does not use wazuh-install-files.tar nor
+      # config.yml: the packages create the root CA, the certificates and the passwords.
       - name: Copy all offline files to remote instance (Offline installation)
         if: needs.build_tools.outputs.install_mode == 'offline'
         run: |
           scp ${{ env.SCP_OPTS }} \
             /tmp/built-tools/wazuh-install.sh \
             /tmp/built-tools/wazuh-offline.tar.gz \
-            /tmp/built-tools/wazuh-install-files.tar \
             /tmp/built-tools/artifact_urls.yaml \
-            /tmp/config.yml \
             "${{ env.REMOTE }}:/tmp/"
 
       - name: Remove internet access from instance (Offline installation)
@@ -628,7 +596,7 @@ jobs:
         timeout-minutes: 5
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
-            ADMIN_PW=\$(sudo sed -n 's/^WAZUH_INDEXER_ADMIN_PASSWORD=\"\\(.*\\)\"\$/\\1/p' /etc/wazuh/credentials.env)
+            ADMIN_PW=\$(sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"')
             [ -n \"\$ADMIN_PW\" ] || { echo 'ERROR: WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh/credentials.env'; exit 1; }
             for i in \$(seq 1 30); do
               code=\$(curl -sk -u \"admin:\${ADMIN_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost/status')
@@ -649,8 +617,10 @@ jobs:
           needs.build_tools.outputs.tool_type == 'all'
         run: |
           scp ${{ env.SCP_OPTS }} /tmp/config.yml "${{ env.REMOTE }}:/tmp/config.yml"
+          # The tool refuses to write into a wazuh-certificates directory that is not empty, and the
+          # tests check the output of this run only
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo bash /tmp/wazuh-certs-tool.sh -A"
+            "sudo rm -rf /tmp/wazuh-certificates && sudo bash /tmp/wazuh-certs-tool.sh -A"
 
       # -----------------------------------------------------------------------
       # Run passwords-tool
@@ -662,14 +632,47 @@ jobs:
         env:
           WAZUH_NEW_PASSWORD: "T3sting-Password"
         run: |
-          # Keep the admin password set by the installer, the tests check that it is rejected afterwards
+          # Keep the admin password set by the installer, the tests check that it is rejected afterwards.
+          # The value may be quoted or bare, depending on the credentials library of the packages.
           OLD_ADMIN_PW=$(ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo sed -n 's/^WAZUH_INDEXER_ADMIN_PASSWORD=\"\\(.*\\)\"\$/\\1/p' /etc/wazuh/credentials.env")
+            "sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"'")
           [ -n "$OLD_ADMIN_PW" ] || { echo 'ERROR: WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh/credentials.env'; exit 1; }
           echo "::add-mask::${OLD_ADMIN_PW}"
           echo "WAZUH_OLD_PASSWORD=${OLD_ADMIN_PW}" >> "$GITHUB_ENV"
+          # Without -p the tool generates the password and saves it to credentials.env
+          read_credential() {
+            ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+              "sudo grep '^$1=' /etc/wazuh/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"'"
+          }
+          kibanaserver_http_code() {
+            ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
+              "curl -sk -u 'kibanaserver:$1' -o /dev/null -w '%{http_code}' 'https://localhost:9200/_cluster/health'"
+          }
+          KIBANASERVER_PW=$(read_credential WAZUH_INDEXER_KIBANASERVER_PASSWORD)
+          [ -n "$KIBANASERVER_PW" ] || { echo 'ERROR: WAZUH_INDEXER_KIBANASERVER_PASSWORD not found in /etc/wazuh/credentials.env'; exit 1; }
+          echo "::add-mask::${KIBANASERVER_PW}"
+          ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "sudo bash /tmp/wazuh-passwords-tool.sh -u kibanaserver" \
+            || { echo 'ERROR: the passwords tool failed to generate a password for kibanaserver'; exit 1; }
+          GENERATED_PW=$(read_credential WAZUH_INDEXER_KIBANASERVER_PASSWORD)
+          [ -n "$GENERATED_PW" ] && echo "::add-mask::${GENERATED_PW}"
+          [ -n "$GENERATED_PW" ] && [ "$GENERATED_PW" != "$KIBANASERVER_PW" ] \
+            || { echo 'ERROR: the password generated for kibanaserver was not saved to /etc/wazuh/credentials.env'; exit 1; }
+          # The indexer can take a few seconds to apply the change, so each check waits up to 2 minutes
+          wait_kibanaserver_http_code() {
+            for _ in $(seq 1 24); do
+              code=$(kibanaserver_http_code "$1") || true
+              [ "$code" = "$2" ] && return 0
+              sleep 5
+            done
+            return 1
+          }
+          wait_kibanaserver_http_code "$GENERATED_PW" 200 \
+            || { echo "ERROR: the generated kibanaserver password is rejected after 2 minutes (HTTP ${code})"; exit 1; }
+          wait_kibanaserver_http_code "$KIBANASERVER_PW" 401 \
+            || { echo "ERROR: the previous kibanaserver password is still accepted after 2 minutes (HTTP ${code})"; exit 1; }
+          echo "The password generated for kibanaserver is saved to credentials.env and replaces the previous one"
           # The passwords tool reads the new password from the standard input with -p
-          for user in admin kibanaserver wazuh-manager wazuh wazuh-wui; do
+          for user in admin kibanaserver wazuh-manager wazuh wazuh-internal-client; do
             printf '%s\n' "$WAZUH_NEW_PASSWORD" | ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
               "sudo bash /tmp/wazuh-passwords-tool.sh -u ${user} -p"
           done
@@ -707,14 +710,14 @@ jobs:
           [ \"\$code\" = '200' ] || { echo 'ERROR: dashboard not accepting new credentials after 3 minutes'; exit 1; }
           echo 'wazuh-dashboard is ready'
 
-          echo 'Waiting for wazuh-manager API to accept wazuh-wui credentials...'
+          echo 'Waiting for wazuh-manager API to accept wazuh-internal-client credentials...'
           for i in \$(seq 1 \$RETRIES); do
-            code=\$(curl -sk -X POST -u \"wazuh-wui:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate')
+            code=\$(curl -sk -X POST -u \"wazuh-internal-client:\${NEW_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost:55000/security/user/authenticate')
             [ \"\$code\" = '200' ] && break
             echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
             sleep 10
           done
-          [ \"\$code\" = '200' ] || { echo 'ERROR: manager API not accepting wazuh-wui credentials after 3 minutes'; exit 1; }
+          [ \"\$code\" = '200' ] || { echo 'ERROR: manager API not accepting wazuh-internal-client credentials after 3 minutes'; exit 1; }
           echo 'wazuh-manager API is ready'
           "
 
@@ -728,9 +731,20 @@ jobs:
           WAZUH_NEW_PASSWORD: ${{ (needs.build_tools.outputs.tool_type == 'passwords-tool' || needs.build_tools.outputs.tool_type == 'all') && 'T3sting-Password' || '' }}
           WAZUH_SERVICE_PASSWORD: ${{ (needs.build_tools.outputs.tool_type == 'passwords-tool' || needs.build_tools.outputs.tool_type == 'all') && 'T3sting-Password' || '' }}
           WAZUH_CERT_TOOL_OUTPUT_DIR: /tmp/wazuh-certificates
+          # The node certificates carry the node names of config.yml with -g and the host name with -a
+          WAZUH_INSTALL_MODE: ${{ needs.build_tools.outputs.install_mode }}
         run: |
           TOOL_TYPE="${{ needs.build_tools.outputs.tool_type }}"
           OS="${{ matrix.system }}"
+          # Expected version: the one of the branch under test, not the default of wazuh-automation
+          EXPECTED_VERSION="${{ needs.build_tools.outputs.wazuh_version }}"
+          [ -n "$EXPECTED_VERSION" ] || { echo 'ERROR: no Wazuh version from VERSION.json'; exit 1; }
+          if [ "${{ needs.build_tools.outputs.package_type }}" = "staging" ]; then
+            EXPECTED_VERSION="${EXPECTED_VERSION}-latest"
+          fi
+          export WAZUH_MANAGER_EXPECTED_VERSION="$EXPECTED_VERSION"
+          export WAZUH_INDEXER_EXPECTED_VERSION="$EXPECTED_VERSION"
+          export WAZUH_DASHBOARD_EXPECTED_VERSION="$EXPECTED_VERSION"
           test_runner \
             --test-type "$TOOL_TYPE" \
             --ssh-host "${{ env.SSH_HOST }}" \
@@ -799,7 +813,7 @@ jobs:
           fi
 
       - name: Post PR comment with results
-        if: always() && github.event_name == 'issue_comment'
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v8
         env:
           TOOL: ${{ needs.build_tools.outputs.tool_type }}
@@ -891,40 +905,10 @@ jobs:
             --action delete \
             --track-output ${{ env.ALLOCATOR_PATH }}/track.yml
 
-  # -------------------------------------------------------------------------
-  # Job 4: Update the GitHub check run (issue_comment trigger only)
-  # -------------------------------------------------------------------------
-  update_check:
-    needs: [get_pr_info, vm_test]
-    if: always() && github.event_name == 'issue_comment' && needs.get_pr_info.result == 'success'
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Update check run
-        uses: actions/github-script@v8
-        env:
-          VM_RESULT: ${{ needs.vm_test.result }}
-          CHECK_NAME: ${{ needs.get_pr_info.outputs.check_name }}
-          CHECK_RUN_ID: ${{ needs.get_pr_info.outputs.check_run_id }}
-        with:
-          script: |
-            const result = process.env.VM_RESULT;
-            const conclusionMap = {
-              success:   { conclusion: 'success',   icon: '✅', summary: 'All integration tests passed on all matrix OS.' },
-              failure:   { conclusion: 'failure',   icon: '❌', summary: 'One or more integration tests failed.' },
-              cancelled: { conclusion: 'cancelled', icon: '⏹️', summary: 'Workflow was cancelled.' },
-            };
-            const { conclusion, icon, summary } = conclusionMap[result] ?? conclusionMap.failure;
-            const label = conclusion.charAt(0).toUpperCase() + conclusion.slice(1);
-            await github.rest.checks.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              check_run_id: parseInt(process.env.CHECK_RUN_ID),
-              status: 'completed',
-              conclusion,
-              completed_at: new Date().toISOString(),
-              output: {
-                title: `${icon} ${process.env.CHECK_NAME} — ${label}`,
-                summary,
-                text: `[View workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
-              }
-            });
+      # The test steps continue on error so that the results are reported and the instance is
+      # deallocated; this step makes the job, and so the check of the PR, fail when a test failed.
+      - name: Fail the job when a test failed
+        if: always() && (steps.run_tests.outcome == 'failure' || steps.run_tests_uninstall.outcome == 'failure')
+        run: |
+          echo "Integration tests failed: run_tests=${{ steps.run_tests.outcome }}, run_tests_uninstall=${{ steps.run_tests_uninstall.outcome }}"
+          exit 1

@@ -14,6 +14,9 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
+# The value -v gives to debug: the command output also goes through tee.
+VERBOSE_DEBUG = "2>&1 | tee -a /dev/null"
+
 
 def run_bash_function(
     source_files: list[str],

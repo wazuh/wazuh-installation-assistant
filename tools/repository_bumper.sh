@@ -69,10 +69,35 @@ update_version_in_files() {
 }
 
 update_stage_in_files() {
-    local OLD_STAGE="$(echo "${OLD_STAGE}")"
-    files=( $(grep_command "${OLD_STAGE}" "${DIR}") )
+    # Only replace the stage where it is attached to the version (e.g. 5.1.0-rc1
+    # or v5.1.0-rc1). A bare stage string such as rc1 also appears in unrelated
+    # values, like the v4.9.0-rc1 image tag examples. Both the old and the new
+    # version are matched, as update_version_in_files may have already run.
+    local VERSION_FILE="${DIR}/VERSION.json"
+    local OLD_V_ESC="${OLD_VERSION//./\\.}"
+    local NEW_V_ESC="${VERSION//./\\.}"
+    local MATCH_V="${OLD_V_ESC}|${NEW_V_ESC}"
+    if ! sed -i -E "s/(\"stage\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")/\1${STAGE}\2/" "${VERSION_FILE}"; then
+        echo "Error: Failed to update stage in VERSION.json" | tee -a "${LOG_FILE}"
+        exit 1
+    fi
+    if [[ $(git diff --name-only "${VERSION_FILE}") ]]; then
+        FILES_EDITED+=("${VERSION_FILE}")
+    fi
+    # Without a previous stage there is no version-stage reference to replace,
+    # and an empty pattern would make the loop below never end.
+    [[ -z "${OLD_STAGE}" ]] && return 0
+    # Same stage with a different version: only the old version needs replacing,
+    # so the result can never match the pattern again and the loop below ends.
+    if [[ "${STAGE}" == "${OLD_STAGE}" ]]; then
+        [[ "${OLD_VERSION}" == "${VERSION}" ]] && return 0
+        MATCH_V="${OLD_V_ESC}"
+    fi
+    files=( $(grep_command "\(${MATCH_V//|/\\|}\)-${OLD_STAGE}" "${DIR}") )
     for file in "${files[@]}"; do
-        sed -i "s/${OLD_STAGE}/${STAGE}/g" "${file}"
+        # Loop until no match is left: each pass rescans the line, so occurrences
+        # separated by a single character (e.g. 5.1.0-rc1,5.1.0-rc1) are not skipped.
+        sed -i -E ":a; s/(^|[^0-9.])(v?)(${MATCH_V})-${OLD_STAGE}([^0-9]|$)/\1\2${VERSION}-${STAGE}\4/; ta" "${file}"
         if [[ $(git diff --name-only "${file}") ]]; then
             FILES_EDITED+=("${file}")
         fi
@@ -80,9 +105,9 @@ update_stage_in_files() {
 }
 
 # Compute the value written into branch reference defaults ("default: '...'").
-# Without --tag, references stay branch-like (e.g. 5.0.0).
-# With --tag, references become tag-like (e.g. v5.0.0-beta3), or a plain release
-# tag (e.g. v5.0.0) when no stage is provided.
+# Without --tag, references stay branch-like (e.g. 5.1.0).
+# With --tag, references become tag-like (e.g. v5.1.0-beta3), or a plain release
+# tag (e.g. v5.1.0) when no stage is provided.
 build_reference() {
     if [[ -n "$TAG" ]]; then
         if [[ -z "$STAGE" ]]; then
@@ -96,7 +121,7 @@ build_reference() {
 }
 
 # Tag mode only: normalize every reference to the current version
-# (branch-like "5.0.0", "v5.0.0" or "v5.0.0-<stage>") into ${REFERENCE}.
+# (branch-like "5.1.0", "v5.1.0" or "v5.1.0-<stage>") into ${REFERENCE}.
 # Matching is restricted to "default: '...'" entries so plain version strings
 # elsewhere in the repository are left untouched.
 update_tag_references() {
@@ -152,7 +177,7 @@ main() {
         esac
     done
 
-    # --tag rewrites branch references into tag-like references (e.g. v5.0.0-beta3).
+    # --tag rewrites branch references into tag-like references (e.g. v5.1.0-beta3).
     # It is mutually exclusive with --set-as-main, which keeps references on main.
     if [[ -n "$TAG" && -n "$set_as_main" ]]; then
         echo "Error: --tag cannot be combined with --set-as-main." | tee -a "${LOG_FILE}"
