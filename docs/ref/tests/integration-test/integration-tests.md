@@ -53,13 +53,13 @@ gh workflow run 5_check_integration_tools.yaml \
 | Input | Description | Options | Default |
 | ----- | ----------- | ------- | ------- |
 | `pr_head_ref` | Branch of the installation assistant to test | any branch name | required |
-| `automation_reference` | Branch of `wazuh-automation` to use | any branch name | `5.0.1` |
+| `automation_reference` | Branch of `wazuh-automation` to use | any branch name | `5.1.0` |
 | `tool_type` | Tool to test | `installer` / `cert-tool` / `passwords-tool` / `all` | required |
 | `install_mode` | Installation mode (installer only) | `aio` / `distributed` / `offline` | `aio` |
 | `package_type` | Package source | `staging` / `production` | `staging` |
 | `systems` | Comma-separated list of systems to test, or `all` | see table below | `all` |
 
-> **note**: A label run uses the workflow file of the PR, with its changes, and the `wazuh-automation` branch named as the base branch of the PR (for example `5.0.1`). The manual dispatch uses the workflow file of `--ref` and the `automation_reference` input.
+> **note**: A label run uses the workflow file of the PR, with its changes, and the `wazuh-automation` branch named as the base branch of the PR (for example `5.1.0`). The manual dispatch uses the workflow file of `--ref` and the `automation_reference` input.
 
 By default all supported systems are tested in parallel. To test a subset, pass a comma-separated list to the `systems` input:
 
@@ -282,7 +282,7 @@ The main job. Runs in parallel for each OS:
 | `WAZUH_CERT_TOOL_OUTPUT_DIR` | Directory where `wazuh-certs-tool.sh` writes certificates | `/tmp/wazuh-certificates` |
 | `WAZUH_OLD_PASSWORD` | `admin` password set by the installation, read from `/etc/wazuh/credentials.env` before the rotation (masked) | `passwords-tool` and `all` |
 | `WAZUH_INSTALL_MODE` | Installation mode, for the common name expected in the node certificates | `aio` / `distributed` / `offline` |
-| `WAZUH_MANAGER_EXPECTED_VERSION`, `WAZUH_INDEXER_EXPECTED_VERSION`, `WAZUH_DASHBOARD_EXPECTED_VERSION` | Expected version, from `VERSION.json` of the branch under test (with `-latest` for staging packages) | e.g. `5.0.1-latest` |
+| `WAZUH_MANAGER_EXPECTED_VERSION`, `WAZUH_INDEXER_EXPECTED_VERSION`, `WAZUH_DASHBOARD_EXPECTED_VERSION` | Expected version, from `VERSION.json` of the branch under test (with `-latest` for staging packages) | e.g. `5.1.0-latest` |
 
 For the `installer` and `cert-tool` test types, `WAZUH_SERVICE_PASSWORD` is empty and `test_runner` reads the passwords from `/etc/wazuh/credentials.env` on the instance. It masks every value it reads in the workflow log.
 

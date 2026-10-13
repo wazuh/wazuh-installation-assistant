@@ -117,7 +117,7 @@ Run the following command in order to create the certificates using the installa
 If agents will connect to a Wazuh manager through a different address, such as a public IP, a NAT address, or a load balancer, add it with `-as|--agent-san <address>`. See [Name the address agents dial](../../ref/getting-started/usage.md#name-the-address-agents-dial).
 
 ```bash
-./wazuh-install-5.0.1.sh -g -as <address>
+./wazuh-install-5.1.0.sh -g -as <address>
 ```
 
 ### 6. Copy the necessary files to the final host

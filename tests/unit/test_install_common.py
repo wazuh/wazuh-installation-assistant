@@ -1041,9 +1041,9 @@ class TestInstallCommonGetPackages:
     """
 
     PACKAGES = [
-        "wazuh-indexer-5.0.1-1.x86_64.rpm",
-        "wazuh-manager-5.0.1-1.x86_64.rpm",
-        "wazuh-dashboard-5.0.1-1.x86_64.rpm",
+        "wazuh-indexer-5.1.0-1.x86_64.rpm",
+        "wazuh-manager-5.1.0-1.x86_64.rpm",
+        "wazuh-dashboard-5.1.0-1.x86_64.rpm",
     ]
 
     def _run(self, tmp_path, packages):
@@ -1171,7 +1171,7 @@ class TestInstallCommonRollBack:
 class TestInstallCommonLogRunHeader:
     """installCommon_logRunHeader appends a header for the run, keeping the log of the previous runs."""
 
-    HEADER = "INFO: --- Wazuh installation assistant 0.1 (Wazuh 5.0.1). Options: {} ---"
+    HEADER = "INFO: --- Wazuh installation assistant 0.1 (Wazuh 5.1.0). Options: {} ---"
 
     def _run(self, logfile, args=""):
         return run_bash_function(
@@ -1180,7 +1180,7 @@ class TestInstallCommonLogRunHeader:
             env_vars={
                 "logfile": str(logfile),
                 "wazuh_install_vesion": "0.1",
-                "wazuh_version": "5.0.1",
+                "wazuh_version": "5.1.0",
             },
         )
 

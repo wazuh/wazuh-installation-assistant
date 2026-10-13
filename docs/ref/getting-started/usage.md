@@ -9,7 +9,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | Option | Description |
 | -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
-| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.0.1.sh. See [Use development packages](#use-development-packages). |
+| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.1.0.sh. See [Use development packages](#use-development-packages). |
 | `--skip-signature-check` | Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with `-d`. See [Use development packages](#use-development-packages). |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
@@ -207,7 +207,7 @@ Before installing a package, the assistant checks that it is signed with the Waz
 Packages in the nightly, pre-release and production repositories are signed. Development builds that did not go through the signing process are not, and need the `--skip-signature-check` option, which is only accepted along with `-d`:
 
 ```bash
-sudo bash wazuh-install-5.0.1.sh -a -d local --skip-signature-check
+sudo bash wazuh-install-5.1.0.sh -a -d local --skip-signature-check
 ```
 
 ## Wazuh certs tool
@@ -395,15 +395,15 @@ When API clients reach the Server API at an address no single node owns, such as
 name or a load balancer, add it with `-ap`, `--api-san`, repeated once per value:
 
 ```bash
-sudo bash wazuh-certs-tool-5.0.1.sh -A --api-san api.example.com --api-san 203.0.113.20
+sudo bash wazuh-certs-tool-5.1.0.sh -A --api-san api.example.com --api-san 203.0.113.20
 ```
 
-`wazuh-install-5.0.1.sh` takes the same option with `-a` and `-g`. On an all-in-one install
+`wazuh-install-5.1.0.sh` takes the same option with `-a` and `-g`. On an all-in-one install
 the Wazuh manager package issues the certificate with the addresses of the host, and the
 option adds the ones the host cannot see:
 
 ```bash
-sudo bash wazuh-install-5.0.1.sh -a --api-san api.example.com
+sudo bash wazuh-install-5.1.0.sh -a --api-san api.example.com
 ```
 
 #### Create the certificate of a TLS-terminating load balancer
@@ -491,7 +491,7 @@ Every Wazuh manager node of a cluster must serve an agent listener certificate s
 
     ```bash
     sudo rm -rf wazuh-certificates
-    sudo bash wazuh-certs-tool-5.0.1.sh -wm
+    sudo bash wazuh-certs-tool-5.1.0.sh -wm
     ```
 
     `-wm` only uses an existing root CA, never creates one. If it stops with `There is no valid root CA in …` or `… has no private key (root-ca.key)…`, you are not on the node that holds the root CA of the deployment: go back to step 1.

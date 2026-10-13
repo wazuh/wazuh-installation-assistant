@@ -69,8 +69,8 @@ update_version_in_files() {
 }
 
 update_stage_in_files() {
-    # Only replace the stage where it is attached to the version (e.g. 5.0.1-rc1
-    # or v5.0.1-rc1). A bare stage string such as rc1 also appears in unrelated
+    # Only replace the stage where it is attached to the version (e.g. 5.1.0-rc1
+    # or v5.1.0-rc1). A bare stage string such as rc1 also appears in unrelated
     # values, like the v4.9.0-rc1 image tag examples. Both the old and the new
     # version are matched, as update_version_in_files may have already run.
     local VERSION_FILE="${DIR}/VERSION.json"
@@ -96,7 +96,7 @@ update_stage_in_files() {
     files=( $(grep_command "\(${MATCH_V//|/\\|}\)-${OLD_STAGE}" "${DIR}") )
     for file in "${files[@]}"; do
         # Loop until no match is left: each pass rescans the line, so occurrences
-        # separated by a single character (e.g. 5.0.1-rc1,5.0.1-rc1) are not skipped.
+        # separated by a single character (e.g. 5.1.0-rc1,5.1.0-rc1) are not skipped.
         sed -i -E ":a; s/(^|[^0-9.])(v?)(${MATCH_V})-${OLD_STAGE}([^0-9]|$)/\1\2${VERSION}-${STAGE}\4/; ta" "${file}"
         if [[ $(git diff --name-only "${file}") ]]; then
             FILES_EDITED+=("${file}")
@@ -105,9 +105,9 @@ update_stage_in_files() {
 }
 
 # Compute the value written into branch reference defaults ("default: '...'").
-# Without --tag, references stay branch-like (e.g. 5.0.1).
-# With --tag, references become tag-like (e.g. v5.0.1-beta3), or a plain release
-# tag (e.g. v5.0.1) when no stage is provided.
+# Without --tag, references stay branch-like (e.g. 5.1.0).
+# With --tag, references become tag-like (e.g. v5.1.0-beta3), or a plain release
+# tag (e.g. v5.1.0) when no stage is provided.
 build_reference() {
     if [[ -n "$TAG" ]]; then
         if [[ -z "$STAGE" ]]; then
@@ -121,7 +121,7 @@ build_reference() {
 }
 
 # Tag mode only: normalize every reference to the current version
-# (branch-like "5.0.1", "v5.0.1" or "v5.0.1-<stage>") into ${REFERENCE}.
+# (branch-like "5.1.0", "v5.1.0" or "v5.1.0-<stage>") into ${REFERENCE}.
 # Matching is restricted to "default: '...'" entries so plain version strings
 # elsewhere in the repository are left untouched.
 update_tag_references() {
@@ -177,7 +177,7 @@ main() {
         esac
     done
 
-    # --tag rewrites branch references into tag-like references (e.g. v5.0.1-beta3).
+    # --tag rewrites branch references into tag-like references (e.g. v5.1.0-beta3).
     # It is mutually exclusive with --set-as-main, which keeps references on main.
     if [[ -n "$TAG" && -n "$set_as_main" ]]; then
         echo "Error: --tag cannot be combined with --set-as-main." | tee -a "${LOG_FILE}"
