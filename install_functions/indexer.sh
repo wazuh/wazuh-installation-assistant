@@ -146,8 +146,8 @@ function indexer_startCluster() {
 
     # The package leaves loading the security configuration to the operator, once, from one
     # indexer node. Its wrapper finds the host, port and admin certificate by itself.
-    eval "bash /usr/share/wazuh-indexer/bin/indexer-security-init.sh ${debug}"
-    if [  "${PIPESTATUS[0]}" != 0  ]; then
+    eval "bash /usr/share/wazuh-indexer/bin/indexer-security-init.sh ${debug}; e_code=\${PIPESTATUS[0]}"
+    if [  "${e_code}" != 0  ]; then
         common_logger -e "The Wazuh indexer cluster security configuration could not be initialized."
         installCommon_rollBack
         exit 1
