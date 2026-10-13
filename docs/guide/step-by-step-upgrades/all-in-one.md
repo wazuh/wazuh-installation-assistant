@@ -189,7 +189,7 @@ Before upgrading, ensure you:
 
 1. Review release notes for breaking changes and new features
 2. Verify system meets requirements for the new version
-3. Create a backup following the [backup procedures](backup-restore.md#manager-backup-and-restore)
+3. Create a backup following the [backup procedures](../backup-and-restore.md#manager-backup-procedures)
 4. Plan maintenance window for the upgrade
 5. Notify relevant stakeholders
 
@@ -261,7 +261,7 @@ Before upgrading, ensure you:
 
 1. Review release notes for breaking changes and new features
 2. Verify system meets requirements for the new version
-3. Create a backup following the [backup procedures](./backup-restore.md)
+3. Create a backup following the [backup procedures](../backup-and-restore.md)
 
 ### Upgrading the Wazuh dashboard
 
@@ -281,7 +281,7 @@ service wazuh-dashboard stop
 
 2. Backup
 
-It is recommended to take a backup before proceding the upgrade. See [backup](./backup-restore.md).
+It is recommended to take a backup before proceeding the upgrade. See [backup](../backup-and-restore.md).
 
 Backup the `/etc/wazuh-dashboard/opensearch_dashboards.yml` file to save your settings at least, this could be required to redefine the configuration changes. Create a copy of the file using the following command:
 

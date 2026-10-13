@@ -59,5 +59,9 @@ readonly dashboard_yum_dependencies=( libcap diffutils openssl util-linux )
 readonly dashboard_apt_dependencies=( tar curl libcap2-bin openssl diffutils )
 wia_offline_dependencies=( curl tar gnupg openssl )
 wia_dependencies_installed=()
+# Fingerprints accepted for the key that signs the Wazuh packages. Add the new one here,
+# next to the current one, if the key is ever replaced.
+readonly wazuh_gpg_key_fingerprints=( "0DCFCA5547B19D2A6099506096B3EE5F29111145" )
+readonly wazuh_gpg_key_url="https://packages.wazuh.com/key/GPG-KEY-WAZUH"
 assistant_yum_dependencies=( "${wia_yum_dependencies[@]}" )
 assistant_apt_dependencies=( "${wia_apt_dependencies[@]}" )
