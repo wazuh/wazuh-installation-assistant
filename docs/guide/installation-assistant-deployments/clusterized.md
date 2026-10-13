@@ -270,4 +270,4 @@ sudo systemctl enable --now wazuh-agent
 
 To check the enrollment, look for `Token bootstrap: enrollment succeeded` in `/var/ossec/logs/ossec.log` on the endpoint. The agent then shows as `active` in the Wazuh server API (`GET /agents`) and in the Wazuh dashboard.
 
-See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
+See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.1/docs/ref/getting-started/installation.md#agent) for the other platforms and options.

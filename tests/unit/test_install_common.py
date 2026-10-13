@@ -15,7 +15,12 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit.conftest import VERBOSE_DEBUG, assert_failure, assert_success, run_bash_function
+from tests.unit.conftest import (
+    VERBOSE_DEBUG,
+    assert_failure,
+    assert_success,
+    run_bash_function,
+)
 
 INSTALL_COMMON = "install_functions/installCommon.sh"
 COMMON = "common_functions/common.sh"
@@ -256,7 +261,10 @@ class TestInstallCommonStartService:
         result = self._run(
             "wazuh-manager",
             systemctl_success=False,
-            extra_mocks={"common_logger": 'echo "LOG:$*"', "installCommon_rollBack": 'echo "ROLLBACK"'},
+            extra_mocks={
+                "common_logger": 'echo "LOG:$*"',
+                "installCommon_rollBack": 'echo "ROLLBACK"',
+            },
             debug=debug,
         )
         assert_failure(result)
@@ -304,8 +312,12 @@ class TestInstallCommonCreateInstallFiles:
         result = run_bash_function(
             BASE_SOURCES,
             "installCommon_createInstallFiles",
-            {"common_logger": 'echo "LOG:$*"', "rm": "true", "mkdir": "return 1",
-             "installCommon_createCertificates": 'echo "CERTS_CREATED"'},
+            {
+                "common_logger": 'echo "LOG:$*"',
+                "rm": "true",
+                "mkdir": "return 1",
+                "installCommon_createCertificates": 'echo "CERTS_CREATED"',
+            },
             {"debug": debug},
         )
         assert_failure(result)
@@ -409,10 +421,12 @@ class TestInstallCommonDownloadArtifactURLs:
         assert expected_file.exists()
 
     def test_prerelease_mode_constructs_correct_url(self, tmp_path):
-        """Pre-release mode: URL should be https://bucket/pre-release/5.x/artifact-urls/artifact_urls_5.0.0-rc2.yaml"""
+        """Pre-release mode: URL should be https://bucket/pre-release/5.x/artifact-urls/artifact_urls_5.0.1-rc2.yaml"""
         # The repository bumper keeps this version-stage string in sync
-        release = "5.0.0-rc2"
-        result = self._run(tmp_path, devrepo="pre-release", staging_url_stage=release.split("-")[1])
+        release = "5.0.1-rc2"
+        result = self._run(
+            tmp_path, devrepo="pre-release", staging_url_stage=release.split("-")[1]
+        )
         assert_success(result)
 
         # Check that the correct file was created
@@ -472,7 +486,10 @@ class TestInstallCommonPlaceFromTar:
         staging.mkdir()
         (staging / "root-ca.pem").write_text("the-ca")
         tar = tmp_path / "wazuh-install-files.tar"
-        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        subprocess.run(
+            ["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"],
+            check=True,
+        )
         destination = tmp_path / "ca" / "root-ca.pem"
         destination.parent.mkdir()
         if existing is not None:
@@ -509,7 +526,10 @@ class TestInstallCommonExtractConfig:
         staging.mkdir()
         (staging / "config.yml").write_text("nodes:\n")
         tar = tmp_path / "wazuh-install-files.tar"
-        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        subprocess.run(
+            ["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"],
+            check=True,
+        )
         return tar
 
     def _run(self, tar):
@@ -522,7 +542,9 @@ class TestInstallCommonExtractConfig:
 
     def test_success_extracts_to_a_new_directory(self, tmp_path):
         result = self._run(self._tar(tmp_path))
-        install_tmp_path, config_file = (result.stdout.strip().splitlines() + ["", ""])[:2]
+        install_tmp_path, config_file = (result.stdout.strip().splitlines() + ["", ""])[
+            :2
+        ]
         try:
             assert_success(result)
             directory = Path(install_tmp_path)
@@ -545,7 +567,9 @@ class TestInstallCommonExtractConfig:
         install_tmp_path = (result.stdout.strip().splitlines() + [""])[0]
         try:
             assert_success(result)
-            assert not result.stdout.strip().endswith("/tmp/wazuh-install-files/config.yml")
+            assert not result.stdout.strip().endswith(
+                "/tmp/wazuh-install-files/config.yml"
+            )
             assert (fixed / "config.yml").read_text() == "attacker"
         finally:
             shutil.rmtree(fixed, ignore_errors=True)
@@ -557,7 +581,10 @@ class TestInstallCommonExtractConfig:
         staging.mkdir()
         (staging / "clusterkey").write_text("key")
         tar = tmp_path / "wazuh-install-files.tar"
-        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        subprocess.run(
+            ["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"],
+            check=True,
+        )
         assert_failure(self._run(tar))
 
 
@@ -580,7 +607,10 @@ class TestInstallCommonCreateCertificates:
             "mv": "true",
         }
         result = run_bash_function(
-            [*BASE_SOURCES, CERT], "installCommon_createCertificates", mocks, {"debug": ""}
+            [*BASE_SOURCES, CERT],
+            "installCommon_createCertificates",
+            mocks,
+            {"debug": ""},
         )
         assert_success(result)
         used = Path(record.read_text().strip())
@@ -647,11 +677,16 @@ class TestInstallCommonPlaceCredentials:
         staging = tmp_path / "wazuh-install-files"
         staging.mkdir()
         keys = TestInstallCommonCreatePasswords.KEYS
-        (staging / "credentials.env").write_text("".join(f'{k}="{self.PASSWORD}"\n' for k in keys))
+        (staging / "credentials.env").write_text(
+            "".join(f'{k}="{self.PASSWORD}"\n' for k in keys)
+        )
         for name in ["root-ca.pem", "root-ca.key"]:
             (staging / name).write_text(name)
         tar = tmp_path / "wazuh-install-files.tar"
-        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        subprocess.run(
+            ["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"],
+            check=True,
+        )
         return tar
 
     def _run(self, tmp_path, tar, call):
@@ -674,16 +709,27 @@ class TestInstallCommonPlaceCredentials:
         return result, base
 
     def _keys(self, base):
-        return [line.split("=", 1)[0] for line in (base / "credentials.env").read_text().splitlines()]
+        return [
+            line.split("=", 1)[0]
+            for line in (base / "credentials.env").read_text().splitlines()
+        ]
 
     def test_success_places_anchor_without_key(self, tmp_path):
-        result, base = self._run(tmp_path, self._tar(tmp_path), 'installCommon_placeCredentials "${indexer_credential_keys[@]}"')
+        result, base = self._run(
+            tmp_path,
+            self._tar(tmp_path),
+            'installCommon_placeCredentials "${indexer_credential_keys[@]}"',
+        )
         assert_success(result)
         assert (base / "ca" / "root-ca.pem").read_text() == "root-ca.pem"
         assert not (base / "ca" / "root-ca.key").exists()
 
     def test_success_indexer_node_gets_its_keys(self, tmp_path):
-        result, base = self._run(tmp_path, self._tar(tmp_path), 'installCommon_placeCredentials "${indexer_credential_keys[@]}"')
+        result, base = self._run(
+            tmp_path,
+            self._tar(tmp_path),
+            'installCommon_placeCredentials "${indexer_credential_keys[@]}"',
+        )
         assert_success(result)
         assert self._keys(base) == [
             "WAZUH_INDEXER_ADMIN_PASSWORD",
@@ -692,13 +738,27 @@ class TestInstallCommonPlaceCredentials:
         ]
 
     def test_success_dashboard_node_gets_only_its_keys(self, tmp_path):
-        result, base = self._run(tmp_path, self._tar(tmp_path), 'installCommon_placeCredentials "${dashboard_credential_keys[@]}"')
+        result, base = self._run(
+            tmp_path,
+            self._tar(tmp_path),
+            'installCommon_placeCredentials "${dashboard_credential_keys[@]}"',
+        )
         assert_success(result)
-        assert self._keys(base) == ["WAZUH_INDEXER_KIBANASERVER_PASSWORD", "WAZUH_MANAGER_WUI_PASSWORD"]
-        assert f'WAZUH_MANAGER_WUI_PASSWORD="{self.PASSWORD}"' in (base / "credentials.env").read_text()
+        assert self._keys(base) == [
+            "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
+            "WAZUH_MANAGER_WUI_PASSWORD",
+        ]
+        assert (
+            f'WAZUH_MANAGER_WUI_PASSWORD="{self.PASSWORD}"'
+            in (base / "credentials.env").read_text()
+        )
 
     def test_success_manager_node_gets_only_its_keys(self, tmp_path):
-        result, base = self._run(tmp_path, self._tar(tmp_path), 'installCommon_placeCredentials "${manager_credential_keys[@]}"')
+        result, base = self._run(
+            tmp_path,
+            self._tar(tmp_path),
+            'installCommon_placeCredentials "${manager_credential_keys[@]}"',
+        )
         assert_success(result)
         assert self._keys(base) == [
             "WAZUH_INDEXER_MANAGER_PASSWORD",
@@ -713,7 +773,11 @@ class TestInstallCommonPlaceCredentials:
         (base / "credentials.env").write_text(
             f'WAZUH_INDEXER_KIBANASERVER_PASSWORD="{self.PASSWORD}"\nWAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n'
         )
-        result, base = self._run(tmp_path, tar, 'installCommon_placeCredentials "${dashboard_credential_keys[@]}"')
+        result, base = self._run(
+            tmp_path,
+            tar,
+            'installCommon_placeCredentials "${dashboard_credential_keys[@]}"',
+        )
         assert_success(result)
         assert self._keys(base) == [
             "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
@@ -744,13 +808,19 @@ class TestInstallCommonPlaceCredentials:
         base.mkdir()
         existing = 'WAZUH_INDEXER_ADMIN_PASSWORD="Other.Password1"\n'
         (base / "credentials.env").write_text(existing)
-        result, base = self._run(tmp_path, tar, 'installCommon_placeCredentials "${dashboard_credential_keys[@]}"')
+        result, base = self._run(
+            tmp_path,
+            tar,
+            'installCommon_placeCredentials "${dashboard_credential_keys[@]}"',
+        )
         assert_failure(result)
         assert (base / "credentials.env").read_text() == existing
         assert not (base / "ca").exists()
 
     def test_fail_without_keys(self, tmp_path):
-        result, base = self._run(tmp_path, self._tar(tmp_path), "installCommon_placeCredentials")
+        result, base = self._run(
+            tmp_path, self._tar(tmp_path), "installCommon_placeCredentials"
+        )
         assert_failure(result)
         assert not base.exists()
 
@@ -797,9 +867,14 @@ class TestInstallCommonMergeCredentials:
         staging = tmp_path / "wazuh-install-files"
         staging.mkdir()
         keys = TestInstallCommonCreatePasswords.KEYS
-        (staging / "credentials.env").write_text("".join(f'{k}="{self.PASSWORD}"\n' for k in keys))
+        (staging / "credentials.env").write_text(
+            "".join(f'{k}="{self.PASSWORD}"\n' for k in keys)
+        )
         tar = tmp_path / "wazuh-install-files.tar"
-        subprocess.run(["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        subprocess.run(
+            ["tar", "-cf", str(tar), "-C", str(tmp_path), "wazuh-install-files/"],
+            check=True,
+        )
         env_file = tmp_path / "credentials.env"
         env_file.write_text(existing)
         result = run_bash_function(
@@ -816,7 +891,9 @@ class TestInstallCommonMergeCredentials:
         return result, env_file.read_text()
 
     def test_success_adds_missing_keys(self, tmp_path):
-        result, content = self._run(tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n')
+        result, content = self._run(
+            tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n'
+        )
         assert_success(result)
         for key in TestInstallCommonCreatePasswords.KEYS:
             assert content.count(f'{key}="{self.PASSWORD}"') == 1
@@ -839,17 +916,23 @@ class TestInstallCommonMergeCredentials:
         assert_failure(result)
 
     def test_fail_on_a_different_password(self, tmp_path):
-        result, _ = self._run(tmp_path, 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n')
+        result, _ = self._run(
+            tmp_path, 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n'
+        )
         assert_failure(result)
 
     def test_check_mode_writes_nothing(self, tmp_path):
         """Checking a file from another deployment leaves it as it was."""
-        result, content = self._run_mode(tmp_path, 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n', "check")
+        result, content = self._run_mode(
+            tmp_path, 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n', "check"
+        )
         assert_failure(result)
         assert content == 'WAZUH_MANAGER_API_PASSWORD="Other.Password1"\n'
 
     def test_check_mode_accepts_a_compatible_file(self, tmp_path):
-        result, content = self._run_mode(tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n', "check")
+        result, content = self._run_mode(
+            tmp_path, f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n', "check"
+        )
         assert_success(result)
         assert content == f'WAZUH_MANAGER_API_PASSWORD="{self.PASSWORD}"\n'
 
@@ -865,7 +948,11 @@ class TestInstallCommonVerifyPackageSignature:
 
     def _run(self, signer, checksig_rc=0, skip=""):
         rpm_mock = (
-            'case "$1" in -qp) echo "' + signer + '";; -K) return ' + str(checksig_rc) + ';; esac; return 0'
+            'case "$1" in -qp) echo "'
+            + signer
+            + '";; -K) return '
+            + str(checksig_rc)
+            + ";; esac; return 0"
         )
         mocks = {
             **IGNORE_LOGGER,
@@ -875,7 +962,9 @@ class TestInstallCommonVerifyPackageSignature:
             "rpm": rpm_mock,
         }
         env = {"skip_signature_check": skip}
-        return run_bash_function(BASE_SOURCES, "installCommon_verifyPackageSignature /tmp/p.rpm", mocks, env)
+        return run_bash_function(
+            BASE_SOURCES, "installCommon_verifyPackageSignature /tmp/p.rpm", mocks, env
+        )
 
     def test_success_signed_with_wazuh_key(self):
         assert_success(self._run(self.WAZUH_SIGNER))
@@ -884,7 +973,9 @@ class TestInstallCommonVerifyPackageSignature:
         assert_failure(self._run("(none)"))
 
     def test_fail_signed_with_another_key(self):
-        assert_failure(self._run("RSA/SHA256, Mon Oct  5 23:35:00 2026, Key ID 0123456789abcdef"))
+        assert_failure(
+            self._run("RSA/SHA256, Mon Oct  5 23:35:00 2026, Key ID 0123456789abcdef")
+        )
 
     def test_fail_invalid_signature(self):
         assert_failure(self._run(self.WAZUH_SIGNER, checksig_rc=1))
@@ -911,7 +1002,9 @@ class TestInstallCommonGetWazuhGPGKey:
             "base_path": str(tmp_path),
             "wazuh_gpg_key_fingerprints": f"( {WAZUH_FINGERPRINT} )",
         }
-        return run_bash_function(BASE_SOURCES, f"installCommon_getWazuhGPGKey {key_dir}", mocks, env)
+        return run_bash_function(
+            BASE_SOURCES, f"installCommon_getWazuhGPGKey {key_dir}", mocks, env
+        )
 
     def test_success_wazuh_key(self, tmp_path):
         assert_success(self._run(tmp_path, WAZUH_KEY))
@@ -948,9 +1041,9 @@ class TestInstallCommonGetPackages:
     """
 
     PACKAGES = [
-        "wazuh-indexer-5.0.0-1.x86_64.rpm",
-        "wazuh-manager-5.0.0-1.x86_64.rpm",
-        "wazuh-dashboard-5.0.0-1.x86_64.rpm",
+        "wazuh-indexer-5.0.1-1.x86_64.rpm",
+        "wazuh-manager-5.0.1-1.x86_64.rpm",
+        "wazuh-dashboard-5.0.1-1.x86_64.rpm",
     ]
 
     def _run(self, tmp_path, packages):
@@ -962,7 +1055,12 @@ class TestInstallCommonGetPackages:
             "installCommon_downloadComponent": "true",
             "installCommon_verifyPackageSignature": 'echo "checked $(basename $1)"',
         }
-        env = {"AIO": "1", "offline_install": "1", "offline_packages_path": str(tmp_path), "sys_type": "yum"}
+        env = {
+            "AIO": "1",
+            "offline_install": "1",
+            "offline_packages_path": str(tmp_path),
+            "sys_type": "yum",
+        }
         return run_bash_function(BASE_SOURCES, "installCommon_getPackages", mocks, env)
 
     def test_success_checks_every_aio_package(self, tmp_path):
@@ -982,7 +1080,11 @@ class TestInstallCommonDownloadDirectory:
             BASE_SOURCES,
             "installCommon_downloadComponent wazuh_manager",
             {"common_logger": 'echo "$@"', "installCommon_rollBack": "true"},
-            {"base_path": str(tmp_path), "download_packages_directory": "pkgs", "sys_type": "none"},
+            {
+                "base_path": str(tmp_path),
+                "download_packages_directory": "pkgs",
+                "sys_type": "none",
+            },
         )
 
     def test_creates_private_directory(self, tmp_path):
@@ -1018,10 +1120,14 @@ class TestInstallCommonRollBack:
     }
 
     def _run(self, env_vars=None):
-        return run_bash_function(BASE_SOURCES, "installCommon_rollBack", self.MOCKS, env_vars)
+        return run_bash_function(
+            BASE_SOURCES, "installCommon_rollBack", self.MOCKS, env_vars
+        )
 
     def test_failed_installation_prints_the_header_first(self):
-        result = self._run({"dashboard_installed": "1", "dashboard": "1", "rollback_conf": "1"})
+        result = self._run(
+            {"dashboard_installed": "1", "dashboard": "1", "rollback_conf": "1"}
+        )
         assert_success(result)
         lines = result.stdout.splitlines()
         assert lines[0] == self.HEADER
@@ -1031,11 +1137,20 @@ class TestInstallCommonRollBack:
         result = self._run({"dashboard_installed": "1", "uninstall": "1"})
         assert_success(result)
         assert self.HEADER not in result.stdout
-        assert result.stdout.splitlines() == ["Removing Wazuh dashboard.", "Wazuh dashboard removed."]
+        assert result.stdout.splitlines() == [
+            "Removing Wazuh dashboard.",
+            "Wazuh dashboard removed.",
+        ]
 
     def test_uninstall_on_an_empty_host_still_runs_the_unconditional_cleanup(self):
-        mocks = {**self.MOCKS, "installCommon_removeWIADependencies": 'echo "deps"', "systemctl": 'echo "systemctl $@"'}
-        result = run_bash_function(BASE_SOURCES, "installCommon_rollBack", mocks, {"uninstall": "1"})
+        mocks = {
+            **self.MOCKS,
+            "installCommon_removeWIADependencies": 'echo "deps"',
+            "systemctl": 'echo "systemctl $@"',
+        }
+        result = run_bash_function(
+            BASE_SOURCES, "installCommon_rollBack", mocks, {"uninstall": "1"}
+        )
         assert_success(result)
         assert result.stdout.splitlines() == ["deps", "systemctl daemon-reload"]
 
@@ -1044,7 +1159,10 @@ class TestInstallCommonRollBack:
         mocks = {"common_logger": 'echo "$@"', "yum": "exit 1", "apt-get": "exit 1"}
         for sys_type in ("yum", "apt-get"):
             result = run_bash_function(
-                BASE_SOURCES, "installCommon_removeWIADependencies", mocks, {"sys_type": sys_type}
+                BASE_SOURCES,
+                "installCommon_removeWIADependencies",
+                mocks,
+                {"sys_type": sys_type},
             )
             assert_success(result)
             assert result.stdout == ""
@@ -1053,13 +1171,17 @@ class TestInstallCommonRollBack:
 class TestInstallCommonLogRunHeader:
     """installCommon_logRunHeader appends a header for the run, keeping the log of the previous runs."""
 
-    HEADER = "INFO: --- Wazuh installation assistant 0.1 (Wazuh 5.0.0). Options: {} ---"
+    HEADER = "INFO: --- Wazuh installation assistant 0.1 (Wazuh 5.0.1). Options: {} ---"
 
     def _run(self, logfile, args=""):
         return run_bash_function(
             BASE_SOURCES,
             f"installCommon_logRunHeader {args}",
-            env_vars={"logfile": str(logfile), "wazuh_install_vesion": "0.1", "wazuh_version": "5.0.0"},
+            env_vars={
+                "logfile": str(logfile),
+                "wazuh_install_vesion": "0.1",
+                "wazuh_version": "5.0.1",
+            },
         )
 
     def test_appends_after_previous_runs(self, tmp_path):

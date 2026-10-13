@@ -388,12 +388,12 @@ function passwords_isServiceActive() {
     # state instead.
     if [ "${service_name}" == "wazuh-manager" ] && [ -x /var/wazuh-manager/bin/wazuh-manager-control ]; then
         # Daemons enabled by default on every install, per the DAEMONS list
-        # in wazuh/wazuh's src/init/wazuh-server.sh on 5.0.0. wazuh-manager-
+        # in wazuh/wazuh's src/init/wazuh-server.sh on 5.0.1. wazuh-manager-
         # clusterd and wazuh-manager-authd are optional/configurable, so they
         # are intentionally left out of this check. wazuh-manager-execd,
         # wazuh-manager-syscheckd, wazuh-manager-logcollector and
         # wazuh-manager-monitord no longer exist as separate daemons in
-        # 5.0.0 (#992) -- they are not in that DAEMONS list either.
+        # 5.0.1 (#992) -- they are not in that DAEMONS list either.
         manager_core_daemons=(wazuh-manager-db wazuh-manager-analysisd wazuh-manager-remoted wazuh-manager-modulesd wazuh-manager-apid)
         manager_status=$(/var/wazuh-manager/bin/wazuh-manager-control status 2>/dev/null)
         for manager_daemon in "${manager_core_daemons[@]}"; do

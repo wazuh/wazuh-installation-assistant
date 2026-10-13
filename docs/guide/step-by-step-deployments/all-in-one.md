@@ -93,29 +93,29 @@ yum -y install wazuh-indexer
 #### DEB amd64
 
 ```bash
-curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_amd64.deb
-apt -y install ./wazuh-indexer_5.0.0_amd64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.1_amd64.deb
+apt -y install ./wazuh-indexer_5.0.1_amd64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-<STAGE>_amd64.deb
-apt -y install ./wazuh-indexer_5.0.0-<STAGE>_amd64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.1-<STAGE>_amd64.deb
+apt -y install ./wazuh-indexer_5.0.1-<STAGE>_amd64.deb
 ```
 
 #### DEB arm64
 
 ```bash
-curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0_arm64.deb
-apt -y install ./wazuh-indexer_5.0.0_arm64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.1_arm64.deb
+apt -y install ./wazuh-indexer_5.0.1_arm64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.0-<STAGE>_arm64.deb
-apt -y install ./wazuh-indexer_5.0.0-<STAGE>_arm64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-indexer/wazuh-indexer_5.0.1-<STAGE>_arm64.deb
+apt -y install ./wazuh-indexer_5.0.1-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
@@ -296,29 +296,29 @@ yum -y install wazuh-manager
 #### DEB amd64
 
 ```bash
-curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_amd64.deb
-apt -y install ./wazuh-manager_5.0.0_amd64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.1_amd64.deb
+apt -y install ./wazuh-manager_5.0.1_amd64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-<STAGE>_amd64.deb
-apt -y install ./wazuh-manager_5.0.0-<STAGE>_amd64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.1-<STAGE>_amd64.deb
+apt -y install ./wazuh-manager_5.0.1-<STAGE>_amd64.deb
 ```
 
 #### DEB arm64
 
 ```bash
-curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0_arm64.deb
-apt -y install ./wazuh-manager_5.0.0_arm64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.1_arm64.deb
+apt -y install ./wazuh-manager_5.0.1_arm64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.0-<STAGE>_arm64.deb
-apt -y install ./wazuh-manager_5.0.0-<STAGE>_arm64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-manager/wazuh-manager_5.0.1-<STAGE>_arm64.deb
+apt -y install ./wazuh-manager_5.0.1-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
@@ -463,29 +463,29 @@ yum -y install wazuh-dashboard
 #### DEB amd64
 
 ```bash
-curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_amd64.deb
-apt -y install ./wazuh-dashboard_5.0.0_amd64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.1_amd64.deb
+apt -y install ./wazuh-dashboard_5.0.1_amd64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-<STAGE>_amd64.deb
-apt -y install ./wazuh-dashboard_5.0.0-<STAGE>_amd64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.1-<STAGE>_amd64.deb
+apt -y install ./wazuh-dashboard_5.0.1-<STAGE>_amd64.deb
 ```
 
 #### DEB arm64
 
 ```bash
-curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0_arm64.deb
-apt -y install ./wazuh-dashboard_5.0.0_arm64.deb
+curl -fsSO https://packages.wazuh.com/production/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.1_arm64.deb
+apt -y install ./wazuh-dashboard_5.0.1_arm64.deb
 ```
 
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.0-<STAGE>_arm64.deb
-apt -y install ./wazuh-dashboard_5.0.0-<STAGE>_arm64.deb
+curl -fsSO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/pool/main/w/wazuh-dashboard/wazuh-dashboard_5.0.1-<STAGE>_arm64.deb
+apt -y install ./wazuh-dashboard_5.0.1-<STAGE>_arm64.deb
 ```
 
 #### RPM x86_64
@@ -595,7 +595,7 @@ sudo systemctl enable --now wazuh-agent
 
 To check the enrollment, look for `Token bootstrap: enrollment succeeded` in `/var/ossec/logs/ossec.log` on the endpoint. The agent then shows as `active` in the Wazuh server API (`GET /agents`) and in the Wazuh dashboard.
 
-See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
+See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.1/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
 
 ## Removing the credentials file
 
