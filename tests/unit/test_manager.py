@@ -1,7 +1,7 @@
 """
 Unit tests for install_functions/manager.sh
 
-Covers: manager_install, manager_startCluster, manager_copyCertificates,
+Covers: manager_install, manager_startCluster, manager_configure, manager_copyCertificates,
         manager_setRemotedSans
 """
 
@@ -165,6 +165,45 @@ class TestManagerStartCluster:
             },
         )
         assert_success(result)
+
+
+class TestManagerConfigure:
+    """Tests for manager_configure.
+
+    The indexer connector pair is placed before the package creates the wazuh-manager
+    group, and the package does not set its owner, so manager_configure does.
+    """
+
+    def _run(self, tmp_path, extra_mocks=None):
+        return run_bash_function(
+            BASE_SOURCES,
+            "manager_configure",
+            {**IGNORE_LOGGER, "sed": "true", **(extra_mocks or {})},
+            {"manager_cert_path": "/certs", "indexer_node_ips": "(1.1.1.1)", "debug": ""},
+        )
+
+    def test_success_gives_the_indexer_connector_pair_to_the_service_group(self, tmp_path):
+        log = tmp_path / "perm.log"
+        result = self._run(
+            tmp_path,
+            {"chown": f'echo "chown $*" >> "{log}"', "chmod": f'echo "chmod $*" >> "{log}"'},
+        )
+        assert_success(result)
+        calls = log.read_text().splitlines()
+        assert "chown root:wazuh-manager /certs/indexer-connector.pem /certs/indexer-connector-key.pem" in calls
+        assert "chmod 640 /certs/indexer-connector.pem /certs/indexer-connector-key.pem" in calls
+
+    def test_success_leaves_the_service_pairs_to_the_package(self, tmp_path):
+        """The package sets the owner of the remoted and apid pairs itself."""
+        log = tmp_path / "perm.log"
+        result = self._run(
+            tmp_path,
+            {"chown": f'echo "chown $*" >> "{log}"', "chmod": f'echo "chmod $*" >> "{log}"'},
+        )
+        assert_success(result)
+        calls = log.read_text() if log.exists() else ""
+        assert "remoted" not in calls
+        assert "apid" not in calls
 
 
 class TestManagerCopyCertificates:
