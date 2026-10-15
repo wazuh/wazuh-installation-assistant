@@ -61,14 +61,15 @@ To perform the offline installation with the `--offline-installation` flag of Wa
 bash wazuh-install-5.0.0.sh --offline-installation -a
 ```
 
-Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful. There is one `You can access` line per address of the Wazuh dashboard certificate, and the line after `Password:` is the command that prints the `admin` password.
+Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful. There is one `You can access` line per address of the Wazuh dashboard certificate. In an interactive terminal, the `Password:` line shows the `admin` password, followed by the command that prints it again. The password is not written to `/var/log/wazuh-install.log`, and when the output is redirected, as with cloud-init or CI, only the command is shown.
 
 ```shell
 INFO: Wazuh dashboard web application initialized.
 INFO: --- Summary ---
 INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>:443
 INFO:     User: admin (Wazuh dashboard login and Wazuh indexer administrator)
-INFO:     Password: to read it from the credentials file, run:
+INFO:     Password: <ADMIN_PASSWORD>
+INFO:     To read the password again, run:
 INFO:         sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-
 INFO: The other users of the deployment are listed at the top of /etc/wazuh/credentials.env.
 INFO: Installation finished.
