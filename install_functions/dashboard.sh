@@ -137,7 +137,8 @@ function dashboard_initialize() {
         password_command="sudo tar -xOf ${tar_file_name} wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-"
     fi
 
-    # Logged too: it holds the command that reads the password, not the password.
+    # The password goes to an interactive terminal only, never to the log or redirected output.
+    # The command that reads it is logged too.
     common_logger "Wazuh dashboard web application initialized."
     common_logger "--- Summary ---"
     local ip
@@ -146,10 +147,20 @@ function dashboard_initialize() {
         common_logger "You can access the web interface https://${ip}:${http_port}"
     done
     common_logger "    User: admin (Wazuh dashboard login and Wazuh indexer administrator)"
-    common_logger "    Password: to read it from ${password_source}, run:"
+    local admin_password
+    if [ -n "${AIO}" ] && dashboard_stdoutIsTerminal && admin_password=$(wazuh_env_get WAZUH_INDEXER_ADMIN_PASSWORD 2>/dev/null) && [ -n "${admin_password}" ]; then
+        common_logger -nl "    Password: ${admin_password}"
+        common_logger "    To read the password again, run:"
+    else
+        common_logger "    Password: to read it from ${password_source}, run:"
+    fi
     common_logger "        ${password_command}"
     common_logger "The other users of the deployment are listed at the top of ${credentials_file}."
 
+}
+
+function dashboard_stdoutIsTerminal() {
+    [ -t 1 ]
 }
 
 function dashboard_install() {
