@@ -1,5 +1,5 @@
 # Wazuh installer - manager.sh functions.
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -26,8 +26,8 @@ function manager_startCluster() {
     port="1516"
     hidden="no"
     disabled="no"
-    lstart=$(grep -n "<cluster>" /var/wazuh-manager/etc/wazuh-manager.conf | cut -d : -f 1)
-    lend=$(grep -n "</cluster>" /var/wazuh-manager/etc/wazuh-manager.conf | cut -d : -f 1)
+    lstart=$(grep -n "<cluster>" "${manager_conf_file}" | cut -d : -f 1)
+    lend=$(grep -n "</cluster>" "${manager_conf_file}" | cut -d : -f 1)
 
     sed -i -e "${lstart},${lend}s/<name>.*<\/name>/<name>wazuh_cluster<\/name>/" \
         -e "${lstart},${lend}s/<node_name>.*<\/node_name>/<node_name>${winame}<\/node_name>/" \
@@ -38,7 +38,7 @@ function manager_startCluster() {
         -e "${lstart},${lend}s/<node>.*<\/node>/<node>${master_address}<\/node>/" \
         -e "${lstart},${lend}s/<hidden>.*<\/hidden>/<hidden>${hidden}<\/hidden>/" \
         -e "${lstart},${lend}s/<disabled>.*<\/disabled>/<disabled>${disabled}<\/disabled>/" \
-        /var/wazuh-manager/etc/wazuh-manager.conf
+        "${manager_conf_file}"
 
 }
 
@@ -46,29 +46,30 @@ function manager_configure(){
 
     common_logger -d "Configuring Wazuh manager."
 
-    # The indexer connector pair was placed before the package created the wazuh-manager
-    # group, and the package only sets the owner of the remoted and apid pairs. Its resolver
-    # requires root:wazuh-manager 0640 here, or the manager cannot read the pair.
-    eval "chown root:wazuh-manager ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
-    eval "chmod 640 ${manager_cert_path}/indexer-connector.pem ${manager_cert_path}/indexer-connector-key.pem ${debug}"
+    # The pairs were placed before the package created the wazuh-manager group. On RPM
+    # the package resolver runs before the package fixes their owner, so it is run again
+    # once the owner is right. --upgrade never creates a CA or issues a pair.
+    eval "chown root:wazuh-manager ${manager_cert_path} ${manager_cert_path}/*.pem ${debug}"
+    eval "chmod 750 ${manager_cert_path} ${debug}"
+    eval "chmod 640 ${manager_cert_path}/*.pem ${debug}"
+    eval "${manager_resolver} --upgrade -H /var/wazuh-manager ${debug}"
 
     for i in "${!indexer_node_ips[@]}"; do
         if [ $i -eq 0 ]; then
-            eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' /var/wazuh-manager/etc/wazuh-manager.conf ${debug}"
+            eval "sed -i 's/<host>.*<\/host>/<host>https:\/\/${indexer_node_ips[0]}:9200<\/host>/g' ${manager_conf_file} ${debug}"
         else
-            sed -i "/<hosts>/a\      <host>https://${indexer_node_ips[$i]}:9200</host>" /var/wazuh-manager/etc/wazuh-manager.conf
+            sed -i "/<hosts>/a\      <host>https://${indexer_node_ips[$i]}:9200</host>" "${manager_conf_file}"
         fi
     done
 
 }
 
 # The manager package issues remoted.pem on an all-in-one install, with the addresses it finds
-# on the host. Addresses given with -as|--agent-san (NAT, a published name, a load balancer)
-# reach it through WAZUH_MANAGER_REMOTED_CERT_SANS, which replaces the discovered list, so the
-# host addresses go in too.
+# on the host. Addresses given with -as|--agent-san go to WAZUH_MANAGER_REMOTED_CERT_SANS in
+# the manager local.env. It replaces the discovered list, so the host addresses go in too.
 function manager_setRemotedSans() {
 
-    local san
+    local san value
     local -a sans=()
 
     if [ "${#agent_san[@]}" -eq 0 ]; then
@@ -84,18 +85,17 @@ function manager_setRemotedSans() {
         fi
     done < <(printf '%s\n' "${agent_san[@]}"; cert_hostAddresses)
 
-    WAZUH_MANAGER_REMOTED_CERT_SANS=$(printf '%s\n' "${sans[@]}" | awk '!seen[$0]++' | paste -sd, -)
-    export WAZUH_MANAGER_REMOTED_CERT_SANS
-    common_logger -d "Agent listener addresses: ${WAZUH_MANAGER_REMOTED_CERT_SANS}"
+    value=$(printf '%s\n' "${sans[@]}" | awk '!seen[$0]++' | paste -sd, -)
+    manager_setLocalEnv WAZUH_MANAGER_REMOTED_CERT_SANS "${value}"
+    common_logger -d "Agent listener addresses: ${value}"
 
 }
 
-# Same for the Server API certificate, apid.pem: addresses given with -ap|--api-san reach
-# the package through WAZUH_MANAGER_APID_CERT_SANS, which replaces the discovered list, so
-# the host addresses go in too. The package always adds loopback.
+# Same for the Server API certificate, apid.pem: addresses given with -ap|--api-san go to
+# WAZUH_MANAGER_APID_CERT_SANS. The package always adds loopback.
 function manager_setApidSans() {
 
-    local san
+    local san value
     local -a sans=()
 
     if [ "${#api_san[@]}" -eq 0 ]; then
@@ -111,9 +111,20 @@ function manager_setApidSans() {
         fi
     done < <(printf '%s\n' "${api_san[@]}"; cert_hostAddresses)
 
-    WAZUH_MANAGER_APID_CERT_SANS=$(printf '%s\n' "${sans[@]}" | awk '!seen[$0]++' | paste -sd, -)
-    export WAZUH_MANAGER_APID_CERT_SANS
-    common_logger -d "Server API addresses: ${WAZUH_MANAGER_APID_CERT_SANS}"
+    value=$(printf '%s\n' "${sans[@]}" | awk '!seen[$0]++' | paste -sd, -)
+    manager_setLocalEnv WAZUH_MANAGER_APID_CERT_SANS "${value}"
+    common_logger -d "Server API addresses: ${value}"
+
+}
+
+# Writes one key to the manager local.env before the package is installed.
+function manager_setLocalEnv() {
+
+    eval "install -d -o root -g root -m 0750 ${manager_config_path} ${debug}"
+    if ! common_envSet "${manager_config_path}/local.env" "${1}" "${2}"; then
+        common_logger -e "Could not write ${1} to ${manager_config_path}/local.env."
+        exit 1
+    fi
 
 }
 
@@ -154,16 +165,18 @@ function manager_install() {
     fi
 }
 
-# Places the indexer connector, agent listener and Server API pairs of this node from the
-# tar before the package is installed, with the names the package expects. The package
-# uses them instead of issuing its own and sets the owner of the agent listener and
-# Server API pairs; manager_configure sets the owner of the indexer connector pair.
+# Places the CA certificate and the pairs of this node from the tar before the package
+# is installed, with the names the package expects. The CA has no key, so the package
+# uses these pairs and issues none. The deployment CA also signs the indexer pairs, so
+# it is the indexer CA too. manager_configure sets the owner once the group exists.
 function manager_copyCertificates() {
 
     common_logger -d "Placing the Wazuh manager certificates."
-    # The installer umask would leave the directory without the search bit; the package
-    # sets its owner.
-    eval "(umask 022 && mkdir -p ${manager_cert_path}) ${debug}"
+    eval "install -d -o root -g root -m 0750 ${manager_config_path} ${manager_cert_path} ${debug}"
+    eval "install -d -o root -g root -m 0700 ${manager_config_path}/ca ${debug}"
+    installCommon_placeFromTar "root-ca.pem" "${manager_config_path}/ca/root-ca.pem" root root 0644
+    installCommon_placeFromTar "root-ca.pem" "${manager_cert_path}/root-ca.pem" root root 0640
+    installCommon_placeFromTar "root-ca.pem" "${manager_cert_path}/indexer-ca.pem" root root 0640
     installCommon_placeFromTar "${winame}.pem" "${manager_cert_path}/indexer-connector.pem" root root 0640
     installCommon_placeFromTar "${winame}-key.pem" "${manager_cert_path}/indexer-connector-key.pem" root root 0640
     installCommon_placeFromTar "${winame}-remoted.pem" "${manager_cert_path}/remoted.pem" root root 0640

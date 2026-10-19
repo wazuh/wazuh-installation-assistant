@@ -596,8 +596,10 @@ jobs:
         timeout-minutes: 5
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
-            ADMIN_PW=\$(sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"')
-            [ -n \"\$ADMIN_PW\" ] || { echo 'ERROR: WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh/credentials.env'; exit 1; }
+            # The packages and the assistant keep everything in the directory of each package.
+            sudo test -e /etc/wazuh && { echo 'ERROR: /etc/wazuh exists'; exit 1; }
+            ADMIN_PW=\$(sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"')
+            [ -n \"\$ADMIN_PW\" ] || { echo 'ERROR: WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh-indexer/export/credentials.env'; exit 1; }
             for i in \$(seq 1 30); do
               code=\$(curl -sk -u \"admin:\${ADMIN_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost/status')
               [ \"\$code\" = '200' ] && { echo 'wazuh-dashboard is ready'; exit 0; }
@@ -633,30 +635,30 @@ jobs:
           WAZUH_NEW_PASSWORD: "T3sting-Password"
         run: |
           # Keep the admin password set by the installer, the tests check that it is rejected afterwards.
-          # The value may be quoted or bare, depending on the credentials library of the packages.
+          # The value may be quoted or bare, depending on who wrote the file.
           OLD_ADMIN_PW=$(ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-            "sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"'")
-          [ -n "$OLD_ADMIN_PW" ] || { echo 'ERROR: WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh/credentials.env'; exit 1; }
+            "sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"'")
+          [ -n "$OLD_ADMIN_PW" ] || { echo 'ERROR: WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh-indexer/export/credentials.env'; exit 1; }
           echo "::add-mask::${OLD_ADMIN_PW}"
           echo "WAZUH_OLD_PASSWORD=${OLD_ADMIN_PW}" >> "$GITHUB_ENV"
-          # Without -p the tool generates the password and saves it to credentials.env
+          # Without -p the tool generates the password and saves it to the indexer export/credentials.env
           read_credential() {
             ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
-              "sudo grep '^$1=' /etc/wazuh/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"'"
+              "sudo grep '^$1=' /etc/wazuh-indexer/export/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"'"
           }
           kibanaserver_http_code() {
             ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \
               "curl -sk -u 'kibanaserver:$1' -o /dev/null -w '%{http_code}' 'https://localhost:9200/_cluster/health'"
           }
           KIBANASERVER_PW=$(read_credential WAZUH_INDEXER_KIBANASERVER_PASSWORD)
-          [ -n "$KIBANASERVER_PW" ] || { echo 'ERROR: WAZUH_INDEXER_KIBANASERVER_PASSWORD not found in /etc/wazuh/credentials.env'; exit 1; }
+          [ -n "$KIBANASERVER_PW" ] || { echo 'ERROR: WAZUH_INDEXER_KIBANASERVER_PASSWORD not found in /etc/wazuh-indexer/export/credentials.env'; exit 1; }
           echo "::add-mask::${KIBANASERVER_PW}"
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "sudo bash /tmp/wazuh-passwords-tool.sh -u kibanaserver" \
             || { echo 'ERROR: the passwords tool failed to generate a password for kibanaserver'; exit 1; }
           GENERATED_PW=$(read_credential WAZUH_INDEXER_KIBANASERVER_PASSWORD)
           [ -n "$GENERATED_PW" ] && echo "::add-mask::${GENERATED_PW}"
           [ -n "$GENERATED_PW" ] && [ "$GENERATED_PW" != "$KIBANASERVER_PW" ] \
-            || { echo 'ERROR: the password generated for kibanaserver was not saved to /etc/wazuh/credentials.env'; exit 1; }
+            || { echo 'ERROR: the password generated for kibanaserver was not saved to /etc/wazuh-indexer/export/credentials.env'; exit 1; }
           # The indexer can take a few seconds to apply the change, so each check waits up to 2 minutes
           wait_kibanaserver_http_code() {
             for _ in $(seq 1 24); do
@@ -670,7 +672,7 @@ jobs:
             || { echo "ERROR: the generated kibanaserver password is rejected after 2 minutes (HTTP ${code})"; exit 1; }
           wait_kibanaserver_http_code "$KIBANASERVER_PW" 401 \
             || { echo "ERROR: the previous kibanaserver password is still accepted after 2 minutes (HTTP ${code})"; exit 1; }
-          echo "The password generated for kibanaserver is saved to credentials.env and replaces the previous one"
+          echo "The password generated for kibanaserver is saved to the indexer export/credentials.env and replaces the previous one"
           # The passwords tool reads the new password from the standard input with -p
           for user in admin kibanaserver wazuh-manager wazuh wazuh-internal-client; do
             printf '%s\n' "$WAZUH_NEW_PASSWORD" | ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" \

@@ -17,11 +17,11 @@ Covers: passwords_checkPassword, passwords_generatePassword,
 import pytest
 
 from tests.unit.conftest import VERBOSE_DEBUG, assert_failure, assert_success, run_bash_function
-from tests.unit.test_credentials_lib import CHARSET, OUTSIDE_CHARSET
+from tests.unit.test_credentials import CHARSET, OUTSIDE_CHARSET
 
 PASSWORDS = "passwords_tool/passwordsFunctions.sh"
 PASSWORDS_VARS = "passwords_tool/passwordsVariables.sh"
-CREDENTIALS = "credentials_lib/wazuh-credentials.sh"
+CREDENTIALS = "common_functions/credentials.sh"
 COMMON = "common_functions/common.sh"
 COMMON_VARS = "common_functions/commonVariables.sh"
 BASE_SOURCES = [COMMON_VARS, COMMON, CREDENTIALS, PASSWORDS_VARS, PASSWORDS]
@@ -34,8 +34,8 @@ BCRYPT = "$2y$12$" + "a" * 53
 
 SYMBOLS = ".,_+:@%^=~-"
 
-# The same corpus as the shared library tests (#1047): the tool must give the
-# same answer as wazuh_password_validate.
+# The same corpus as the credentials helper tests (#1047): the tool must give the
+# same answer as common_passwordValidate.
 ACCEPTED = (
     ["Abcdefghij1.", "Aa1." + "b" * 60, "Aa1.,_+:@%^=~-"]
     + [f"Abcdefghij1{symbol}" for symbol in SYMBOLS]
@@ -55,7 +55,7 @@ REJECTED = (
 
 
 class TestPasswordsCheckPassword:
-    """Tests for passwords_checkPassword, which applies wazuh_password_validate:
+    """Tests for passwords_checkPassword, which applies common_passwordValidate:
     12-64 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one
     uppercase letter, one lowercase letter, one digit and one symbol.
     """
@@ -77,8 +77,8 @@ class TestPasswordsCheckPassword:
         assert_failure(self._run(password))
 
     @pytest.mark.parametrize("password", ACCEPTED + REJECTED, ids=lambda p: p.encode("unicode_escape").decode())
-    def test_same_answer_as_the_library(self, password):
-        library = run_bash_function([CREDENTIALS], 'wazuh_password_validate "${CHECKED}"', None,
+    def test_same_answer_as_the_helper(self, password):
+        library = run_bash_function([CREDENTIALS], 'common_passwordValidate "${CHECKED}"', None,
                                     {"CHECKED": password})
         assert (self._run(password).returncode == 0) == (library.returncode == 0)
 
@@ -94,7 +94,7 @@ class TestPasswordsCheckPassword:
 
 
 class TestPasswordsGeneratePassword:
-    """Tests for passwords_generatePassword, which uses wazuh_password_generate."""
+    """Tests for passwords_generatePassword, which uses common_passwordGenerate."""
 
     def test_success_generates_a_32_char_password(self):
         result = run_bash_function(
@@ -119,11 +119,11 @@ class TestPasswordsGeneratePassword:
         )
         assert_success(result)
 
-    def test_fail_when_the_library_fails(self):
+    def test_fail_when_the_generator_fails(self):
         result = run_bash_function(
             BASE_SOURCES,
             "passwords_generatePassword",
-            {**IGNORE_LOGGER, "wazuh_password_generate": "return 1"},
+            {**IGNORE_LOGGER, "common_passwordGenerate": "return 1"},
         )
         assert_failure(result)
 
@@ -215,31 +215,31 @@ class TestPasswordsCheckUser:
 
 
 class TestPasswordsCheckCredentialsFile:
-    """A credentials file the library refuses (status 2) stops the tool."""
+    """A credential file that cannot be used (status 2) stops the tool."""
 
-    def test_success_when_the_file_is_absent(self):
+    def test_success_when_the_files_are_absent(self):
         result = run_bash_function(
             BASE_SOURCES, "passwords_checkCredentialsFile",
-            {**IGNORE_LOGGER, "wazuh_env_get": "return 1"},
+            {**IGNORE_LOGGER, "common_envGet": "return 1"},
         )
         assert_success(result)
 
-    def test_success_when_the_file_is_valid(self):
+    def test_success_when_the_files_are_valid(self):
         result = run_bash_function(
             BASE_SOURCES, "passwords_checkCredentialsFile",
-            {**IGNORE_LOGGER, "wazuh_env_get": "echo secret; return 0"},
+            {**IGNORE_LOGGER, "common_envGet": "echo secret; return 0"},
         )
         assert_success(result)
         assert "secret" not in result.stdout
 
-    def test_fail_when_the_file_is_invalid(self):
+    def test_fail_when_a_file_is_invalid(self):
         result = run_bash_function(
             BASE_SOURCES, "passwords_checkCredentialsFile",
-            {"common_logger": 'echo "LOG:$*"', "wazuh_env_get": "return 2",
-             "wazuh_env_get_file": "echo /etc/wazuh/credentials.env"},
+            {"common_logger": 'echo "LOG:$*"',
+             "common_envGet": '[ "$1" = /etc/wazuh-manager/local.env ] && return 2; return 1'},
         )
         assert_failure(result)
-        assert "The credentials file /etc/wazuh/credentials.env cannot be used" in result.stdout
+        assert "The credentials file /etc/wazuh-manager/local.env cannot be used" in result.stdout
 
 
 class TestPasswordsGetEnvKey:
@@ -265,51 +265,67 @@ class TestPasswordsGetEnvKey:
 class TestPasswordsSaveCredential:
     """Tests for passwords_saveCredential.
 
-    A generated password is always recorded in credentials.env, because it is
-    not shown anywhere else. A password given by the operator only updates a
-    credentials file that already exists.
+    A new password is written in every credential file of the host that holds the
+    user: the export/credentials.env of the owner and the local.env of each package
+    that uses it. A generated password must be saved in at least one of them.
     """
 
-    def _run(self, generated, file_exists, set_status=0, user="admin"):
+    def _run(self, tmp_path, generated, files, set_status=0, user="admin"):
+        for name in files:
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("")
         mocks = {
             "common_logger": 'echo "LOG:$*"',
-            "wazuh_env_get_file": 'echo "${ENV_FILE}"',
-            "wazuh_env_set": f'echo "SET:$1"; return {set_status}',
+            "common_envSet": f'echo "SET:$1:$2"; return {set_status}',
+        }
+        env = {
+            "indexer_config_path": str(tmp_path / "indexer"),
+            "manager_config_path": str(tmp_path / "manager"),
+            "dashboard_config_path": str(tmp_path / "dashboard"),
         }
         script = f"""
-            ENV_FILE="$(mktemp -d)/credentials.env"
-            {'touch "${ENV_FILE}"' if file_exists else ''}
             passwords_saveCredential {user} "NewPassword123" "{generated}"
             echo "status:$? failed:[${{save_failed}}]"
         """
-        return run_bash_function(BASE_SOURCES, script, mocks)
+        return run_bash_function(BASE_SOURCES, script, mocks, env)
 
-    def test_generated_password_creates_the_record(self):
-        result = self._run(generated="1", file_exists=False)
-        assert "SET:WAZUH_INDEXER_ADMIN_PASSWORD" in result.stdout
+    def test_generated_password_is_saved_in_the_owner_export(self, tmp_path):
+        result = self._run(tmp_path, "1", ["indexer/export/credentials.env"])
+        assert f"SET:{tmp_path}/indexer/export/credentials.env:WAZUH_INDEXER_ADMIN_PASSWORD" in result.stdout
         assert "status:0 failed:[]" in result.stdout
-        assert "was saved in" in result.stdout
-        assert "NewPassword123" not in result.stdout
+        assert "was saved as WAZUH_INDEXER_ADMIN_PASSWORD in" in result.stdout
+        assert "NewPassword123" not in result.stdout.replace("SET:", "").split(":WAZUH")[0]
 
-    def test_supplied_password_updates_an_existing_file(self):
-        result = self._run(generated="", file_exists=True)
-        assert "SET:WAZUH_INDEXER_ADMIN_PASSWORD" in result.stdout
-        assert "status:0" in result.stdout
+    def test_shared_password_updates_every_package_that_uses_it(self, tmp_path):
+        files = ["indexer/export/credentials.env", "indexer/local.env", "dashboard/local.env", "manager/local.env"]
+        result = self._run(tmp_path, "", files, user="kibanaserver")
+        sets = [line for line in result.stdout.splitlines() if line.startswith("SET:")]
+        assert [line.split(":")[1] for line in sets] == [
+            f"{tmp_path}/indexer/export/credentials.env",
+            f"{tmp_path}/indexer/local.env",
+            f"{tmp_path}/dashboard/local.env",
+        ]
 
-    def test_supplied_password_never_creates_the_file(self):
-        result = self._run(generated="", file_exists=False)
+    def test_supplied_password_never_creates_a_file(self, tmp_path):
+        result = self._run(tmp_path, "", [])
         assert "SET:" not in result.stdout
         assert "status:0" in result.stdout
 
-    def test_api_user_uses_the_manager_key(self):
-        result = self._run(generated="1", file_exists=False, user="wazuh-internal-client")
-        assert "SET:WAZUH_MANAGER_WUI_PASSWORD" in result.stdout
+    def test_generated_password_without_any_file_fails(self, tmp_path):
+        result = self._run(tmp_path, "1", [])
+        assert "status:1 failed:[1]" in result.stdout
+        assert "there is no credentials file on this host" in result.stdout
 
-    def test_failed_write_is_reported(self):
-        result = self._run(generated="1", file_exists=False, set_status=1)
+    def test_api_user_uses_the_manager_files(self, tmp_path):
+        result = self._run(tmp_path, "1", ["manager/export/credentials.env", "dashboard/local.env"], user="wazuh-internal-client")
+        assert f"SET:{tmp_path}/manager/export/credentials.env:WAZUH_MANAGER_WUI_PASSWORD" in result.stdout
+        assert f"SET:{tmp_path}/dashboard/local.env:WAZUH_MANAGER_WUI_PASSWORD" in result.stdout
+
+    def test_failed_write_is_reported(self, tmp_path):
+        result = self._run(tmp_path, "1", ["indexer/export/credentials.env"], set_status=1)
         assert "status:1 failed:[1]" in result.stdout
         assert "was applied, but it could not be saved" in result.stdout
-        assert "NewPassword123" not in result.stdout
 
 
 class TestPasswordsHashPassword:
@@ -701,32 +717,34 @@ class TestPasswordsChangePasswordApi:
 
 
 class TestPasswordsUpdateDashboardKeystore:
-    """The dashboard keystore belongs to the wazuh-dashboard user, so it is
-    written as that user, and the value goes through the standard input."""
+    """The dashboard keystore is root:wazuh-dashboard 0640, so it is written as root
+    with --allow-root, and the value goes through the standard input."""
 
-    def _run(self, runuser_body, keystore_exists=True):
-        mocks = {"common_logger": 'echo "LOG:$*"', "runuser": runuser_body}
+    def _run(self, keystore_body, keystore_exists=True):
+        mocks = {"common_logger": 'echo "LOG:$*"', "chown": 'echo "CHOWN:$*" >> "${CALLS}"',
+                 "chmod": 'echo "CHMOD:$*" >> "${CALLS}"'}
         script = f"""
-            dashboard_keystore="$(mktemp)"
-            {'chmod +x "${dashboard_keystore}"' if keystore_exists else 'rm -f "${dashboard_keystore}"'}
             export CALLS="$(mktemp)"
+            dashboard_keystore="$(mktemp)"
+            printf '#!/bin/bash\n%s\n' '{keystore_body}' > "${{dashboard_keystore}}"
+            {'command chmod +x "${dashboard_keystore}"' if keystore_exists else 'rm -f "${dashboard_keystore}"'}
             passwords_updateDashboardKeystore opensearch.password "DashPass12345"
             echo "status:$?"
             cat "${{CALLS}}"
         """
-        return run_bash_function(BASE_SOURCES, script, mocks)
+        return run_bash_function(BASE_SOURCES, script, mocks, {"dashboard_config_path": "/etc/wazuh-dashboard"})
 
-    def test_runs_as_the_dashboard_user_with_the_value_on_stdin(self):
-        result = self._run('echo "RUNUSER:$*" >> "${CALLS}"; echo "STDIN:$(cat)" >> "${CALLS}"')
+    def test_runs_as_root_with_the_value_on_stdin(self):
+        result = self._run('echo "KEYSTORE:$* CONF:$OSD_PATH_CONF" >> "$CALLS"; echo "STDIN:$(cat)" >> "$CALLS"')
         assert "status:0" in result.stdout
-        runuser_line = [l for l in result.stdout.splitlines() if l.startswith("RUNUSER:")][0]
-        assert runuser_line.startswith("RUNUSER:-u wazuh-dashboard -- ")
-        assert runuser_line.endswith("add -f --stdin opensearch.password")
-        assert "DashPass12345" not in runuser_line
+        line = [l for l in result.stdout.splitlines() if l.startswith("KEYSTORE:")][0]
+        assert line == "KEYSTORE:--allow-root add -f --stdin opensearch.password CONF:/etc/wazuh-dashboard"
         assert "STDIN:DashPass12345" in result.stdout
+        assert "CHOWN:root:wazuh-dashboard /etc/wazuh-dashboard/opensearch_dashboards.keystore" in result.stdout
+        assert "CHMOD:640 /etc/wazuh-dashboard/opensearch_dashboards.keystore" in result.stdout
 
     def test_fail_when_the_keystore_fails(self):
-        result = self._run("cat > /dev/null; return 1")
+        result = self._run("cat > /dev/null; exit 1")
         assert "status:1" in result.stdout
         assert "Could not write opensearch.password to the Wazuh dashboard keystore." in result.stdout
 
@@ -1111,7 +1129,7 @@ class TestPasswordsChangePasswordSingleUserManagerKeystore:
         assert "status:1 pending:" in result.stdout
         assert "still valid" not in result.stdout
         assert "LOG:-e The Wazuh indexer already uses the new password of user kibanaserver" in result.stdout
-        assert "opensearch-dashboards-keystore add opensearch.password --stdin --force" in result.stdout
+        assert "opensearch-dashboards-keystore --allow-root add opensearch.password --stdin --force" in result.stdout
         assert "DashPass1." not in result.stdout
 
     def test_changeall_tries_the_dashboard_keystore_after_a_manager_failure(self):

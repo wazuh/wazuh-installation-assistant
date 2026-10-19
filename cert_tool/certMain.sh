@@ -1,5 +1,5 @@
 # Certificate tool - Main functions
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -70,7 +70,7 @@ function getHelp() {
     echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb"
     echo -e ""
     echo -e "ROOT CA"
-    echo -e "        The root CA is read from $(wazuh_ca_get_dir 2>/dev/null), or from the directory set in WAZUH_CA_DIR."
+    echo -e "        The root CA is read from $(common_caGetDir 2>/dev/null), or from the directory set in WAZUH_CA_DIR."
     echo -e "        Its private key, root-ca.key, stays there and is never copied to the wazuh-certificates directory."
     echo -e "        The tool must be run as root."
     echo -e ""
@@ -85,7 +85,7 @@ function main() {
     # limiting access to the current user.
     umask 0077
 
-    # The shared credentials library only creates and reads the root CA as root.
+    # The root CA is created and read as root.
     common_checkRoot
     cert_checkOpenSSL
 

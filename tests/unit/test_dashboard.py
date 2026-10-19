@@ -184,34 +184,35 @@ class TestDashboardConfigure:
         )
         assert_success(result)
 
-    def test_success_gives_the_certificates_to_the_service_user(self, tmp_path):
-        """The package keeps a pre-placed pair as it is, owned by root."""
+    def test_success_leaves_the_certificates_to_the_package(self, tmp_path):
+        """The package sets the owner and mode of the placed files."""
         log = tmp_path / "perm.log"
         result = self._run(
             extra_env={"dashboard_cert_path": "/certs"},
             extra_mocks={"chown": f'echo "chown $*" >> "{log}"', "chmod": f'echo "chmod $*" >> "{log}"'},
         )
         assert_success(result)
-        calls = log.read_text().splitlines()
-        assert "chown -R wazuh-dashboard:wazuh-dashboard /certs" in calls
-        assert "chmod 500 /certs" in calls
+        assert not log.exists()
 
 
 class TestDashboardCopyCertificates:
-    """dashboard_copyCertificates places the node pair before the install."""
+    """dashboard_copyCertificates places the node pair and the peer CAs before the install."""
 
-    def test_success_places_pair_with_package_names(self, tmp_path):
-        tar = make_tar(tmp_path, ["dashboard1.pem", "dashboard1-key.pem"])
+    def test_success_places_pair_and_cas_with_package_names(self, tmp_path):
+        tar = make_tar(tmp_path, ["root-ca.pem", "dashboard1.pem", "dashboard1-key.pem"])
         cert_path = tmp_path / "certs"
         result = run_bash_function(
             [*BASE_SOURCES, "install_functions/installCommon.sh"],
             "dashboard_copyCertificates",
             {**IGNORE_LOGGER, "install": FAKE_INSTALL},
-            {"dashname": "dashboard1", "dashboard_cert_path": str(cert_path), "tar_file": str(tar), "debug": ""},
+            {"dashname": "dashboard1", "dashboard_config_path": str(tmp_path), "dashboard_cert_path": str(cert_path),
+             "tar_file": str(tar), "debug": ""},
         )
         assert_success(result)
         assert (cert_path / "dashboard.pem").read_text() == "dashboard1.pem"
         assert (cert_path / "dashboard-key.pem").read_text() == "dashboard1-key.pem"
+        assert (cert_path / "indexer-ca.pem").read_text() == "root-ca.pem"
+        assert (cert_path / "manager-ca.pem").read_text() == "root-ca.pem"
 
 
 class TestDashboardInitialize:
@@ -251,7 +252,7 @@ class TestDashboardInitialize:
         assert_success(result)
         assert urls == ["https://127.0.0.1:443/status"]
         assert "https://<wazuh-dashboard-ip>:443" in result.stdout
-        assert "\n        sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-\n" in result.stdout
+        assert "\n        sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-\n" in result.stdout
 
     @staticmethod
     def _cert(tmp_path, ips):
@@ -297,7 +298,7 @@ class TestDashboardInitialize:
         assert urls == ["https://10.0.0.5:443/status"]
         assert "https://10.0.0.5:443" in result.stdout
         assert "Password: to read it from wazuh-install-files.tar, run:" in result.stdout
-        assert "The other users of the deployment are listed at the top of wazuh-install-files/credentials.env of wazuh-install-files.tar." in result.stdout
+        assert "The passwords of the other users are in wazuh-install-files/credentials.env of wazuh-install-files.tar." in result.stdout
         assert "\n        sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-\n" in result.stdout
 
     def test_distributed_picks_the_node_of_dashname(self, tmp_path):
@@ -343,16 +344,16 @@ class TestDashboardInitialize:
 
     def test_never_prints_a_password(self, tmp_path):
         result, _ = self._run(tmp_path, {"AIO": "1"})
-        assert "Password: to read it from the credentials file, run:" in result.stdout
+        assert "Password: to read it from /etc/wazuh-indexer/export/credentials.env, run:" in result.stdout
         assert "User: admin (Wazuh dashboard login and Wazuh indexer administrator)" in result.stdout
-        assert "The other users of the deployment are listed at the top of /etc/wazuh/credentials.env." in result.stdout
+        assert "The passwords of the other users are in /etc/wazuh-indexer/export/credentials.env and /etc/wazuh-manager/export/credentials.env." in result.stdout
         assert "-u" not in result.stdout
 
     TTY = {"dashboard_stdoutIsTerminal": "true"}
-    COMMAND = "sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-"
+    COMMAND = "sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-"
 
     def test_aio_terminal_prints_the_password_but_does_not_log_it(self, tmp_path):
-        result, _ = self._run(tmp_path, {"AIO": "1"}, extra_mocks={**self.TTY, "wazuh_env_get": "echo 'Adm1n.Pass-word'"})
+        result, _ = self._run(tmp_path, {"AIO": "1"}, extra_mocks={**self.TTY, "common_envGet": "echo 'Adm1n.Pass-word'"})
         assert_success(result)
         assert "    Password: Adm1n.Pass-word\n" in result.stdout
         assert f"    To read the password again, run:\n        {self.COMMAND}\n" in result.stdout
@@ -361,20 +362,20 @@ class TestDashboardInitialize:
         assert self.COMMAND in log
 
     def test_aio_without_terminal_does_not_print_the_password(self, tmp_path):
-        result, _ = self._run(tmp_path, {"AIO": "1"}, extra_mocks={"wazuh_env_get": "echo 'Adm1n.Pass-word'"})
+        result, _ = self._run(tmp_path, {"AIO": "1"}, extra_mocks={"common_envGet": "echo 'Adm1n.Pass-word'"})
         assert_success(result)
         assert "Adm1n.Pass-word" not in result.stdout
-        assert "Password: to read it from the credentials file, run:" in result.stdout
+        assert "Password: to read it from /etc/wazuh-indexer/export/credentials.env, run:" in result.stdout
 
     @pytest.mark.parametrize("env_get", ["return 1", "echo ''"])
     def test_aio_terminal_falls_back_to_the_command_without_a_password(self, tmp_path, env_get):
-        result, _ = self._run(tmp_path, {"AIO": "1"}, extra_mocks={**self.TTY, "wazuh_env_get": env_get})
+        result, _ = self._run(tmp_path, {"AIO": "1"}, extra_mocks={**self.TTY, "common_envGet": env_get})
         assert_success(result)
-        assert "Password: to read it from the credentials file, run:" in result.stdout
+        assert "Password: to read it from /etc/wazuh-indexer/export/credentials.env, run:" in result.stdout
         assert "To read the password again" not in result.stdout
 
     def test_distributed_terminal_prints_only_the_tar_command(self, tmp_path):
-        result, _ = self._run(tmp_path, self.DISTRIBUTED, extra_mocks={**self.TTY, "wazuh_env_get": "echo 'Adm1n.Pass-word'"})
+        result, _ = self._run(tmp_path, self.DISTRIBUTED, extra_mocks={**self.TTY, "common_envGet": "echo 'Adm1n.Pass-word'"})
         assert_success(result)
         assert "Adm1n.Pass-word" not in result.stdout
         assert "Password: to read it from wazuh-install-files.tar, run:" in result.stdout

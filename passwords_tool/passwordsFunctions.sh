@@ -1,5 +1,5 @@
 # Passwords tool - library functions
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -61,7 +61,7 @@ function passwords_updateKeystores() {
                     restart_manager=1
                     common_logger -w "If this is a multi-node deployment, update the keystore of every other Wazuh manager node and restart them."
                 else
-                    common_logger -e "The Wazuh indexer already uses the new password of user wazuh-manager, but the Wazuh manager keystore still holds the previous one. Write the new password (WAZUH_INDEXER_MANAGER_PASSWORD in credentials.env, or the one you set with -p) with: echo 'wazuh-manager' | ${manager_keystore} -f indexer -k username; echo '<WAZUH_INDEXER_MANAGER_PASSWORD>' | ${manager_keystore} -f indexer -k password. Then restart the Wazuh manager."
+                    common_logger -e "The Wazuh indexer already uses the new password of user wazuh-manager, but the Wazuh manager keystore still holds the previous one. Write the new password (WAZUH_INDEXER_MANAGER_PASSWORD in ${indexer_config_path}/export/credentials.env, or the one you set with -p) with: echo 'wazuh-manager' | ${manager_keystore} -f indexer -k username; echo '<WAZUH_INDEXER_MANAGER_PASSWORD>' | ${manager_keystore} -f indexer -k password. Then restart the Wazuh manager."
                     keystore_failed=1
                 fi
             else
@@ -79,7 +79,7 @@ function passwords_updateKeystores() {
                 restart_dashboard=1
                 common_logger -w "If this is a multi-node deployment, update opensearch.password in the keystore of every other Wazuh dashboard node and restart them."
             else
-                common_logger -e "The Wazuh indexer already uses the new password of user kibanaserver, but the Wazuh dashboard keystore still holds the previous one. Write the new password (WAZUH_INDEXER_KIBANASERVER_PASSWORD in credentials.env, or the one you set with -p) with: echo '<WAZUH_INDEXER_KIBANASERVER_PASSWORD>' | runuser -u ${dashboard_user} -- ${dashboard_keystore} add opensearch.password --stdin --force. Then restart the Wazuh dashboard."
+                common_logger -e "The Wazuh indexer already uses the new password of user kibanaserver, but the Wazuh dashboard keystore still holds the previous one. Write the new password (WAZUH_INDEXER_KIBANASERVER_PASSWORD in ${indexer_config_path}/export/credentials.env, or the one you set with -p) with: echo '<WAZUH_INDEXER_KIBANASERVER_PASSWORD>' | OSD_PATH_CONF=${dashboard_config_path} ${dashboard_keystore} --allow-root add opensearch.password --stdin --force. Then restart the Wazuh dashboard."
                 keystore_failed=1
             fi
         elif [ -n "${dashpass}" ]; then
@@ -176,16 +176,22 @@ function passwords_checkUser() {
 
 }
 
+# Checks the local.env and export/credentials.env files of this host before any
+# password is changed: a file that cannot be used is reported first.
 function passwords_checkCredentialsFile() {
 
-    local env_status=0
+    local file env_status
 
-    # A broken or insecure credentials file is reported before any password is changed.
-    wazuh_env_get WAZUH_INDEXER_ADMIN_PASSWORD > /dev/null || env_status=$?
-    if [ "${env_status}" -eq 2 ]; then
-        common_logger -e "The credentials file $(wazuh_env_get_file 2>/dev/null) cannot be used, so no password was changed. Fix the problem shown above and run the tool again."
-        exit 1;
-    fi
+    for file in "${indexer_config_path}/local.env" "${indexer_config_path}/export/credentials.env" \
+        "${manager_config_path}/local.env" "${manager_config_path}/export/credentials.env" \
+        "${dashboard_config_path}/local.env"; do
+        env_status=0
+        common_envGet "${file}" WAZUH_INDEXER_ADMIN_PASSWORD > /dev/null || env_status=$?
+        if [ "${env_status}" -eq 2 ]; then
+            common_logger -e "The credentials file ${file} cannot be used, so no password was changed. Fix the problem shown above and run the tool again."
+            exit 1;
+        fi
+    done
 
 }
 
@@ -193,9 +199,9 @@ function passwords_checkPassword() {
 
     local validation_error
 
-    # Same rule as the Wazuh packages, from the shared credentials library.
-    if ! validation_error=$(wazuh_password_validate "${1}" 2>&1); then
-        common_logger -e "Invalid password: ${validation_error#wazuh-credentials: }."
+    # Same rule as the Wazuh packages.
+    if ! validation_error=$(common_passwordValidate "${1}" 2>&1); then
+        common_logger -e "Invalid password: ${validation_error}."
         exit 1
     fi
 
@@ -274,7 +280,7 @@ function passwords_generateHash() {
 function passwords_generatePassword() {
 
     common_logger -d "Generating random password."
-    if ! password=$(wazuh_password_generate); then
+    if ! password=$(common_passwordGenerate); then
         common_logger -e "The password could not been generated."
         exit 1;
     fi
@@ -301,7 +307,7 @@ function passwords_generatePasswords() {
 
 }
 
-# Prints the credentials.env key of a user, the same key the Wazuh packages use.
+# Prints the local.env key of a user, the same key the Wazuh packages use.
 function passwords_getEnvKey() {
 
     case "${1}" in
@@ -672,39 +678,63 @@ function passwords_runSecurityAdmin() {
 
 }
 
-# Records a new password in credentials.env, as the Wazuh packages do. A generated
-# password is always recorded, because it is not shown anywhere else. A password
-# given by the operator only updates a credentials file that already exists.
+# Prints the files of this host that hold the key of a user: the export/credentials.env
+# of the package that owns the user and the local.env of every package that uses it.
+function passwords_getCredentialFiles() {
+
+    case "${1}" in
+        "WAZUH_INDEXER_ADMIN_PASSWORD")
+            echo "${indexer_config_path}/export/credentials.env ${indexer_config_path}/local.env" ;;
+        "WAZUH_INDEXER_KIBANASERVER_PASSWORD")
+            echo "${indexer_config_path}/export/credentials.env ${indexer_config_path}/local.env ${dashboard_config_path}/local.env" ;;
+        "WAZUH_INDEXER_MANAGER_PASSWORD")
+            echo "${indexer_config_path}/export/credentials.env ${indexer_config_path}/local.env ${manager_config_path}/local.env" ;;
+        "WAZUH_MANAGER_API_PASSWORD")
+            echo "${manager_config_path}/export/credentials.env ${manager_config_path}/local.env" ;;
+        "WAZUH_MANAGER_WUI_PASSWORD")
+            echo "${manager_config_path}/export/credentials.env ${manager_config_path}/local.env ${dashboard_config_path}/local.env" ;;
+    esac
+
+}
+
+# Records a new password in the credential files of this host that already exist, so
+# they never hold an old one. A generated password must be saved in at least one of
+# them, because it is not shown anywhere else.
 function passwords_saveCredential() {
 
     local user="${1}"
     local new_password="${2}"
     local generated="${3}"
-    local key
-    local env_file
+    local key file
+    local -a saved=()
 
     if ! key=$(passwords_getEnvKey "${user}"); then
         return 0
     fi
-    if ! env_file=$(wazuh_env_get_file); then
-        save_failed=1
-        return 1
-    fi
 
-    if [ -z "${generated}" ] && [ ! -e "${env_file}" ]; then
+    for file in $(passwords_getCredentialFiles "${key}"); do
+        [ -f "${file}" ] || continue
+        if ! common_envSet "${file}" "${key}" "${new_password}"; then
+            common_logger -e "The new password of user ${user} was applied, but it could not be saved in ${file}. Run the tool again for this user with -p to set a password you know."
+            save_failed=1
+            return 1
+        fi
+        saved+=("${file}")
+    done
+
+    if [ "${#saved[@]}" -eq 0 ]; then
+        if [ -n "${generated}" ]; then
+            common_logger -e "The new password of user ${user} was applied, but there is no credentials file on this host to save it. Run the tool again for this user with -p to set a password you know."
+            save_failed=1
+            return 1
+        fi
         return 0
     fi
 
-    if ! wazuh_env_set "${key}" "${new_password}"; then
-        common_logger -e "The new password of user ${user} was applied, but it could not be saved in ${env_file}. Run the tool again for this user with -p to set a password you know."
-        save_failed=1
-        return 1
-    fi
-
     if [ -n "${generated}" ]; then
-        common_logger "The new password of user ${user} was saved in ${env_file} as ${key}."
+        common_logger "The new password of user ${user} was saved as ${key} in: ${saved[*]}."
     else
-        common_logger "${key} was updated in ${env_file}."
+        common_logger "${key} was updated in: ${saved[*]}."
     fi
 
 }
@@ -742,9 +772,11 @@ function passwords_updateInternalUsers() {
 
 }
 
-# Writes a value in the Wazuh dashboard keystore. The keystore belongs to the dashboard
-# service user, so it is written as that user, and the value goes through the standard input.
+# Writes a value in the Wazuh dashboard keystore. The value goes through the standard
+# input. The keystore is root:wazuh-dashboard 0640, so it is written as root.
 function passwords_updateDashboardKeystore() {
+
+    local keystore_file="${dashboard_config_path}/opensearch_dashboards.keystore"
 
     if [ "$#" -ne 2 ]; then
         common_logger -e "passwords_updateDashboardKeystore must be called with 2 arguments."
@@ -756,10 +788,11 @@ function passwords_updateDashboardKeystore() {
         return 1
     fi
 
-    if ! printf '%s' "${2}" | (cd / && runuser -u "${dashboard_user}" -- "${dashboard_keystore}" add -f --stdin "${1}") > /dev/null 2>&1; then
+    if ! printf '%s' "${2}" | (cd / && OSD_PATH_CONF="${dashboard_config_path}" "${dashboard_keystore}" --allow-root add -f --stdin "${1}") > /dev/null 2>&1; then
         common_logger -e "Could not write ${1} to the Wazuh dashboard keystore."
         return 1
     fi
+    chown root:"${dashboard_user}" "${keystore_file}" && chmod 640 "${keystore_file}"
 
 }
 

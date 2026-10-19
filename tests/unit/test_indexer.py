@@ -199,29 +199,33 @@ class TestIndexerConfigure:
 
 
 class TestIndexerCopyCertificates:
-    """indexer_copyCertificates places the node and admin pairs before the install."""
+    """indexer_copyCertificates places the CA certificate, the node and admin pairs before the install."""
 
     def _run(self, tmp_path, members):
         tar = make_tar(tmp_path, members)
-        cert_path = tmp_path / "certs"
+        config = tmp_path / "etc-wazuh-indexer"
         result = run_bash_function(
             [*BASE_SOURCES, "install_functions/installCommon.sh"],
             "indexer_copyCertificates",
-            {**IGNORE_LOGGER, "install": FAKE_INSTALL},
-            {"indxname": "indexer1", "indexer_cert_path": str(cert_path), "tar_file": str(tar), "debug": ""},
+            {**IGNORE_LOGGER, "install": 'if [ "$1" = -d ]; then shift 7; mkdir -p "$@"; else cp "${@: -2:1}" "${@: -1}"; fi'},
+            {"indxname": "indexer1", "indexer_config_path": str(config), "indexer_cert_path": str(config / "certs"),
+             "tar_file": str(tar), "debug": ""},
         )
-        return result, cert_path
+        return result, config
 
     def test_success_places_pairs_with_package_names(self, tmp_path):
-        result, cert_path = self._run(tmp_path, ["indexer1.pem", "indexer1-key.pem", "admin.pem", "admin-key.pem"])
+        result, config = self._run(tmp_path, ["root-ca.pem", "indexer1.pem", "indexer1-key.pem", "admin.pem", "admin-key.pem"])
         assert_success(result)
+        cert_path = config / "certs"
+        assert (config / "ca" / "root-ca.pem").read_text() == "root-ca.pem"
+        assert not (config / "ca" / "root-ca.key").exists()
         assert (cert_path / "indexer.pem").read_text() == "indexer1.pem"
         assert (cert_path / "indexer-key.pem").read_text() == "indexer1-key.pem"
         assert (cert_path / "admin.pem").read_text() == "admin.pem"
         assert (cert_path / "admin-key.pem").read_text() == "admin-key.pem"
 
     def test_fail_when_admin_pair_missing(self, tmp_path):
-        result, _ = self._run(tmp_path, ["indexer1.pem", "indexer1-key.pem"])
+        result, _ = self._run(tmp_path, ["root-ca.pem", "indexer1.pem", "indexer1-key.pem"])
         assert_failure(result)
 
 

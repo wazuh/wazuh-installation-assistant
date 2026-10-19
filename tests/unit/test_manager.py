@@ -2,7 +2,7 @@
 Unit tests for install_functions/manager.sh
 
 Covers: manager_install, manager_startCluster, manager_configure, manager_copyCertificates,
-        manager_setRemotedSans
+        manager_setRemotedSans, manager_setApidSans
 """
 
 import pytest
@@ -170,8 +170,8 @@ class TestManagerStartCluster:
 class TestManagerConfigure:
     """Tests for manager_configure.
 
-    The indexer connector pair is placed before the package creates the wazuh-manager
-    group, and the package does not set its owner, so manager_configure does.
+    The pairs are placed before the package creates the wazuh-manager group, so
+    manager_configure gives them to the group and runs the package resolver again.
     """
 
     def _run(self, tmp_path, extra_mocks=None):
@@ -179,10 +179,10 @@ class TestManagerConfigure:
             BASE_SOURCES,
             "manager_configure",
             {**IGNORE_LOGGER, "sed": "true", **(extra_mocks or {})},
-            {"manager_cert_path": "/certs", "indexer_node_ips": "(1.1.1.1)", "debug": ""},
+            {"manager_cert_path": "/certs", "manager_conf_file": "/conf", "indexer_node_ips": "(1.1.1.1)", "debug": ""},
         )
 
-    def test_success_gives_the_indexer_connector_pair_to_the_service_group(self, tmp_path):
+    def test_success_gives_every_pair_to_the_service_group(self, tmp_path):
         log = tmp_path / "perm.log"
         result = self._run(
             tmp_path,
@@ -190,28 +190,38 @@ class TestManagerConfigure:
         )
         assert_success(result)
         calls = log.read_text().splitlines()
-        assert "chown root:wazuh-manager /certs/indexer-connector.pem /certs/indexer-connector-key.pem" in calls
-        assert "chmod 640 /certs/indexer-connector.pem /certs/indexer-connector-key.pem" in calls
+        assert "chown root:wazuh-manager /certs /certs/*.pem" in calls
+        assert "chmod 750 /certs" in calls
+        assert "chmod 640 /certs/*.pem" in calls
 
-    def test_success_leaves_the_service_pairs_to_the_package(self, tmp_path):
-        """The package sets the owner of the remoted and apid pairs itself."""
-        log = tmp_path / "perm.log"
-        result = self._run(
-            tmp_path,
-            {"chown": f'echo "chown $*" >> "{log}"', "chmod": f'echo "chmod $*" >> "{log}"'},
+    def test_success_runs_the_resolver_without_issuing(self, tmp_path):
+        log = tmp_path / "resolver.log"
+        result = run_bash_function(
+            BASE_SOURCES,
+            "manager_configure",
+            {**IGNORE_LOGGER, "sed": "true", "chown": "true", "chmod": "true"},
+            {
+                "manager_cert_path": "/certs", "manager_conf_file": "/conf", "indexer_node_ips": "(1.1.1.1)",
+                "debug": "", "manager_resolver": f'echo "resolver" >> "{log}"; echo',
+            },
         )
         assert_success(result)
-        calls = log.read_text() if log.exists() else ""
-        assert "remoted" not in calls
-        assert "apid" not in calls
+        assert log.read_text().splitlines() == ["resolver"]
+        assert "--upgrade -H /var/wazuh-manager" in result.stdout
 
 
 class TestManagerCopyCertificates:
     """Tests for manager_copyCertificates.
 
-    Before the package is installed, the indexer connector and agent listener pairs of
-    the node are placed from the tar file with the names the package expects.
+    Before the package is installed, the CA certificate (as the manager CA, the agents
+    bundle and the indexer CA) and the pairs of the node are placed from the tar file
+    with the names the package expects. The CA key is never placed.
     """
+
+    MEMBERS = [
+        "root-ca.pem", "wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master-remoted.pem",
+        "wazuh-master-remoted-key.pem", "wazuh-master-apid.pem", "wazuh-master-apid-key.pem",
+    ]
 
     def _run(self, tmp_path, members):
         import subprocess
@@ -222,43 +232,42 @@ class TestManagerCopyCertificates:
             (staging / name).write_text(name)
         tar_file = tmp_path / "wazuh-install-files.tar"
         subprocess.run(["tar", "-cf", str(tar_file), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
-        cert_path = tmp_path / "certs"
+        config = tmp_path / "etc-wazuh-manager"
 
         result = run_bash_function(
             [*BASE_SOURCES, "install_functions/installCommon.sh"],
             "manager_copyCertificates",
-            # install -o root needs root; the owner is the package's job anyway.
-            {**IGNORE_LOGGER, "install": 'cp "${@: -2:1}" "${@: -1}"'},
-            {"winame": "wazuh-master", "manager_cert_path": str(cert_path), "tar_file": str(tar_file), "debug": ""},
+            # install -o root needs root; the owner is set after the package is installed.
+            {**IGNORE_LOGGER, "install": 'if [ "$1" = -d ]; then shift 7; mkdir -p "$@"; else cp "${@: -2:1}" "${@: -1}"; fi'},
+            {
+                "winame": "wazuh-master", "manager_config_path": str(config),
+                "manager_cert_path": str(config / "certs"), "tar_file": str(tar_file), "debug": "",
+            },
         )
-        return result, cert_path
+        return result, config
 
     def test_success_places_pairs_with_package_names(self, tmp_path):
-        result, cert_path = self._run(
-            tmp_path,
-            [
-                "wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem",
-                "wazuh-master-apid.pem", "wazuh-master-apid-key.pem",
-            ],
-        )
+        result, config = self._run(tmp_path, self.MEMBERS)
         assert_success(result)
-        assert (cert_path / "indexer-connector.pem").read_text() == "wazuh-master.pem"
-        assert (cert_path / "indexer-connector-key.pem").read_text() == "wazuh-master-key.pem"
-        assert (cert_path / "remoted.pem").read_text() == "wazuh-master-remoted.pem"
-        assert (cert_path / "remoted-key.pem").read_text() == "wazuh-master-remoted-key.pem"
-        assert (cert_path / "apid.pem").read_text() == "wazuh-master-apid.pem"
-        assert (cert_path / "apid-key.pem").read_text() == "wazuh-master-apid-key.pem"
+        certs = config / "certs"
+        assert (config / "ca" / "root-ca.pem").read_text() == "root-ca.pem"
+        assert not (config / "ca" / "root-ca.key").exists()
+        assert (certs / "root-ca.pem").read_text() == "root-ca.pem"
+        assert (certs / "indexer-ca.pem").read_text() == "root-ca.pem"
+        assert (certs / "indexer-connector.pem").read_text() == "wazuh-master.pem"
+        assert (certs / "indexer-connector-key.pem").read_text() == "wazuh-master-key.pem"
+        assert (certs / "remoted.pem").read_text() == "wazuh-master-remoted.pem"
+        assert (certs / "remoted-key.pem").read_text() == "wazuh-master-remoted-key.pem"
+        assert (certs / "apid.pem").read_text() == "wazuh-master-apid.pem"
+        assert (certs / "apid-key.pem").read_text() == "wazuh-master-apid-key.pem"
 
     def test_fail_when_remoted_pair_missing(self, tmp_path):
-        result, _ = self._run(tmp_path, ["wazuh-master.pem", "wazuh-master-key.pem"])
+        result, _ = self._run(tmp_path, ["root-ca.pem", "wazuh-master.pem", "wazuh-master-key.pem"])
         assert_failure(result)
 
     def test_fail_when_apid_pair_missing(self, tmp_path):
         """A tar from a certs tool that predates the Server API pair."""
-        result, _ = self._run(
-            tmp_path,
-            ["wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem"],
-        )
+        result, _ = self._run(tmp_path, self.MEMBERS[:5])
         assert_failure(result)
 
 
@@ -266,61 +275,50 @@ class TestManagerSetRemotedSans:
     """Tests for manager_setRemotedSans.
 
     On an all-in-one install the manager package issues remoted.pem. Addresses given
-    with -as|--agent-san reach it through WAZUH_MANAGER_REMOTED_CERT_SANS, together
-    with the host addresses, because the variable replaces the discovered list.
+    with -as|--agent-san reach it through WAZUH_MANAGER_REMOTED_CERT_SANS in the manager
+    local.env, together with the host addresses, because the variable replaces the
+    discovered list.
     """
 
-    def _run(self, agent_san):
-        return run_bash_function(
-            [*BASE_SOURCES, "cert_tool/certFunctions.sh"],
-            'manager_setRemotedSans; echo "SANS=${WAZUH_MANAGER_REMOTED_CERT_SANS-unset}"',
-            {**IGNORE_LOGGER, "cert_hostAddresses": "printf '%s\\n' 10.0.0.5 host.example.com"},
-            {"agent_san": f"({' '.join(agent_san)})"},
+    def _run(self, tmp_path, agent_san, function="manager_setRemotedSans", san_var="agent_san"):
+        config = tmp_path / "etc-wazuh-manager"
+        result = run_bash_function(
+            [*BASE_SOURCES, "cert_tool/certFunctions.sh", "common_functions/credentials.sh"],
+            function,
+            {
+                **IGNORE_LOGGER, "chown": "true",
+                "install": 'mkdir -p "${@: -1}"',
+                "cert_hostAddresses": "printf '%s\\n' 10.0.0.5 host.example.com",
+            },
+            {san_var: f"({' '.join(agent_san)})", "manager_config_path": str(config), "debug": ""},
         )
+        env = config / "local.env"
+        return result, env.read_text() if env.exists() else ""
 
-    def test_success_unset_without_agent_san(self):
-        result = self._run([])
+    def test_success_nothing_written_without_agent_san(self, tmp_path):
+        result, env = self._run(tmp_path, [])
         assert_success(result)
-        assert "SANS=unset" in result.stdout
+        assert env == ""
 
-    def test_success_types_and_dedups_addresses(self):
-        result = self._run(["203.0.113.7", "wazuh.example.com", "10.0.0.5"])
+    def test_success_types_and_dedups_addresses(self, tmp_path):
+        result, env = self._run(tmp_path, ["203.0.113.7", "wazuh.example.com", "10.0.0.5"])
         assert_success(result)
-        assert "SANS=IP:203.0.113.7,DNS:wazuh.example.com,IP:10.0.0.5,DNS:host.example.com" in result.stdout
+        assert env == "WAZUH_MANAGER_REMOTED_CERT_SANS=IP:203.0.113.7,DNS:wazuh.example.com,IP:10.0.0.5,DNS:host.example.com\n"
 
 
 class TestManagerSetApidSans:
-    """Tests for manager_setApidSans.
+    """Tests for manager_setApidSans: same as the agent listener, for apid.pem."""
 
-    On an all-in-one install the manager package issues apid.pem. Addresses given with
-    -ap|--api-san reach it through WAZUH_MANAGER_APID_CERT_SANS, together with the host
-    addresses, because the variable replaces the discovered list.
-    """
+    def _run(self, tmp_path, api_san):
+        return TestManagerSetRemotedSans()._run(tmp_path, api_san, "manager_setApidSans", "api_san")
 
-    def _run(self, api_san):
-        return run_bash_function(
-            [*BASE_SOURCES, "cert_tool/certFunctions.sh"],
-            'manager_setApidSans; echo "SANS=${WAZUH_MANAGER_APID_CERT_SANS-unset}"',
-            {**IGNORE_LOGGER, "cert_hostAddresses": "printf '%s\\n' 10.0.0.5 host.example.com"},
-            {"api_san": f"({' '.join(api_san)})"},
-        )
-
-    def test_success_unset_without_api_san(self):
-        result = self._run([])
+    def test_success_nothing_written_without_api_san(self, tmp_path):
+        result, env = self._run(tmp_path, [])
         assert_success(result)
-        assert "SANS=unset" in result.stdout
+        assert env == ""
 
-    def test_success_types_and_dedups_addresses(self):
-        result = self._run(["203.0.113.7", "api.example.com", "10.0.0.5"])
+    def test_success_types_and_dedups_addresses(self, tmp_path):
+        result, env = self._run(tmp_path, ["203.0.113.7", "api.example.com", "10.0.0.5"])
         assert_success(result)
-        assert "SANS=IP:203.0.113.7,DNS:api.example.com,IP:10.0.0.5,DNS:host.example.com" in result.stdout
-
-    def test_success_does_not_touch_the_remoted_list(self):
-        result = run_bash_function(
-            [*BASE_SOURCES, "cert_tool/certFunctions.sh"],
-            'manager_setApidSans; echo "REMOTED=${WAZUH_MANAGER_REMOTED_CERT_SANS-unset}"',
-            {**IGNORE_LOGGER, "cert_hostAddresses": "true"},
-            {"api_san": "(api.example.com)"},
-        )
-        assert_success(result)
-        assert "REMOTED=unset" in result.stdout
+        assert env == "WAZUH_MANAGER_APID_CERT_SANS=IP:203.0.113.7,DNS:api.example.com,IP:10.0.0.5,DNS:host.example.com\n"
+        assert "REMOTED" not in env
