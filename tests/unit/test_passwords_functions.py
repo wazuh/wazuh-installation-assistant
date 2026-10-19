@@ -290,6 +290,8 @@ class TestPasswordsSaveCredential:
             "indexer_config_path": str(tmp_path / "indexer"),
             "manager_config_path": str(tmp_path / "manager"),
             "dashboard_config_path": str(tmp_path / "dashboard"),
+            "base_path": str(tmp_path / "tools"),
+            "WAZUH_CA_DIR": "",
         }
         script = f"""
             passwords_saveCredential {user} "NewPassword123" "{generated}"
@@ -321,6 +323,15 @@ class TestPasswordsSaveCredential:
         assert f"SET:{tmp_path}/manager/export/credentials.env:WAZUH_MANAGER_WUI_PASSWORD" in result.stdout
         assert "manager/local.env" not in result.stdout
 
+    def test_the_generate_config_files_copy_is_updated(self, tmp_path):
+        """wazuh-ca/credentials.env next to the tool gets the new password, so a later -g uses it."""
+        result = self._run(tmp_path, "", ["indexer/export/credentials.env", "tools/wazuh-ca/credentials.env"])
+        assert f"SET:{tmp_path}/tools/wazuh-ca/credentials.env:WAZUH_INDEXER_ADMIN_PASSWORD" in result.stdout
+
+    def test_the_generate_config_files_copy_is_skipped_without_the_ca(self, tmp_path):
+        result = self._run(tmp_path, "", ["indexer/export/credentials.env"])
+        assert "wazuh-ca" not in result.stdout
+
     def test_supplied_password_never_creates_a_file(self, tmp_path):
         result = self._run(tmp_path, "", [])
         assert "SET:" not in result.stdout
@@ -340,6 +351,25 @@ class TestPasswordsSaveCredential:
         result = self._run(tmp_path, "1", ["indexer/export/credentials.env"], set_status=1)
         assert "status:1 failed:[1]" in result.stdout
         assert "was applied, but it could not be saved" in result.stdout
+
+
+class TestPasswordsGetDeploymentFile:
+    """The credentials.env that -g keeps next to the root CA."""
+
+    def test_next_to_the_tool(self):
+        result = run_bash_function(BASE_SOURCES, "passwords_getDeploymentFile",
+                                   env_vars={"base_path": "/opt/tools", "WAZUH_CA_DIR": ""})
+        assert result.stdout == "/opt/tools/wazuh-ca/credentials.env\n"
+
+    def test_wazuh_ca_dir(self):
+        result = run_bash_function(BASE_SOURCES, "passwords_getDeploymentFile",
+                                   env_vars={"base_path": "/opt/tools", "WAZUH_CA_DIR": "/srv/ca"})
+        assert result.stdout == "/srv/ca/credentials.env\n"
+
+    def test_nothing_with_a_relative_wazuh_ca_dir(self):
+        result = run_bash_function(BASE_SOURCES, "passwords_getDeploymentFile",
+                                   env_vars={"WAZUH_CA_DIR": "relative"})
+        assert result.stdout == ""
 
 
 class TestPasswordsHashPassword:

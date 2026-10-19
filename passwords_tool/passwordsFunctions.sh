@@ -184,7 +184,7 @@ function passwords_checkCredentialsFile() {
 
     for file in "${indexer_config_path}/local.env" "${indexer_config_path}/export/credentials.env" \
         "${manager_config_path}/local.env" "${manager_config_path}/export/credentials.env" \
-        "${dashboard_config_path}/local.env"; do
+        "${dashboard_config_path}/local.env" $(passwords_getDeploymentFile); do
         env_status=0
         common_envGet "${file}" WAZUH_INDEXER_ADMIN_PASSWORD > /dev/null || env_status=$?
         if [ "${env_status}" -eq 2 ]; then
@@ -697,6 +697,18 @@ function passwords_getCredentialFiles() {
 
 }
 
+# Prints the credentials.env that -g keeps next to the root CA (wazuh-ca next to the
+# tool, or WAZUH_CA_DIR), so a later -g gives the new passwords to the new nodes.
+function passwords_getDeploymentFile() {
+
+    local ca_dir
+
+    if ca_dir=$(common_caGetDir 2>/dev/null); then
+        echo "${ca_dir}/credentials.env"
+    fi
+
+}
+
 # Records a new password in the credential files of this host that already hold the
 # key, so they never keep an old one. A generated password must be saved in at least
 # one of them, because it is not shown anywhere else.
@@ -712,7 +724,7 @@ function passwords_saveCredential() {
         return 0
     fi
 
-    for file in $(passwords_getCredentialFiles "${key}"); do
+    for file in $(passwords_getCredentialFiles "${key}") $(passwords_getDeploymentFile); do
         common_envGet "${file}" "${key}" > /dev/null 2>&1 || continue
         if ! common_envSet "${file}" "${key}" "${new_password}"; then
             common_logger -e "The new password of user ${user} was applied, but it could not be saved in ${file}. Run the tool again for this user with -p to set a password you know."

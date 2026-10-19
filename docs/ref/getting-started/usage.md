@@ -238,7 +238,7 @@ The root CA lives in the `wazuh-ca` directory next to the tool, or in the direct
 
 - `root-ca.pem` (mode `0644`) is copied to the `wazuh-certificates` directory with the new certificates.
 - `root-ca.key` (mode `0400`) stays in the CA directory. It is never copied to the `wazuh-certificates` directory, so it does not travel to the other nodes.
-- `credentials.env` holds the passwords that `--generate-config-files` creates. Running `--generate-config-files` again reuses the same root CA and passwords. The passwords tool runs on the nodes and does not change this file: after you change a password, write the new value in `credentials.env` too before you run `--generate-config-files` to add nodes, or the new nodes get the old password.
+- `credentials.env` holds the passwords that `--generate-config-files` creates. Running `--generate-config-files` again reuses the same root CA and passwords. The passwords tool also updates this file when it runs on the same host, from the same directory as the CA (or with `WAZUH_CA_DIR` set). If you change a password on another host, write the new value in `credentials.env` too before you run `--generate-config-files` to add nodes, or the new nodes get the old password.
 
 The tool must be run as root. An existing root CA is validated and reused, never replaced. To use a root CA created elsewhere, place `root-ca.pem` and `root-ca.key` in a `root:root` directory with mode `0700`, with the modes above, and point `WAZUH_CA_DIR` at it:
 
@@ -553,8 +553,9 @@ The tool never prints a password. A new password is saved in every credential fi
 
 - The `export/credentials.env` file of the package that owns the user: `/etc/wazuh-indexer/export/credentials.env` for the Wazuh indexer users, and `/etc/wazuh-manager/export/credentials.env` for the Wazuh server API users.
 - The `local.env` file of each package that uses the password: `/etc/wazuh-indexer/local.env`, `/etc/wazuh-manager/local.env` or `/etc/wazuh-dashboard/local.env`.
+- The `credentials.env` file that `--generate-config-files` keeps next to the root CA: `wazuh-ca/credentials.env` next to the tool, or in `WAZUH_CA_DIR`. So a later `--generate-config-files` gives the new password to new nodes.
 
-The tool only updates the files that already exist, and prints the files and the key. A generated password must be saved in at least one file: if there is none, the tool stops with an error. Use `-p` to set a password you know.
+The tool only updates the files that already hold the key, and prints the files and the key. A generated password must be saved in at least one file: if there is none, the tool stops with an error. Use `-p` to set a password you know.
 
 Read the new password in the file of the owner, for example:
 

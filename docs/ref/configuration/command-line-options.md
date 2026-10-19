@@ -72,8 +72,9 @@ A new password is saved in every credential file on the host that holds that use
 
 - The `export/credentials.env` file of the package that owns the user: `/etc/wazuh-indexer/export/credentials.env` for the indexer users, and `/etc/wazuh-manager/export/credentials.env` for the API users `wazuh` and `wazuh-internal-client`.
 - The `local.env` file of each package that uses the password: `/etc/wazuh-indexer/local.env`, `/etc/wazuh-manager/local.env` and `/etc/wazuh-dashboard/local.env`.
+- The `credentials.env` file that `--generate-config-files` keeps next to the root CA: `wazuh-ca/credentials.env` next to the tool, or in `WAZUH_CA_DIR`.
 
-The tool only updates the files that already exist. If there is none, a generated password is an error, and a password given with `-p` is not saved.
+The tool only updates the files that already hold the key. If there is none, a generated password is an error, and a password given with `-p` is not saved.
 
 ### The address agents dial
 

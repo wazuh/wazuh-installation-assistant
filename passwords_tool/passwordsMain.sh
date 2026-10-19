@@ -43,6 +43,8 @@ function getHelp() {
     echo -e "                The passwords of the Wazuh indexer and Wazuh API users, published by their package."
     echo -e "        ${indexer_config_path}/local.env, ${manager_config_path}/local.env, ${dashboard_config_path}/local.env"
     echo -e "                The passwords each package uses."
+    echo -e "        $(passwords_getDeploymentFile)"
+    echo -e "                The passwords that --generate-config-files keeps next to the root CA, if this host has it."
     echo -e "        A new password is saved in each of these files that exists on this host and holds that user."
     echo -e ""
     exit 1

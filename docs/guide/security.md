@@ -49,7 +49,7 @@ bash wazuh-passwords-tool-5.0.0.sh -u <USER> -p
 
 `<USER>` is a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh API user (`wazuh`, `wazuh-internal-client`). The Wazuh API passwords are changed with `rbac_control`, so no admin credentials are needed. Without `-p`, a random password is generated.
 
-The tool never prints a password. A new password is saved in every credential file of the host that holds that user: the `export/credentials.env` file of the package that owns the user, and the `local.env` file of each package that uses it. See [Where the new passwords are saved](../ref/configuration/command-line-options.md#where-the-new-passwords-are-saved).
+The tool never prints a password. A new password is saved in every credential file of the host that holds that user: the `export/credentials.env` file of the package that owns the user, the `local.env` file of each package that uses it, and the `credentials.env` file that `--generate-config-files` keeps in `wazuh-ca/` when the tool runs next to it. See [Where the new passwords are saved](../ref/configuration/command-line-options.md#where-the-new-passwords-are-saved).
 
 Passwords for internal users are stored hashed in `/etc/wazuh-indexer/opensearch-security/internal_users.yml`.
 
