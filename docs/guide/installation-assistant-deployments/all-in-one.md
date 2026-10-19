@@ -25,8 +25,8 @@
    INFO:     User: admin (Wazuh dashboard login and Wazuh indexer administrator)
    INFO:     Password: <ADMIN_PASSWORD>
    INFO:     To read the password again, run:
-   INFO:         sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-
-   INFO: The other users of the deployment are listed at the top of /etc/wazuh/credentials.env.
+   INFO:         sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-
+   INFO: The passwords of the other users are in /etc/wazuh-indexer/export/credentials.env and /etc/wazuh-manager/export/credentials.env.
    INFO: Installation finished.
    ```
 
@@ -37,10 +37,10 @@
 Access ``https://<WAZUH_DASHBOARD_IP_ADDRESS>`` and using your credentials:
 
 - **Username**: ``admin``
-- **Password**: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `/etc/wazuh/credentials.env`
+- **Password**: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `/etc/wazuh-indexer/export/credentials.env`
 
 > [!NOTE]
 > When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. This is expected and the user has the option to accept the certificate as an exception or, alternatively, configure the system to use a certificate from a trusted authority.
 
 > [!NOTE]
-> `/etc/wazuh/credentials.env` holds the passwords of the Wazuh users, generated during the installation. Once you have stored them in a safe place, remove the file from every node: the Wazuh components do not read it after the installation. To change a password later, see [Change all default passwords](../../ref/getting-started/usage.md#change-all-default-passwords).
+> The packages create the CAs, the certificates and the passwords of the Wazuh users during the installation. The Wazuh indexer users are in `/etc/wazuh-indexer/export/credentials.env`, and the Wazuh server API users are in `/etc/wazuh-manager/export/credentials.env`. Store them in a safe place. To change a password later, see [Change all default passwords](../../ref/getting-started/usage.md#change-all-default-passwords).

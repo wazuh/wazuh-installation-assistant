@@ -5,6 +5,21 @@ This section describes how to back up and restore the configuration, certificate
 > [!NOTE]
 > You need root user privileges to run all the commands described below.
 
+Each Wazuh component keeps its credentials and certificates in its own configuration directory: `/etc/wazuh-indexer`, `/etc/wazuh-manager` and `/etc/wazuh-dashboard`. Back up these files of each directory:
+
+- `local.env`: the passwords and values given before the package was installed.
+- `ca/`: the CA of the package.
+- `certs/`: the certificates the service uses, and the CAs of the other components.
+- `export/`: the CA and the passwords the Wazuh indexer and the Wazuh manager publish.
+
+## Deployment root CA
+
+If you ran `wazuh-install-5.0.0.sh -g`, also back up the `wazuh-ca` directory of that host. It is next to `wazuh-install-5.0.0.sh`, or in the directory set in the `WAZUH_CA_DIR` environment variable. It holds the root CA of the deployment, its private key and the passwords. You need it to add nodes or renew certificates. Keep the backup in a safe place.
+
+```bash
+tar -czf wazuh-ca-backup.tar.gz -C <DIRECTORY_OF_WAZUH_INSTALL> wazuh-ca
+```
+
 ## Wazuh Indexer
 
 In this section you can find instructions on how to create and restore a backup of your Wazuh Indexer key files, preserving file permissions, ownership, and path. Later, you can move this folder contents back to the corresponding location to restore your certificates and configurations. Backing up these files is useful in cases such as moving your Wazuh installation to another system.
@@ -45,7 +60,10 @@ Back up the Wazuh indexer certificates and configuration
 
 ```bash
 rsync -aREz \
+/etc/wazuh-indexer/local.env \
+/etc/wazuh-indexer/ca/ \
 /etc/wazuh-indexer/certs/ \
+/etc/wazuh-indexer/export/ \
 /etc/wazuh-indexer/jvm.options \
 /etc/wazuh-indexer/jvm.options.d \
 /etc/wazuh-indexer/log4j2.properties \
@@ -104,6 +122,8 @@ Perform the following steps to restore the Wazuh indexer files on the new server
 2. Restore the Wazuh indexer configuration files and change the file permissions and ownership accordingly:
 
     ```bash
+    cp -a etc/wazuh-indexer/local.env /etc/wazuh-indexer/local.env
+    cp -a etc/wazuh-indexer/ca etc/wazuh-indexer/export /etc/wazuh-indexer/
     cp -r etc/wazuh-indexer/certs/. /etc/wazuh-indexer/certs/
     cp etc/wazuh-indexer/jvm.options /etc/wazuh-indexer/jvm.options
     cp -r etc/wazuh-indexer/jvm.options.d/. /etc/wazuh-indexer/jvm.options.d/
@@ -150,15 +170,18 @@ The following components should be included in your Wazuh manager backup strateg
 
 ### Essential Data
 
-- **Configuration files**: `/var/wazuh-manager/etc/`
+- **Configuration files**: `/etc/wazuh-manager/`
   - `wazuh-manager.conf` - Main configuration file
   - `wazuh-manager-internal-options.conf` - Internal configuration overrides
+  - `local.env` - Passwords and values given before the package was installed
+  - `ca/` - CA of the Wazuh manager
+  - `export/` - CA and Wazuh server API passwords the Wazuh manager publishes
 
-- **Agent keys**: `/var/wazuh-manager/etc/client.keys`
+- **Agent keys**: `/etc/wazuh-manager/client.keys`
   - Contains encryption keys for registered agents
   - Critical for agent communication
 
-- **SSL/TLS certificates**: `/var/wazuh-manager/etc/certs/`
+- **SSL/TLS certificates**: `/etc/wazuh-manager/certs/`
   - Manager certificates and keys
   - Root CA certificates
 
@@ -167,7 +190,7 @@ The following components should be included in your Wazuh manager backup strateg
   - Agent group assignments
   - Group membership data
 
-- **Agent groups**: `/var/wazuh-manager/etc/shared/`
+- **Agent groups**: `/etc/wazuh-manager/shared/`
   - Group-specific configurations and files
   - Shared files distributed to agents in each group
 
@@ -200,7 +223,7 @@ BACKUP_DIR="/backup/wazuh-manager-$(date +%Y%m%d-%H%M%S)"
 sudo mkdir -p $BACKUP_DIR
 
 # Backup configuration files
-sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
+sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /etc wazuh-manager/
 
 # Backup global database (use SQLite backup for consistency)
 sudo mkdir -p $BACKUP_DIR/db
@@ -224,9 +247,8 @@ sudo systemctl stop wazuh-manager
 
 # Backup essential directories
 sudo tar -czf $BACKUP_DIR/wazuh-manager-backup.tar.gz \
-    -C /var/wazuh-manager \
-    etc/ \
-    queue/db/global.db
+    -C /etc wazuh-manager/ \
+    -C /var/wazuh-manager queue/db/global.db
 
 # Start the Wazuh manager
 sudo systemctl start wazuh-manager
@@ -243,13 +265,13 @@ sudo chown -R $(whoami):$(whoami) $BACKUP_DIR
 **Configuration only:**
 
 ```bash
-sudo tar -czf wazuh-manager-config-$(date +%Y%m%d).tar.gz -C /var/wazuh-manager etc/
+sudo tar -czf wazuh-manager-config-$(date +%Y%m%d).tar.gz -C /etc wazuh-manager/
 ```
 
 **Agent keys only:**
 
 ```bash
-sudo cp /var/wazuh-manager/etc/client.keys wazuh-client-keys-$(date +%Y%m%d).backup
+sudo cp /etc/wazuh-manager/client.keys wazuh-client-keys-$(date +%Y%m%d).backup
 ```
 
 **Global database only:**
@@ -293,7 +315,7 @@ BACKUP_DIR="$BACKUP_BASE/backup-$TIMESTAMP"
 mkdir -p $BACKUP_DIR/db
 
 # Perform backup
-tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
+tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /etc wazuh-manager/
 sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 
 # Verify backup
@@ -339,7 +361,7 @@ sudo systemctl stop wazuh-manager
 **Step 2: Backup current data (optional but recommended)**
 
 ```bash
-sudo mv /var/wazuh-manager/etc /var/wazuh-manager/etc.old.$(date +%Y%m%d)
+sudo mv /etc/wazuh-manager /etc/wazuh-manager.old.$(date +%Y%m%d)
 sudo mv /var/wazuh-manager/queue/db/global.db /var/wazuh-manager/queue/db/global.db.old.$(date +%Y%m%d)
 ```
 
@@ -347,7 +369,7 @@ sudo mv /var/wazuh-manager/queue/db/global.db /var/wazuh-manager/queue/db/global
 
 ```bash
 # Restore configuration
-sudo tar -xzf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager
+sudo tar -xzf $BACKUP_DIR/wazuh-etc.tar.gz -C /etc
 
 # Restore global database
 sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
@@ -355,12 +377,10 @@ sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
 
 **Step 4: Set proper permissions**
 
+`tar` keeps the owner and the mode of the files of `/etc/wazuh-manager` when it runs as root. Do not change them: `local.env` and `ca/` must belong to root. Only fix the global database:
+
 ```bash
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc
 sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
-sudo chmod 640 /var/wazuh-manager/etc/client.keys
-sudo chmod 500 /var/wazuh-manager/etc/certs
-sudo chmod 400 /var/wazuh-manager/etc/certs/*
 ```
 
 **Step 5: Start the Wazuh manager**
@@ -388,8 +408,7 @@ sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log
 
 ```bash
 sudo systemctl stop wazuh-manager
-sudo tar -xzf wazuh-manager-config-YYYYMMDD.tar.gz -C /var/wazuh-manager
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc
+sudo tar -xzf wazuh-manager-config-YYYYMMDD.tar.gz -C /etc
 sudo systemctl start wazuh-manager
 ```
 
@@ -397,9 +416,9 @@ sudo systemctl start wazuh-manager
 
 ```bash
 sudo systemctl stop wazuh-manager
-sudo cp wazuh-client-keys-YYYYMMDD.backup /var/wazuh-manager/etc/client.keys
-sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/client.keys
-sudo chmod 640 /var/wazuh-manager/etc/client.keys
+sudo cp wazuh-client-keys-YYYYMMDD.backup /etc/wazuh-manager/client.keys
+sudo chown wazuh-manager:wazuh-manager /etc/wazuh-manager/client.keys
+sudo chmod 640 /etc/wazuh-manager/client.keys
 sudo systemctl start wazuh-manager
 ```
 
@@ -442,7 +461,7 @@ BACKUP_DIR="/backup/wazuh-master-$(date +%Y%m%d-%H%M%S)"
 sudo mkdir -p $BACKUP_DIR/db
 
 # Full backup of master node
-sudo tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /var/wazuh-manager etc/
+sudo tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /etc wazuh-manager/
 sudo sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 ```
 
@@ -453,7 +472,7 @@ BACKUP_DIR="/backup/wazuh-worker-$(hostname)-$(date +%Y%m%d-%H%M%S)"
 sudo mkdir -p $BACKUP_DIR
 
 # Configuration only for worker nodes
-sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager/etc wazuh-manager.conf wazuh-manager-internal-options.conf
+sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /etc/wazuh-manager wazuh-manager.conf wazuh-manager-internal-options.conf local.env ca certs export
 ```
 
 ### Cluster Restore Procedures
@@ -461,7 +480,7 @@ sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager/etc w
 #### Restore Master Node
 
 1. Follow the full manager restore procedure
-2. Verify cluster configuration in `/var/wazuh-manager/etc/wazuh-manager.conf`
+2. Verify cluster configuration in `/etc/wazuh-manager/wazuh-manager.conf`
 3. Start the manager service
 4. Verify cluster status: `sudo /var/wazuh-manager/bin/cluster_control -l`
 
@@ -495,6 +514,8 @@ This guide focuses on the assets managed by the Wazuh dashboard itself.
 - Dashboard configuration: `/etc/wazuh-dashboard/opensearch_dashboards.yml`
 - Dashboard NodeJS options: `/etc/wazuh-dashboard/node.options`
 - Dashboard keystore: `/etc/wazuh-dashboard/opensearch_dashboards.keystore`
+- Passwords given before the install: `/etc/wazuh-dashboard/local.env`
+- CA of the Wazuh dashboard, when the package created one: `/etc/wazuh-dashboard/ca/`
 - TLS certificates: `/etc/wazuh-dashboard/certs/`
 - Saved objects exported from the UI (dashboards, visualizations, index patterns)
 - Custom assets
@@ -517,8 +538,10 @@ rsync -aREz \
 /etc/wazuh-dashboard/opensearch_dashboards.yml \
 /etc/wazuh-dashboard/node.options \
 /etc/wazuh-dashboard/opensearch_dashboards.keystore \
+/etc/wazuh-dashboard/local.env \
 /etc/wazuh-dashboard/certs/ \
 $backup_folder
+[ -d /etc/wazuh-dashboard/ca ] && rsync -aREz /etc/wazuh-dashboard/ca/ $backup_folder
 ```
 
 3. Export the saved objects
@@ -583,6 +606,8 @@ cp etc/wazuh-dashboard/opensearch_dashboards.yml /etc/wazuh-dashboard/opensearch
 cp etc/wazuh-dashboard/node.options /etc/wazuh-dashboard/node.options
 cp etc/wazuh-dashboard/opensearch_dashboards.keystore /etc/wazuh-dashboard/opensearch_dashboards.keystore
 cp -r etc/wazuh-dashboard/certs/. /etc/wazuh-dashboard/certs/
+cp -a etc/wazuh-dashboard/local.env /etc/wazuh-dashboard/local.env
+[ -d etc/wazuh-dashboard/ca ] && cp -a etc/wazuh-dashboard/ca /etc/wazuh-dashboard/
 chown wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/opensearch_dashboards.yml
 chown wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/node.options
 chown wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/opensearch_dashboards.keystore

@@ -198,7 +198,7 @@ Option to install all Wazuh central components (Indexer, Manager, and Dashboard)
 
 ### -g, --generate
 
-Option to generate certificates and passwords for all nodes defined in `config.yml`. Creates the `wazuh-install-files.tar` archive.
+Option to generate certificates and passwords for all nodes defined in `config.yml`. Creates the `wazuh-install-files.tar` archive. The root CA, its private key and the passwords are kept in the `wazuh-ca` directory, so a new run reuses them.
 
 ### -u, --uninstall
 
@@ -222,12 +222,24 @@ Directory containing SSL/TLS certificates for the Wazuh Indexer, including the n
 
 ### /etc/wazuh-dashboard/certs
 
-Directory containing SSL/TLS certificates for the Wazuh Dashboard, including the node certificate, key, and root CA.
+Directory containing SSL/TLS certificates for the Wazuh Dashboard, including the node certificate, key, and the CAs of the indexer (`indexer-ca.pem`) and the manager (`manager-ca.pem`).
 
-### /var/wazuh-manager/etc/certs
+### /etc/wazuh-manager/certs
 
-Directory containing SSL/TLS certificates for the Wazuh Manager (server), including the node certificate, key, and root CA.
+Directory containing SSL/TLS certificates for the Wazuh Manager (server), including the root CA, the agent listener and Server API certificates, the indexer CA (`indexer-ca.pem`), and the certificate used to connect to the indexer.
 
-### /var/wazuh-manager/etc/wazuh-manager.conf
+### local.env
+
+A file in the configuration directory of each package (`/etc/wazuh-indexer/local.env`, `/etc/wazuh-manager/local.env`, `/etc/wazuh-dashboard/local.env`). It holds the values given before the package is installed, such as passwords. It only has the keys that package uses. Owned by root, mode 0600.
+
+### export/credentials.env
+
+A file the Wazuh indexer and the Wazuh manager packages publish after install (`/etc/wazuh-indexer/export/credentials.env`, `/etc/wazuh-manager/export/credentials.env`). It holds the passwords of the users that package owns. The `export/` directory also has the CA of the package, `ca.pem`.
+
+### wazuh-ca
+
+The directory where the `-g` option and the Wazuh Certs Tool keep the deployment root CA (`root-ca.pem` and `root-ca.key`). The `-g` option also keeps the passwords there, in `credentials.env`. It is next to the script, or in the directory set in the `WAZUH_CA_DIR` environment variable. Back it up.
+
+### /etc/wazuh-manager/wazuh-manager.conf
 
 Main configuration file for the Wazuh Manager, containing settings for cluster configuration, agent communication, and log analysis.

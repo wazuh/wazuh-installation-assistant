@@ -29,7 +29,7 @@ BACKUP_DIR="/backup/wazuh-master-$(date +%Y%m%d-%H%M%S)"
 mkdir -p $BACKUP_DIR/db
 
 # Full backup of master
-tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /var/wazuh-manager etc/
+tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /etc wazuh-manager/
 sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 
 # Verify backup
@@ -43,7 +43,7 @@ BACKUP_DIR="/backup/wazuh-worker-$(hostname)-$(date +%Y%m%d-%H%M%S)"
 mkdir -p $BACKUP_DIR
 
 # Configuration backup only
-tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager/etc wazuh-manager.conf local_internal_options.conf
+tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /etc/wazuh-manager wazuh-manager.conf local_internal_options.conf
 
 # Verify backup
 tar -tzf $BACKUP_DIR/wazuh-worker-config.tar.gz > /dev/null && echo "Worker backup successful"

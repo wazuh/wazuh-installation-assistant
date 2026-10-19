@@ -38,6 +38,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1139](https://github.com/wazuh/wazuh-installation-assistant/issues/1139) | Adapt to the 5.0.0 RC 2 per-package credentials: write each package `local.env`, CA and certificates under `/etc/<package>` instead of `/etc/wazuh`, keep the `-g` root CA and passwords in `wazuh-ca/`, read passwords from the package `export/` files, move the manager configuration to `/etc/wazuh-manager`, and print the package credential problems when a service does not start |
 | [#1144](https://github.com/wazuh/wazuh-installation-assistant/issues/1144) | Print the admin password at the end of an all-in-one install when the output is an interactive terminal, keeping it out of the install log and of redirected output |
 | [#3870](https://github.com/wazuh/wazuh-automation/issues/3870) | Adapt the integration tests to install-time credentials: agent listener address in the distributed flow, no install files in the offline flow, password generated without -p, expected version of the branch, and fail the job when a test fails |
 | [#1112](https://github.com/wazuh/wazuh-installation-assistant/issues/1112) | Keep the log of every run in `/var/log/wazuh-install.log`: each run appends to it with a header line (date, assistant version and options) instead of emptying it |
@@ -93,6 +94,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1139](https://github.com/wazuh/wazuh-installation-assistant/issues/1139) | Remove the shared `wazuh-credentials.sh` library and its build artifact |
 | [#961](https://github.com/wazuh/wazuh-installation-assistant/issues/961) | Remove unnecessary debhelper install-time dependency |
 | [#836](https://github.com/wazuh/wazuh-installation-assistant/issues/836) | Wazuh dashboard initialization message. |
 | [#811](https://github.com/wazuh/wazuh-installation-assistant/issues/811) | Remove -i option from installation assistant |

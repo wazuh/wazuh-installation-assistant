@@ -219,9 +219,9 @@ Runs when `install_mode == offline`. All package preparation happens on the runn
 After any installation mode completes:
 
 - **Disable host firewall**: `ufw disable` on Ubuntu; `systemctl stop firewalld` on RedHat
-- **Wait for dashboard** (installer/all only): polls `https://localhost/status` with the `admin` password read from `/etc/wazuh/credentials.env` up to 5 minutes until HTTP 200
-- **Run cert-tool** (cert-tool/all only): copies `config.yml`, removes any previous `/tmp/wazuh-certificates` and runs `sudo bash /tmp/wazuh-certs-tool.sh -A`, which uses the root CA in `/etc/wazuh/ca`
-- **Run passwords-tool** (passwords-tool/all only): saves the `admin` password set by the installation as `WAZUH_OLD_PASSWORD` (masked), runs `wazuh-passwords-tool.sh -u kibanaserver` without `-p` and checks that the generated password is saved in `credentials.env`, is accepted by the indexer and replaces the previous one (both masked), then runs `wazuh-passwords-tool.sh -u <user> -p` with the new password on the standard input for `admin`, `kibanaserver`, `wazuh-manager`, `wazuh` and `wazuh-internal-client`, restarts services, then polls indexer port 9200, dashboard port 443, and manager API port 55000 until all accept the new credentials
+- **Wait for dashboard** (installer/all only): checks that `/etc/wazuh` does not exist, then polls `https://localhost/status` with the `admin` password read from `/etc/wazuh-indexer/export/credentials.env` up to 5 minutes until HTTP 200
+- **Run cert-tool** (cert-tool/all only): copies `config.yml`, removes any previous `/tmp/wazuh-certificates` and runs `sudo bash /tmp/wazuh-certs-tool.sh -A`, which uses the root CA in `/tmp/wazuh-ca`, next to the tool, and creates it if it does not exist
+- **Run passwords-tool** (passwords-tool/all only): saves the `admin` password set by the installation as `WAZUH_OLD_PASSWORD` (masked), runs `wazuh-passwords-tool.sh -u kibanaserver` without `-p` and checks that the generated password is saved in `/etc/wazuh-indexer/export/credentials.env`, is accepted by the indexer and replaces the previous one (both masked), then runs `wazuh-passwords-tool.sh -u <user> -p` with the new password on the standard input for `admin`, `kibanaserver`, `wazuh-manager`, `wazuh` and `wazuh-internal-client`, restarts services, then polls indexer port 9200, dashboard port 443, and manager API port 55000 until all accept the new credentials
 
 #### Test execution
 
@@ -243,7 +243,7 @@ test_runner \
 | `--ssh-host/port/key/username` | From allocator inventory | Connects to the allocated VM |
 | `--output github` | — | Emits GitHub Actions annotations |
 
-The step also passes `WAZUH_INSTALL_MODE` (the common name of the node certificates is the node name of `config.yml` with `-g`, and `hostname -s` with `-a`) and the expected versions `WAZUH_{MANAGER,INDEXER,DASHBOARD}_EXPECTED_VERSION`, taken from `VERSION.json` of the branch under test (with `-latest` for staging packages). For `installer` and `cert-tool`, `test_runner` reads the passwords from `/etc/wazuh/credentials.env` on the VM and masks them in the log.
+The step also passes `WAZUH_INSTALL_MODE` (the common name of the node certificates is the node name of `config.yml` with `-g`, and `hostname -s` with `-a`) and the expected versions `WAZUH_{MANAGER,INDEXER,DASHBOARD}_EXPECTED_VERSION`, taken from `VERSION.json` of the branch under test (with `-latest` for staging packages). For `installer` and `cert-tool`, `test_runner` reads the passwords from `/etc/wazuh-indexer/export/credentials.env` and `/etc/wazuh-manager/export/credentials.env` on the VM and masks them in the log.
 
 The step runs with `continue-on-error: true` so the results are reported and cleanup always proceeds regardless of test outcome; the last step of the job fails it when the main or the uninstall tests failed.
 
