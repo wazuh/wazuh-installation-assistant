@@ -140,12 +140,19 @@ class TestEnvSet:
         assert env.read_text() == "A_KEY=Aa1.value-one\n"
         assert oct(env.stat().st_mode & 0o777) == "0o600"
 
-    def test_replaces_a_key_and_keeps_the_others(self, tmp_path):
+    def test_replaces_a_key_in_its_line_and_keeps_the_others(self, tmp_path):
         env = tmp_path / "local.env"
-        env.write_text("A_KEY=old\nB_KEY=other\n")
-        result = run_bash_function([LIB], f'common_envSet "{env}" A_KEY new', mock_funcs=ROOT_MOCKS)
+        env.write_text("A_KEY=old\nB_KEY=other\nC_KEY=last\n")
+        result = run_bash_function([LIB], f'common_envSet "{env}" B_KEY "New.Value-1=x"', mock_funcs=ROOT_MOCKS)
         assert_success(result)
-        assert env.read_text() == "B_KEY=other\nA_KEY=new\n"
+        assert env.read_text() == "A_KEY=old\nB_KEY=New.Value-1=x\nC_KEY=last\n"
+
+    def test_adds_a_new_key_at_the_end(self, tmp_path):
+        env = tmp_path / "local.env"
+        env.write_text("A_KEY=old\n")
+        result = run_bash_function([LIB], f'common_envSet "{env}" B_KEY new', mock_funcs=ROOT_MOCKS)
+        assert_success(result)
+        assert env.read_text() == "A_KEY=old\nB_KEY=new\n"
 
     def test_refuses_a_link(self, tmp_path):
         target = tmp_path / "target.env"

@@ -52,6 +52,7 @@ function manager_configure(){
     eval "chown root:wazuh-manager ${manager_cert_path} ${manager_cert_path}/*.pem ${debug}"
     eval "chmod 750 ${manager_cert_path} ${debug}"
     eval "chmod 640 ${manager_cert_path}/*.pem ${debug}"
+    common_logger -d "Running the Wazuh manager credentials resolver again now that ${manager_cert_path} belongs to wazuh-manager."
     eval "${manager_resolver} --upgrade -H /var/wazuh-manager ${debug}"
 
     for i in "${!indexer_node_ips[@]}"; do

@@ -197,7 +197,8 @@ function cert_checkRootCA() {
     if [ "${mode}" == "create" ]; then
         cert_generateRootCAcertificate
     else
-        if ! cert_ca_dir=$(common_caGetDir); then
+        if ! cert_ca_dir=$(common_caGetDir 2>/dev/null); then
+            common_logger -e "WAZUH_CA_DIR must be an absolute path."
             cert_cleanFiles
             exit 1
         fi
@@ -792,7 +793,8 @@ function cert_generateRootCAcertificate() {
 
     local ca_error
 
-    if ! cert_ca_dir=$(common_caGetDir); then
+    if ! cert_ca_dir=$(common_caGetDir 2>/dev/null); then
+        common_logger -e "WAZUH_CA_DIR must be an absolute path."
         cert_cleanFiles
         exit 1
     fi

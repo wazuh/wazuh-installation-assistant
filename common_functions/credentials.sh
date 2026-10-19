@@ -33,8 +33,9 @@ function common_envGet() {
 
 }
 
-# Adds or replaces a key in an env file. The file is written as root:root 0600
-# through a temporary file in the same directory, so it is never left half written.
+# Replaces a key in an env file, in the same line, or adds it at the end. The file is
+# written as root:root 0600 through a temporary file in the same directory, so it is
+# never left half written.
 function common_envSet() {
 
     local file="${1}" key="${2}" value="${3}" tmp
@@ -46,10 +47,15 @@ function common_envSet() {
     if ! tmp=$(mktemp "${file}.XXXXXX"); then
         return 1
     fi
-    if [ -f "${file}" ]; then
-        grep -vE "^[[:space:]]*${key}[[:space:]]*=" "${file}" > "${tmp}"
+    if [ -f "${file}" ] && grep -qE "^[[:space:]]*${key}[[:space:]]*=" "${file}"; then
+        KEY="${key}" VALUE="${value}" awk '
+            $0 ~ "^[[:space:]]*" ENVIRON["KEY"] "[[:space:]]*=" { if (!done) print ENVIRON["KEY"] "=" ENVIRON["VALUE"]; done = 1; next }
+            { print }
+        ' "${file}" > "${tmp}"
+    else
+        [ -f "${file}" ] && cat "${file}" > "${tmp}"
+        printf '%s=%s\n' "${key}" "${value}" >> "${tmp}"
     fi
-    printf '%s=%s\n' "${key}" "${value}" >> "${tmp}"
     if ! chown root:root "${tmp}" || ! chmod 600 "${tmp}" || ! mv -f "${tmp}" "${file}"; then
         rm -f "${tmp}"
         return 1

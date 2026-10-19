@@ -265,19 +265,26 @@ class TestPasswordsGetEnvKey:
 class TestPasswordsSaveCredential:
     """Tests for passwords_saveCredential.
 
-    A new password is written in every credential file of the host that holds the
-    user: the export/credentials.env of the owner and the local.env of each package
-    that uses it. A generated password must be saved in at least one of them.
+    A new password is written in every credential file of the host that already
+    holds the key: the export/credentials.env of the owner and the local.env of each
+    package that uses it. A generated password must be saved in at least one of them.
     """
 
-    def _run(self, tmp_path, generated, files, set_status=0, user="admin"):
-        for name in files:
+    KEYS = {
+        "admin": "WAZUH_INDEXER_ADMIN_PASSWORD",
+        "kibanaserver": "WAZUH_INDEXER_KIBANASERVER_PASSWORD",
+        "wazuh-internal-client": "WAZUH_MANAGER_WUI_PASSWORD",
+    }
+
+    def _run(self, tmp_path, generated, files, set_status=0, user="admin", without_key=()):
+        for name in [*files, *without_key]:
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("")
+            path.write_text("OTHER_KEY=x\n" if name in without_key else f"{self.KEYS[user]}=Old.Password1\n")
         mocks = {
             "common_logger": 'echo "LOG:$*"',
             "common_envSet": f'echo "SET:$1:$2"; return {set_status}',
+            "stat": "echo 0",
         }
         env = {
             "indexer_config_path": str(tmp_path / "indexer"),
@@ -306,6 +313,13 @@ class TestPasswordsSaveCredential:
             f"{tmp_path}/indexer/local.env",
             f"{tmp_path}/dashboard/local.env",
         ]
+
+    def test_a_file_without_the_key_is_not_changed(self, tmp_path):
+        """A manager local.env with only the SANs does not get the API passwords."""
+        result = self._run(tmp_path, "1", ["manager/export/credentials.env"], user="wazuh-internal-client",
+                           without_key=["manager/local.env"])
+        assert f"SET:{tmp_path}/manager/export/credentials.env:WAZUH_MANAGER_WUI_PASSWORD" in result.stdout
+        assert "manager/local.env" not in result.stdout
 
     def test_supplied_password_never_creates_a_file(self, tmp_path):
         result = self._run(tmp_path, "", [])

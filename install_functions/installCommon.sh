@@ -92,7 +92,8 @@ function installCommon_createPasswords() {
     local key value ca_dir
 
     common_logger -d "Generating the Wazuh passwords."
-    if ! ca_dir=$(common_caGetDir); then
+    if ! ca_dir=$(common_caGetDir 2>/dev/null); then
+        common_logger -e "WAZUH_CA_DIR must be an absolute path."
         exit 1
     fi
     for key in "${credential_keys[@]}"; do
@@ -713,7 +714,7 @@ function installCommon_printStartProblems() {
     esac
 
     if [ -n "$(command -v journalctl)" ]; then
-        eval "journalctl -u ${service} --no-pager >> ${logfile} 2>&1"
+        eval "journalctl -u ${service} --since '${start_time}' --no-pager >> ${logfile} 2>&1"
         problems=$(journalctl -u "${service}" --since "${start_time}" --no-pager -o cat 2>/dev/null)
     fi
     problems=$(sed -E 's/^resolve-credentials: //' <<< "${problems}" | grep -E '^(MISSING|INVALID|UNSAFE) ')

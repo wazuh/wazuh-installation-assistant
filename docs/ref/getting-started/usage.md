@@ -238,7 +238,7 @@ The root CA lives in the `wazuh-ca` directory next to the tool, or in the direct
 
 - `root-ca.pem` (mode `0644`) is copied to the `wazuh-certificates` directory with the new certificates.
 - `root-ca.key` (mode `0400`) stays in the CA directory. It is never copied to the `wazuh-certificates` directory, so it does not travel to the other nodes.
-- `credentials.env` holds the passwords that `--generate-config-files` creates. Running `--generate-config-files` again reuses the same root CA and passwords.
+- `credentials.env` holds the passwords that `--generate-config-files` creates. Running `--generate-config-files` again reuses the same root CA and passwords. The passwords tool runs on the nodes and does not change this file: after you change a password, write the new value in `credentials.env` too before you run `--generate-config-files` to add nodes, or the new nodes get the old password.
 
 The tool must be run as root. An existing root CA is validated and reused, never replaced. To use a root CA created elsewhere, place `root-ca.pem` and `root-ca.key` in a `root:root` directory with mode `0700`, with the modes above, and point `WAZUH_CA_DIR` at it:
 
@@ -638,7 +638,13 @@ echo '<WAZUH_MANAGER_PASSWORD>' | /var/wazuh-manager/bin/wazuh-manager-keystore 
 systemctl restart wazuh-manager
 ```
 
-Where `<WAZUH_MANAGER_PASSWORD>` is the `WAZUH_INDEXER_MANAGER_PASSWORD` value. Until the keystore is updated and the service restarted, the Wazuh manager logs `Unauthorized - Check indexer credentials`. After the restart it logs `The indexer is reachable`:
+Where `<WAZUH_MANAGER_PASSWORD>` is the `WAZUH_INDEXER_MANAGER_PASSWORD` value. If the node has `/etc/wazuh-manager/local.env` with this key, update it too, so it does not keep the old value:
+
+```bash
+sed -i 's|^WAZUH_INDEXER_MANAGER_PASSWORD=.*|WAZUH_INDEXER_MANAGER_PASSWORD=<WAZUH_MANAGER_PASSWORD>|' /etc/wazuh-manager/local.env
+```
+
+Until the keystore is updated and the service restarted, the Wazuh manager logs `Unauthorized - Check indexer credentials`. After the restart it logs `The indexer is reachable`:
 
 ```bash
 grep 'indexer is reachable' /var/wazuh-manager/logs/wazuh-manager.log | tail -1
@@ -657,6 +663,13 @@ systemctl restart wazuh-dashboard
 ```
 
 Only write the entry of the user that changed. After `-a`, write both and restart once.
+
+If the node has `/etc/wazuh-dashboard/local.env`, update the same key there too, so it does not keep the old value:
+
+```bash
+sed -i 's|^WAZUH_INDEXER_KIBANASERVER_PASSWORD=.*|WAZUH_INDEXER_KIBANASERVER_PASSWORD=<KIBANASERVER_PASSWORD>|' /etc/wazuh-dashboard/local.env
+sed -i 's|^WAZUH_MANAGER_WUI_PASSWORD=.*|WAZUH_MANAGER_WUI_PASSWORD=<WAZUH_WUI_PASSWORD>|' /etc/wazuh-dashboard/local.env
+```
 
 > [!NOTE]
 > The Wazuh dashboard login does not show a wrong `kibanaserver` password: it sends the credentials of the user who logs in to the Wazuh indexer. The Wazuh dashboard server itself uses `kibanaserver`, so check its state instead. It is `red` (`Unable to retrieve version information from OpenSearch nodes`) until `opensearch.password` is updated:

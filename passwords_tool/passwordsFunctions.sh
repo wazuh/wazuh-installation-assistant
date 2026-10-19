@@ -697,9 +697,9 @@ function passwords_getCredentialFiles() {
 
 }
 
-# Records a new password in the credential files of this host that already exist, so
-# they never hold an old one. A generated password must be saved in at least one of
-# them, because it is not shown anywhere else.
+# Records a new password in the credential files of this host that already hold the
+# key, so they never keep an old one. A generated password must be saved in at least
+# one of them, because it is not shown anywhere else.
 function passwords_saveCredential() {
 
     local user="${1}"
@@ -713,7 +713,7 @@ function passwords_saveCredential() {
     fi
 
     for file in $(passwords_getCredentialFiles "${key}"); do
-        [ -f "${file}" ] || continue
+        common_envGet "${file}" "${key}" > /dev/null 2>&1 || continue
         if ! common_envSet "${file}" "${key}" "${new_password}"; then
             common_logger -e "The new password of user ${user} was applied, but it could not be saved in ${file}. Run the tool again for this user with -p to set a password you know."
             save_failed=1
