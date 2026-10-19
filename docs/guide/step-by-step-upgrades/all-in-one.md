@@ -203,7 +203,7 @@ BACKUP_DIR="/backup/wazuh-manager-$(date +%Y%m%d-%H%M%S)"
 mkdir -p $BACKUP_DIR/db
 
 # Backup configuration and database
-tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
+tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /etc wazuh-manager/
 sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'"
 
 # Verify backup integrity

@@ -1,5 +1,5 @@
 # Wazuh installer - dashboard.sh functions.
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -9,11 +9,6 @@
 function dashboard_configure() {
 
     common_logger -d "Configuring Wazuh dashboard."
-
-    # The package keeps a pair placed before it was installed as it is, and the service runs
-    # as wazuh-dashboard, which did not exist yet when the pair and its directory were placed.
-    eval "chown -R wazuh-dashboard:wazuh-dashboard ${dashboard_cert_path} ${debug}"
-    eval "chmod 500 ${dashboard_cert_path} ${debug}"
 
     # dashboard configuration to connect to the indexer cluster
     if [ "${#indexer_node_names[@]}" -eq 1 ]; then
@@ -47,16 +42,17 @@ function dashboard_configure() {
 
 }
 
-# Places the pair of this node from the tar before the package is installed, with the
-# names the package expects. The package uses it instead of issuing its own.
+# Places the pair of this node and the CAs of the indexer and the manager (both the
+# deployment CA) from the tar before the package is installed. The package uses them
+# instead of issuing or importing its own and sets their owner and mode.
 function dashboard_copyCertificates() {
 
     common_logger -d "Placing the Wazuh dashboard certificates."
-    # The installer umask would leave the directory without the search bit; the package
-    # sets its owner.
-    eval "(umask 022 && mkdir -p ${dashboard_cert_path}) ${debug}"
-    installCommon_placeFromTar "${dashname}.pem" "${dashboard_cert_path}/dashboard.pem" root root 0400
-    installCommon_placeFromTar "${dashname}-key.pem" "${dashboard_cert_path}/dashboard-key.pem" root root 0400
+    eval "install -d -o root -g root -m 0750 ${dashboard_config_path} ${dashboard_cert_path} ${debug}"
+    installCommon_placeFromTar "${dashname}.pem" "${dashboard_cert_path}/dashboard.pem" root root 0640
+    installCommon_placeFromTar "${dashname}-key.pem" "${dashboard_cert_path}/dashboard-key.pem" root root 0640
+    installCommon_placeFromTar "root-ca.pem" "${dashboard_cert_path}/indexer-ca.pem" root root 0640
+    installCommon_placeFromTar "root-ca.pem" "${dashboard_cert_path}/manager-ca.pem" root root 0640
 
 }
 
@@ -128,9 +124,10 @@ function dashboard_initialize() {
     fi
 
     # A distributed dashboard node only receives its own passwords, not the admin one.
-    local password_source="the credentials file"
-    local credentials_file="/etc/wazuh/credentials.env"
-    local password_command="sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-"
+    local indexer_export="${indexer_config_path}/export/credentials.env"
+    local password_source="${indexer_export}"
+    local credentials_file="${indexer_export} and ${manager_config_path}/export/credentials.env"
+    local password_command="sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' ${indexer_export} | cut -d= -f2-"
     if [ -z "${AIO}" ]; then
         password_source="${tar_file_name}"
         credentials_file="wazuh-install-files/credentials.env of ${tar_file_name}"
@@ -148,14 +145,14 @@ function dashboard_initialize() {
     done
     common_logger "    User: admin (Wazuh dashboard login and Wazuh indexer administrator)"
     local admin_password
-    if [ -n "${AIO}" ] && dashboard_stdoutIsTerminal && admin_password=$(wazuh_env_get WAZUH_INDEXER_ADMIN_PASSWORD 2>/dev/null) && [ -n "${admin_password}" ]; then
+    if [ -n "${AIO}" ] && dashboard_stdoutIsTerminal && admin_password=$(common_envGet "${indexer_export}" WAZUH_INDEXER_ADMIN_PASSWORD 2>/dev/null) && [ -n "${admin_password}" ]; then
         common_logger -nl "    Password: ${admin_password}"
         common_logger "    To read the password again, run:"
     else
         common_logger "    Password: to read it from ${password_source}, run:"
     fi
     common_logger "        ${password_command}"
-    common_logger "The other users of the deployment are listed at the top of ${credentials_file}."
+    common_logger "The passwords of the other users are in ${credentials_file}."
 
 }
 

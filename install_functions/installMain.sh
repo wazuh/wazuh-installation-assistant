@@ -1,5 +1,5 @@
 # Wazuh installer - main functions
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -374,7 +374,7 @@ function main() {
 
     if [ -n "${indexer}" ]; then
         common_logger "--- Wazuh indexer ---"
-        installCommon_placeCredentials "${indexer_credential_keys[@]}"
+        installCommon_placeLocalEnv "${indexer_config_path}" "${indexer_credential_keys[@]}"
         indexer_copyCertificates
         indexer_install
         indexer_configure
@@ -393,7 +393,7 @@ function main() {
 
     if [ -n "${dashboard}" ]; then
         common_logger "--- Wazuh dashboard ----"
-        installCommon_placeCredentials "${dashboard_credential_keys[@]}"
+        installCommon_placeLocalEnv "${dashboard_config_path}" "${dashboard_credential_keys[@]}"
         dashboard_copyCertificates
         dashboard_install
         dashboard_configure
@@ -407,7 +407,7 @@ function main() {
 
     if [ -n "${wazuh}" ]; then
         common_logger "--- Wazuh manager ---"
-        installCommon_placeCredentials "${manager_credential_keys[@]}"
+        installCommon_placeLocalEnv "${manager_config_path}" "${manager_credential_keys[@]}"
         manager_copyCertificates
         manager_install
         manager_configure

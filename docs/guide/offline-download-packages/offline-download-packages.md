@@ -114,6 +114,8 @@ Run the following command in order to create the certificates using the installa
 ./wazuh-install-5.0.0.sh -g
 ```
 
+The root CA, its private key and the passwords stay on this host, in the `wazuh-ca` directory next to the script. Back it up: you need it to add nodes or renew certificates later.
+
 If agents will connect to a Wazuh manager through a different address, such as a public IP, a NAT address, or a load balancer, add it with `-as|--agent-san <address>`. See [Name the address agents dial](../../ref/getting-started/usage.md#name-the-address-agents-dial).
 
 ```bash

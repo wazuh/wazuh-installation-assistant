@@ -50,7 +50,7 @@ For DNS-based or mixed address configurations, see [Other `config.yml` examples]
 | `-wm`, `--wazuh-manager-certificates` | Creates the Wazuh manager certificates. Each manager node also gets `<name>-remoted.pem` and `<name>-remoted-key.pem`, the certificate of the agent listener, and `<name>-apid.pem` and `<name>-apid-key.pem`, the certificate of the Server API. |
 | `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Uses this directory to create the certificates, instead of a new one with a random name in `/tmp`. The directory must not exist, or must be an empty directory owned by root. Symbolic links are not allowed. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb |
 
-The tool must be run as root. The root CA is read from `/etc/wazuh/ca`, or from the directory set in `WAZUH_CA_DIR`. Its private key, `root-ca.key`, stays there and is never copied to the `wazuh-certificates` directory. See [Root CA](../getting-started/usage.md#root-ca).
+The tool must be run as root. The root CA is read from the `wazuh-ca` directory next to the tool, or from the directory set in `WAZUH_CA_DIR` (absolute path). Its private key, `root-ca.key`, stays there and is never copied to the `wazuh-certificates` directory. See [Root CA](../getting-started/usage.md#root-ca).
 
 ## Wazuh password tool
 
@@ -60,11 +60,21 @@ The `wazuh-passwords-tool-5.0.0.sh` script provides the following options for ma
 
 | Options | Purpose |
 | --------- | --------- |
-| `-a\|--change-all` | Changes the passwords of all the Wazuh indexer and Wazuh server API users installed on the host. The new passwords are generated and saved in `/etc/wazuh/credentials.env`. |
-| `-u\|--user <USER>` | Indicates the name of the user whose password will be changed: a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh server API user (`wazuh`, `wazuh-internal-client`). If `-p\|--password` is not used, a random password is generated and saved in `/etc/wazuh/credentials.env`. |
+| `-a\|--change-all` | Changes the passwords of all the Wazuh indexer and Wazuh server API users installed on the host. The new passwords are generated and saved in the credential files of the host. See [Where the new passwords are saved](#where-the-new-passwords-are-saved). |
+| `-u\|--user <USER>` | Indicates the name of the user whose password will be changed: a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh server API user (`wazuh`, `wazuh-internal-client`). If `-p\|--password` is not used, a random password is generated. The new password is saved in the credential files of the host. |
 | `-p\|--password` | Reads the new password from the standard input. Takes no value. Must be used with option `-u\|--user <USER>`. For example: `printf '%s\n' "$NEW_PASSWORD" \| sudo bash wazuh-passwords-tool-5.0.0.sh -u admin -p`. |
 | `-v\|--verbose` | Shows the complete script execution output. |
 | `-h\|--help` | Shows help. |
+
+### Where the new passwords are saved
+
+A new password is saved in every credential file on the host that holds that user:
+
+- The `export/credentials.env` file of the package that owns the user: `/etc/wazuh-indexer/export/credentials.env` for the indexer users, and `/etc/wazuh-manager/export/credentials.env` for the API users `wazuh` and `wazuh-internal-client`.
+- The `local.env` file of each package that uses the password: `/etc/wazuh-indexer/local.env`, `/etc/wazuh-manager/local.env` and `/etc/wazuh-dashboard/local.env`.
+- The `credentials.env` file that `--generate-config-files` keeps next to the root CA: `wazuh-ca/credentials.env` next to the tool, or in `WAZUH_CA_DIR`.
+
+The tool only updates the files that already hold the key. If there is none, a generated password is an error, and a password given with `-p` is not saved.
 
 ### The address agents dial
 
