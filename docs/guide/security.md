@@ -8,7 +8,7 @@ All communication between Wazuh components (Indexer, Manager, and Dashboard) is 
 
 For DNS-based or mixed address configurations in `config.yml`, see [Other `config.yml` examples](../ref/configuration/configuration-files.md#other-configyml-examples).
 
-The installation bundle (`wazuh-install-files.tar`) is created once with `wazuh-install-5.0.0.sh --generate-config-files` on the first Wazuh indexer node and then distributed to each node. It contains:
+The installation bundle (`wazuh-install-files.tar`) is created once with `wazuh-install-5.0.0.sh --generate-config-files`, on any host, and then distributed to each node. That host keeps the root CA and its private key in `wazuh-ca/`, next to the script. It contains:
 
 - The root CA certificate (`root-ca.pem`)
 - The passwords of the Wazuh users (`credentials.env`). Before a package is installed, the node writes in the `local.env` file of that package only the passwords it uses: `WAZUH_INDEXER_ADMIN_PASSWORD`, `WAZUH_INDEXER_KIBANASERVER_PASSWORD` and `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh-indexer/local.env`, `WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD` and `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh-manager/local.env`, and `WAZUH_INDEXER_KIBANASERVER_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD` in `/etc/wazuh-dashboard/local.env`. The `wazuh-ca` directory of the node where the bundle was generated keeps all of them

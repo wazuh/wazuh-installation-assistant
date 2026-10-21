@@ -16,7 +16,7 @@ A host that runs several components, such as an all-in-one installation, needs t
 
 The disk space of the Wazuh indexer depends on the events per second (EPS) of the monitored endpoints. To store 90 days of events, estimate 3.7 GB per server (0.25 EPS), 1.5 GB per workstation (0.1 EPS) and 7.4 GB per network device (0.5 EPS). The disk space of the Wazuh manager depends on the alert rate and the retention period.
 
-The recommended operating systems for Wazuh 5.x are Amazon Linux 2023, Ubuntu 22.04 and 24.04, and Red Hat Enterprise Linux 9 and 10.
+The recommended operating systems for Wazuh 5.x are Amazon Linux 2023, Ubuntu 24.04 and 26.04, and Red Hat Enterprise Linux 9 and 10.
 
 ## Required ports
 

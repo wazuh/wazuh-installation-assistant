@@ -9,6 +9,8 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | Option | Description |
 | -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
+| `-as`, `--agent-san <ip\|dns>` | Adds an extra address to the subject alternative name of the agent listener certificate of every Wazuh manager node. Repeat it for more than one. Must be used along with `-a` or `-g`. See [Name the address agents dial](#name-the-address-agents-dial). |
+| `-ap`, `--api-san <ip\|dns>` | Adds an extra address to the subject alternative name of the Server API certificate of every Wazuh manager node. Repeat it for more than one. Must be used along with `-a` or `-g`. See [Name the address API clients dial](#name-the-address-api-clients-dial). |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.0.0.sh. See [Use development packages](#use-development-packages). |
 | `--skip-signature-check` | Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with `-d`. See [Use development packages](#use-development-packages). |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
@@ -114,7 +116,7 @@ See the [Installation Assistant Installation](../installation/installation-assis
     sudo bash wazuh-install-5.0.0.sh -dw <TYPE> -da <ARCH>
     ```
 
-    Where `<TYPE>` is the Linux distribution of the offline system (`deb` or `rpm`) and `<ARCH>` is the architecture of the offline system (`x86_64` or `arm64`).
+    Where `<TYPE>` is the Linux distribution of the offline system (`deb` or `rpm`) and `<ARCH>` is the architecture of the offline system: `amd64` or `arm64` for `deb`, `x86_64` or `aarch64` for `rpm`. Other combinations are rejected.
 
     This command will generate the `wazuh-offline.tar.gz` file which contains all the packages necessary to install Wazuh on the offline system.
 
@@ -128,9 +130,9 @@ See the [Installation Assistant Installation](../installation/installation-assis
     sudo bash wazuh-install-5.0.0.sh -g
     ```
 
-    This command will generate the `wazuh-install-files.tar` file which contains the necessary certificates for offline installation.
+    This command will generate the `wazuh-install-files.tar` file which contains the necessary certificates for offline installation. An all-in-one installation does not need it: the Wazuh packages create the root CA, the certificates and the passwords on the host.
 
-3. Transfer all files (`wazuh-offline.tar.gz`, `wazuh-install-files.tar` and `wazuh-install-5.0.0.sh`) to the offline system where you want to install Wazuh using your preferred method (USB, SCP, etc).
+3. Transfer all files (`wazuh-offline.tar.gz`, `wazuh-install-files.tar` for a distributed deployment, and `wazuh-install-5.0.0.sh`) to the offline system where you want to install Wazuh using your preferred method (USB, SCP, etc).
 
 #### Perform the offline installation
 
@@ -146,9 +148,9 @@ sudo bash wazuh-install-5.0.0.sh -a -of
 If you want to install a specific Wazuh component, the command would be similar to the following (depending on the component you are going to install):
 
 ```bash
-sudo bash wazuh-install-5.0.0.sh --wazuh-manager --offline-installation
+sudo bash wazuh-install-5.0.0.sh --wazuh-manager <MANAGER_NODE_NAME> --offline-installation
 # or use the short form
-sudo bash wazuh-install-5.0.0.sh -wm -of
+sudo bash wazuh-install-5.0.0.sh -wm <MANAGER_NODE_NAME> -of
 ```
 
 ### Use development packages in the installation

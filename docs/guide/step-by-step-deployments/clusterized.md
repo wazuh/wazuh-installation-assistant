@@ -324,7 +324,7 @@ tar -xf wazuh-certificates.tar -C wazuh-certificates
     ```
 
 > [!NOTE]
-> For Wazuh indexer installation on hardened endpoints with `noexec` flag on the `/tmp` directory, additional setup is required. See the Wazuh indexer configuration on hardened endpoints section for necessary configuration.
+> On hardened endpoints with the `noexec` flag on the `/tmp` directory, the Wazuh indexer needs no additional setup: the package sets `OPENSEARCH_TMPDIR=/var/lib/wazuh-indexer/tmp` in `/etc/sysconfig/wazuh-indexer` (RPM) or `/etc/default/wazuh-indexer` (DEB), so the service does not use `/tmp`. That directory must allow execution.
 
 ### Configuring the Wazuh indexer
 
@@ -711,7 +711,7 @@ Install the following packages, if missing.
 #### APT
 
 ```bash
-apt install tar curl libcap2-bin openssl
+apt install tar curl libcap2-bin openssl diffutils
 ```
 
 #### YUM
