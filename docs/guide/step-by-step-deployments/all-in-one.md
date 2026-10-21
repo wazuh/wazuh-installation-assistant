@@ -23,7 +23,7 @@ Follow these steps to install and configure a single-node Wazuh indexer.
 
 ### Installing package dependencies
 
-Install the following packages, if missing.
+Install the following packages, if missing. These are the lists the Wazuh installation assistant installs for each component: they include what the assistant itself uses to place the files, such as `cmp` from `diffutils`.
 
 #### APT
 
@@ -289,6 +289,8 @@ echo 'WAZUH_MANAGER_REMOTED_CERT_SANS=IP:<HOST_IP_ADDRESS>,IP:203.0.113.10,DNS:w
 
 The package also issues the certificate of the Server API, `apid.pem`, for the addresses it finds on the host plus `localhost`, `127.0.0.1` and `::1`. To add an address API clients dial, add `WAZUH_MANAGER_APID_CERT_SANS` to the same file, for example `WAZUH_MANAGER_APID_CERT_SANS=IP:<HOST_IP_ADDRESS>,DNS:api.example.com`. It is independent from `WAZUH_MANAGER_REMOTED_CERT_SANS`.
 
+The Wazuh indexer and the Wazuh dashboard packages work the same way with `WAZUH_INDEXER_CERT_SANS` in `/etc/wazuh-indexer/local.env` and `WAZUH_DASHBOARD_CERT_SANS` in `/etc/wazuh-dashboard/local.env`, set before installing each package. Without it, the Wazuh dashboard certificate names the host name, its FQDN and the addresses of the default-route interfaces, so set `WAZUH_DASHBOARD_CERT_SANS` when browsers reach it by another name or address. Each list replaces the addresses the package finds, so include those too.
+
 ### Installing Wazuh manager
 
 #### APT
@@ -363,7 +365,7 @@ yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
 
 ### Configuring the Wazuh manager
 
-There is nothing to configure. The package connects the Wazuh manager to the Wazuh indexer on `127.0.0.1`, with the certificates it issued and the password of its Wazuh indexer user, which it stored in its keystore.
+There is nothing to configure. The package connects the Wazuh manager to the Wazuh indexer on `127.0.0.1`. It imports the indexer CA and the client pair the Wazuh indexer issued for it from `/etc/wazuh-indexer/export/` (`ca.pem` and `manager-client.pem` with its key), and stores the password of its Wazuh indexer user in its keystore.
 
 ### Starting the Wazuh manager service
 
@@ -388,12 +390,12 @@ Follow these steps to install the Wazuh dashboard.
 
 ### Installing package dependencies
 
-Install the following packages, if missing.
+Install the following packages, if missing. These are the lists the Wazuh installation assistant installs for each component: they include what the assistant itself uses to place the files, such as `cmp` from `diffutils`.
 
 #### APT
 
 ```bash
-apt install tar curl libcap2-bin openssl
+apt install tar curl libcap2-bin openssl diffutils
 ```
 
 #### YUM

@@ -113,7 +113,7 @@ For DNS-based or mixed address configurations, see [Other `config.yml` examples]
 Run the following command in order to create the certificates using the installation assistant script.
 
 ```bash
-./wazuh-install-5.0.0.sh -g
+sudo bash wazuh-install-5.0.0.sh -g
 ```
 
 The root CA, its private key and the passwords stay on this host, in the `wazuh-ca` directory next to the script. Back it up: you need it to add nodes or renew certificates later.
@@ -121,7 +121,7 @@ The root CA, its private key and the passwords stay on this host, in the `wazuh-
 If agents will connect to a Wazuh manager through a different address, such as a public IP, a NAT address, or a load balancer, add it with `-as|--agent-san <address>`. See [Name the address agents dial](../../ref/getting-started/usage.md#name-the-address-agents-dial).
 
 ```bash
-./wazuh-install-5.0.0.sh -g -as <address>
+sudo bash wazuh-install-5.0.0.sh -g -as <address>
 ```
 
 ### 6. Copy the necessary files to the final host

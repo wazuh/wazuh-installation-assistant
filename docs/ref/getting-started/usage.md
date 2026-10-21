@@ -93,7 +93,7 @@ The steps to perform the installation are as follows:
 
 ### Change the default passwords
 
-A freshly completed installation has no default passwords: the passwords of the Wazuh indexer and Wazuh server API users are generated during the installation and saved in `/etc/wazuh-indexer/export/credentials.env` and `/etc/wazuh-manager/export/credentials.env`. To rotate them, for example if one of these files was exposed, the recommended procedure is to change all the passwords in a single command using the `--change-all` option of the passwords tool. See the [Change all default passwords](#change-all-default-passwords) section for details.
+A freshly completed installation has no default passwords: the passwords of the Wazuh indexer and Wazuh server API users are generated during the installation and saved in `/etc/wazuh-indexer/export/credentials.env` and, on the Wazuh manager master node, `/etc/wazuh-manager/export/credentials.env`. To rotate them, for example if one of these files was exposed, the recommended procedure is to change all the passwords in a single command using the `--change-all` option of the passwords tool. See the [Change all default passwords](#change-all-default-passwords) section for details.
 
 This same command also rotates the Wazuh server API users (`wazuh` and `wazuh-internal-client`) on the host where the Wazuh manager is installed, so there is no need to change them separately. The new passwords are saved in the credential files of the host, never printed. See [Where the passwords are saved](#where-the-passwords-are-saved).
 
@@ -240,7 +240,7 @@ The root CA lives in the `wazuh-ca` directory next to the tool, or in the direct
 
 - `root-ca.pem` (mode `0644`) is copied to the `wazuh-certificates` directory with the new certificates.
 - `root-ca.key` (mode `0400`) stays in the CA directory. It is never copied to the `wazuh-certificates` directory, so it does not travel to the other nodes.
-- `credentials.env` holds the passwords that `--generate-config-files` creates. Running `--generate-config-files` again reuses the same root CA and passwords. The passwords tool also updates this file when it runs on the same host, from the same directory as the CA (or with `WAZUH_CA_DIR` set). If you change a password on another host, write the new value in `credentials.env` too before you run `--generate-config-files` to add nodes, or the new nodes get the old password.
+- `credentials.env` holds the passwords that `--generate-config-files` creates. Running `--generate-config-files` again reuses the same root CA and passwords, but generates a new cluster key, so it is only valid to add Wazuh indexer or Wazuh dashboard nodes, not Wazuh manager nodes (see [Add a Wazuh manager node to an existing deployment](#add-a-wazuh-manager-node-to-an-existing-deployment)). It also stops while `wazuh-install-files.tar` is in the directory of the script. The passwords tool also updates this file when it runs on the same host, from the same directory as the CA (or with `WAZUH_CA_DIR` set). If you change a password on another host, write the new value in `credentials.env` too before you run `--generate-config-files` to add nodes, or the new nodes get the old password.
 
 The tool must be run as root. An existing root CA is validated and reused, never replaced. To use a root CA created elsewhere, place `root-ca.pem` and `root-ca.key` in a `root:root` directory with mode `0700`, with the modes above, and point `WAZUH_CA_DIR` at it:
 
@@ -391,7 +391,7 @@ sudo bash wazuh-install-5.0.0.sh -a --agent-san wazuh.example.com
 
 Each Wazuh manager node also gets the certificate of the Server API, `<node>-apid.pem` and
 `<node>-apid-key.pem`, deployed as `/etc/wazuh-manager/certs/apid.pem` and
-`apid-key.pem`. The Wazuh manager does not self-sign it: without this pair the Server API
+`apid-key.pem`. The Wazuh manager does not self-sign it: without this pair the Wazuh manager
 does not start. It has the same profile as the agent listener certificate, the leaf followed
 by the CA, and its own subject alternative name: the `ip` and `dns` entries of the node,
 `localhost`, `127.0.0.1` and `::1`. The `--agent-san` addresses are not added to it.
@@ -433,7 +433,7 @@ All these certificates will be generated in the `wazuh-certificates` directory w
 
 To renew the certificates of a deployment, run the certs tool again on the node that holds the root CA and copy the new certificates to each node.
 
-1. Go to the node that holds `root-ca.key`. In a deployment installed with the Wazuh installation assistant, it is the node where `--generate-config-files` was run, in the `wazuh-ca` directory next to `wazuh-install-5.0.0.sh`. In a step-by-step deployment, it is `/etc/wazuh-indexer/ca` of the first Wazuh indexer node. The tool must run as root, in a directory with the `config.yml` of the deployment, which is also inside `wazuh-install-files.tar`. Set `CA_DIR` to the directory of the root CA:
+1. Go to the node that holds `root-ca.key`. In a deployment installed with the Wazuh installation assistant, it is the node where `--generate-config-files` was run, in the `wazuh-ca` directory next to `wazuh-install-5.0.0.sh`. In a step-by-step deployment, it is `/etc/wazuh-indexer/ca` of the first Wazuh indexer node. The tool must run as root, in a directory with the `config.yml` of the deployment, which is also inside `wazuh-install-files.tar`. A step-by-step deployment has no `wazuh-install-files.tar`: use the tool and the `config.yml` template shipped in the Wazuh indexer package, `/usr/share/wazuh-indexer/tools/wazuh-certs-tool.sh` and `/usr/share/wazuh-indexer/tools/config.yml`, and fill in the nodes of the deployment. Set `CA_DIR` to the directory of the root CA:
 
     ```bash
     CA_DIR=/path/to/wazuh-ca
@@ -616,6 +616,9 @@ sudo ./wazuh-passwords-tool-5.0.0.sh -a
 The command output will be similar to the following:
 
 ```bash
+INFO: Updating the internal users.
+INFO: A backup of the internal users has been saved in the /etc/wazuh-indexer/internalusers-backup folder.
+INFO: The passwords of the Wazuh indexer users were changed.
 INFO: The new password of user admin was saved as WAZUH_INDEXER_ADMIN_PASSWORD in: /etc/wazuh-indexer/export/credentials.env.
 INFO: The new password of user kibanaserver was saved as WAZUH_INDEXER_KIBANASERVER_PASSWORD in: /etc/wazuh-indexer/export/credentials.env.
 INFO: The new password of user wazuh-manager was saved as WAZUH_INDEXER_MANAGER_PASSWORD in: /etc/wazuh-indexer/export/credentials.env.
@@ -652,10 +655,13 @@ Run the tool on the node given below for each user, then update the nodes of the
 | `admin` | a Wazuh indexer node (it needs the admin certificate) | nothing | nothing |
 | `kibanaserver` | a Wazuh indexer node | Wazuh dashboard: keystore entry `opensearch.password` | `wazuh-dashboard` |
 | `wazuh-manager` | a Wazuh indexer node | Wazuh manager (master and workers): keystore `-f indexer -k password` | `wazuh-manager` |
-| `wazuh` | the Wazuh manager master node | nothing | nothing |
+| `wazuh` | the Wazuh manager master node | nothing (see the note below on promoted nodes) | nothing |
 | `wazuh-internal-client` | the Wazuh manager master node | Wazuh dashboard: keystore entry `wazuh_core.hosts.default.password` | `wazuh-dashboard` |
 
 The Wazuh dashboard steps are needed even with a single Wazuh dashboard, when it is not on the node where the tool runs.
+
+> [!NOTE]
+> The Wazuh server API users live in the `rbac.db` of the master node. A change made on a worker node is forwarded to the master. The cluster does not synchronize `rbac.db`: a node promoted to master later serves its own database, seeded with the passwords it had when it was installed, and an existing database is never reseeded from `local.env`. After promoting a node to master, change the `wazuh` and `wazuh-internal-client` passwords again on it.
 
 #### Get the new password
 
@@ -667,7 +673,7 @@ sudo grep '^WAZUH_INDEXER_MANAGER_PASSWORD=' /etc/wazuh-indexer/export/credentia
 
 The keys are `WAZUH_INDEXER_ADMIN_PASSWORD`, `WAZUH_INDEXER_KIBANASERVER_PASSWORD`, `WAZUH_INDEXER_MANAGER_PASSWORD`, `WAZUH_MANAGER_API_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD`.
 
-Change the Wazuh server API users on the master node. The tool also works on a worker node, but then the new value is saved in the credential files of that worker, not of the master.
+Change the Wazuh server API users on the master node. The tool also works on a worker node, because the change is forwarded to the master, but then the new value is saved in the credential files of that worker, not of the master.
 
 #### Update the Wazuh manager nodes
 
@@ -756,6 +762,8 @@ sudo ./wazuh-passwords-tool-5.0.0.sh -u admin -p < /root/new-admin-password.txt
 The command output will be similar to the following:
 
 ```bash
+INFO: Updating the internal users.
+INFO: A backup of the internal users has been saved in the /etc/wazuh-indexer/internalusers-backup folder.
 INFO: Generating password hash
 INFO: The password of the Wazuh indexer user admin was changed.
 INFO: WAZUH_INDEXER_ADMIN_PASSWORD was updated in: /etc/wazuh-indexer/export/credentials.env.
@@ -777,6 +785,9 @@ The command output will be similar to the following:
 
 ```bash
 INFO: The password of the Wazuh API user wazuh was changed.
+INFO: The new password of user wazuh was saved as WAZUH_MANAGER_API_PASSWORD in: /etc/wazuh-manager/export/credentials.env.
 ```
+
+With `-p`, the last line is `INFO: WAZUH_MANAGER_API_PASSWORD was updated in: /etc/wazuh-manager/export/credentials.env.`
 
 When the user is `wazuh-internal-client` and the Wazuh dashboard is installed on the same host, the tool also writes the new password into the `wazuh_core.hosts.default.password` entry of the Wazuh dashboard keystore and restarts the Wazuh dashboard. Otherwise, update the Wazuh dashboard nodes as described in [Multi-node and distributed deployments](#multi-node-and-distributed-deployments).

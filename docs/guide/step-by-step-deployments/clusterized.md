@@ -708,7 +708,7 @@ Follow these steps to install the Wazuh dashboard.
 
 ### Installing package dependencies
 
-Install the following packages, if missing.
+Install the following packages, if missing. These are the lists the Wazuh installation assistant installs for each component: they include what the assistant itself uses to place the files, such as `cmp` from `diffutils`.
 
 #### APT
 
@@ -998,3 +998,5 @@ To add a node later, write its `local.env` with the current passwords, as descri
 - The Wazuh dashboard shows an error of the Wazuh server API connection: check that `url` is the master node, that there is no `password` under `wazuh_core.hosts` in `opensearch_dashboards.yml`, and that `WAZUH_MANAGER_WUI_PASSWORD` was the one of the master node.
 - The Wazuh indexer nodes do not join the cluster, or log TLS errors: check that every node has the pair from `wazuh-certificates.tar`, and that `plugins.security.nodes_dn` lists every node.
 - A service refuses to start with `UNSAFE <file>`: the file is not owned by `root`, or is writable by its group or others. Give the certificates back to `root` with the group of the service, for example `chown -R root:wazuh-dashboard /etc/wazuh-dashboard/certs`, then `chmod 750` on the directory and `chmod 640` on the files. In `/etc/wazuh-indexer/certs`, the admin pair is `root:root` with mode `0600`.
+- The Wazuh manager master node logs `WARNING: dashboard client pair not generated: /etc/wazuh-manager/ca has no key; provision it externally in /etc/wazuh-manager/export` at each start. This is expected: in this deployment `/etc/wazuh-manager/ca` holds only `root-ca.pem`, and nothing uses that pair yet.
+- The directories you create before installing, such as `/etc/wazuh-manager` as `root:root 0750`, do not need the final owner: each package sets it when it is installed (for example `root:wazuh-manager 0770` for `/etc/wazuh-manager`).

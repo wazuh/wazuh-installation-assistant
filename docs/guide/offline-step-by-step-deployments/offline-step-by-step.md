@@ -321,7 +321,7 @@ Follow these steps on the master node and on every worker node.
 
     **RPM-based systems:** `libcap openssl diffutils util-linux`
 
-    **DEB-based systems:** `tar curl libcap2-bin openssl`
+    **DEB-based systems:** `tar curl libcap2-bin openssl diffutils`
 
 2. Place the passwords, the root CA certificate and the certificate of this node, replacing `<DASHBOARD_NODE_NAME>` with the name of the node as defined in `config.yml`. For example, `dashboard`.
 
