@@ -31,7 +31,7 @@ apt install ./wazuh-offline/wazuh-packages/wazuh-manager*.deb
 apt install ./wazuh-offline/wazuh-packages/wazuh-dashboard*.deb
 ```
 
-Install one package at a time, in the order and at the step of the guide where it is installed.
+Check the package signatures first, as described in [Verify the package signatures](#verify-the-package-signatures). Install one package at a time, in the order and at the step of the guide where it is installed.
 
 When you configure the Wazuh indexer, also disable the tasks that need Internet access, as described in [Installing the Wazuh indexer](#installing-the-wazuh-indexer), step 5.
 
@@ -72,6 +72,41 @@ umask 022
 tar xf wazuh-offline.tar.gz
 tar xf wazuh-install-files.tar
 ```
+
+### Verify the package signatures
+
+The installation assistant checks the signature of every package before installing it. When you install the packages by hand, check them yourself with the Wazuh key that `wazuh-offline.tar.gz` carries, `wazuh-offline/GPG-KEY-WAZUH`. These commands need `gnupg`, and `binutils` on DEB-based systems.
+
+1. Check that the fingerprint of the key is `0DCF CA55 47B1 9D2A 6099 5060 96B3 EE5F 2911 1145`:
+
+    ```bash
+    gpg --show-keys --with-fingerprint wazuh-offline/GPG-KEY-WAZUH
+    ```
+
+2. Check the packages.
+
+    **RPM-based systems:** every package must show `Signature, key ID 29111145: OK`. `rpm -K` alone also passes on an unsigned package, so check the key ID.
+
+    ```bash
+    rpm --import wazuh-offline/GPG-KEY-WAZUH
+    for p in wazuh-offline/wazuh-packages/*.rpm; do echo "$p"; rpm -Kv "$p" | grep -i signature; done
+    ```
+
+    **DEB-based systems:** `apt` does not check the signature embedded in a `.deb`. The `_gpgbuilder` member is checked with `gpgv`, and the hashes it signs are compared with the other members. Every package must show `OK`:
+
+    ```bash
+    gpg --dearmor < wazuh-offline/GPG-KEY-WAZUH > wazuh.gpg
+    for p in wazuh-offline/wazuh-packages/*.deb; do
+        ar p "$p" _gpgbuilder > _gpgbuilder
+        gpgv --keyring ./wazuh.gpg --output signed _gpgbuilder 2>/dev/null || { echo "$p: not signed with the Wazuh key"; continue; }
+        awk 'NF == 4 && length($1) == 32 {print $2, $4}' signed | sort > signed-members
+        for m in $(ar t "$p" | grep -v '^_gpg'); do echo "$(ar p "$p" "$m" | sha1sum | cut -d' ' -f1) $m"; done | sort > members
+        cmp -s signed-members members && echo "$p: OK" || echo "$p: FAILED"
+    done
+    rm -f wazuh.gpg _gpgbuilder signed signed-members members
+    ```
+
+Do not install a package that fails these checks.
 
 ### Installing the Wazuh indexer
 
