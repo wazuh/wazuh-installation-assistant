@@ -94,14 +94,14 @@ Follow these steps on every Wazuh indexer node.
     install -m 0640 wazuh-install-files/root-ca.pem /etc/wazuh-indexer/ca/root-ca.pem
     install -m 0600 /dev/null /etc/wazuh-indexer/local.env
     grep '^WAZUH_INDEXER_' wazuh-install-files/credentials.env > /etc/wazuh-indexer/local.env
-    install -d -m 0500 /etc/wazuh-indexer/certs
-    install -m 0400 wazuh-install-files/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
-    install -m 0400 wazuh-install-files/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
-    install -m 0400 wazuh-install-files/admin.pem /etc/wazuh-indexer/certs/admin.pem
-    install -m 0400 wazuh-install-files/admin-key.pem /etc/wazuh-indexer/certs/admin-key.pem
+    install -d -m 0750 /etc/wazuh-indexer/certs
+    install -m 0640 wazuh-install-files/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
+    install -m 0600 wazuh-install-files/admin.pem /etc/wazuh-indexer/certs/admin.pem
+    install -m 0600 wazuh-install-files/admin-key.pem /etc/wazuh-indexer/certs/admin-key.pem
     ```
 
-3. Install the Wazuh indexer. The package uses the passwords and the certificates you placed, and gives the certificates to the `wazuh-indexer` user. Do not install it before placing them: placing them afterwards does not configure the node.
+3. Install the Wazuh indexer. The package uses the passwords and the certificates you placed, and gives them to `root` with the `wazuh-indexer` group: `0640` for the pair of the node and the root CA certificate, `0600` for the admin pair. Do not install it before placing them: placing them afterwards does not configure the node.
 
     **RPM-based systems:**
 
@@ -298,10 +298,10 @@ Follow these steps on the master node and on every worker node.
     install -d -m 0750 -o root -g root /etc/wazuh-dashboard /etc/wazuh-dashboard/certs
     install -m 0600 /dev/null /etc/wazuh-dashboard/local.env
     grep -E '^(WAZUH_INDEXER_KIBANASERVER_PASSWORD|WAZUH_MANAGER_WUI_PASSWORD)=' wazuh-install-files/credentials.env > /etc/wazuh-dashboard/local.env
-    install -m 0400 wazuh-install-files/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
-    install -m 0400 wazuh-install-files/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
-    install -m 0400 wazuh-install-files/root-ca.pem /etc/wazuh-dashboard/certs/indexer-ca.pem
-    install -m 0400 wazuh-install-files/root-ca.pem /etc/wazuh-dashboard/certs/manager-ca.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
+    install -m 0640 wazuh-install-files/root-ca.pem /etc/wazuh-dashboard/certs/indexer-ca.pem
+    install -m 0640 wazuh-install-files/root-ca.pem /etc/wazuh-dashboard/certs/manager-ca.pem
     ```
 
     The root CA of the deployment signed the Wazuh indexer and the Wazuh manager certificates, so it is placed as `indexer-ca.pem` and `manager-ca.pem`.
@@ -320,11 +320,10 @@ Follow these steps on the master node and on every worker node.
     apt install ./wazuh-offline/wazuh-packages/wazuh-dashboard*.deb
     ```
 
-4. Give the certificates to the service user and restrict their directory. Some versions of the package leave a pair placed before installing as `root`, and the Wazuh dashboard then fails to start with `EACCES`:
+4. The package gives the certificates you placed to `root` with the `wazuh-dashboard` group: the directory `0750` and the files `0640`. Check it, and do not give them to the `wazuh-dashboard` user: the Wazuh dashboard refuses to start when a file in `/etc/wazuh-dashboard/certs` is not owned by `root` or is writable by its group or others.
 
     ```bash
-    chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
-    chmod 500 /etc/wazuh-dashboard/certs
+    ls -ld /etc/wazuh-dashboard/certs /etc/wazuh-dashboard/certs/*
     ```
 
 5. Edit `/etc/wazuh-dashboard/opensearch_dashboards.yml` and replace the following values:

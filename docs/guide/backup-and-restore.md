@@ -137,19 +137,23 @@ Perform the following steps to restore the Wazuh indexer files on the new server
     cp -r etc/wazuh-indexer/wazuh-indexer-notifications-core/. /etc/wazuh-indexer/wazuh-indexer-notifications-core/
     cp usr/lib/sysctl.d/wazuh-indexer.conf /usr/lib/sysctl.d/wazuh-indexer.conf
 
-    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs/
-    chown wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/jvm.options
-    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/jvm.options.d
-    chown wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/log4j2.properties
-    chown wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/opensearch.yml
-    chown wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/opensearch.keystore
-    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/opensearch-observability/
-    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/opensearch-security/
-    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-reports-scheduler/
-    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-notifications/
-    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-notifications-core/
-    chown wazuh-indexer:wazuh-indexer /usr/lib/sysctl.d/wazuh-indexer.conf
+    chown -R root:wazuh-indexer /etc/wazuh-indexer/certs/
+    chown root:root /etc/wazuh-indexer/certs/admin.pem /etc/wazuh-indexer/certs/admin-key.pem
+    chmod 600 /etc/wazuh-indexer/certs/admin.pem /etc/wazuh-indexer/certs/admin-key.pem
+    chown root:wazuh-indexer /etc/wazuh-indexer/jvm.options
+    chown -R root:wazuh-indexer /etc/wazuh-indexer/jvm.options.d
+    chown root:wazuh-indexer /etc/wazuh-indexer/log4j2.properties
+    chown root:wazuh-indexer /etc/wazuh-indexer/opensearch.yml
+    chown root:wazuh-indexer /etc/wazuh-indexer/opensearch.keystore
+    chown -R root:wazuh-indexer /etc/wazuh-indexer/opensearch-observability/
+    chown -R root:wazuh-indexer /etc/wazuh-indexer/opensearch-security/
+    chown -R root:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-reports-scheduler/
+    chown -R root:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-notifications/
+    chown -R root:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-notifications-core/
+    chown root:root /usr/lib/sysctl.d/wazuh-indexer.conf
     ```
+
+    The configuration directory belongs to `root`, and the Wazuh indexer reads it through its group and writes nothing in it. Do not give the files to the `wazuh-indexer` user: the Wazuh indexer refuses to start when a certificate is not owned by `root` or is writable by its group or others. The admin pair is `root`'s alone, with mode `0600`.
 
 3. Start the Wazuh indexer service:
 
@@ -608,11 +612,14 @@ cp etc/wazuh-dashboard/opensearch_dashboards.keystore /etc/wazuh-dashboard/opens
 cp -r etc/wazuh-dashboard/certs/. /etc/wazuh-dashboard/certs/
 cp -a etc/wazuh-dashboard/local.env /etc/wazuh-dashboard/local.env
 [ -d etc/wazuh-dashboard/ca ] && cp -a etc/wazuh-dashboard/ca /etc/wazuh-dashboard/
-chown wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/opensearch_dashboards.yml
-chown wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/node.options
-chown wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/opensearch_dashboards.keystore
-chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
+chown root:wazuh-dashboard /etc/wazuh-dashboard/opensearch_dashboards.yml /etc/wazuh-dashboard/node.options /etc/wazuh-dashboard/opensearch_dashboards.keystore
+chmod 640 /etc/wazuh-dashboard/opensearch_dashboards.yml /etc/wazuh-dashboard/node.options /etc/wazuh-dashboard/opensearch_dashboards.keystore
+chown -R root:wazuh-dashboard /etc/wazuh-dashboard/certs
+chmod 750 /etc/wazuh-dashboard/certs
+chmod 640 /etc/wazuh-dashboard/certs/*
 ```
+
+The configuration belongs to `root`, and the Wazuh dashboard reads it through its group. Do not give these files to the `wazuh-dashboard` user: the Wazuh dashboard refuses to start when a file in `/etc/wazuh-dashboard/certs` is not owned by `root` or is writable by its group or others.
 
 4. Restore the custom assets files
 

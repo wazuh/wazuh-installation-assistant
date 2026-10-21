@@ -453,18 +453,18 @@ To renew the certificates of a deployment, run the certs tool again on the node 
 
     | Node | File in `wazuh-certificates` | Destination | Owner and mode |
     | ---- | ---------------------------- | ----------- | -------------- |
-    | Wazuh indexer | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-indexer/certs/indexer.pem`, `indexer-key.pem` | `wazuh-indexer:wazuh-indexer`, `0400` |
-    | Wazuh indexer | `admin.pem`, `admin-key.pem` | `/etc/wazuh-indexer/certs/admin.pem`, `admin-key.pem` | `wazuh-indexer:wazuh-indexer`, `0400` |
+    | Wazuh indexer | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-indexer/certs/indexer.pem`, `indexer-key.pem` | `root:wazuh-indexer`, `0640` |
+    | Wazuh indexer | `admin.pem`, `admin-key.pem` | `/etc/wazuh-indexer/certs/admin.pem`, `admin-key.pem` | `root:root`, `0600` |
     | Wazuh manager | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-manager/certs/indexer-connector.pem`, `indexer-connector-key.pem` | `root:wazuh-manager`, `0640` |
-    | Wazuh manager | `<node>-remoted.pem`, `<node>-remoted-key.pem` | `/etc/wazuh-manager/certs/remoted.pem`, `remoted-key.pem` | `wazuh-manager:wazuh-manager`, `0640` |
-    | Wazuh manager | `<node>-apid.pem`, `<node>-apid-key.pem` | `/etc/wazuh-manager/certs/apid.pem`, `apid-key.pem` | `wazuh-manager:wazuh-manager`, `0640` |
-    | Wazuh dashboard | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-dashboard/certs/dashboard.pem`, `dashboard-key.pem` | `wazuh-dashboard:wazuh-dashboard`, `0400` |
+    | Wazuh manager | `<node>-remoted.pem`, `<node>-remoted-key.pem` | `/etc/wazuh-manager/certs/remoted.pem`, `remoted-key.pem` | `root:wazuh-manager`, `0640` |
+    | Wazuh manager | `<node>-apid.pem`, `<node>-apid-key.pem` | `/etc/wazuh-manager/certs/apid.pem`, `apid-key.pem` | `root:wazuh-manager`, `0640` |
+    | Wazuh dashboard | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-dashboard/certs/dashboard.pem`, `dashboard-key.pem` | `root:wazuh-dashboard`, `0640` |
 
-    For example, on a Wazuh indexer node, with the files of that node copied to the current directory:
+    Every file stays owned by `root`: the services read their certificates through their group, and refuse to start when a certificate is owned by another user or is writable by its group or others. For example, on a Wazuh indexer node, with the files of that node copied to the current directory:
 
     ```bash
-    sudo install -o wazuh-indexer -g wazuh-indexer -m 0400 <node>.pem /etc/wazuh-indexer/certs/indexer.pem
-    sudo install -o wazuh-indexer -g wazuh-indexer -m 0400 <node>-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
+    sudo install -o root -g wazuh-indexer -m 0640 <node>.pem /etc/wazuh-indexer/certs/indexer.pem
+    sudo install -o root -g wazuh-indexer -m 0640 <node>-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
     ```
 
 4. Restart the services:
