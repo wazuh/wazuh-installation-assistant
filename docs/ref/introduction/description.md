@@ -4,7 +4,7 @@
 
 The Wazuh Installation Assistant is a tool designed to simplify the deployment of Wazuh. It guides users through the process of installing Wazuh components. With the Wazuh Installation Assistant, you can perform AIO (All In One) installations where you download and configure all components on the same machine, or distributed installations where you can install only the specified component.
 
-The script is written in Bash to facilitate its implementation on Linux systems (x86_64/AMD64 or AARCH64/ARM64). It includes the Wazuh Password Tool and the Wazuh Certs Tool, which are used in the all-in-one installation process.
+The script is written in Bash to facilitate its implementation on Linux systems (x86_64/AMD64 or AARCH64/ARM64). It embeds the certificate functions of the Wazuh Certs Tool, which `--generate-config-files` uses to issue the certificates of a distributed installation. In an all-in-one installation the packages create the CA, the certificates and the passwords.
 
 ## Wazuh passwords tool
 

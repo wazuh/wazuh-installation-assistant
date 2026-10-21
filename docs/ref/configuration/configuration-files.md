@@ -26,28 +26,34 @@ The steps to perform the installation are as follows:
     4.1 To install the Wazuh Manager:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0.sh --wazuh-manager
+    sudo bash wazuh-install-5.0.0.sh --wazuh-manager <manager-node-name>
     # or use the short form
-    sudo bash wazuh-install-5.0.0.sh -wm
+    sudo bash wazuh-install-5.0.0.sh -wm <manager-node-name>
     ```
 
     4.2 To install the Wazuh Indexer:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0.sh --wazuh-indexer
+    sudo bash wazuh-install-5.0.0.sh --wazuh-indexer <indexer-node-name>
     # or use the short form
-    sudo bash wazuh-install-5.0.0.sh -wi
+    sudo bash wazuh-install-5.0.0.sh -wi <indexer-node-name>
     ```
 
     4.3 To install the Wazuh Dashboard:
 
     ``` bash
-    sudo bash wazuh-install-5.0.0.sh --wazuh-dashboard
+    sudo bash wazuh-install-5.0.0.sh --wazuh-dashboard <dashboard-node-name>
     # or use the short form
-    sudo bash wazuh-install-5.0.0.sh -wd
+    sudo bash wazuh-install-5.0.0.sh -wd <dashboard-node-name>
     ```
 
-> **note**: The installation assistant is designed to facilitate the initial installation of Wazuh, so the passwords for each Wazuh internal user are set to default. Therefore, it is highly recommended to change them to more secure ones using this tool. You can see how to use this tool in the [Passwords Tool Usage](../getting-started/usage.md#wazuh-password-tool) section.
+    The node name is the `name` of the node in `config.yml`.
+
+> **note**: The passwords of the Wazuh internal users are not defaults. `--generate-config-files` generates random passwords for each deployment and saves them in `credentials.env`, inside `wazuh-install-files.tar` and next to the root CA. In an all-in-one installation the packages generate them. To change them, use the [Wazuh passwords tool](../getting-started/usage.md#wazuh-password-tool).
+
+`--generate-config-files` reads `config.yml` from the directory of `wazuh-install-5.0.0.sh`, and stops if `wazuh-install-files.tar` already exists there.
+
+> **note**: The installation assistant configures each component with the `ip` of the nodes: the indexer `network.host`, the indexer hosts of the manager and the dashboard, and the Server API URL of the dashboard. Every node in `config.yml` needs an `ip` for a distributed installation with `wazuh-install-5.0.0.sh`. Nodes with only `dns` are valid for the Wazuh certs tool alone, when you install the components another way.
 
 ## Wazuh certs tool
 
@@ -90,6 +96,10 @@ nodes:
 ### Other `config.yml` examples
 
 Each node must have a unique name and at least one network identifier (`ip` or `dns`). In the case of Wazuh manager nodes, if there is more than one node, it is necessary to specify the node type (master or worker) using the `node_type` field.
+
+A node name may only contain letters, digits, dots, dashes and underscores, must not start with a dash or a dot, and must be at most 253 characters long.
+
+> **note**: Examples 1, 2 and 3 have nodes without `ip`. They are valid for the Wazuh certs tool, but not for an installation with `wazuh-install-5.0.0.sh`, which needs an `ip` on every node (see the note in [Wazuh installation assistant](#wazuh-installation-assistant)).
 
 #### Example 1: using only `dns` values
 
@@ -249,7 +259,7 @@ sudo bash wazuh-certs-tool-5.0.0.sh -A -as wazuh.example.com
 
 By default, documentation examples use only `ip` values for simplicity.
 
-For the wazuh certs tool to detect the file, it must be located in the same path as the `wazuh-certs-tool-5.0.0.sh` script.
+For the wazuh certs tool to detect the file, it must be located in the same path as the `wazuh-certs-tool-5.0.0.sh` script. Every option of the tool reads it, including `-a` and `-ca`.
 
 ## Wazuh passwords tool
 
