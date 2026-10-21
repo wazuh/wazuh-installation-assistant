@@ -110,6 +110,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1157](https://github.com/wazuh/wazuh-installation-assistant/issues/1157) | Configure nodes that only have `dns` in `config.yml` with that name instead of skipping them, which shifted or emptied the addresses of the other nodes |
 | [#1158](https://github.com/wazuh/wazuh-installation-assistant/issues/1158) | Allow combining certificate options in one run of `wazuh-certs-tool.sh` (for example `-wi -wd`): every option writes to the same temporary directory, which is moved to `wazuh-certificates` once |
 | [#1099](https://github.com/wazuh/wazuh-installation-assistant/issues/1099) | Remove the duplicated `types` and `branches` keys from the `pull_request` trigger of the 4.x installation assistant test workflows |
 | [#1130](https://github.com/wazuh/wazuh-installation-assistant/issues/1130) | Give the manager indexer connector certificate pair the `root:wazuh-manager` owner on a distributed install, so the manager can connect to the indexer |
