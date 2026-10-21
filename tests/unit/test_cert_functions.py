@@ -312,6 +312,58 @@ class TestCertMainRootCAOption:
         assert "ROOTCA_CALLED" in result.stdout
 
 
+class TestCertMainCombinedOptions:
+    """Issue #1158: several certificate options in one run (-wi -wd, -wi -wd -wm)
+    write to the same temporary directory, which is moved to wazuh-certificates once."""
+
+    def _run(self, tmp_path, options):
+        def issue(name):
+            return f'touch "${{cert_tmp_path}}/{name}.pem" || exit 1'
+        mocks = {
+            **IGNORE_LOGGER,
+            "common_checkRoot": "true",
+            "cert_checkOpenSSL": "true",
+            "cert_validateAgentSan": "true",
+            "cert_validateApiSan": "true",
+            "cert_readConfig": "true",
+            "cert_checkListenerReachability": "true",
+            "cert_validatePath": "true",
+            "cert_checkRootCA": issue("root-ca"),
+            "cert_generateIndexercertificates": issue("indexer-1"),
+            "cert_generateDashboardcertificates": issue("dashboard-1"),
+            "cert_generateManagercertificates": issue("manager-1"),
+            "cert_verifyRemotedcertificates": 'echo "VERIFY_REMOTED:$1"',
+            "cert_setpermisions": "true",
+        }
+        return run_bash_function(
+            BASE_SOURCES + ["cert_tool/certMain.sh"],
+            f"main {options}",
+            mocks,
+            {
+                "base_path": str(tmp_path),
+                "cert_tmp_path": str(tmp_path / "tmp"),
+                "indexer_node_names": "(indexer-1)",
+                "dashboard_node_names": "(dashboard-1)",
+                "manager_node_names": "(manager-1)",
+            },
+        )
+
+    def test_indexer_and_dashboard_in_one_run(self, tmp_path):
+        result = self._run(tmp_path, "-wi -wd")
+        assert_success(result)
+        certs = sorted(p.name for p in (tmp_path / "wazuh-certificates").iterdir())
+        assert certs == ["dashboard-1.pem", "indexer-1.pem", "root-ca.pem"]
+        assert not (tmp_path / "tmp").exists()
+
+    def test_manager_certificates_are_verified_once_in_the_final_directory(self, tmp_path):
+        result = self._run(tmp_path, "-wi -wd -wm")
+        assert_success(result)
+        certs = sorted(p.name for p in (tmp_path / "wazuh-certificates").iterdir())
+        assert certs == ["dashboard-1.pem", "indexer-1.pem", "manager-1.pem", "root-ca.pem"]
+        assert result.stdout.count("VERIFY_REMOTED:") == 1
+        assert f"VERIFY_REMOTED:{tmp_path}/wazuh-certificates" in result.stdout
+
+
 class TestCertGenerateRootCA:
     """cert_generateRootCAcertificate creates the root CA through common_caEnsure,
     in the directory common_caGetDir resolves."""
