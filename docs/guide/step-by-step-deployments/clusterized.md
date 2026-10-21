@@ -19,6 +19,8 @@ There are no default passwords and no default certificates. Each Wazuh package h
 
 This is what the Wazuh installation assistant does with `wazuh-install-files.tar` in a [distributed deployment](../installation-assistant-deployments/clusterized.md).
 
+In this guide every certificate comes from the certificates tool, signed by that root CA. The Wazuh manager package can also issue its own pairs and import the trust of a remote Wazuh indexer from its `export/` directory, as the Wazuh manager documentation describes; this guide does not use that model. Here, the addresses of the agent listener certificate (`remoted.pem`) come from `config.yml` and `--agent-san`, and `WAZUH_MANAGER_REMOTED_CERT_SANS` does not apply: the package only reads it when it issues the certificate itself, as in an [all-in-one](all-in-one.md) installation.
+
 Each package needs these keys in its `local.env` file:
 
 | Host | File | Keys |

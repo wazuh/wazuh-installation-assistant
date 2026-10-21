@@ -511,6 +511,44 @@ Every Wazuh manager node of a cluster must serve an agent listener certificate s
 
 5. Copy the certificates of the new node to it and install it as the other Wazuh manager nodes, as in the Wazuh manager steps of the [step-by-step clusterized deployment](../../guide/step-by-step-deployments/clusterized.md#wazuh-manager). In the `<cluster>` block of the new node, use the `<key>` of the master node: a node with another key does not join the cluster. Do not run `--generate-config-files` again to add the node: it creates a new cluster key. Then remove the `wazuh-certificates` directory, and every copy of it: it holds private keys.
 
+### Add a Wazuh indexer node to an existing deployment
+
+A new Wazuh indexer node must hold a certificate signed by the root CA of the deployment, or the other nodes reject it.
+
+1. Go to the node that holds `root-ca.key`, and set `CA_DIR` to its directory, as in step 1 of [Renew and deploy certificates](#renew-and-deploy-certificates).
+
+2. Write a `config.yml` with the new node only, and create its certificates with `-wi`, which only uses an existing root CA. Check that the certificate chains to the root CA of the deployment: the command must print `OK`.
+
+    ```yaml
+    nodes:
+      indexer:
+        - name: indexer-4
+          ip: "<new-node-ip>"
+    ```
+
+    ```bash
+    sudo rm -rf wazuh-certificates
+    sudo WAZUH_CA_DIR=$CA_DIR bash wazuh-certs-tool-5.0.0.sh -wi
+    sudo openssl verify -CAfile $CA_DIR/root-ca.pem wazuh-certificates/indexer-4.pem
+    ```
+
+3. On the new node, **before** installing the package, place `root-ca.pem` in `/etc/wazuh-indexer/ca/`, the three `WAZUH_INDEXER_*` passwords of the deployment in `/etc/wazuh-indexer/local.env`, and the pair of the node in `/etc/wazuh-indexer/certs/`, as in [Deploying certificates and passwords](../../guide/step-by-step-deployments/clusterized.md#deploying-certificates-and-passwords). A package installed without them creates its own CA and pair, and placing them later does not configure it. Then install and configure the package as the other Wazuh indexer nodes, listing every node, the new one included, in `discovery.seed_hosts` and `plugins.security.nodes_dn`. Do not run `indexer-security-init.sh`: the cluster is already initialized.
+
+4. On every existing Wazuh indexer node, add the new node to `discovery.seed_hosts` and its subject to `plugins.security.nodes_dn` in `/etc/wazuh-indexer/opensearch.yml`, and restart the nodes one at a time, waiting until the cluster is `green` before the next one.
+
+5. Add the new node to the `<hosts>` block of the `<indexer>` section in `/etc/wazuh-manager/wazuh-manager.conf` of every Wazuh manager node, and to `opensearch.hosts` in `/etc/wazuh-dashboard/opensearch_dashboards.yml` of every Wazuh dashboard node, and restart them. Then remove the `wazuh-certificates` directory, and every copy of it: it holds private keys.
+
+### Add a Wazuh dashboard node to an existing deployment
+
+1. On the node that holds `root-ca.key`, set `CA_DIR` as in step 1 of [Renew and deploy certificates](#renew-and-deploy-certificates), write a `config.yml` with the new Wazuh dashboard node only, under `dashboard`, and create its certificates with `-wd`:
+
+    ```bash
+    sudo rm -rf wazuh-certificates
+    sudo WAZUH_CA_DIR=$CA_DIR bash wazuh-certs-tool-5.0.0.sh -wd
+    ```
+
+2. On the new node, **before** installing the package, place `WAZUH_INDEXER_KIBANASERVER_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD` with their current values in `/etc/wazuh-dashboard/local.env`, the pair of the node as `certs/dashboard.pem` and `certs/dashboard-key.pem`, and `root-ca.pem` as `certs/indexer-ca.pem` and `certs/manager-ca.pem`, as in [Wazuh dashboard](../../guide/step-by-step-deployments/clusterized.md#wazuh-dashboard). Then install and configure the package: `opensearch.hosts` lists the Wazuh indexer nodes, and `wazuh_core.hosts` points to the master node. Remove the `wazuh-certificates` directory, and every copy of it: it holds private keys.
+
 ## Wazuh password tool
 
 ### Options

@@ -12,6 +12,8 @@ There are some packages that need to be installed in the target system where the
 
 Each Wazuh component also needs other packages. See the required dependencies in [Offline install using the installation assistant](../offline-installation-assistant-deployments/offline-assisted-install.md).
 
+The system with Internet access, where you download the packages and run `--generate-config-files`, needs `curl` and `gawk` (and `openssl` for `--generate-config-files`), besides the base tools `tar`, `grep`, `sed`, `coreutils` and `procps`. If any is missing, the assistant names them and stops. Add `-id|--install-dependencies` to install them automatically; the assistant removes them when it finishes.
+
 ---
 
 ## Download the packages

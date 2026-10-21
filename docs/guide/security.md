@@ -78,7 +78,7 @@ A deployment installed step by step does not need the Wazuh installation assista
 - Run installation scripts with `sudo` or as root only when required.
 - Restrict read access to certificate files and the `wazuh-install-files.tar` archive.
 - After installation, remove the `wazuh-install-files.tar` file from every node, as it contains private keys and the passwords of the Wazuh users.
-- Do not give other users read access to the `local.env` and `export/credentials.env` files.
+- Do not give other users read access to the `local.env` and `export/credentials.env` files. Do not delete them either: each package reads its passwords from its `local.env`, and on a host with more than one component the Wazuh manager and the Wazuh dashboard read theirs from the `export/credentials.env` of the Wazuh indexer and the Wazuh manager when their `local.env` does not hold them. The passwords tool also updates them.
 
 ## Recommendations
 
