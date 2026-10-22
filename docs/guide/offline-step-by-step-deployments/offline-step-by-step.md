@@ -258,13 +258,10 @@ Follow these steps on the master node and on every worker node.
     apt install ./wazuh-offline/wazuh-packages/wazuh-manager*.deb
     ```
 
-3. Give the certificates to the `wazuh-manager` group, and check the credentials again. On RPM-based systems the package checks the owner of `certs/` before it fixes it, so the Wazuh manager does not start without this step:
+3. Check the credentials. On RPM-based systems the installation prints `UNSAFE /etc/wazuh-manager/certs/<file>.pem: group is root, not wazuh-manager` for the files you placed: the package checks them before it gives them to the `wazuh-manager` group, and fixes the owner at the end of the installation. Nothing needs to be done; this check must report no problem:
 
     ```bash
-    chown root:wazuh-manager /etc/wazuh-manager/certs /etc/wazuh-manager/certs/*.pem
-    chmod 750 /etc/wazuh-manager/certs
-    chmod 640 /etc/wazuh-manager/certs/*.pem
-    /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --upgrade -H /var/wazuh-manager
+    /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check -H /var/wazuh-manager
     ```
 
 4. In the `<indexer>` block of `/etc/wazuh-manager/wazuh-manager.conf`, replace `127.0.0.1` with the addresses of the Wazuh indexer nodes, one `<host>` per node. Do it on every node: the cluster does not synchronize this block. Leave the `<ssl>` settings as the package wrote them. The credentials are not configured here: the package stored them in the keystore of the Wazuh manager.
