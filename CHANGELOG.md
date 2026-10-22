@@ -110,6 +110,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1156](https://github.com/wazuh/wazuh-installation-assistant/issues/1156) | Align the docs with the 5.0.0 packages: certificates owned by root with the service group, the offline package signature check, supported Ubuntu versions, missing options and node procedures, the `artifact_urls.yaml` name in the `-d` help, the Server API passwords in a cluster, and the upgrade and backup guides, which now follow the Wazuh manager documentation |
 | [#1157](https://github.com/wazuh/wazuh-installation-assistant/issues/1157) | Configure nodes that only have `dns` in `config.yml` with that name instead of skipping them, which shifted or emptied the addresses of the other nodes |
 | [#1158](https://github.com/wazuh/wazuh-installation-assistant/issues/1158) | Allow combining certificate options in one run of `wazuh-certs-tool.sh` (for example `-wi -wd`): every option writes to the same temporary directory, which is moved to `wazuh-certificates` once |
 | [#1099](https://github.com/wazuh/wazuh-installation-assistant/issues/1099) | Remove the duplicated `types` and `branches` keys from the `pull_request` trigger of the 4.x installation assistant test workflows |

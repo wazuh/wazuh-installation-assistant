@@ -111,8 +111,10 @@ Follow these steps to install and configure a multi-node Wazuh indexer.
 
 Repeat this stage of the installation process for every Wazuh indexer node in your cluster. Then proceed with initializing your multi-node cluster in the next stage.
 
+The assistant sets the Java heap of the Wazuh indexer in `/etc/wazuh-indexer/jvm.options` before the first start: half the RAM of the node with `--wazuh-indexer`, and a quarter with `--all-in-one`, where the Wazuh manager and the Wazuh dashboard share the host. `-Xms` and `-Xmx` get the same value.
+
 > [!NOTE]
-> For Wazuh indexer installation on hardened endpoints with `noexec` flag on the `/tmp` directory, additional setup is required. See the Wazuh indexer configuration on hardened endpoints section for necessary configuration.
+> On hardened endpoints with the `noexec` flag on the `/tmp` directory, the Wazuh indexer needs no additional setup: the package sets `OPENSEARCH_TMPDIR=/var/lib/wazuh-indexer/tmp` in `/etc/sysconfig/wazuh-indexer` (RPM) or `/etc/default/wazuh-indexer` (DEB), so the service does not use `/tmp`. That directory must allow execution.
 
 ## Cluster initialization
 
@@ -190,13 +192,15 @@ Your Wazuh manager is now successfully installed, repeat this process on every W
       /var/wazuh-manager/bin/cluster_control -l
       ```
 
-  3. Check that the Wazuh server API answers. Replace `<MASTER_IP>` with the IP address of the master node and `<WAZUH_MANAGER_API_PASSWORD>` with the `WAZUH_MANAGER_API_PASSWORD` value of `/etc/wazuh-manager/export/credentials.env` on a Wazuh manager node:
+  3. Check that the Wazuh server API answers. Replace `<MASTER_IP>` with the IP address of the master node and `<WAZUH_MANAGER_API_PASSWORD>` with the `WAZUH_MANAGER_API_PASSWORD` value of `/etc/wazuh-manager/export/credentials.env` on the master node:
 
       ```bash
       curl -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://<MASTER_IP>:55000/security/user/authenticate?raw=true"
       ```
 
 The Wazuh server API only runs on the master node. The Wazuh dashboard connects to the master.
+
+At each start, the master node logs `WARNING: dashboard client pair not generated: /etc/wazuh-manager/ca has no key; provision it externally in /etc/wazuh-manager/export`. This is expected: the nodes only receive `root-ca.pem`, without its key, and nothing uses that pair yet.
 
 ## Wazuh dashboard
 
@@ -241,7 +245,7 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
 When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, the `root-ca.pem` file previously generated can be imported to the certificate manager of the browser instead. Alternatively, you can configure a certificate from a trusted authority.
 
 > [!NOTE]
-> Each node only receives the passwords of the components installed on it, in the `local.env` file of each package (for example, `/etc/wazuh-indexer/local.env`). The Wazuh indexer nodes publish the indexer passwords in `/etc/wazuh-indexer/export/credentials.env`, and the Wazuh manager nodes publish the Wazuh server API passwords in `/etc/wazuh-manager/export/credentials.env`. The `wazuh-ca` directory of the node where `wazuh-install-files.tar` was generated keeps all of them. To change a password later, see [Multi-node and distributed deployments](../../ref/getting-started/usage.md#multi-node-and-distributed-deployments).
+> Each node only receives the passwords of the components installed on it, in the `local.env` file of each package (for example, `/etc/wazuh-indexer/local.env`). The Wazuh indexer nodes publish the indexer passwords in `/etc/wazuh-indexer/export/credentials.env`, and the Wazuh manager master node publishes the Wazuh server API passwords in `/etc/wazuh-manager/export/credentials.env`. The `wazuh-ca` directory of the node where `wazuh-install-files.tar` was generated keeps all of them. To change a password later, see [Multi-node and distributed deployments](../../ref/getting-started/usage.md#multi-node-and-distributed-deployments).
 >
 > Remove `wazuh-install-files.tar` from every node too: it holds the private keys and the passwords of the deployment. Keep a copy in a safe place if you plan to add nodes later, and update its passwords first if you change them, as described in [Security](../security.md).
 >

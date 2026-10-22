@@ -34,7 +34,7 @@ function getHelp() {
     echo -e "                Must be used along with one of these options: -a, -g"
     echo -e ""
     echo -e "        -d [pre-release|local],  --development"
-    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0.sh."
+    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yaml file located in the same path as the wazuh-install-5.0.0.sh."
     echo -e ""
     echo -e "        --skip-signature-check"
     echo -e "                Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with -d."
