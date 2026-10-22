@@ -1416,17 +1416,18 @@ function cert_validateManagerNodeTypes() {
 
 }
 
-# Fills a flat array with the first ip of each node, in node order. install_functions
-# reads these arrays by node index — the master's address, the Wazuh API address the
-# dashboard is pointed at, the indexer's network.host — so an entry has to stay at the
-# position of the node it belongs to even when that node lists several addresses.
-# Takes the array to fill, the array of node names and the prefix of the per-node
-# address arrays.
+# Fills a flat array with the first ip of each node, or its first dns name when the node
+# has no ip, in node order. install_functions reads these arrays by node index — the
+# master's address, the Wazuh API address the dashboard is pointed at, the indexer's
+# network.host — so every node needs exactly one entry, at its own position.
+# Takes the array to fill, the array of node names and the prefixes of the per-node
+# ip and dns arrays.
 function cert_firstAddressPerNode() {
 
     local target_var="$1"
     local node_names_var="$2"
     local node_ip_prefix="$3"
+    local node_dns_prefix="$4"
     local i
     local j
 
@@ -1438,8 +1439,11 @@ function cert_firstAddressPerNode() {
     for i in "${!component_node_names[@]}"; do
         j=$((i+1))
         declare -n component_ip="${node_ip_prefix}_${j}"
+        declare -n component_dns="${node_dns_prefix}_${j}"
         if [ "${#component_ip[@]}" -gt 0 ]; then
             target_array+=("${component_ip[0]}")
+        else
+            target_array+=("${component_dns[0]}")
         fi
     done
 
@@ -1498,9 +1502,9 @@ function cert_readConfig() {
         # one entry per node. A node reachable at several addresses puts them all in
         # its certificate through the per-node arrays above; the first one is the
         # address the components are configured with.
-        cert_firstAddressPerNode "indexer_node_ips" "indexer_node_names" "indexer_node_ip"
-        cert_firstAddressPerNode "manager_node_ips" "manager_node_names" "manager_node_ip"
-        cert_firstAddressPerNode "dashboard_node_ips" "dashboard_node_names" "dashboard_node_ip"
+        cert_firstAddressPerNode "indexer_node_ips" "indexer_node_names" "indexer_node_ip" "indexer_node_dns"
+        cert_firstAddressPerNode "manager_node_ips" "manager_node_names" "manager_node_ip" "manager_node_dns"
+        cert_firstAddressPerNode "dashboard_node_ips" "dashboard_node_names" "dashboard_node_ip" "dashboard_node_dns"
 
         cert_validateComponentSanValues "Indexer" "indexer_node_names" "indexer_node_ip" "indexer_node_dns"
         cert_validateComponentSanValues "Manager" "manager_node_names" "manager_node_ip" "manager_node_dns"

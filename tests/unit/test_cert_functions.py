@@ -1385,13 +1385,15 @@ class TestCertGenerateLoadbalancercertificates:
 class TestCertFirstAddressPerNode:
     """install_functions reads the flat arrays by node index."""
 
-    def _run(self, names, ips):
+    def _run(self, names, ips, dns=None):
+        dns = dns or [[] for _ in names]
         env = {"names": "(" + " ".join(names) + ")"}
-        for i, node_ips in enumerate(ips, start=1):
+        for i, (node_ips, node_dns) in enumerate(zip(ips, dns), start=1):
             env[f"ip_{i}"] = "(" + " ".join(node_ips) + ")"
+            env[f"dns_{i}"] = "(" + " ".join(node_dns) + ")"
         return run_bash_function(
             BASE_SOURCES,
-            'cert_firstAddressPerNode flat names ip && echo "${flat[@]}"',
+            'cert_firstAddressPerNode flat names ip dns && echo "${flat[@]}"',
             IGNORE_LOGGER,
             env,
         )
@@ -1408,6 +1410,57 @@ class TestCertFirstAddressPerNode:
         )
         assert_success(result)
         assert "10.0.1.11 10.0.1.21" in result.stdout
+
+    def test_success_a_dns_only_node_keeps_its_position(self):
+        """A node with no ip is addressed by its first dns name, not skipped."""
+        result = self._run(
+            ["node-1", "node-2"],
+            [[], ["10.0.1.21"]],
+            [["node-1.wazuh.test", "node-1.alt.test"], []],
+        )
+        assert_success(result)
+        assert result.stdout.strip() == "node-1.wazuh.test 10.0.1.21"
+
+    def test_success_ip_is_preferred_over_dns(self):
+        result = self._run(
+            ["node-1", "node-2", "node-3"],
+            [["10.0.1.11"], [], ["10.0.1.31"]],
+            [["node-1.wazuh.test"], ["node-2.wazuh.test"], []],
+        )
+        assert_success(result)
+        assert result.stdout.strip() == "10.0.1.11 node-2.wazuh.test 10.0.1.31"
+
+
+class TestCertReadConfigNodeAddresses:
+    """cert_readConfig gives the installer one address per node, dns-only nodes included."""
+
+    def test_success_dns_only_nodes_are_not_dropped(self, tmp_path):
+        config = tmp_path / "config.yml"
+        config.write_text("some: content")
+        parsed = "\\n".join([
+            "nodes_indexer_1=indexer-dns",
+            "nodes_indexer_1_dns=indexer-dns.wazuh.test",
+            "nodes_indexer_2=indexer-ip",
+            "nodes_indexer_2_ip=10.0.1.12",
+            "nodes_manager_1=manager",
+            "nodes_manager_1_dns=manager.wazuh.test",
+            "nodes_dashboard_1=dashboard",
+            "nodes_dashboard_1_ip=10.0.1.31",
+        ])
+        mocks = {
+            **IGNORE_LOGGER,
+            "cert_parseYaml": f'printf "{parsed}\\n"',
+            "cert_checkPrivateIp": "true",
+            "cert_convertCRLFtoLF": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            'cert_readConfig && echo "IDX=${indexer_node_ips[*]}|MGR=${manager_node_ips[*]}|DASH=${dashboard_node_ips[*]}"',
+            mocks,
+            {"base_path": str(tmp_path), "config_file": str(config), "debug_cert": ""},
+        )
+        assert_success(result)
+        assert "IDX=indexer-dns.wazuh.test 10.0.1.12|MGR=manager.wazuh.test|DASH=10.0.1.31" in result.stdout
 
 
 class TestCertListenerReachability:
