@@ -53,7 +53,7 @@ The steps to perform the installation are as follows:
 
 `--generate-config-files` reads `config.yml` from the directory of `wazuh-install-5.0.0.sh`, and stops if `wazuh-install-files.tar` already exists there.
 
-> **note**: The installation assistant configures each component with the `ip` of the nodes: the indexer `network.host`, the indexer hosts of the manager and the dashboard, and the Server API URL of the dashboard. Every node in `config.yml` needs an `ip` for a distributed installation with `wazuh-install-5.0.0.sh`. Nodes with only `dns` are valid for the Wazuh certs tool alone, when you install the components another way.
+> **note**: The installation assistant configures each component with one address per node: the indexer `network.host`, the indexer hosts of the manager and the dashboard, and the Server API URL of the dashboard. It uses the first `ip` of the node or, when the node has no `ip`, its first `dns`. A `dns` name must resolve on every host of the deployment.
 
 ## Wazuh certs tool
 
@@ -99,7 +99,7 @@ Each node must have a unique name and at least one network identifier (`ip` or `
 
 A node name may only contain letters, digits, dots, dashes and underscores, must not start with a dash or a dot, and must be at most 253 characters long.
 
-> **note**: Examples 1, 2 and 3 have nodes without `ip`. They are valid for the Wazuh certs tool, but not for an installation with `wazuh-install-5.0.0.sh`, which needs an `ip` on every node (see the note in [Wazuh installation assistant](#wazuh-installation-assistant)).
+> **note**: Examples 1, 2 and 3 have nodes without `ip`. The installation assistant addresses those nodes by their first `dns`, so the names must resolve on every host (see the note in [Wazuh installation assistant](#wazuh-installation-assistant)).
 
 #### Example 1: using only `dns` values
 
