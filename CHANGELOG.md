@@ -94,6 +94,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1147](https://github.com/wazuh/wazuh-installation-assistant/issues/1147) | Remove the legacy Bach/Docker unit tests, replaced by the pytest suite |
 | [#1139](https://github.com/wazuh/wazuh-installation-assistant/issues/1139) | Remove the shared `wazuh-credentials.sh` library and its build artifact |
 | [#961](https://github.com/wazuh/wazuh-installation-assistant/issues/961) | Remove unnecessary debhelper install-time dependency |
 | [#836](https://github.com/wazuh/wazuh-installation-assistant/issues/836) | Wazuh dashboard initialization message. |

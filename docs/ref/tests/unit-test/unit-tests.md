@@ -10,7 +10,7 @@ Unit tests for the Wazuh Installation Assistant scripts. Tests are written in **
 
 ## Test structure
 
-Tests live in `tests/unit/` alongside their configuration. Legacy Bach/Docker-based tests are preserved in `tests/unit/legacy/` for historical reference but are not executed by the CI pipeline.
+Tests live in `tests/unit/` alongside their configuration.
 
 ```
 tests/unit/
@@ -23,8 +23,7 @@ tests/unit/
 ├── test_install_common.py       # installCommon.sh — config retrieval, prerequisites, service start
 ├── test_manager.py              # manager.sh — install (apt/yum), cluster start
 ├── test_indexer.py              # indexer.sh — install (apt/yum), configure
-├── test_dashboard.py            # dashboard.sh — install (apt/yum), configure
-└── legacy/                      # Preserved Bach/Docker tests (not executed, kept as reference)
+└── test_dashboard.py            # dashboard.sh — install (apt/yum), configure
 ```
 
 ### Bash modules covered
