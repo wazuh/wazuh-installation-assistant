@@ -8,7 +8,7 @@ This glossary provides definitions for key terms, components, and concepts used 
 
 ### Wazuh Installation Assistant
 
-The main tool (`wazuh-install.sh`) that automates the deployment and configuration of Wazuh central components. It guides users through the process of installing Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard. The assistant supports both All-In-One (AIO) installations and distributed deployments, includes system requirements checking and automated configuration, and embeds the certificate functions of the Certificate Tool.
+The main tool (`wazuh-install-<version>.sh`) that automates the deployment and configuration of Wazuh central components. It guides users through the process of installing Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard. The assistant supports both All-In-One (AIO) installations and distributed deployments, includes system requirements checking and automated configuration, and embeds the certificate functions of the Certificate Tool.
 
 ### Wazuh Certs Tool
 

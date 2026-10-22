@@ -39,7 +39,7 @@ Certificate files are stored in the following paths on each node:
 
 There are no default passwords. The Wazuh packages generate random passwords for the internal Wazuh users when they are installed, or use the ones in `wazuh-install-files.tar` in a distributed deployment. The Wazuh indexer publishes the passwords of its users in `/etc/wazuh-indexer/export/credentials.env`, and the Wazuh manager master node publishes the passwords of the API users in `/etc/wazuh-manager/export/credentials.env`. Both files are owned by root. The values given before the install are in the `local.env` file of each package (root, mode `0600`).
 
-To change all passwords at once, use the `--change-all` option. See the [Change all default passwords](../ref/getting-started/usage.md#change-all-default-passwords) section for details.
+To change all passwords at once, use the `--change-all` option. See the [Change all passwords](../ref/getting-started/usage.md#change-all-passwords) section for details.
 
 ```bash
 bash wazuh-passwords-tool-5.0.0.sh --change-all

@@ -91,9 +91,9 @@ The steps to perform the installation are as follows:
     sudo bash wazuh-install-5.0.0.sh -wd <dashboard-node-name>
     ```
 
-### Change the default passwords
+### Change the passwords
 
-A freshly completed installation has no default passwords: the passwords of the Wazuh indexer and Wazuh server API users are generated during the installation and saved in `/etc/wazuh-indexer/export/credentials.env` and, on the Wazuh manager master node, `/etc/wazuh-manager/export/credentials.env`. To rotate them, for example if one of these files was exposed, the recommended procedure is to change all the passwords in a single command using the `--change-all` option of the passwords tool. See the [Change all default passwords](#change-all-default-passwords) section for details.
+A freshly completed installation has no default passwords: the passwords of the Wazuh indexer and Wazuh server API users are generated during the installation and saved in `/etc/wazuh-indexer/export/credentials.env` and, on the Wazuh manager master node, `/etc/wazuh-manager/export/credentials.env`. To rotate them, for example if one of these files was exposed, the recommended procedure is to change all the passwords in a single command using the `--change-all` option of the passwords tool. See the [Change all passwords](#change-all-passwords) section for details.
 
 This same command also rotates the Wazuh server API users (`wazuh` and `wazuh-internal-client`) on the host where the Wazuh manager is installed, so there is no need to change them separately. The new passwords are saved in the credential files of the host, never printed. See [Where the passwords are saved](#where-the-passwords-are-saved).
 
@@ -605,7 +605,7 @@ sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials
 
 Editing a value in these files does not change the deployment: use the tool to change a password.
 
-### Change all default passwords
+### Change all passwords
 
 The `-a`, `--change-all` option rotates, in a single execution, the password of every user of the table above that is installed on the host: the Wazuh indexer users when the Wazuh indexer is installed, and the Wazuh server API users when the Wazuh manager is installed. No Wazuh server API admin credentials are needed. A different random password is generated for each user.
 
@@ -789,5 +789,7 @@ INFO: The new password of user wazuh was saved as WAZUH_MANAGER_API_PASSWORD in:
 ```
 
 With `-p`, the last line is `INFO: WAZUH_MANAGER_API_PASSWORD was updated in: /etc/wazuh-manager/export/credentials.env.`
+
+The tool lists every credential file of the host that already holds the key, so the line can also name `/etc/wazuh-manager/local.env` and, when the tool runs next to it, `wazuh-ca/credentials.env`.
 
 When the user is `wazuh-internal-client` and the Wazuh dashboard is installed on the same host, the tool also writes the new password into the `wazuh_core.hosts.default.password` entry of the Wazuh dashboard keystore and restarts the Wazuh dashboard. Otherwise, update the Wazuh dashboard nodes as described in [Multi-node and distributed deployments](#multi-node-and-distributed-deployments).

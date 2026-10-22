@@ -229,13 +229,14 @@ Before upgrading, ensure you:
 
 3. Keep your `/etc/wazuh-dashboard/opensearch_dashboards.yml`.
 
-    - On Debian-based systems, when `apt` asks about the file, keep the installed version.
+    - On Debian-based systems, when `apt` asks about the file, keep the installed version. The new one is saved as `/etc/wazuh-dashboard/opensearch_dashboards.yml.dpkg-dist`.
     - On RPM-based systems there is no question: the package keeps your file and installs the new one as `/etc/wazuh-dashboard/opensearch_dashboards.yml.rpmnew`.
 
     The packaged file points `opensearch.hosts` and `wazuh_core.hosts.default.url` to `localhost`, and has the default `opensearch.ssl.certificateAuthorities`, `username` and `ca` settings. If you take it, copy back from `opensearch_dashboards.yml.old` every setting of your deployment, not only `server.ssl.key` and `server.ssl.certificate`, or a distributed Wazuh dashboard loses its connection to the Wazuh indexer and to the Server API. Compare the new file with yours to bring over new settings, for example:
 
     ```bash
-    diff /etc/wazuh-dashboard/opensearch_dashboards.yml.old /etc/wazuh-dashboard/opensearch_dashboards.yml.rpmnew
+    diff /etc/wazuh-dashboard/opensearch_dashboards.yml.old /etc/wazuh-dashboard/opensearch_dashboards.yml.dpkg-dist   # Debian-based
+    diff /etc/wazuh-dashboard/opensearch_dashboards.yml.old /etc/wazuh-dashboard/opensearch_dashboards.yml.rpmnew      # RPM-based
     ```
 
     Ensure the value of `uiSettings.overrides.defaultRoute` is `/app/wz-home`:
