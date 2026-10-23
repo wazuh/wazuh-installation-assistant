@@ -14,8 +14,19 @@ function installCommon_cleanExit() {
         eval "kill -9 $spin_pid ${debug}"
     fi
 
+    # The Wazuh indexer security initializer runs in its own process group, which Ctrl+C does not reach.
+    # It must end before the rollback removes anything.
+    if [ -n "${indexer_init_pid}" ]; then
+        eval "pkill -INT -P ${indexer_init_pid} ${debug}"
+        wait "${indexer_init_pid}"
+    fi
+
+    local question="Do you want to remove the ongoing installation?"
+    if [ -n "${start_indexer_cluster}" ]; then
+        question="Do you want to clean up the ongoing cluster initialization?"
+    fi
     until [[ "${rollback_conf}" =~ ^[N|Y|n|y]$ ]]; do
-        echo -ne "\nDo you want to remove the ongoing installation?[Y/N]"
+        echo -ne "\n${question}[Y/N]"
         read -r rollback_conf
     done
     if [[ "${rollback_conf}" =~ [N|n] ]]; then
@@ -446,6 +457,17 @@ function installCommon_logRunHeader() {
 
 }
 
+# Names what this run does, for its messages
+function installCommon_operationName() {
+
+    if [ -n "${start_indexer_cluster}" ]; then
+        echo "cluster initialization"
+    else
+        echo "installation"
+    fi
+
+}
+
 function installCommon_removeCentOSrepositories() {
 
     eval "rm -f ${centos_repo} ${debug}"
@@ -458,8 +480,9 @@ function installCommon_removeCentOSrepositories() {
 
 function installCommon_rollBack() {
 
-    # The uninstall flow prints the header itself, before checking each component
-    if [ -z "${uninstall}" ]; then
+    # The uninstall flow prints the header itself, before checking each component.
+    # --start-cluster removes no component.
+    if [ -z "${uninstall}" ] && [ -z "${start_indexer_cluster}" ]; then
         common_logger "--- Removing existing Wazuh installation ---"
     fi
 
@@ -545,27 +568,40 @@ function installCommon_rollBack() {
         eval "rm -rf /run/wazuh-dashboard/ ${debug}"
     fi
 
-    elements_to_remove=(    "/var/log/wazuh-indexer/"
-                            "/etc/systemd/system/opensearch.service.wants/"
-                            "/securityadmin_demo.sh"
-                            "/etc/systemd/system/multi-user.target.wants/wazuh-manager.service"
-                            "/etc/systemd/system/multi-user.target.wants/opensearch.service"
-                            "/etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service"
-                            "/etc/systemd/system/wazuh-dashboard.service"
-                            "/lib/firewalld/services/dashboard.xml"
-                            "/lib/firewalld/services/opensearch.xml" )
+    # Leftovers of the components this run removes. Other components on the host keep theirs.
+    elements_to_remove=()
+    if [[ -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ]]; then
+        elements_to_remove+=(   "/etc/systemd/system/multi-user.target.wants/wazuh-manager.service" )
+    fi
+    if [[ -n "${indexer}" || -n "${AIO}" || -n "${uninstall}" ]]; then
+        elements_to_remove+=(   "/var/log/wazuh-indexer/"
+                                "/etc/systemd/system/opensearch.service.wants/"
+                                "/securityadmin_demo.sh"
+                                "/etc/systemd/system/multi-user.target.wants/opensearch.service"
+                                "/lib/firewalld/services/opensearch.xml" )
+    fi
+    if [[ -n "${dashboard}" || -n "${AIO}" || -n "${uninstall}" ]]; then
+        elements_to_remove+=(   "/etc/systemd/system/multi-user.target.wants/wazuh-dashboard.service"
+                                "/etc/systemd/system/wazuh-dashboard.service"
+                                "/lib/firewalld/services/dashboard.xml" )
+    fi
 
-    eval "rm -rf ${elements_to_remove[*]} ${debug}"
+    if [ "${#elements_to_remove[@]}" -gt 0 ]; then
+        eval "rm -rf ${elements_to_remove[*]} ${debug}"
+    fi
 
     installCommon_removeWIADependencies
 
     eval "systemctl daemon-reload ${debug}"
 
     if [ -z "${uninstall}" ]; then
+        local operation
+        operation=$(installCommon_operationName)
+        operation="${operation^}"
         if [ -n "${rollback_conf}" ] || [ -n "${overwrite}" ]; then
-            common_logger "Installation cleaned."
+            common_logger "${operation} cleaned."
         else
-            common_logger "Installation cleaned. Check the ${logfile} file to learn more about the issue."
+            common_logger "${operation} cleaned. Check the ${logfile} file to learn more about the issue."
         fi
     fi
 
@@ -649,9 +685,11 @@ function installCommon_scanDependencies() {
         joined_deps_not_installed="${joined_deps_not_installed%, }"
         joined_assistant_not_installed="${joined_assistant_not_installed%, }"
 
-        message="To perform the installation, the following package/s must be installed: ${joined_deps_not_installed}."
+        local operation
+        operation=$(installCommon_operationName)
+        message="To perform the ${operation}, the following package/s must be installed: ${joined_deps_not_installed}."
         if [ "${#assistant_deps_to_install[@]}" -gt 0 ]; then
-            message+=" The following package/s will be removed after the installation: ${joined_assistant_not_installed}."
+            message+=" The following package/s will be removed after the ${operation}: ${joined_assistant_not_installed}."
         fi
         message+=" Add the -id|--install-dependencies parameter to install them automatically or install them manually."
         common_logger -w "${message}"

@@ -138,6 +138,8 @@ The following dependencies must be installed on the Wazuh indexer nodes, besides
 
     > **Note:** You only have to initialize the cluster once. There is no need to run this command on every node.
 
+    The assistant waits up to 300 seconds for the Wazuh indexer cluster to form, and names the Wazuh indexer nodes of `config.yml` that must be running. If the time runs out, start the Wazuh indexer service on those nodes and run `--start-cluster` again. Cancelling `--start-cluster` with Ctrl+C, or a failure, leaves the Wazuh indexer installed.
+
 ### Testing the cluster installation
 
 1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the configured Wazuh indexer IP address. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
