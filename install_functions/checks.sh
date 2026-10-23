@@ -1,5 +1,5 @@
 # Wazuh installer - checks.sh functions.
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -427,7 +427,7 @@ function checks_tarPasswords() {
             common_logger -e "There is no ${key} in the credentials.env file of ${tar_file}."
             exit 1
         fi
-        if ! wazuh_password_validate "${value}" > /dev/null 2>&1; then
+        if ! common_passwordValidate "${value}" 2>/dev/null; then
             common_logger -e "The ${key} in the credentials.env file of ${tar_file} does not follow the password policy."
             exit 1
         fi

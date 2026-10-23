@@ -25,3 +25,7 @@ To use `pre-release` packages instead, use the following command:
 ```bash
 curl -fsS -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.1.0-<STAGE>.yml
 ```
+
+## Copy shipped in the Wazuh indexer package
+
+The Wazuh indexer package also ships the tool as `/usr/share/wazuh-indexer/tools/wazuh-certs-tool.sh`, with a template `config.yml` next to it. With that copy, the default CA directory is `/usr/share/wazuh-indexer/tools/wazuh-ca`, not the CA of the package. To issue certificates from the CA the package created, set `WAZUH_CA_DIR=/etc/wazuh-indexer/ca`. See [Root CA](../../getting-started/usage.md#root-ca).

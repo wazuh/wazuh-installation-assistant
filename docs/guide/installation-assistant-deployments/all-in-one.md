@@ -16,16 +16,17 @@
    > [!NOTE]
    > The assistant stops if a package it needs, such as `gnupg`, is missing, and names it. Install it, or add `-id` to the command to install it automatically. To install packages that are not published yet, add `-d local` and list them in `artifact_urls.yaml`, as described in [Use development packages](../../ref/getting-started/usage.md#use-development-packages).
 
-   Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful. There is one `You can access` line per address of the Wazuh dashboard certificate, and the line after `Password:` is the command that prints the `admin` password.
+   Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful. There is one `You can access` line per address of the Wazuh dashboard certificate. In an interactive terminal, the `Password:` line shows the `admin` password, followed by the command that prints it again. The password is not written to `/var/log/wazuh-install.log`, and when the output is redirected, as with cloud-init or CI, only the command is shown.
 
    ```bash
    INFO: Wazuh dashboard web application initialized.
    INFO: --- Summary ---
    INFO: You can access the web interface https://<WAZUH_DASHBOARD_IP_ADDRESS>:443
    INFO:     User: admin (Wazuh dashboard login and Wazuh indexer administrator)
-   INFO:     Password: to read it from the credentials file, run:
-   INFO:         sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-
-   INFO: The other users of the deployment are listed at the top of /etc/wazuh/credentials.env.
+   INFO:     Password: <ADMIN_PASSWORD>
+   INFO:     To read the password again, run:
+   INFO:         sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-
+   INFO: The passwords of the other users are in /etc/wazuh-indexer/export/credentials.env and /etc/wazuh-manager/export/credentials.env.
    INFO: Installation finished.
    ```
 
@@ -36,10 +37,12 @@
 Access ``https://<WAZUH_DASHBOARD_IP_ADDRESS>`` and using your credentials:
 
 - **Username**: ``admin``
-- **Password**: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `/etc/wazuh/credentials.env`
+- **Password**: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `/etc/wazuh-indexer/export/credentials.env`
 
 > [!NOTE]
 > When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. This is expected and the user has the option to accept the certificate as an exception or, alternatively, configure the system to use a certificate from a trusted authority.
 
 > [!NOTE]
-> `/etc/wazuh/credentials.env` holds the passwords of the Wazuh users, generated during the installation. Once you have stored them in a safe place, remove the file from every node: the Wazuh components do not read it after the installation. To change a password later, see [Change all default passwords](../../ref/getting-started/usage.md#change-all-default-passwords).
+> The packages create the CAs, the certificates and the passwords of the Wazuh users during the installation. The Wazuh indexer users are in `/etc/wazuh-indexer/export/credentials.env`, and the Wazuh server API users are in `/etc/wazuh-manager/export/credentials.env`. Store them in a safe place, and keep these files: on a host with more than one component, the Wazuh manager and the Wazuh dashboard read their passwords from them. They are readable by `root` only. To change a password later, see [Change all passwords](../../ref/getting-started/usage.md#change-all-passwords).
+>
+> Each package keeps its CA and the private key of that CA in its `ca/` directory: `/etc/wazuh-indexer/ca`, `/etc/wazuh-manager/ca` and `/etc/wazuh-dashboard/ca`. To trust the Wazuh dashboard certificate in your browser, import `/etc/wazuh-dashboard/ca/root-ca.pem`. Back up the three directories in a safe place: you need them to renew certificates later. See [Security](../security.md).

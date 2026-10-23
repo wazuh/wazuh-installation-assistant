@@ -1,5 +1,5 @@
 # Wazuh installer - common.sh functions.
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -85,25 +85,28 @@ function installCommon_createCertificates() {
 
 }
 
-# Generates the passwords of every component in the credentials file of this host, where
-# the indexer package reads them when it is installed here, and adds a copy to the tar.
-# A password already in the file is kept, so running -g again gives the same ones.
+# Generates the passwords of every component and adds them to the tar. They are kept
+# in credentials.env next to the root CA, so running -g again gives the same ones.
 function installCommon_createPasswords() {
 
-    local key
+    local key value ca_dir
 
     common_logger -d "Generating the Wazuh passwords."
+    if ! ca_dir=$(common_caGetDir 2>/dev/null); then
+        common_logger -e "WAZUH_CA_DIR must be an absolute path."
+        exit 1
+    fi
     for key in "${credential_keys[@]}"; do
-        if wazuh_env_get "${key}" > /dev/null 2>&1; then
+        if value=$(common_envGet "${ca_dir}/credentials.env" "${key}") && common_passwordValidate "${value}" 2>/dev/null; then
             continue
         fi
-        if ! wazuh_env_set "${key}" "$(wazuh_password_generate)"; then
-            common_logger -e "Could not write ${key} to the credentials file."
+        if ! common_envSet "${ca_dir}/credentials.env" "${key}" "$(common_passwordGenerate)"; then
+            common_logger -e "Could not write ${key} to ${ca_dir}/credentials.env."
             exit 1
         fi
     done
 
-    if ! eval "cp '$(wazuh_env_get_file)' /tmp/wazuh-install-files/credentials.env ${debug}"; then
+    if ! eval "cp '${ca_dir}/credentials.env' /tmp/wazuh-install-files/credentials.env ${debug}"; then
         common_logger -e "Could not copy the credentials file."
         exit 1
     fi
@@ -111,83 +114,46 @@ function installCommon_createPasswords() {
 
 }
 
-# Places the passwords given as arguments (the ones of the component being installed) and
-# the root CA certificate from the tar before a component is installed, where its package
-# reads them. The other passwords of the tar are never written, so a node only holds the
-# passwords of its components. The CA private key is never placed: without it, a package
-# that finds no certificate pair fails instead of issuing its own.
-function installCommon_placeCredentials() {
+# Prints the value of a key of the credentials.env file of the tar.
+function installCommon_getTarCredential() {
 
-    local base_dir ca_dir
+    local key="${1}"
 
-    if [ "$#" -eq 0 ]; then
-        common_logger -e "installCommon_placeCredentials needs the credential keys of the component."
-        exit 1
-    fi
-
-    common_logger -d "Placing the credentials of the component and the root CA certificate."
-    if ! base_dir=$(wazuh_base_get_dir); then
-        common_logger -e "Could not resolve the Wazuh base directory."
-        exit 1
-    fi
-    if ! ca_dir=$(wazuh_ca_get_dir); then
-        common_logger -e "Could not resolve the root CA directory."
-        exit 1
-    fi
-
-    # Nothing is written until both files are known to belong to this deployment.
-    if [ -e "${ca_dir}/root-ca.pem" ] && ! tar -xOf "${tar_file}" wazuh-install-files/root-ca.pem 2>/dev/null | cmp -s - "${ca_dir}/root-ca.pem"; then
-        common_logger -e "${ca_dir}/root-ca.pem already exists and is not the one in ${tar_file}. Remove it, or use the tar file of this deployment."
-        exit 1
-    fi
-    if [ -e "${base_dir}/credentials.env" ]; then
-        installCommon_mergeCredentials check
-    fi
-
-    eval "install -d -o root -g root -m 0700 '${base_dir}' ${debug}"
-    installCommon_mergeCredentials merge "$@"
-
-    eval "install -d -o root -g root -m 0700 '${ca_dir}' ${debug}"
-    installCommon_placeFromTar "root-ca.pem" "${ca_dir}/root-ca.pem" root root 0644
+    tar -xOf "${tar_file}" wazuh-install-files/credentials.env 2>/dev/null \
+        | sed -nE "s/^${key}=\"?([^\"]*)\"?$/\1/p" | tail -n 1
 
 }
 
-# With "check", compares every password of the tar that is already in the credentials file
-# of the host (the -g host, another component of this node, or one a failed install left
-# behind after its package removed its own keys) and writes nothing: a password that
-# differs belongs to another deployment. With "merge", followed by the keys of the
-# component, adds to the file, creating it if needed, those keys it does not have yet, and
-# never any other.
-function installCommon_mergeCredentials() {
+# Writes the local.env file of a package with only the keys it uses, taken from the
+# tar, before the package is installed. A key already in the file with another value
+# is an error: the file belongs to another deployment. Nothing is written until every
+# key is checked.
+function installCommon_placeLocalEnv() {
 
-    local mode="${1:-merge}"
-    local key value current credentials
-    local -a keys
+    local config_path="${1}"
+    local env_file="${config_path}/local.env"
+    local key value current
+    local -A values=()
 
-    [ "$#" -gt 0 ] && shift
-    if [ "${mode}" = "check" ]; then
-        keys=("${credential_keys[@]}")
-    else
-        keys=("$@")
-    fi
-
-    credentials=$(tar -xOf "${tar_file}" wazuh-install-files/credentials.env 2>/dev/null)
-    for key in "${keys[@]}"; do
-        value=$(sed -nE "s/^${key}=\"?([^\"]*)\"?$/\1/p" <<< "${credentials}" | tail -n 1)
+    shift
+    common_logger -d "Writing ${env_file}."
+    for key in "$@"; do
+        value=$(installCommon_getTarCredential "${key}")
         if [ -z "${value}" ]; then
-            if [ "${mode}" = "check" ]; then
-                continue
-            fi
             common_logger -e "There is no ${key} in the credentials.env file of ${tar_file}."
             exit 1
         fi
-        if current=$(wazuh_env_get "${key}" 2>/dev/null); then
-            if [ "${current}" != "${value}" ]; then
-                common_logger -e "${key} in $(wazuh_env_get_file) is not the one in ${tar_file}. Remove the file, or use the tar file of this deployment."
-                exit 1
-            fi
-        elif [ "${mode}" != "check" ] && ! wazuh_env_set "${key}" "${value}"; then
-            common_logger -e "Could not write ${key} to the credentials file."
+        if current=$(common_envGet "${env_file}" "${key}" 2>/dev/null) && [ "${current}" != "${value}" ]; then
+            common_logger -e "${key} in ${env_file} is not the one of this deployment. Remove the file, or use the tar file of this deployment."
+            exit 1
+        fi
+        values["${key}"]="${value}"
+    done
+
+    eval "install -d -o root -g root -m 0750 '${config_path}' ${debug}"
+    for key in "$@"; do
+        if ! common_envSet "${env_file}" "${key}" "${values[${key}]}"; then
+            common_logger -e "Could not write ${key} to ${env_file}."
             exit 1
         fi
     done
@@ -195,8 +161,8 @@ function installCommon_mergeCredentials() {
 }
 
 # Copies one file of the tar to its place with the given owner, group and mode. A file
-# already there is kept when it is identical (the -g host already holds the credentials
-# file and the CA), and is an error when it is not: it belongs to another deployment.
+# already there is kept when it is identical, and is an error when it is not: it
+# belongs to another deployment.
 function installCommon_placeFromTar() {
 
     local member="${1}" destination="${2}" owner="${3}" group="${4}" mode="${5}"
@@ -255,16 +221,14 @@ function installCommon_createInstallFiles() {
             installCommon_createClusterKey
         fi
         installCommon_createPasswords
-        # root-ca.key stays in the CA directory of this host and is not added to the tar:
-        # with it, any node could issue a CN=admin certificate, which the indexer takes as
-        # its superuser without a password and which cannot be revoked.
+        # root-ca.key stays on this host and is never added to the tar.
         eval "cp '${config_file}' '/tmp/wazuh-install-files/config.yml' ${debug}"
         eval "chown root:root /tmp/wazuh-install-files/* ${debug}"
         eval "tar -zcf '${tar_file}' -C '/tmp/' wazuh-install-files/ ${debug}"
         eval "rm -rf '/tmp/wazuh-install-files' ${debug}"
         common_logger "Created ${tar_file_name}. It contains the Wazuh cluster key, the passwords and the certificates necessary for installation. Remove it from every node once the installation finishes."
         common_logger "Keeping ${config_file}: the copy used for installation is the one inside ${tar_file_name}."
-        common_logger "The root CA and its private key are in $(wazuh_ca_get_dir). Back them up: they are needed to add nodes or renew certificates."
+        common_logger "The root CA, its private key and the passwords are in $(common_caGetDir). Back them up: they are needed to add nodes or renew certificates."
     else
         common_logger -e "Unable to create /tmp/wazuh-install-files"
         exit 1
@@ -523,6 +487,7 @@ function installCommon_rollBack() {
 
     if [[ ( -n "${wazuh_remaining_files}"  || -n "${wazuh_installed}" ) && ( -n "${wazuh}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
         eval "rm -rf /var/wazuh-manager/ ${debug}"
+        eval "rm -rf ${manager_config_path}/ ${debug}"
     fi
 
     if [[ -n "${indexer_installed}" && ( -n "${indexer}" || -n "${AIO}" || -n "${uninstall}" ) ]]; then
@@ -645,10 +610,9 @@ function installCommon_scanDependencies() {
         command='! rpm -q ${dep} --quiet'
     fi
 
-    # -g creates the CA and the passwords with the credentials library, which needs openssl,
-    # cmp (diffutils) and flock (util-linux).
+    # -g creates the CA with openssl.
     if [ -n "${configurations}" ]; then
-        assistant_deps+=( openssl diffutils util-linux )
+        assistant_deps+=( openssl )
     fi
 
     # Remove openssl dependency if not necessary
@@ -698,57 +662,74 @@ function installCommon_scanDependencies() {
 
 function installCommon_startService() {
 
+    local start_time e_code
+
     if [ "$#" -ne 1 ]; then
         common_logger -e "installCommon_startService must be called with 1 argument."
         exit 1
     fi
 
     common_logger "Starting service ${1}."
+    start_time=$(date '+%Y-%m-%d %H:%M:%S')
 
     if [[ -d /run/systemd/system ]]; then
         eval "systemctl daemon-reload ${debug}"
         eval "systemctl enable ${1}.service ${debug}"
         eval "systemctl start ${1}.service ${debug}; e_code=\${PIPESTATUS[0]}"
-        if [  "${e_code}" != 0  ]; then
-            common_logger -e "${1} could not be started."
-            if [ -n "$(command -v journalctl)" ]; then
-                eval "journalctl -u ${1} >> ${logfile}"
-            fi
-            installCommon_rollBack
-            exit 1
-        else
-            common_logger "${1} service started."
+        # A service can stop right after a successful start command.
+        if [ "${e_code}" == 0 ] && ! systemctl is-active --quiet "${1}.service"; then
+            e_code=1
         fi
     elif ps -p 1 -o comm= | grep "init"; then
         eval "chkconfig ${1} on ${debug}"
         eval "service ${1} start ${debug}"
         eval "/etc/init.d/${1} start ${debug}; e_code=\${PIPESTATUS[0]}"
-        if [  "${e_code}" != 0  ]; then
-            common_logger -e "${1} could not be started."
-            if [ -n "$(command -v journalctl)" ]; then
-                eval "journalctl -u ${1} >> ${logfile}"
-            fi
-            installCommon_rollBack
-            exit 1
-        else
-            common_logger "${1} service started."
-        fi
     elif [ -x "/etc/rc.d/init.d/${1}" ] ; then
         eval "/etc/rc.d/init.d/${1} start ${debug}; e_code=\${PIPESTATUS[0]}"
-        if [  "${e_code}" != 0  ]; then
-            common_logger -e "${1} could not be started."
-            if [ -n "$(command -v journalctl)" ]; then
-                eval "journalctl -u ${1} >> ${logfile}"
-            fi
-            installCommon_rollBack
-            exit 1
-        else
-            common_logger "${1} service started."
-        fi
     else
         common_logger -e "${1} could not start. No service manager found on the system."
         exit 1
     fi
+
+    if [ "${e_code}" != 0 ]; then
+        common_logger -e "${1} could not be started."
+        installCommon_printStartProblems "${1}" "${start_time}"
+        installCommon_rollBack
+        exit 1
+    fi
+    common_logger "${1} service started."
+
+}
+
+# Prints the credential problems the package found before the start (MISSING, INVALID
+# or UNSAFE), from the journal or, without it, from the package check command.
+function installCommon_printStartProblems() {
+
+    local service="${1}" start_time="${2}" problems="" line
+    local check_command=""
+
+    case "${service}" in
+        "wazuh-manager") check_command="${manager_resolver} --check" ;;
+        "wazuh-indexer") check_command="/usr/share/wazuh-indexer/bin/resolve-credentials.sh --check" ;;
+    esac
+
+    if [ -n "$(command -v journalctl)" ]; then
+        eval "journalctl -u ${service} --since '${start_time}' --no-pager >> ${logfile} 2>&1"
+        problems=$(journalctl -u "${service}" --since "${start_time}" --no-pager -o cat 2>/dev/null)
+    fi
+    problems=$(sed -E 's/^resolve-credentials: //' <<< "${problems}" | grep -E '^(MISSING|INVALID|UNSAFE) ')
+    if [ -z "${problems}" ] && [ -n "${check_command}" ] && [ -x "${check_command%% *}" ]; then
+        problems=$(${check_command} 2>&1 | sed -E 's/^resolve-credentials: //' | grep -E '^(MISSING|INVALID|UNSAFE) ')
+    fi
+    problems=$(awk '!seen[$0]++' <<< "${problems}")
+    if [ -z "${problems}" ]; then
+        common_logger -e "Check the ${logfile} file to learn more about the issue."
+        return 0
+    fi
+    common_logger -e "${service} found these problems with its credentials:"
+    while IFS= read -r line; do
+        common_logger -e "    ${line}"
+    done <<< "${problems}"
 
 }
 

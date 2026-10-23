@@ -1,5 +1,5 @@
 # Passwords tool - main functions
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -18,13 +18,13 @@ function getHelp() {
     echo -e "DESCRIPTION"
     echo -e "        -a,  --change-all"
     echo -e "                Changes the passwords of all the Wazuh indexer and Wazuh API users installed on this host."
-    echo -e "                The new passwords are generated and saved in the credentials file."
+    echo -e "                The new passwords are generated and saved in the credential files of this host."
     echo -e ""
     echo -e "        -u,  --user <user>"
     echo -e "                Indicates the name of the user whose password will be changed."
     echo -e "                Wazuh indexer users: ${indexer_accounts[*]}."
     echo -e "                Wazuh API users: ${api_accounts[*]}."
-    echo -e "                If -p|--password is not used, a random password is generated and saved in the credentials file."
+    echo -e "                If -p|--password is not used, a random password is generated and saved in the credential files of this host."
     echo -e ""
     echo -e "        -p,  --password"
     echo -e "                Reads the new password from the standard input, must be used with option -u."
@@ -39,10 +39,13 @@ function getHelp() {
     echo -e "                Shows help."
     echo -e ""
     echo -e "FILES"
-    echo -e "        $(wazuh_env_get_file 2>/dev/null)"
-    echo -e "                Credentials file. Generated passwords are always saved here. A password given with"
-    echo -e "                -p|--password only updates it when the file already exists. The directory can be"
-    echo -e "                changed with WAZUH_BASE_DIR."
+    echo -e "        ${indexer_config_path}/export/credentials.env, ${manager_config_path}/export/credentials.env"
+    echo -e "                The passwords of the Wazuh indexer and Wazuh API users, published by their package."
+    echo -e "        ${indexer_config_path}/local.env, ${manager_config_path}/local.env, ${dashboard_config_path}/local.env"
+    echo -e "                The passwords each package uses."
+    echo -e "        $(passwords_getDeploymentFile)"
+    echo -e "                The passwords that --generate-config-files keeps next to the root CA, if this host has it."
+    echo -e "        A new password is saved in each of these files that exists on this host and holds that user."
     echo -e ""
     exit 1
 
