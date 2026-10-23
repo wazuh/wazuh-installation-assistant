@@ -1,6 +1,6 @@
 # Passwords Tool installation
 
-The passwords tool is embedded in the Wazuh indexer under `/usr/share/wazuh-indexer/plugins/opensearch-security/tools/`. You can use the embedded version or download it with the following command:
+The passwords tool is embedded in the Wazuh indexer package as `/usr/share/wazuh-indexer/tools/wazuh-passwords-tool.sh`. You can use the embedded version or download it with the following command:
 
 ```bash
 curl -fsSo wazuh-passwords-tool-5.0.1.sh https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-passwords-tool-5.0.1.sh

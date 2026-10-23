@@ -1,5 +1,5 @@
 # Wazuh installer - variables
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -23,9 +23,10 @@ artifact_urls_file_name="artifact_urls.yaml"
 readonly artifact_urls_bucket_folder="artifact-urls"
 readonly download_packages_directory="wazuh-install-packages"
 
-readonly dashboard_cert_path="/etc/wazuh-dashboard/certs"
-readonly manager_cert_path="/var/wazuh-manager/etc/certs"
-readonly indexer_cert_path="/etc/wazuh-indexer/certs"
+readonly dashboard_cert_path="${dashboard_config_path}/certs"
+readonly manager_cert_path="${manager_config_path}/certs"
+readonly indexer_cert_path="${indexer_config_path}/certs"
+readonly manager_conf_file="${manager_config_path}/wazuh-manager.conf"
 readonly credential_keys=( WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD )
 # The passwords each component needs: a node only receives the ones of its components.
 readonly indexer_credential_keys=( WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD )

@@ -31,7 +31,7 @@ apt install ./wazuh-offline/wazuh-packages/wazuh-manager*.deb
 apt install ./wazuh-offline/wazuh-packages/wazuh-dashboard*.deb
 ```
 
-Install one package at a time, in the order and at the step of the guide where it is installed.
+Check the package signatures first, as described in [Verify the package signatures](#verify-the-package-signatures). Install one package at a time, in the order and at the step of the guide where it is installed.
 
 When you configure the Wazuh indexer, also disable the tasks that need Internet access, as described in [Installing the Wazuh indexer](#installing-the-wazuh-indexer), step 5.
 
@@ -51,17 +51,17 @@ When you configure the Wazuh indexer, also disable the tasks that need Internet 
 - The two Wazuh server API passwords must be the same on the master node and on every worker node.
 - The Wazuh manager and the Wazuh dashboard consume the passwords of the Wazuh indexer and of the Wazuh server API, so they must be given the same values.
 
-Each host needs these keys in `/etc/wazuh/credentials.env`:
+Each package needs these keys in its `local.env` file:
 
-| Host | Keys |
-| ---- | ---- |
-| Wazuh indexer nodes | `WAZUH_INDEXER_ADMIN_PASSWORD`, `WAZUH_INDEXER_KIBANASERVER_PASSWORD`, `WAZUH_INDEXER_MANAGER_PASSWORD` |
-| Wazuh manager nodes, master and workers | `WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`, `WAZUH_INDEXER_MANAGER_PASSWORD` |
-| Wazuh dashboard nodes | `WAZUH_INDEXER_KIBANASERVER_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD` |
+| Host | File | Keys |
+| ---- | ---- | ---- |
+| Wazuh indexer nodes | `/etc/wazuh-indexer/local.env` | `WAZUH_INDEXER_ADMIN_PASSWORD`, `WAZUH_INDEXER_KIBANASERVER_PASSWORD`, `WAZUH_INDEXER_MANAGER_PASSWORD` |
+| Wazuh manager nodes, master and workers | `/etc/wazuh-manager/local.env` | `WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`, `WAZUH_INDEXER_MANAGER_PASSWORD` |
+| Wazuh dashboard nodes | `/etc/wazuh-dashboard/local.env` | `WAZUH_INDEXER_KIBANASERVER_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD` |
 
-A host that runs more than one component needs the keys of all of them: the commands of this guide only add the keys that are not in the file yet.
+A host that runs more than one component needs one file for each package.
 
-The private key of the root CA, `root-ca.key`, is not in `wazuh-install-files.tar`: it stays in `/etc/wazuh/ca` of the host where you ran `wazuh-install-5.0.1.sh -g`. Back it up in a safe place: you need it to add nodes or renew certificates later. See [Security](../security.md).
+The private key of the root CA, `root-ca.key`, is not in `wazuh-install-files.tar`: it stays in the `wazuh-ca` directory next to `wazuh-install-5.0.1.sh` on the host where you ran `wazuh-install-5.0.1.sh -g` (or in the directory set in `WAZUH_CA_DIR`). Back it up in a safe place: you need it to add nodes or renew certificates later. See [Security](../security.md).
 
 ### Decompress necessary installation files
 
@@ -72,6 +72,41 @@ umask 022
 tar xf wazuh-offline.tar.gz
 tar xf wazuh-install-files.tar
 ```
+
+### Verify the package signatures
+
+The installation assistant checks the signature of every package before installing it. When you install the packages by hand, check them yourself with the Wazuh key that `wazuh-offline.tar.gz` carries, `wazuh-offline/GPG-KEY-WAZUH`. These commands need `gnupg`, and `binutils` on DEB-based systems.
+
+1. Check that the fingerprint of the key is `0DCF CA55 47B1 9D2A 6099 5060 96B3 EE5F 2911 1145`:
+
+    ```bash
+    gpg --show-keys --with-fingerprint wazuh-offline/GPG-KEY-WAZUH
+    ```
+
+2. Check the packages.
+
+    **RPM-based systems:** every package must show `Signature, key ID 29111145: OK`. `rpm -K` alone also passes on an unsigned package, so check the key ID.
+
+    ```bash
+    rpm --import wazuh-offline/GPG-KEY-WAZUH
+    for p in wazuh-offline/wazuh-packages/*.rpm; do echo "$p"; rpm -Kv "$p" | grep -i signature; done
+    ```
+
+    **DEB-based systems:** `apt` does not check the signature embedded in a `.deb`. The `_gpgbuilder` member is checked with `gpgv`, and the hashes it signs are compared with the other members. Every package must show `OK`:
+
+    ```bash
+    gpg --dearmor < wazuh-offline/GPG-KEY-WAZUH > wazuh.gpg
+    for p in wazuh-offline/wazuh-packages/*.deb; do
+        ar p "$p" _gpgbuilder > _gpgbuilder
+        gpgv --keyring ./wazuh.gpg --output signed _gpgbuilder 2>/dev/null || { echo "$p: not signed with the Wazuh key"; continue; }
+        awk 'NF == 4 && length($1) == 32 {print $2, $4}' signed | sort > signed-members
+        for m in $(ar t "$p" | grep -v '^_gpg'); do echo "$(ar p "$p" "$m" | sha1sum | cut -d' ' -f1) $m"; done | sort > members
+        cmp -s signed-members members && echo "$p: OK" || echo "$p: FAILED"
+    done
+    rm -f wazuh.gpg _gpgbuilder signed signed-members members
+    ```
+
+Do not install a package that fails these checks.
 
 ### Installing the Wazuh indexer
 
@@ -90,21 +125,18 @@ Follow these steps on every Wazuh indexer node.
     ```
 
     ```bash
-    install -d -m 0700 -o root -g root /etc/wazuh /etc/wazuh/ca
-    install -m 0644 wazuh-install-files/root-ca.pem /etc/wazuh/ca/root-ca.pem
-    [ -e /etc/wazuh/credentials.env ] || install -m 0600 /dev/null /etc/wazuh/credentials.env
-    for key in WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD; do
-        grep -q "^${key}=" /etc/wazuh/credentials.env || grep "^${key}=" wazuh-install-files/credentials.env >> /etc/wazuh/credentials.env
-    done
-    install -d -m 0750 /etc/wazuh-indexer
-    install -d -m 0500 /etc/wazuh-indexer/certs
-    install -m 0400 wazuh-install-files/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
-    install -m 0400 wazuh-install-files/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
-    install -m 0400 wazuh-install-files/admin.pem /etc/wazuh-indexer/certs/admin.pem
-    install -m 0400 wazuh-install-files/admin-key.pem /etc/wazuh-indexer/certs/admin-key.pem
+    install -d -m 0750 -o root -g root /etc/wazuh-indexer /etc/wazuh-indexer/ca
+    install -m 0640 wazuh-install-files/root-ca.pem /etc/wazuh-indexer/ca/root-ca.pem
+    install -m 0600 /dev/null /etc/wazuh-indexer/local.env
+    grep '^WAZUH_INDEXER_' wazuh-install-files/credentials.env > /etc/wazuh-indexer/local.env
+    install -d -m 0750 /etc/wazuh-indexer/certs
+    install -m 0640 wazuh-install-files/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
+    install -m 0600 wazuh-install-files/admin.pem /etc/wazuh-indexer/certs/admin.pem
+    install -m 0600 wazuh-install-files/admin-key.pem /etc/wazuh-indexer/certs/admin-key.pem
     ```
 
-3. Install the Wazuh indexer. The package uses the passwords and the certificates you placed, and gives the certificates to the `wazuh-indexer` user. Do not install it before placing them: placing them afterwards does not configure the node.
+3. Install the Wazuh indexer. The package uses the passwords and the certificates you placed, and gives them to `root` with the `wazuh-indexer` group: `0640` for the pair of the node and the root CA certificate, `0600` for the admin pair. Do not install it before placing them: placing them afterwards does not configure the node.
 
     **RPM-based systems:**
 
@@ -177,7 +209,7 @@ Follow these steps on every Wazuh indexer node.
     /usr/share/wazuh-indexer/bin/indexer-security-init.sh
     ```
 
-9. Check that every Wazuh indexer node joined the cluster and that its status is `green`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-`).
+9. Check that every Wazuh indexer node joined the cluster and that its status is `green`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
     ```bash
     curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
@@ -195,20 +227,22 @@ Follow these steps on the master node and on every worker node.
     ```
 
     ```bash
-    install -d -m 0700 -o root -g root /etc/wazuh /etc/wazuh/ca
-    install -m 0644 wazuh-install-files/root-ca.pem /etc/wazuh/ca/root-ca.pem
-    [ -e /etc/wazuh/credentials.env ] || install -m 0600 /dev/null /etc/wazuh/credentials.env
-    for key in WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD; do
-        grep -q "^${key}=" /etc/wazuh/credentials.env || grep "^${key}=" wazuh-install-files/credentials.env >> /etc/wazuh/credentials.env
-    done
-    mkdir -p /var/wazuh-manager/etc/certs
-    install -m 0640 wazuh-install-files/$NODE_NAME.pem /var/wazuh-manager/etc/certs/indexer-connector.pem
-    install -m 0640 wazuh-install-files/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
-    install -m 0640 wazuh-install-files/$NODE_NAME-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem
-    install -m 0640 wazuh-install-files/$NODE_NAME-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem
-    install -m 0640 wazuh-install-files/$NODE_NAME-apid.pem /var/wazuh-manager/etc/certs/apid.pem
-    install -m 0640 wazuh-install-files/$NODE_NAME-apid-key.pem /var/wazuh-manager/etc/certs/apid-key.pem
+    install -d -m 0750 -o root -g root /etc/wazuh-manager /etc/wazuh-manager/certs
+    install -d -m 0700 -o root -g root /etc/wazuh-manager/ca
+    install -m 0644 wazuh-install-files/root-ca.pem /etc/wazuh-manager/ca/root-ca.pem
+    install -m 0600 /dev/null /etc/wazuh-manager/local.env
+    grep -E '^(WAZUH_MANAGER_API_PASSWORD|WAZUH_MANAGER_WUI_PASSWORD|WAZUH_INDEXER_MANAGER_PASSWORD)=' wazuh-install-files/credentials.env > /etc/wazuh-manager/local.env
+    install -m 0640 wazuh-install-files/root-ca.pem /etc/wazuh-manager/certs/root-ca.pem
+    install -m 0640 wazuh-install-files/root-ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME.pem /etc/wazuh-manager/certs/indexer-connector.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-key.pem /etc/wazuh-manager/certs/indexer-connector-key.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-remoted.pem /etc/wazuh-manager/certs/remoted.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-remoted-key.pem /etc/wazuh-manager/certs/remoted-key.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-apid.pem /etc/wazuh-manager/certs/apid.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-apid-key.pem /etc/wazuh-manager/certs/apid-key.pem
     ```
+
+    The root CA of the deployment also signed the Wazuh indexer certificates, so it is placed as `indexer-ca.pem` too.
 
 2. Install the Wazuh manager. The package uses the files you placed instead of issuing its own, and gives the `remoted` and `apid` pairs their owner.
 
@@ -224,14 +258,13 @@ Follow these steps on the master node and on every worker node.
     apt install ./wazuh-offline/wazuh-packages/wazuh-manager*.deb
     ```
 
-3. Give the indexer connector pair to the `wazuh-manager` group. The package does not set the owner of the indexer connector pair placed before installing it, and the Wazuh manager then cannot read it:
+3. Check the credentials. On RPM-based systems the installation prints `UNSAFE /etc/wazuh-manager/certs/<file>.pem: group is root, not wazuh-manager` for the files you placed: the package checks them before it gives them to the `wazuh-manager` group, and fixes the owner at the end of the installation. Nothing needs to be done; this check must report no problem:
 
     ```bash
-    chown root:wazuh-manager /var/wazuh-manager/etc/certs/indexer-connector.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
-    chmod 0640 /var/wazuh-manager/etc/certs/indexer-connector.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+    /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check -H /var/wazuh-manager
     ```
 
-4. In the `<indexer>` block of `/var/wazuh-manager/etc/wazuh-manager.conf`, replace `127.0.0.1` with the addresses of the Wazuh indexer nodes, one `<host>` per node. Do it on every node: the cluster does not synchronize this block. Leave the `<ssl>` settings as the package wrote them. The credentials are not configured here: the package stored them in the keystore of the Wazuh manager.
+4. In the `<indexer>` block of `/etc/wazuh-manager/wazuh-manager.conf`, replace `127.0.0.1` with the addresses of the Wazuh indexer nodes, one `<host>` per node. Do it on every node: the cluster does not synchronize this block. Leave the `<ssl>` settings as the package wrote them. The credentials are not configured here: the package stored them in the keystore of the Wazuh manager.
 
     ```xml
     <indexer>
@@ -241,7 +274,7 @@ Follow these steps on the master node and on every worker node.
       </hosts>
     ```
 
-5. Edit the `<cluster>` block of `/var/wazuh-manager/etc/wazuh-manager.conf`. Use the key in `wazuh-install-files/clusterkey` on every node (`cat wazuh-install-files/clusterkey`), `master` as `node_type` on the master node and `worker` on the rest, and a unique `node_name` for each node, such as its name in `config.yml`. Replace `<MASTER_NODE_IP>` with the IP address of the master node. The package writes a `<cluster>` block with a random key of its own, `node_type` `master` and `bind_addr` `127.0.0.1` on every node, so replace the whole block on each of them.
+5. Edit the `<cluster>` block of `/etc/wazuh-manager/wazuh-manager.conf`. Use the key in `wazuh-install-files/clusterkey` on every node (`cat wazuh-install-files/clusterkey`), `master` as `node_type` on the master node and `worker` on the rest, and a unique `node_name` for each node, such as its name in `config.yml`. Replace `<MASTER_NODE_IP>` with the IP address of the master node. The package writes a `<cluster>` block with a random key of its own, `node_type` `master` and `bind_addr` `127.0.0.1` on every node, so replace the whole block on each of them.
 
     ```xml
     <cluster>
@@ -285,7 +318,7 @@ Follow these steps on the master node and on every worker node.
 
     **RPM-based systems:** `libcap openssl diffutils util-linux`
 
-    **DEB-based systems:** `tar curl libcap2-bin openssl`
+    **DEB-based systems:** `tar curl libcap2-bin openssl diffutils`
 
 2. Place the passwords, the root CA certificate and the certificate of this node, replacing `<DASHBOARD_NODE_NAME>` with the name of the node as defined in `config.yml`. For example, `dashboard`.
 
@@ -294,16 +327,16 @@ Follow these steps on the master node and on every worker node.
     ```
 
     ```bash
-    install -d -m 0700 -o root -g root /etc/wazuh /etc/wazuh/ca
-    install -m 0644 wazuh-install-files/root-ca.pem /etc/wazuh/ca/root-ca.pem
-    [ -e /etc/wazuh/credentials.env ] || install -m 0600 /dev/null /etc/wazuh/credentials.env
-    for key in WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_MANAGER_WUI_PASSWORD; do
-        grep -q "^${key}=" /etc/wazuh/credentials.env || grep "^${key}=" wazuh-install-files/credentials.env >> /etc/wazuh/credentials.env
-    done
-    mkdir -p /etc/wazuh-dashboard/certs
-    install -m 0400 wazuh-install-files/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
-    install -m 0400 wazuh-install-files/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
+    install -d -m 0750 -o root -g root /etc/wazuh-dashboard /etc/wazuh-dashboard/certs
+    install -m 0600 /dev/null /etc/wazuh-dashboard/local.env
+    grep -E '^(WAZUH_INDEXER_KIBANASERVER_PASSWORD|WAZUH_MANAGER_WUI_PASSWORD)=' wazuh-install-files/credentials.env > /etc/wazuh-dashboard/local.env
+    install -m 0640 wazuh-install-files/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
+    install -m 0640 wazuh-install-files/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
+    install -m 0640 wazuh-install-files/root-ca.pem /etc/wazuh-dashboard/certs/indexer-ca.pem
+    install -m 0640 wazuh-install-files/root-ca.pem /etc/wazuh-dashboard/certs/manager-ca.pem
     ```
+
+    The root CA of the deployment signed the Wazuh indexer and the Wazuh manager certificates, so it is placed as `indexer-ca.pem` and `manager-ca.pem`.
 
 3. Install the Wazuh dashboard.
 
@@ -319,11 +352,10 @@ Follow these steps on the master node and on every worker node.
     apt install ./wazuh-offline/wazuh-packages/wazuh-dashboard*.deb
     ```
 
-4. Give the certificates to the service user and restrict their directory. Some versions of the package leave a pair placed before installing as `root`, and the Wazuh dashboard then fails to start with `EACCES`:
+4. The package gives the certificates you placed to `root` with the `wazuh-dashboard` group: the directory `0750` and the files `0640`. Check it, and do not give them to the `wazuh-dashboard` user: the Wazuh dashboard refuses to start when a file in `/etc/wazuh-dashboard/certs` is not owned by `root` or is writable by its group or others.
 
     ```bash
-    chown -R wazuh-dashboard:wazuh-dashboard /etc/wazuh-dashboard/certs
-    chmod 500 /etc/wazuh-dashboard/certs
+    ls -ld /etc/wazuh-dashboard/certs /etc/wazuh-dashboard/certs/*
     ```
 
 5. Edit `/etc/wazuh-dashboard/opensearch_dashboards.yml` and replace the following values:
@@ -358,12 +390,12 @@ Follow these steps on the master node and on every worker node.
    - Username: `admin`
    - Password: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `wazuh-install-files/credentials.env`
 
-    Upon first access, the browser may show a certificate warning. You can add an exception in the browser advanced options, import `/etc/wazuh-dashboard/certs/root-ca.pem` into the browser certificate manager, or configure a certificate signed by a trusted authority.
+    Upon first access, the browser may show a certificate warning. You can add an exception in the browser advanced options, import the root CA of the deployment (`wazuh-install-files/root-ca.pem`, or `/etc/wazuh-dashboard/certs/indexer-ca.pem`, the same file) into the browser certificate manager, or configure a certificate signed by a trusted authority.
 
 ### Removing the installation files
 
-Once every component is installed and running, check the accounts, enroll agents, and troubleshoot as described in the [Clusterized](../step-by-step-deployments/clusterized.md#removing-the-credentials-files) guide. Then copy the passwords to your password manager and, on every node, remove the credentials file and the installation files:
+Once every component is installed and running, check the accounts, enroll agents, and troubleshoot as described in the [Clusterized](../step-by-step-deployments/clusterized.md#removing-the-credentials-files) guide. Then copy the passwords to your password manager and, on every node, remove the installation files:
 
 ```bash
-rm -rf /etc/wazuh/credentials.env ./wazuh-install-files ./wazuh-install-files.tar
+rm -rf ./wazuh-install-files ./wazuh-install-files.tar
 ```

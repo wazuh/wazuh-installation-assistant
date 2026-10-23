@@ -29,8 +29,8 @@ BASE_SOURCES = [COMMON_VARS, COMMON, CERT]
 IGNORE_LOGGER = {"logger_cert": "true", "common_logger": "true"}
 BASE_PATH = "/tmp/wazuh-cert-tool"
 
-# Same OpenSSL settings wazuh_ca_ensure uses in credentials_lib/wazuh-credentials.sh.
-# The library itself only runs as root, so the tests build an equivalent CA here.
+# Same OpenSSL settings common_caEnsure uses in common_functions/credentials.sh.
+# It changes the owner to root, so the tests build an equivalent CA here.
 LIBRARY_CA_CONFIG = """[req]
 distinguished_name = dn
 x509_extensions = v3_ca
@@ -255,11 +255,10 @@ class TestCertConvertCRLFtoLF:
 
 
 class TestCertCheckOpenSSL:
-    """cert_checkOpenSSL checks OpenSSL and what the shared credentials library
-    needs for the root CA: cmp, flock, GNU stat and ln -T. A missing one used
-    to surface later as "root-ca.key does not match root-ca.pem"."""
+    """cert_checkOpenSSL checks OpenSSL and GNU stat, which the root CA helpers use.
+    A missing one used to surface later as a misleading root CA error."""
 
-    ALL_PRESENT = 'case "$2" in openssl|cmp|flock) echo "/usr/bin/$2" ;; *) return 1 ;; esac'
+    ALL_PRESENT = 'case "$2" in openssl) echo "/usr/bin/$2" ;; *) return 1 ;; esac'
 
     def _run(self, extra_mocks):
         mocks = {"common_logger": 'echo "LOG:$*"', "command": self.ALL_PRESENT, **extra_mocks}
@@ -273,26 +272,15 @@ class TestCertCheckOpenSSL:
     def test_success_all_commands_present(self):
         assert_success(self._run({}))
 
-    @pytest.mark.parametrize("name, package", [("cmp", "diffutils"), ("flock", "util-linux")])
-    def test_fail_names_the_package_of_a_missing_command(self, name, package):
-        result = self._run({"command": f'[ "$2" != "{name}" ] && echo "/usr/bin/$2"'})
-        assert_failure(result)
-        assert f"LOG:-e The following commands are required and could not be found: {name} (package {package})." in result.stdout
-
     def test_fail_without_gnu_stat(self):
         result = self._run({"stat": "return 1"})
         assert_failure(result)
         assert "GNU stat (package coreutils)" in result.stdout
 
-    def test_fail_without_ln_t(self):
-        result = self._run({"ln": 'echo "Usage: ln [-s] TARGET LINK"'})
-        assert_failure(result)
-        assert "GNU ln (package coreutils)" in result.stdout
-
     def test_lists_every_missing_command(self):
-        result = self._run({"command": 'case "$2" in openssl) echo /usr/bin/openssl ;; *) return 1 ;; esac'})
+        result = self._run({"command": "return 1", "stat": "return 1"})
         assert_failure(result)
-        assert "cmp (package diffutils), flock (package util-linux)." in result.stdout
+        assert "openssl (package openssl), GNU stat (package coreutils)." in result.stdout
 
 
 class TestCertMainRootCAOption:
@@ -324,19 +312,71 @@ class TestCertMainRootCAOption:
         assert "ROOTCA_CALLED" in result.stdout
 
 
+class TestCertMainCombinedOptions:
+    """Issue #1158: several certificate options in one run (-wi -wd, -wi -wd -wm)
+    write to the same temporary directory, which is moved to wazuh-certificates once."""
+
+    def _run(self, tmp_path, options):
+        def issue(name):
+            return f'touch "${{cert_tmp_path}}/{name}.pem" || exit 1'
+        mocks = {
+            **IGNORE_LOGGER,
+            "common_checkRoot": "true",
+            "cert_checkOpenSSL": "true",
+            "cert_validateAgentSan": "true",
+            "cert_validateApiSan": "true",
+            "cert_readConfig": "true",
+            "cert_checkListenerReachability": "true",
+            "cert_validatePath": "true",
+            "cert_checkRootCA": issue("root-ca"),
+            "cert_generateIndexercertificates": issue("indexer-1"),
+            "cert_generateDashboardcertificates": issue("dashboard-1"),
+            "cert_generateManagercertificates": issue("manager-1"),
+            "cert_verifyRemotedcertificates": 'echo "VERIFY_REMOTED:$1"',
+            "cert_setpermisions": "true",
+        }
+        return run_bash_function(
+            BASE_SOURCES + ["cert_tool/certMain.sh"],
+            f"main {options}",
+            mocks,
+            {
+                "base_path": str(tmp_path),
+                "cert_tmp_path": str(tmp_path / "tmp"),
+                "indexer_node_names": "(indexer-1)",
+                "dashboard_node_names": "(dashboard-1)",
+                "manager_node_names": "(manager-1)",
+            },
+        )
+
+    def test_indexer_and_dashboard_in_one_run(self, tmp_path):
+        result = self._run(tmp_path, "-wi -wd")
+        assert_success(result)
+        certs = sorted(p.name for p in (tmp_path / "wazuh-certificates").iterdir())
+        assert certs == ["dashboard-1.pem", "indexer-1.pem", "root-ca.pem"]
+        assert not (tmp_path / "tmp").exists()
+
+    def test_manager_certificates_are_verified_once_in_the_final_directory(self, tmp_path):
+        result = self._run(tmp_path, "-wi -wd -wm")
+        assert_success(result)
+        certs = sorted(p.name for p in (tmp_path / "wazuh-certificates").iterdir())
+        assert certs == ["dashboard-1.pem", "indexer-1.pem", "manager-1.pem", "root-ca.pem"]
+        assert result.stdout.count("VERIFY_REMOTED:") == 1
+        assert f"VERIFY_REMOTED:{tmp_path}/wazuh-certificates" in result.stdout
+
+
 class TestCertGenerateRootCA:
-    """cert_generateRootCAcertificate creates the root CA through wazuh_ca_ensure,
-    in the directory wazuh_ca_get_dir resolves."""
+    """cert_generateRootCAcertificate creates the root CA through common_caEnsure,
+    in the directory common_caGetDir resolves."""
 
     def _run(self, tmp_path, ensure="return 0"):
         mocks = {
             "common_logger": 'echo "LOG:$*"',
-            "wazuh_ca_get_dir": f'echo "{tmp_path}/ca"',
-            "wazuh_ca_ensure": f'echo "ENSURE_CALLED"; {ensure}',
+            "common_caGetDir": f'echo "{tmp_path}/ca"',
+            "common_caEnsure": f'echo "ENSURE_CALLED" >> "{tmp_path}/calls"; {ensure}',
         }
         return run_bash_function(
             BASE_SOURCES,
-            'cert_generateRootCAcertificate; echo "ca_dir:${cert_ca_dir}"',
+            f'cert_generateRootCAcertificate; echo "ca_dir:${{cert_ca_dir}}"; cat "{tmp_path}/calls" 2>/dev/null',
             mocks,
             {"cert_tmp_path": str(tmp_path)},
         )
@@ -365,7 +405,7 @@ class TestCertGenerateRootCA:
         assert f"Using the existing root CA in {tmp_path}/ca." in result.stdout
         assert "LOG:-w" not in result.stdout
 
-    def test_fail_when_the_library_fails(self, tmp_path):
+    def test_fail_when_the_ca_cannot_be_created(self, tmp_path):
         result = self._run(tmp_path, ensure="return 1")
         assert_failure(result)
         assert "could not be created or is not valid" in result.stdout
@@ -385,13 +425,13 @@ class TestCertCheckRootCA:
         work.mkdir()
         mocks = {
             "common_logger": 'echo "LOG:$*"',
-            "wazuh_ca_get_dir": f'echo "{ca_dir}"',
-            "wazuh_ca_validate": f'echo "VALIDATE_CALLED"; {validate}',
-            "wazuh_ca_ensure": 'echo "ENSURE_CALLED"',
+            "common_caGetDir": f'echo "{ca_dir}"',
+            "common_caValidate": f'echo "VALIDATE_CALLED" >> "{tmp_path}/calls"; {validate}',
+            "common_caEnsure": f'echo "ENSURE_CALLED" >> "{tmp_path}/calls"',
         }
         result = run_bash_function(
             BASE_SOURCES,
-            f'cert_checkRootCA {mode}; echo "key:${{rootcakey}}"',
+            f'cert_checkRootCA {mode}; echo "key:${{rootcakey}}"; cat "{tmp_path}/calls" 2>/dev/null',
             mocks,
             {"cert_tmp_path": str(work)},
         )
@@ -411,7 +451,7 @@ class TestCertCheckRootCA:
         assert "ENSURE_CALLED" in result.stdout
         assert "VALIDATE_CALLED" not in result.stdout
 
-    def test_fail_when_the_library_refuses_the_root_ca(self, tmp_path):
+    def test_fail_when_the_root_ca_is_not_valid(self, tmp_path):
         result, _, work = self._run(tmp_path, validate="return 1")
         assert_failure(result)
         assert "There is no valid root CA in" in result.stdout
@@ -430,7 +470,7 @@ class TestCertRejectCAPaths:
         return run_bash_function(
             BASE_SOURCES,
             f'cert_rejectCAPaths "-wi|--wazuh-indexer-certificates" {value}',
-            {"common_logger": 'echo "LOG:$*"', "wazuh_ca_get_dir": "echo /etc/wazuh/ca"},
+            {"common_logger": 'echo "LOG:$*"', "common_caGetDir": "echo /opt/tools/wazuh-ca"},
         )
 
     def test_fail_with_a_path(self):
@@ -1345,13 +1385,15 @@ class TestCertGenerateLoadbalancercertificates:
 class TestCertFirstAddressPerNode:
     """install_functions reads the flat arrays by node index."""
 
-    def _run(self, names, ips):
+    def _run(self, names, ips, dns=None):
+        dns = dns or [[] for _ in names]
         env = {"names": "(" + " ".join(names) + ")"}
-        for i, node_ips in enumerate(ips, start=1):
+        for i, (node_ips, node_dns) in enumerate(zip(ips, dns), start=1):
             env[f"ip_{i}"] = "(" + " ".join(node_ips) + ")"
+            env[f"dns_{i}"] = "(" + " ".join(node_dns) + ")"
         return run_bash_function(
             BASE_SOURCES,
-            'cert_firstAddressPerNode flat names ip && echo "${flat[@]}"',
+            'cert_firstAddressPerNode flat names ip dns && echo "${flat[@]}"',
             IGNORE_LOGGER,
             env,
         )
@@ -1368,6 +1410,57 @@ class TestCertFirstAddressPerNode:
         )
         assert_success(result)
         assert "10.0.1.11 10.0.1.21" in result.stdout
+
+    def test_success_a_dns_only_node_keeps_its_position(self):
+        """A node with no ip is addressed by its first dns name, not skipped."""
+        result = self._run(
+            ["node-1", "node-2"],
+            [[], ["10.0.1.21"]],
+            [["node-1.wazuh.test", "node-1.alt.test"], []],
+        )
+        assert_success(result)
+        assert result.stdout.strip() == "node-1.wazuh.test 10.0.1.21"
+
+    def test_success_ip_is_preferred_over_dns(self):
+        result = self._run(
+            ["node-1", "node-2", "node-3"],
+            [["10.0.1.11"], [], ["10.0.1.31"]],
+            [["node-1.wazuh.test"], ["node-2.wazuh.test"], []],
+        )
+        assert_success(result)
+        assert result.stdout.strip() == "10.0.1.11 node-2.wazuh.test 10.0.1.31"
+
+
+class TestCertReadConfigNodeAddresses:
+    """cert_readConfig gives the installer one address per node, dns-only nodes included."""
+
+    def test_success_dns_only_nodes_are_not_dropped(self, tmp_path):
+        config = tmp_path / "config.yml"
+        config.write_text("some: content")
+        parsed = "\\n".join([
+            "nodes_indexer_1=indexer-dns",
+            "nodes_indexer_1_dns=indexer-dns.wazuh.test",
+            "nodes_indexer_2=indexer-ip",
+            "nodes_indexer_2_ip=10.0.1.12",
+            "nodes_manager_1=manager",
+            "nodes_manager_1_dns=manager.wazuh.test",
+            "nodes_dashboard_1=dashboard",
+            "nodes_dashboard_1_ip=10.0.1.31",
+        ])
+        mocks = {
+            **IGNORE_LOGGER,
+            "cert_parseYaml": f'printf "{parsed}\\n"',
+            "cert_checkPrivateIp": "true",
+            "cert_convertCRLFtoLF": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            'cert_readConfig && echo "IDX=${indexer_node_ips[*]}|MGR=${manager_node_ips[*]}|DASH=${dashboard_node_ips[*]}"',
+            mocks,
+            {"base_path": str(tmp_path), "config_file": str(config), "debug_cert": ""},
+        )
+        assert_success(result)
+        assert "IDX=indexer-dns.wazuh.test 10.0.1.12|MGR=manager.wazuh.test|DASH=10.0.1.31" in result.stdout
 
 
 class TestCertListenerReachability:

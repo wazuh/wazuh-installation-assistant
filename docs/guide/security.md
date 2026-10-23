@@ -11,19 +11,21 @@ For DNS-based or mixed address configurations in `config.yml`, see [Other `confi
 The installation bundle (`wazuh-install-files.tar`) is created once with `wazuh-install-5.0.1.sh --generate-config-files` on the first Wazuh indexer node and then distributed to each node. It contains:
 
 - The root CA certificate (`root-ca.pem`)
-- The passwords of the Wazuh users (`credentials.env`). Before a package is installed, each node writes in `/etc/wazuh/credentials.env` only the passwords of the components installed on it: `WAZUH_INDEXER_ADMIN_PASSWORD`, `WAZUH_INDEXER_KIBANASERVER_PASSWORD` and `WAZUH_INDEXER_MANAGER_PASSWORD` on a Wazuh indexer node, `WAZUH_INDEXER_MANAGER_PASSWORD`, `WAZUH_MANAGER_API_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD` on a Wazuh manager node, and `WAZUH_INDEXER_KIBANASERVER_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD` on a Wazuh dashboard node. The node where the bundle was generated keeps all of them
+- The passwords of the Wazuh users (`credentials.env`). Before a package is installed, the node writes in the `local.env` file of that package only the passwords it uses: `WAZUH_INDEXER_ADMIN_PASSWORD`, `WAZUH_INDEXER_KIBANASERVER_PASSWORD` and `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh-indexer/local.env`, `WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD` and `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh-manager/local.env`, and `WAZUH_INDEXER_KIBANASERVER_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD` in `/etc/wazuh-dashboard/local.env`. The `wazuh-ca` directory of the node where the bundle was generated keeps all of them
 - An admin certificate (`admin.pem` and `admin-key.pem`) for cluster security initialization
 - Individual node certificates for each Wazuh Indexer, Manager, and Dashboard node
 - For each Wazuh Manager node, the certificate of the agent listener (`<node>-remoted.pem` and `<node>-remoted-key.pem`), deployed as `remoted.pem` and `remoted-key.pem`
 - For each Wazuh Manager node, the certificate of the Server API (`<node>-apid.pem` and `<node>-apid-key.pem`), deployed as `apid.pem` and `apid-key.pem`
+- The `config.yml` the bundle was generated from
+- When `config.yml` has more than one Wazuh Manager node, the cluster key (`clusterkey`)
 
-The Wazuh manager package issues its certificates when it is installed on a host whose `/etc/wazuh/ca` holds the root CA and its private key, as in an all-in-one installation. In a distributed deployment the node receives them in the bundle instead, and the Wazuh manager does not start until `remoted.pem` and `remoted-key.pem` are present in `/var/wazuh-manager/etc/certs`. That pair is served by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, so agents can verify the manager they dial by pinning `root-ca.pem`. `<node>-remoted.pem` is a chain: the leaf followed by the root CA, and its `notBefore` is backdated one day so an agent whose clock lags does not reject a freshly issued certificate. Unlike the rest of the trust material, which is read as `root`, the listener pair is opened after dropping privileges and is therefore owned by `wazuh-manager:wazuh-manager` with mode `640`. The Server API pair, `apid.pem` and `apid-key.pem`, has the same profile, owner and mode, and is served by `wazuh-manager-apid` on port 55000. The Wazuh manager does not self-sign it: when the pair is missing, the Server API does not start.
+The Wazuh manager package creates its own CA and issues its certificates when it is installed without them, as in an all-in-one installation. In a distributed deployment the node receives them in the bundle instead, and the Wazuh manager does not start until `remoted.pem` and `remoted-key.pem` are present in `/etc/wazuh-manager/certs`. That pair is served by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, so agents can verify the manager they dial by pinning `root-ca.pem`. `<node>-remoted.pem` is a chain: the leaf followed by the root CA, and its `notBefore` is backdated one day so an agent whose clock lags does not reject a freshly issued certificate. The daemons open the listener pair, like the indexer connector files (`indexer-ca.pem`, `indexer-connector.pem` and its key), after dropping privileges, so they read it through the `wazuh-manager` group: every PEM in `certs/` is owned by `root:wazuh-manager` with mode `640`. The Wazuh manager refuses to start when a certificate is owned by another user, such as `wazuh-manager`. The Server API pair, `apid.pem` and `apid-key.pem`, has the same profile, owner and mode, and is served by `wazuh-manager-apid` on port 55000. The Wazuh manager does not self-sign it: when the pair is missing, the Wazuh manager does not start.
 
 The root CA private key (`root-ca.key`) is not in the bundle: it stays in `/etc/wazuh/ca` of the node where the bundle was generated. Anyone holding it can issue a certificate with `CN=admin`, which the Wazuh indexer accepts as its superuser without a password, and a certificate issued that way cannot be revoked. Keeping it on one node, instead of on every node, limits that exposure to a single host. Back up `/etc/wazuh/ca` of that node in a safe place: the key is only needed to add nodes or renew certificates with `wazuh-certs-tool-5.0.1.sh`.
 
 The passwords in the bundle are the ones generated with it. After a password is changed with `wazuh-passwords-tool-5.0.1.sh`, the bundle no longer matches the deployment: a node installed or reinstalled from it gets the previous password and cannot connect. Before adding or reinstalling a node, update `credentials.env` inside the bundle with the current passwords, or install the node and then write the current passwords into its keystores as described in [Multi-node and distributed deployments](../ref/getting-started/usage.md#multi-node-and-distributed-deployments). Keep in mind what removing a component with `-u|--uninstall` does to the credentials of that node: the package takes its own keys out of `/etc/wazuh/credentials.env`, and when it is the last Wazuh component of the node and `credentials.env` is still there, it also deletes `root-ca.pem` and `root-ca.key` from `/etc/wazuh/ca`. On the node where the bundle was generated, that is the only copy of the root CA private key, so back up `/etc/wazuh/ca` before uninstalling there.
 
-The package decides that it is the last component from the keys left in `/etc/wazuh/credentials.env`, so it only cleans `/etc/wazuh` while that file is still there. After uninstalling, check `/etc/wazuh`. On the node that holds the root CA, the first Wazuh indexer node, if `credentials.env` had already been removed, `root-ca.pem` and `root-ca.key` stay in `/etc/wazuh/ca`: back them up if the deployment still needs them to add nodes or renew certificates, and otherwise remove the directory, for example with `rm -rf /etc/wazuh`. On a node where the Wazuh indexer was the last component and `credentials.env` was still there, an empty `credentials.env` may remain: it holds no password and can be removed.
+`-u|--uninstall` is not the same as removing the packages with `apt remove` or `rpm -e`. Removing the Wazuh manager package with `dpkg --remove` or `rpm -e` keeps `.save` copies of its credentials in `/etc/wazuh-manager`, among them `ca/root-ca.key.save` and `local.env.save`. The Wazuh manager never reads them: delete them by hand when you no longer need them. See [Uninstalling the Wazuh manager](https://github.com/wazuh/wazuh/blob/5.0.1/docs/ref/uninstall.md).
 
 Certificate files are stored in the following paths on each node:
 
@@ -31,13 +33,13 @@ Certificate files are stored in the following paths on each node:
 | ----------- | ------------------ |
 | Wazuh Indexer | `/etc/wazuh-indexer/certs/` |
 | Wazuh Dashboard | `/etc/wazuh-dashboard/certs/` |
-| Wazuh Manager | `/var/wazuh-manager/etc/certs/` |
+| Wazuh Manager | `/etc/wazuh-manager/certs/` |
 
 ## Password management
 
-There are no default passwords. The Wazuh packages generate random passwords for the internal Wazuh users when they are installed, or use the ones in `wazuh-install-files.tar` in a distributed deployment, and publish them in `/etc/wazuh/credentials.env` (mode `0600`). Once you have stored them in a safe place, remove that file from every node: the Wazuh components do not read it after the installation.
+There are no default passwords. The Wazuh packages generate random passwords for the internal Wazuh users when they are installed, or use the ones in `wazuh-install-files.tar` in a distributed deployment. The Wazuh indexer publishes the passwords of its users in `/etc/wazuh-indexer/export/credentials.env`, and the Wazuh manager master node publishes the passwords of the API users in `/etc/wazuh-manager/export/credentials.env`. Both files are owned by root. The values given before the install are in the `local.env` file of each package (root, mode `0600`).
 
-To change all passwords at once, use the `--change-all` option. See the [Change all default passwords](../ref/getting-started/usage.md#change-all-default-passwords) section for details.
+To change all passwords at once, use the `--change-all` option. See the [Change all passwords](../ref/getting-started/usage.md#change-all-passwords) section for details.
 
 ```bash
 bash wazuh-passwords-tool.sh --change-all
@@ -51,7 +53,7 @@ bash wazuh-passwords-tool.sh -u <USER> -p
 
 `<USER>` is a Wazuh indexer user (`admin`, `kibanaserver`, `wazuh-manager`) or a Wazuh API user (`wazuh`, `wazuh-internal-client`). The Wazuh API passwords are changed with `rbac_control`, so no admin credentials are needed. Without `-p`, a random password is generated.
 
-The tool never prints a password. Generated passwords are saved in `/etc/wazuh/credentials.env` (mode `0600`), the same file the Wazuh packages use.
+The tool never prints a password. A new password is saved in every credential file of the host that holds that user: the `export/credentials.env` file of the package that owns the user, the `local.env` file of each package that uses it, and the `credentials.env` file that `--generate-config-files` keeps in `wazuh-ca/` when the tool runs next to it. See [Where the new passwords are saved](../ref/configuration/command-line-options.md#where-the-new-passwords-are-saved).
 
 Passwords for internal users are stored hashed in `/etc/wazuh-indexer/opensearch-security/internal_users.yml`.
 
@@ -65,11 +67,15 @@ A deployment installed step by step does not need the Wazuh installation assista
     /usr/share/wazuh-indexer/tools/wazuh-passwords-tool.sh -u <USER> -p
     ```
 
-- **Wazuh server API users** (`wazuh`, `wazuh-internal-client`): on the master node, run `rbac_control`. Every node keeps its own `rbac.db` and the cluster does not synchronize it, so repeat the change on any node that may become the master:
+- **Wazuh server API users** (`wazuh`, `wazuh-internal-client`): run `rbac_control` on any Wazuh manager node. The change always applies to the `rbac.db` of the master node, the one the Server API reads; run on a worker, it is forwarded to the master:
 
     ```bash
     /var/wazuh-manager/bin/rbac_control change-password
     ```
+
+    The cluster does not synchronize `rbac.db`. A node promoted to master later serves its own database, with the passwords it was installed with, so change them again on it after the promotion.
+
+    `rbac_control` does not update `/etc/wazuh-manager/export/credentials.env`, which keeps the previous value. The Wazuh dashboard on the same host and a later reinstallation read that file. Edit the key there, or change the password with `wazuh-passwords-tool-5.0.1.sh`, which updates the credential files of the host.
 
 - **The nodes that use the changed password** keep the previous one in their keystores until you update them and restart the service:
   - After changing `wazuh-manager`, on every Wazuh manager node, as described in [Update the Wazuh manager nodes](../ref/getting-started/usage.md#update-the-wazuh-manager-nodes).
@@ -80,11 +86,11 @@ A deployment installed step by step does not need the Wazuh installation assista
 - Run installation scripts with `sudo` or as root only when required.
 - Restrict read access to certificate files and the `wazuh-install-files.tar` archive.
 - After installation, remove the `wazuh-install-files.tar` file from every node, as it contains private keys and the passwords of the Wazuh users.
-- After storing the passwords in a safe place, remove `/etc/wazuh/credentials.env` from every node.
+- Do not give other users read access to the `local.env` and `export/credentials.env` files. Do not delete them either: each package reads its passwords from its `local.env`, and on a host with more than one component the Wazuh manager and the Wazuh dashboard read theirs from the `export/credentials.env` of the Wazuh indexer and the Wazuh manager when their `local.env` does not hold them. The passwords tool also updates them.
 
 ## Recommendations
 
-- Keep the root CA private key only on the node where it was generated, and back it up.
+- Keep the root CA private key only in the `wazuh-ca` directory of the node where it was generated, and back it up.
 - Keep all Wazuh components updated to receive security patches.
 - Store certificates and backups in secure, access-controlled locations.
 - Rotate certificates and passwords periodically.
