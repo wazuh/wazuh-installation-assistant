@@ -177,23 +177,23 @@ Runs after any installation mode (AIO, distributed, offline). Verifies that all 
 | `test_version` | The installed version and revision reported by each component match the expected values from `VERSION.json` |
 | `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401: `admin:admin` on the indexer and the dashboard, `wazuh:wazuh` and `wazuh-internal-client:wazuh-wui` (the default password of the account, named `wazuh-wui` before) on the Wazuh server API |
 
-There are no default passwords: the packages save the generated ones in `/etc/wazuh/credentials.env`, and `test_runner` reads them from there over SSH.
+There are no default passwords: the packages save the generated ones in `/etc/wazuh-indexer/export/credentials.env` and `/etc/wazuh-manager/export/credentials.env`, and `test_runner` reads them from there over SSH. Before that, the workflow checks that `/etc/wazuh` does not exist.
 
 ### `cert-tool` — validate certificate generation
 
-Runs after an AIO installation. The workflow removes any previous `/tmp/wazuh-certificates` directory and runs `wazuh-certs-tool.sh -A` on the instance, which generates all certificates for all nodes in `config.yml` with the root CA in `/etc/wazuh/ca` that the installation created, and then validates the result.
+Runs after an AIO installation. The workflow removes any previous `/tmp/wazuh-certificates` directory and runs `wazuh-certs-tool.sh -A` on the instance, which generates all certificates for all nodes in `config.yml` with the root CA in `/tmp/wazuh-ca`, next to the tool (it creates that CA if it does not exist), and then validates the result.
 
 | Test module | What it checks |
 | ----------- | -------------- |
 | `test_certificates` | The installed certificates of each component, as in the `installer` test |
-| `test_cert_tool` | The tool output (`WAZUH_CERT_TOOL_OUTPUT_DIR`, `/tmp/wazuh-certificates`) does not contain `root-ca.key`, its `root-ca.pem` is the root CA in `/etc/wazuh/ca`, and every certificate it issued verifies against that root CA |
+| `test_cert_tool` | The tool output (`WAZUH_CERT_TOOL_OUTPUT_DIR`, `/tmp/wazuh-certificates`) does not contain `root-ca.key`, its `root-ca.pem` is the root CA in `/tmp/wazuh-ca`, and every certificate it issued verifies against that root CA |
 | `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401 |
 
 The `config.yml` used defines three nodes (`indexer`, `manager`, `dashboard`) all pointing to `127.0.0.1`.
 
 ### `passwords-tool` — validate password rotation
 
-Runs after an AIO installation. The installation generates random passwords and saves them in `/etc/wazuh/credentials.env`. The workflow first reads the `admin` password set by the installation (`WAZUH_INDEXER_ADMIN_PASSWORD`), masks it in the log and passes it to the tests as `WAZUH_OLD_PASSWORD`. It then sets the same new password for every user the tool supports, passing it on the standard input with `-p`:
+Runs after an AIO installation. The installation generates random passwords and saves them in `/etc/wazuh-indexer/export/credentials.env` and `/etc/wazuh-manager/export/credentials.env`. The workflow first reads the `admin` password set by the installation (`WAZUH_INDEXER_ADMIN_PASSWORD`), masks it in the log and passes it to the tests as `WAZUH_OLD_PASSWORD`. It then sets the same new password for every user the tool supports, passing it on the standard input with `-p`:
 
 ```bash
 for user in admin kibanaserver wazuh-manager wazuh wazuh-internal-client; do
@@ -201,7 +201,7 @@ for user in admin kibanaserver wazuh-manager wazuh wazuh-internal-client; do
 done
 ```
 
-Before that, it runs the tool once without `-p` for `kibanaserver`, and checks that the generated password is saved in `credentials.env`, is accepted by the indexer, and replaces the previous one.
+Before that, it runs the tool once without `-p` for `kibanaserver`, and checks that the generated password is saved in `/etc/wazuh-indexer/export/credentials.env`, is accepted by the indexer, and replaces the previous one.
 
 All services are restarted after the password changes. The workflow then waits for each service to accept the new credentials before running validation.
 
@@ -217,7 +217,7 @@ Runs automatically after every `installer` or `all` test. Executes `wazuh-instal
 
 | Test module | What it checks |
 | ----------- | -------------- |
-| `test_uninstall` | None of the Wazuh services are active, none of the Wazuh packages remain installed, all data and configuration directories (`/etc/wazuh-*`, `/var/wazuh-*`, and `/etc/wazuh` with the credentials file and the root CA) have been removed |
+| `test_uninstall` | None of the Wazuh services are active, none of the Wazuh packages remain installed, all data and configuration directories (`/etc/wazuh-*` and `/var/wazuh-*`) have been removed |
 
 ### `all` — full end-to-end sequence
 
@@ -280,11 +280,11 @@ The main job. Runs in parallel for each OS:
 | `WAZUH_NEW_PASSWORD` | New password set by `wazuh-passwords-tool.sh` | `T3sting-Password` |
 | `WAZUH_SERVICE_PASSWORD` | Password used for health check API calls | `T3sting-Password` |
 | `WAZUH_CERT_TOOL_OUTPUT_DIR` | Directory where `wazuh-certs-tool.sh` writes certificates | `/tmp/wazuh-certificates` |
-| `WAZUH_OLD_PASSWORD` | `admin` password set by the installation, read from `/etc/wazuh/credentials.env` before the rotation (masked) | `passwords-tool` and `all` |
+| `WAZUH_OLD_PASSWORD` | `admin` password set by the installation, read from `/etc/wazuh-indexer/export/credentials.env` before the rotation (masked) | `passwords-tool` and `all` |
 | `WAZUH_INSTALL_MODE` | Installation mode, for the common name expected in the node certificates | `aio` / `distributed` / `offline` |
 | `WAZUH_MANAGER_EXPECTED_VERSION`, `WAZUH_INDEXER_EXPECTED_VERSION`, `WAZUH_DASHBOARD_EXPECTED_VERSION` | Expected version, from `VERSION.json` of the branch under test (with `-latest` for staging packages) | e.g. `5.1.0-latest` |
 
-For the `installer` and `cert-tool` test types, `WAZUH_SERVICE_PASSWORD` is empty and `test_runner` reads the passwords from `/etc/wazuh/credentials.env` on the instance. It masks every value it reads in the workflow log.
+For the `installer` and `cert-tool` test types, `WAZUH_SERVICE_PASSWORD` is empty and `test_runner` reads the passwords from `/etc/wazuh-indexer/export/credentials.env` and `/etc/wazuh-manager/export/credentials.env` on the instance. It masks every value it reads in the workflow log.
 
 ## Results and artifacts
 

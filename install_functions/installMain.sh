@@ -1,5 +1,5 @@
 # Wazuh installer - main functions
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -34,7 +34,15 @@ function getHelp() {
     echo -e "                Must be used along with one of these options: -a, -g"
     echo -e ""
     echo -e "        -d [pre-release|local],  --development"
+<<<<<<< HEAD
     echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.1.0.sh."
+=======
+<<<<<<< HEAD
+    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.1.sh."
+=======
+    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yaml file located in the same path as the wazuh-install-5.0.0.sh."
+>>>>>>> origin/5.0.0
+>>>>>>> origin/5.0.1
     echo -e ""
     echo -e "        --skip-signature-check"
     echo -e "                Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with -d."
@@ -374,7 +382,7 @@ function main() {
 
     if [ -n "${indexer}" ]; then
         common_logger "--- Wazuh indexer ---"
-        installCommon_placeCredentials "${indexer_credential_keys[@]}"
+        installCommon_placeLocalEnv "${indexer_config_path}" "${indexer_credential_keys[@]}"
         indexer_copyCertificates
         indexer_install
         indexer_configure
@@ -393,7 +401,7 @@ function main() {
 
     if [ -n "${dashboard}" ]; then
         common_logger "--- Wazuh dashboard ----"
-        installCommon_placeCredentials "${dashboard_credential_keys[@]}"
+        installCommon_placeLocalEnv "${dashboard_config_path}" "${dashboard_credential_keys[@]}"
         dashboard_copyCertificates
         dashboard_install
         dashboard_configure
@@ -407,7 +415,7 @@ function main() {
 
     if [ -n "${wazuh}" ]; then
         common_logger "--- Wazuh manager ---"
-        installCommon_placeCredentials "${manager_credential_keys[@]}"
+        installCommon_placeLocalEnv "${manager_config_path}" "${manager_credential_keys[@]}"
         manager_copyCertificates
         manager_install
         manager_configure

@@ -1,5 +1,5 @@
 # Certificate tool - Main functions
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -70,7 +70,7 @@ function getHelp() {
     echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb"
     echo -e ""
     echo -e "ROOT CA"
-    echo -e "        The root CA is read from $(wazuh_ca_get_dir 2>/dev/null), or from the directory set in WAZUH_CA_DIR."
+    echo -e "        The root CA is read from $(common_caGetDir 2>/dev/null), or from the directory set in WAZUH_CA_DIR."
     echo -e "        Its private key, root-ca.key, stays there and is never copied to the wazuh-certificates directory."
     echo -e "        The tool must be run as root."
     echo -e ""
@@ -85,7 +85,7 @@ function main() {
     # limiting access to the current user.
     umask 0077
 
-    # The shared credentials library only creates and reads the root CA as root.
+    # The root CA is created and read as root.
     common_checkRoot
     cert_checkOpenSSL
 
@@ -209,13 +209,6 @@ function main() {
             cert_checkRootCA
             cert_generateAdmincertificate
             common_logger "Admin certificates created."
-            cert_cleanFiles
-            cert_setpermisions
-            if [ -n "${debugEnabled}" ]; then
-                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
-            else
-                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
-            fi
         fi
 
         if [[ -n "${all}" ]]; then
@@ -236,28 +229,12 @@ function main() {
             if cert_generateLoadbalancercertificates; then
                 common_logger "Load balancer certificates created."
             fi
-            cert_cleanFiles
-            cert_setpermisions
-            if [ -n "${debugEnabled}" ]; then
-                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
-            else
-                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
-            fi
-            cert_verifyRemotedcertificates "${base_path}/wazuh-certificates"
-            cert_verifyLoadbalancercertificates "${base_path}/wazuh-certificates"
         fi
 
         if [[ -n "${ca}" ]]; then
             cert_generateRootCAcertificate
             cp "${cert_ca_dir}/root-ca.pem" "${cert_tmp_path}/root-ca.pem"
             common_logger "The root CA is in ${cert_ca_dir}. Its private key, root-ca.key, stays there."
-            cert_cleanFiles
-            cert_setpermisions
-            if [ -n "${debugEnabled}" ]; then
-                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
-            else
-                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
-            fi
         fi
 
         if [[ -n "${cindexer}" ]]; then
@@ -265,13 +242,6 @@ function main() {
                 cert_checkRootCA
                 cert_generateIndexercertificates
                 common_logger "Wazuh indexer certificates created."
-                cert_cleanFiles
-                cert_setpermisions
-                if [ -n "${debugEnabled}" ]; then
-                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
-                else
-                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
-                fi
             else
                 common_logger -e "Indexer node not present in config.yml."
                 exit 1
@@ -283,14 +253,6 @@ function main() {
                 cert_checkRootCA
                 cert_generateManagercertificates
                 common_logger "Wazuh manager certificates created."
-                cert_cleanFiles
-                cert_setpermisions
-                if [ -n "${debugEnabled}" ]; then
-                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
-                else
-                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
-                fi
-                cert_verifyRemotedcertificates "${base_path}/wazuh-certificates"
             else
                 common_logger -e "Manager node not present in config.yml."
                 exit 1
@@ -302,14 +264,6 @@ function main() {
                 cert_checkRootCA
                 cert_generateLoadbalancercertificates
                 common_logger "Load balancer certificates created."
-                cert_cleanFiles
-                cert_setpermisions
-                if [ -n "${debugEnabled}" ]; then
-                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
-                else
-                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
-                fi
-                cert_verifyLoadbalancercertificates "${base_path}/wazuh-certificates"
             else
                 common_logger -e "Load balancer section not present in config.yml."
                 exit 1
@@ -321,17 +275,26 @@ function main() {
                 cert_checkRootCA
                 cert_generateDashboardcertificates
                 common_logger "Wazuh dashboard certificates created."
-                cert_cleanFiles
-                cert_setpermisions
-                if [ -n "${debugEnabled}" ]; then
-                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
-                else
-                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
-                fi
             else
                 common_logger -e "Dashboard node not present in config.yml."
                 exit 1
             fi
+        fi
+
+        # Every requested option writes to the same temporary directory, which is moved
+        # once, so options can be combined in one run (-wi -wd, -wi -wd -wm, ...).
+        cert_cleanFiles
+        cert_setpermisions
+        if [ -n "${debugEnabled}" ]; then
+            mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+        else
+            mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+        fi
+        if [[ -n "${all}" || -n "${cmanager}" ]]; then
+            cert_verifyRemotedcertificates "${base_path}/wazuh-certificates"
+        fi
+        if [[ -n "${all}" || -n "${clb}" ]]; then
+            cert_verifyLoadbalancercertificates "${base_path}/wazuh-certificates"
         fi
 
     else
