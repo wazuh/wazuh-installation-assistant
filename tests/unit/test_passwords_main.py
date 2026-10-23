@@ -20,7 +20,7 @@ from tests.unit.conftest import assert_failure, assert_success, run_bash_functio
 
 COMMON_VARS = "common_functions/commonVariables.sh"
 COMMON = "common_functions/common.sh"
-CREDENTIALS = "credentials_lib/wazuh-credentials.sh"
+CREDENTIALS = "common_functions/credentials.sh"
 PASSWORDS_VARS = "passwords_tool/passwordsVariables.sh"
 PASSWORDS_FUNCTIONS = "passwords_tool/passwordsFunctions.sh"
 PASSWORDS_MAIN = "passwords_tool/passwordsMain.sh"

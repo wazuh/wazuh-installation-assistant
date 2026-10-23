@@ -8,7 +8,7 @@ This glossary provides definitions for key terms, components, and concepts used 
 
 ### Wazuh Installation Assistant
 
-The main tool (`wazuh-install.sh`) that automates the deployment and configuration of Wazuh central components. It guides users through the process of installing Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard. The assistant supports both All-In-One (AIO) installations and distributed deployments, includes system requirements checking, automated configuration, and embeds both the Certificate Tool and Password Tool for complete setup automation.
+The main tool (`wazuh-install-<version>.sh`) that automates the deployment and configuration of Wazuh central components. It guides users through the process of installing Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard. The assistant supports both All-In-One (AIO) installations and distributed deployments, includes system requirements checking and automated configuration, and embeds the certificate functions of the Certificate Tool.
 
 ### Wazuh Certs Tool
 
@@ -122,7 +122,7 @@ Software packages required for Wazuh components to function properly. The instal
 
 ### tar File
 
-A compressed archive file (`wazuh-install-files.tar`) containing generated certificates, passwords, and cluster keys. Created during the certificate and password generation process and required for distributed deployments.
+An archive file (`wazuh-install-files.tar`) containing the generated certificates, `root-ca.pem` (never `root-ca.key`), the passwords (`credentials.env`), the `config.yml` it was generated from and, when there is more than one Wazuh manager node, the cluster key. Created by `-g` and required for distributed deployments.
 
 ### Repository
 
@@ -146,11 +146,11 @@ The installation log file located at `/var/log/wazuh-install.log` that records a
 
 ### Internal Users
 
-Built-in user accounts used by Wazuh components for internal operations and API access. Include users like `admin`, `kibanaserver`, `kibanaro`, and `logstash`. Passwords for these users are managed by the Wazuh Password Tool.
+Built-in user accounts used by Wazuh components for internal operations and API access. The Wazuh Password Tool manages the Wazuh indexer users `admin`, `kibanaserver` and `wazuh-manager`, and the Wazuh server API users `wazuh` and `wazuh-internal-client`.
 
 ### Wazuh API User
 
-User accounts for accessing the Wazuh Manager REST API, used for management and configuration operations. API user passwords can be changed using the Wazuh Password Tool with the `-A` option.
+User accounts for accessing the Wazuh Manager REST API, used for management and configuration operations. API user passwords can be changed using the Wazuh Password Tool with `-u wazuh` or `-u wazuh-internal-client`, or with `-a` together with the other users.
 
 ---
 
@@ -162,11 +162,11 @@ The initial validation phase that verifies the system meets minimum requirements
 
 ### Certificate Generation
 
-The process of creating SSL/TLS certificates for all nodes using the Wazuh Certs Tool. Performed with the `-g` option or automatically during AIO installation.
+The process of creating SSL/TLS certificates for all nodes using the Wazuh Certs Tool. Performed with the `-g` option for a distributed installation. In an AIO installation the packages create their own CA and certificates.
 
 ### Password Generation
 
-The process of creating secure random passwords for Wazuh internal users. Performed with the `-g` option or automatically during AIO installation.
+The process of creating secure random passwords for Wazuh internal users. Performed with the `-g` option for a distributed installation. In an AIO installation the packages generate them.
 
 ### Component Installation
 
@@ -174,7 +174,7 @@ The process of downloading (or using offline packages), installing, and configur
 
 ### Cluster Initialization
 
-The process of starting and configuring the Wazuh Indexer cluster security settings using the `securityadmin.sh` script with admin certificates. Required after all Indexer nodes are installed.
+The process of starting and configuring the Wazuh Indexer cluster security settings using the `/usr/share/wazuh-indexer/bin/indexer-security-init.sh` script of the Wazuh indexer package with admin certificates. Required after all Indexer nodes are installed.
 
 ---
 
@@ -192,13 +192,13 @@ Command-line option to install only the Wazuh Dashboard component on the current
 
 Command-line option to install only the Wazuh Manager (server) component on the current machine, using the node name specified in `config.yml`.
 
-### -a, --all
+### -a, --all-in-one
 
 Option to install all Wazuh central components (Indexer, Manager, and Dashboard) on the local machine in All-In-One configuration.
 
-### -g, --generate
+### -g, --generate-config-files
 
-Option to generate certificates and passwords for all nodes defined in `config.yml`. Creates the `wazuh-install-files.tar` archive.
+Option to generate certificates and passwords for all nodes defined in `config.yml`. Creates the `wazuh-install-files.tar` archive. The root CA, its private key and the passwords are kept in the `wazuh-ca` directory, so a new run reuses them. A new run also generates a new cluster key, so it is only for adding Wazuh indexer or Wazuh dashboard nodes, and it stops if `wazuh-install-files.tar` already exists.
 
 ### -u, --uninstall
 
@@ -222,12 +222,24 @@ Directory containing SSL/TLS certificates for the Wazuh Indexer, including the n
 
 ### /etc/wazuh-dashboard/certs
 
-Directory containing SSL/TLS certificates for the Wazuh Dashboard, including the node certificate, key, and root CA.
+Directory containing SSL/TLS certificates for the Wazuh Dashboard, including the node certificate, key, and the CAs of the indexer (`indexer-ca.pem`) and the manager (`manager-ca.pem`).
 
-### /var/wazuh-manager/etc/certs
+### /etc/wazuh-manager/certs
 
-Directory containing SSL/TLS certificates for the Wazuh Manager (server), including the node certificate, key, and root CA.
+Directory containing SSL/TLS certificates for the Wazuh Manager (server), including the root CA, the agent listener and Server API certificates, the indexer CA (`indexer-ca.pem`), and the certificate used to connect to the indexer.
 
-### /var/wazuh-manager/etc/wazuh-manager.conf
+### local.env
+
+A file in the configuration directory of each package (`/etc/wazuh-indexer/local.env`, `/etc/wazuh-manager/local.env`, `/etc/wazuh-dashboard/local.env`). It holds the values given before the package is installed, such as passwords. It only has the keys that package uses. Owned by root, mode 0600.
+
+### export/credentials.env
+
+A file the Wazuh indexer and the Wazuh manager packages publish after install (`/etc/wazuh-indexer/export/credentials.env`, `/etc/wazuh-manager/export/credentials.env`). It holds the passwords of the users that package owns. The `export/` directory also has the CA of the package, `ca.pem`.
+
+### wazuh-ca
+
+The directory where the `-g` option and the Wazuh Certs Tool keep the deployment root CA (`root-ca.pem` and `root-ca.key`). The `-g` option also keeps the passwords there, in `credentials.env`. It is next to the script, or in the directory set in the `WAZUH_CA_DIR` environment variable. Back it up.
+
+### /etc/wazuh-manager/wazuh-manager.conf
 
 Main configuration file for the Wazuh Manager, containing settings for cluster configuration, agent communication, and log analysis.

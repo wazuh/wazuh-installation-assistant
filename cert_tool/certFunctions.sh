@@ -1,5 +1,5 @@
 # Certificate tool - Library functions
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -162,8 +162,8 @@ function cert_createTmpDir() {
 
 }
 
-# Checks OpenSSL and the commands the shared credentials library needs to create and
-# validate the root CA. Without them the CA check fails with a misleading error.
+# Checks OpenSSL and the commands needed to create and validate the root CA. Without
+# them the CA check fails with a misleading error.
 function cert_checkOpenSSL() {
 
     local missing=()
@@ -173,17 +173,8 @@ function cert_checkOpenSSL() {
     if [ -z "$(command -v openssl)" ]; then
         missing+=("openssl (package openssl)")
     fi
-    if [ -z "$(command -v cmp)" ]; then
-        missing+=("cmp (package diffutils)")
-    fi
-    if [ -z "$(command -v flock)" ]; then
-        missing+=("flock (package util-linux)")
-    fi
     if ! stat -c '%a' / > /dev/null 2>&1; then
         missing+=("GNU stat (package coreutils)")
-    fi
-    if ! ln --help 2>&1 | grep -q -- '-T'; then
-        missing+=("GNU ln (package coreutils)")
     fi
 
     if [ "${#missing[@]}" -gt 0 ]; then
@@ -193,26 +184,26 @@ function cert_checkOpenSSL() {
 
 }
 
-# Gets the root CA from the directory resolved by the shared credentials library:
-# WAZUH_CA_DIR, or /etc/wazuh/ca by default. With "create", a missing CA is created
-# there first. root-ca.key stays in that directory: only root-ca.pem is copied next
-# to the new certificates.
+# Gets the root CA from its directory (WAZUH_CA_DIR, or wazuh-ca next to the tool).
+# With "create", a missing CA is created there first. root-ca.key stays in that
+# directory: only root-ca.pem is copied next to the new certificates.
 function cert_checkRootCA() {
 
     local mode="${1:-validate}"
+    local ca_error
 
     common_logger -d "Checking the root CA."
 
     if [ "${mode}" == "create" ]; then
         cert_generateRootCAcertificate
     else
-        if ! cert_ca_dir=$(wazuh_ca_get_dir); then
-            common_logger -e "Could not resolve the root CA directory."
+        if ! cert_ca_dir=$(common_caGetDir 2>/dev/null); then
+            common_logger -e "WAZUH_CA_DIR must be an absolute path."
             cert_cleanFiles
             exit 1
         fi
-        if ! wazuh_ca_validate; then
-            common_logger -e "There is no valid root CA in ${cert_ca_dir}. Create it with -ca|--root-ca-certificates, or set WAZUH_CA_DIR to the directory of an existing one."
+        if ! ca_error=$(common_caValidate "${cert_ca_dir}" 2>&1); then
+            common_logger -e "There is no valid root CA in ${cert_ca_dir}: ${ca_error} Create it with -ca|--root-ca-certificates, or set WAZUH_CA_DIR to the directory of an existing one."
             cert_cleanFiles
             exit 1
         fi
@@ -797,12 +788,13 @@ function cert_verifyLoadbalancercertificates() {
 
 }
 
-# Creates the root CA through the shared credentials library, in the directory it
-# resolves. An existing CA is validated and never replaced.
+# Creates the root CA in its directory. An existing CA is validated and never replaced.
 function cert_generateRootCAcertificate() {
 
-    if ! cert_ca_dir=$(wazuh_ca_get_dir); then
-        common_logger -e "Could not resolve the root CA directory."
+    local ca_error
+
+    if ! cert_ca_dir=$(common_caGetDir 2>/dev/null); then
+        common_logger -e "WAZUH_CA_DIR must be an absolute path."
         cert_cleanFiles
         exit 1
     fi
@@ -811,14 +803,12 @@ function cert_generateRootCAcertificate() {
         common_logger "Using the existing root CA in ${cert_ca_dir}."
     else
         common_logger "Generating the root certificate in ${cert_ca_dir}."
-        # A new CA is right for a new deployment, but the nodes of an existing one
-        # only trust the CA they were issued from: a node issued from this one
-        # would not match them. See #1049.
-        common_logger -w "There is no root CA in ${cert_ca_dir}, so a new one is created. The certificates issued from it do not chain to the root CA of any existing deployment. To add nodes to an existing deployment, stop here and run the tool on the host that holds its root CA, or set WAZUH_CA_DIR to a directory with a copy of that root CA and its key."
+        # The nodes of an existing deployment only trust the CA they were issued from. See #1049.
+        common_logger -w "There is no root CA in ${cert_ca_dir}, so a new one is created. The certificates issued from it do not chain to the root CA of any existing deployment. To add nodes to an existing deployment, stop here and run the tool where its root CA is, or set WAZUH_CA_DIR to a directory with a copy of that root CA and its key."
     fi
 
-    if ! wazuh_ca_ensure; then
-        common_logger -e "The root CA in ${cert_ca_dir} could not be created or is not valid."
+    if ! ca_error=$(common_caEnsure "${cert_ca_dir}" 2>&1); then
+        common_logger -e "The root CA in ${cert_ca_dir} could not be created or is not valid: ${ca_error}"
         cert_cleanFiles
         exit 1
     fi
@@ -1426,17 +1416,18 @@ function cert_validateManagerNodeTypes() {
 
 }
 
-# Fills a flat array with the first ip of each node, in node order. install_functions
-# reads these arrays by node index — the master's address, the Wazuh API address the
-# dashboard is pointed at, the indexer's network.host — so an entry has to stay at the
-# position of the node it belongs to even when that node lists several addresses.
-# Takes the array to fill, the array of node names and the prefix of the per-node
-# address arrays.
+# Fills a flat array with the first ip of each node, or its first dns name when the node
+# has no ip, in node order. install_functions reads these arrays by node index — the
+# master's address, the Wazuh API address the dashboard is pointed at, the indexer's
+# network.host — so every node needs exactly one entry, at its own position.
+# Takes the array to fill, the array of node names and the prefixes of the per-node
+# ip and dns arrays.
 function cert_firstAddressPerNode() {
 
     local target_var="$1"
     local node_names_var="$2"
     local node_ip_prefix="$3"
+    local node_dns_prefix="$4"
     local i
     local j
 
@@ -1448,8 +1439,11 @@ function cert_firstAddressPerNode() {
     for i in "${!component_node_names[@]}"; do
         j=$((i+1))
         declare -n component_ip="${node_ip_prefix}_${j}"
+        declare -n component_dns="${node_dns_prefix}_${j}"
         if [ "${#component_ip[@]}" -gt 0 ]; then
             target_array+=("${component_ip[0]}")
+        else
+            target_array+=("${component_dns[0]}")
         fi
     done
 
@@ -1508,9 +1502,9 @@ function cert_readConfig() {
         # one entry per node. A node reachable at several addresses puts them all in
         # its certificate through the per-node arrays above; the first one is the
         # address the components are configured with.
-        cert_firstAddressPerNode "indexer_node_ips" "indexer_node_names" "indexer_node_ip"
-        cert_firstAddressPerNode "manager_node_ips" "manager_node_names" "manager_node_ip"
-        cert_firstAddressPerNode "dashboard_node_ips" "dashboard_node_names" "dashboard_node_ip"
+        cert_firstAddressPerNode "indexer_node_ips" "indexer_node_names" "indexer_node_ip" "indexer_node_dns"
+        cert_firstAddressPerNode "manager_node_ips" "manager_node_names" "manager_node_ip" "manager_node_dns"
+        cert_firstAddressPerNode "dashboard_node_ips" "dashboard_node_names" "dashboard_node_ip" "dashboard_node_dns"
 
         cert_validateComponentSanValues "Indexer" "indexer_node_names" "indexer_node_ip" "indexer_node_dns"
         cert_validateComponentSanValues "Manager" "manager_node_names" "manager_node_ip" "manager_node_dns"
@@ -1540,7 +1534,7 @@ function cert_readConfig() {
 function cert_rejectCAPaths() {
 
     if [[ -n "${2}" && "${2}" != -* ]]; then
-        common_logger -e "${1} does not take root CA files anymore. The root CA is read from $(wazuh_ca_get_dir 2>/dev/null). Set WAZUH_CA_DIR to use the root CA of another directory."
+        common_logger -e "${1} does not take root CA files anymore. The root CA is read from $(common_caGetDir 2>/dev/null). Set WAZUH_CA_DIR to use the root CA of another directory."
         exit 1
     fi
 

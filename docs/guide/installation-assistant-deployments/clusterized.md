@@ -71,7 +71,7 @@ nodes:
       ip: "<dashboard-node-ip>"
 ```
 
-  3. On the first Wazuh indexer node, run the Wazuh installation assistant with the option `--generate-config-files` to generate the Wazuh cluster key, certificates, and passwords necessary for installation. You can find these files in `./wazuh-install-files.tar`. The root CA and its private key stay in `/etc/wazuh/ca` of this node and are not added to the file; back them up in a safe place, they are needed to add nodes or renew certificates later.
+  3. On the first Wazuh indexer node, run the Wazuh installation assistant with the option `--generate-config-files` to generate the Wazuh cluster key, certificates, and passwords necessary for installation. You can find these files in `./wazuh-install-files.tar`. The root CA, its private key and the passwords stay in the `wazuh-ca` directory next to `wazuh-install-5.0.1.sh` (or in the directory set in `WAZUH_CA_DIR`). The private key is not added to the file. Back up `wazuh-ca` in a safe place: it is needed to add nodes or renew certificates later.
 
       ```bash
       bash wazuh-install-5.0.1.sh --generate-config-files
@@ -111,8 +111,10 @@ Follow these steps to install and configure a multi-node Wazuh indexer.
 
 Repeat this stage of the installation process for every Wazuh indexer node in your cluster. Then proceed with initializing your multi-node cluster in the next stage.
 
+The assistant sets the Java heap of the Wazuh indexer in `/etc/wazuh-indexer/jvm.options` before the first start: half the RAM of the node with `--wazuh-indexer`, and a quarter with `--all-in-one`, where the Wazuh manager and the Wazuh dashboard share the host. `-Xms` and `-Xmx` get the same value.
+
 > [!NOTE]
-> For Wazuh indexer installation on hardened endpoints with `noexec` flag on the `/tmp` directory, additional setup is required. See the Wazuh indexer configuration on hardened endpoints section for necessary configuration.
+> On hardened endpoints with the `noexec` flag on the `/tmp` directory, the Wazuh indexer needs no additional setup: the package sets `OPENSEARCH_TMPDIR=/var/lib/wazuh-indexer/tmp` in `/etc/sysconfig/wazuh-indexer` (RPM) or `/etc/default/wazuh-indexer` (DEB), so the service does not use `/tmp`. That directory must allow execution.
 
 ## Cluster initialization
 
@@ -131,7 +133,7 @@ bash wazuh-install-5.0.1.sh --start-cluster
 
 Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster is functioning as expected by following the steps below.
 
-  1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-`).
+  1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
       ```bash
       curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
@@ -150,7 +152,7 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
       }
       ```
 
-  2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-`).
+  2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
       ```bash
       curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
@@ -190,13 +192,15 @@ Your Wazuh manager is now successfully installed, repeat this process on every W
       /var/wazuh-manager/bin/cluster_control -l
       ```
 
-  3. Check that the Wazuh server API answers. Replace `<MASTER_IP>` with the IP address of the master node and `<WAZUH_MANAGER_API_PASSWORD>` with the `WAZUH_MANAGER_API_PASSWORD` value of `/etc/wazuh/credentials.env`:
+  3. Check that the Wazuh server API answers. Replace `<MASTER_IP>` with the IP address of the master node and `<WAZUH_MANAGER_API_PASSWORD>` with the `WAZUH_MANAGER_API_PASSWORD` value of `/etc/wazuh-manager/export/credentials.env` on the master node:
 
       ```bash
       curl -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://<MASTER_IP>:55000/security/user/authenticate?raw=true"
       ```
 
 The Wazuh server API only runs on the master node. The Wazuh dashboard connects to the master.
+
+At each start, the master node logs `WARNING: dashboard client pair not generated: /etc/wazuh-manager/ca has no key; provision it externally in /etc/wazuh-manager/export`. This is expected: the nodes only receive `root-ca.pem`, without its key, and nothing uses that pair yet.
 
 ## Wazuh dashboard
 
@@ -228,7 +232,7 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
         INFO:     User: admin (Wazuh dashboard login and Wazuh indexer administrator)
         INFO:     Password: to read it from wazuh-install-files.tar, run:
         INFO:         sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-
-        INFO: The other users of the deployment are listed at the top of wazuh-install-files/credentials.env of wazuh-install-files.tar.
+        INFO: The passwords of the other users are in wazuh-install-files/credentials.env of wazuh-install-files.tar.
         INFO: Installation finished.
       ```
 
@@ -236,16 +240,16 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
 
 - URL: `https://<WAZUH_DASHBOARD_IP_ADDRESS>`
 - Username: `admin`
-- Password: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in the `credentials.env` file of `wazuh-install-files.tar`, or in `/etc/wazuh/credentials.env` of a Wazuh indexer node. The Wazuh dashboard node does not receive it.
+- Password: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in the `credentials.env` file of `wazuh-install-files.tar`, or in `/etc/wazuh-indexer/export/credentials.env` of a Wazuh indexer node. The Wazuh dashboard node does not receive it.
 
 When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, the `root-ca.pem` file previously generated can be imported to the certificate manager of the browser instead. Alternatively, you can configure a certificate from a trusted authority.
 
 > [!NOTE]
-> `/etc/wazuh/credentials.env` holds the passwords of the Wazuh users, generated during the installation. Each node only receives the passwords of the components installed on it; the node where `wazuh-install-files.tar` was generated keeps all of them. Once you have stored them in a safe place, remove the file from every node: the Wazuh components do not read it after the installation. To change a password later, see [Multi-node and distributed deployments](../../ref/getting-started/usage.md#multi-node-and-distributed-deployments).
+> Each node only receives the passwords of the components installed on it, in the `local.env` file of each package (for example, `/etc/wazuh-indexer/local.env`). The Wazuh indexer nodes publish the indexer passwords in `/etc/wazuh-indexer/export/credentials.env`, and the Wazuh manager master node publishes the Wazuh server API passwords in `/etc/wazuh-manager/export/credentials.env`. The `wazuh-ca` directory of the node where `wazuh-install-files.tar` was generated keeps all of them. To change a password later, see [Multi-node and distributed deployments](../../ref/getting-started/usage.md#multi-node-and-distributed-deployments).
 >
 > Remove `wazuh-install-files.tar` from every node too: it holds the private keys and the passwords of the deployment. Keep a copy in a safe place if you plan to add nodes later, and update its passwords first if you change them, as described in [Security](../security.md).
 >
-> The bundle only holds the certificates of the nodes in its `config.yml`, and the root CA private key stays in `/etc/wazuh/ca` of the node where it was generated: back that directory up. To add a Wazuh manager worker later, issue its certificates there, from that root CA, as described in [Add a Wazuh manager node to an existing deployment](../../ref/getting-started/usage.md#add-a-wazuh-manager-node-to-an-existing-deployment). Do not run `--generate-config-files` again to add it: it creates a new cluster key, so a node installed from the new bundle does not join the cluster.
+> The bundle only holds the certificates of the nodes in its `config.yml`, and the root CA private key stays in the `wazuh-ca` directory of the node where it was generated: back that directory up. To add a Wazuh manager worker later, issue its certificates there, from that root CA, as described in [Add a Wazuh manager node to an existing deployment](../../ref/getting-started/usage.md#add-a-wazuh-manager-node-to-an-existing-deployment). Do not run `--generate-config-files` again to add it: it creates a new cluster key, so a node installed from the new bundle does not join the cluster.
 
 ## Next step: enroll the Wazuh agents
 

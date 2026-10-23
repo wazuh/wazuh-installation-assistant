@@ -19,6 +19,7 @@ tests/unit/
 ├── test_common.py               # common.sh — system detection, package manager checks
 ├── test_cert_functions.py       # certFunctions.sh — cert generation, OpenSSL checks, config parsing
 ├── test_passwords_functions.py  # passwordsFunctions.sh — password validation, generation, API token
+├── test_credentials.py          # credentials.sh — env files, password rules and generation, root CA
 ├── test_install_common.py       # installCommon.sh — config retrieval, prerequisites, service start
 ├── test_manager.py              # manager.sh — install (apt/yum), cluster start
 ├── test_indexer.py              # indexer.sh — install (apt/yum), configure
@@ -34,6 +35,7 @@ tests/unit/
 | `test_common.py` | `common_functions/common.sh` |
 | `test_cert_functions.py` | `install_functions/certFunctions.sh` |
 | `test_passwords_functions.py` | `passwords_tool/passwordsFunctions.sh` |
+| `test_credentials.py` | `common_functions/credentials.sh` |
 | `test_install_common.py` | `install_functions/installCommon.sh` |
 | `test_manager.py` | `install_functions/manager.sh` |
 | `test_indexer.py` | `install_functions/indexer.sh` |

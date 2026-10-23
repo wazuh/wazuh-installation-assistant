@@ -348,7 +348,7 @@ class TestChecksPreviousCertificate:
 
     def _run(self, tar, **names):
         return run_bash_function(
-            [*BASE_SOURCES, "install_functions/installVariables.sh", "credentials_lib/wazuh-credentials.sh"],
+            [*BASE_SOURCES, "install_functions/installVariables.sh", "common_functions/credentials.sh"],
             "checks_previousCertificate",
             IGNORE_LOGGER,
             {"tar_file": str(tar), **names},

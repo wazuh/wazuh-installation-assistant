@@ -1,5 +1,5 @@
 # Wazuh installer - indexer.sh functions.
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -83,20 +83,18 @@ function indexer_configure() {
     common_logger "Wazuh indexer post-install configuration finished."
 }
 
-# Places the pair of this node and the admin pair from the tar before the package is
-# installed, with the names the package expects. The package uses them instead of issuing
-# its own, gives them to wazuh-indexer and writes their DNs in opensearch.yml.
+# Places the CA certificate, the pair of this node and the admin pair from the tar
+# before the package is installed. The package uses them instead of issuing its own
+# and sets their owner and mode.
 function indexer_copyCertificates() {
 
     common_logger -d "Placing the Wazuh indexer certificates."
-    # The modes the package ships. The installer umask would leave the directories without
-    # the search bit, and the DEB package keeps the mode of a directory that already exists.
-    eval "install -d -m 0750 ${indexer_cert_path%/*} ${debug}"
-    eval "install -d -m 0500 ${indexer_cert_path} ${debug}"
-    installCommon_placeFromTar "${indxname}.pem" "${indexer_cert_path}/indexer.pem" root root 0400
-    installCommon_placeFromTar "${indxname}-key.pem" "${indexer_cert_path}/indexer-key.pem" root root 0400
-    installCommon_placeFromTar "admin.pem" "${indexer_cert_path}/admin.pem" root root 0400
-    installCommon_placeFromTar "admin-key.pem" "${indexer_cert_path}/admin-key.pem" root root 0400
+    eval "install -d -o root -g root -m 0750 ${indexer_config_path} ${indexer_cert_path} ${indexer_config_path}/ca ${debug}"
+    installCommon_placeFromTar "root-ca.pem" "${indexer_config_path}/ca/root-ca.pem" root root 0640
+    installCommon_placeFromTar "${indxname}.pem" "${indexer_cert_path}/indexer.pem" root root 0640
+    installCommon_placeFromTar "${indxname}-key.pem" "${indexer_cert_path}/indexer-key.pem" root root 0640
+    installCommon_placeFromTar "admin.pem" "${indexer_cert_path}/admin.pem" root root 0600
+    installCommon_placeFromTar "admin-key.pem" "${indexer_cert_path}/admin-key.pem" root root 0600
 
 }
 

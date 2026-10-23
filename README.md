@@ -187,4 +187,4 @@ For more detailed instructions and advanced use cases, please refer to the [Wazu
 
 ## Authors
 
-Wazuh Copyright (C) 2015-2023 Wazuh Inc. (License GPLv2)
+Wazuh Copyright (C) Wazuh Inc. (License GPLv2)
