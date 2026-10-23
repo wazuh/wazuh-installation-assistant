@@ -233,18 +233,21 @@ class TestIndexerStartCluster:
     """indexer_startCluster runs the security initializer the package ships, with a time limit."""
 
     NODES = "node-1, node-2, node-3"
+    INIT = "/usr/share/wazuh-indexer/bin/indexer-security-init.sh"
 
     def _run(self, rc, debug="", env=None):
-        return run_bash_function(
+        result = run_bash_function(
             BASE_SOURCES,
             "indexer_startCluster",
             {
                 "common_logger": 'echo "LOG:$*"',
-                "timeout": f'[ "$1" = 300 ] && [[ "$*" == *indexer-security-init.sh* ]] && return {rc}',
+                "timeout": f'[ "$*" = "300 bash {self.INIT}" ] || {{ echo "BAD ARGS: $*"; return 99; }}; return {rc}',
                 "installCommon_rollBack": 'echo "ROLLBACK"',
             },
-            {"debug": debug, "indexer_cluster_timeout": "300", **(env or {})},
+            {"debug": debug, "indexer_cluster_timeout": "300", "indexer_security_init": self.INIT, **(env or {})},
         )
+        assert "BAD ARGS" not in result.stdout
+        return result
 
     def _start_cluster(self, rc):
         return self._run(rc, env={"start_indexer_cluster": "1", "indexer_node_names": '("node-1" "node-2" "node-3")'})
@@ -293,3 +296,44 @@ class TestIndexerStartCluster:
         )
         assert result.returncode == 1
         assert result.stdout.splitlines() == ["TRAP after 0s"]
+
+    @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
+    def test_ctrl_c_stops_the_initializer_before_the_question(self, tmp_path, debug):
+        """The real timeout runs a fake initializer that, like the package one, stops its child on SIGINT.
+
+        installCommon_cleanExit, run by the trap, must stop it and wait for it before it asks the question.
+        """
+        init = tmp_path / "indexer-security-init.sh"
+        init.write_text(
+            f'echo $$ > "{tmp_path}/init.pid"\n'
+            f'trap \'sleep 1; kill "${{child}}"; touch "{tmp_path}/stopped"; exit 1\' INT\n'
+            f'sleep 30 & child=$!; echo "${{child}}" > "{tmp_path}/child.pid"\n'
+            'wait "${child}"\n'
+        )
+        script = (
+            "SECONDS=0\n"
+            "( me=$BASHPID\n"
+            "  trap installCommon_cleanExit SIGUSR1\n"
+            f'  ( until [ -s "{tmp_path}/child.pid" ]; do sleep 0.1; done; kill -USR1 "${{me}}" ) &\n'
+            "  indexer_startCluster )\n"
+            'echo "cleanExit ended after ${SECONDS}s"\n'
+        )
+        # The answer to the question: it also checks that the initializer has already ended
+        read_mock = (
+            f'if [ -e "{tmp_path}/stopped" ] && ! kill -0 "$(cat "{tmp_path}/init.pid")" 2>/dev/null; '
+            'then echo "STOPPED BEFORE QUESTION"; else echo "RUNNING AT QUESTION"; fi; rollback_conf=n'
+        )
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installCommon.sh"],
+            script,
+            {
+                **IGNORE_LOGGER,
+                "read": read_mock,
+                "common_checkInstalled": "true",
+                "installCommon_rollBack": 'echo "ROLLBACK"',
+            },
+            {"debug": debug, "indexer_cluster_timeout": "20", "indexer_security_init": str(init)},
+        )
+        assert "STOPPED BEFORE QUESTION" in result.stdout
+        seconds = int(result.stdout.split("cleanExit ended after ")[1].split("s")[0])
+        assert seconds < 10

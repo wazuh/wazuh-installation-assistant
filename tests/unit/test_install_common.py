@@ -789,6 +789,23 @@ class TestInstallCommonScanDependencies:
         for dep in ["openssl", "diffutils", "gawk", "iproute"]:
             assert dep in deps
 
+    @pytest.mark.parametrize(
+        "step, operation",
+        [("wazuh", "installation"), ("start_indexer_cluster", "cluster initialization")],
+    )
+    def test_missing_dependencies_message_names_the_operation(self, step, operation):
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installVariables.sh"],
+            "installCommon_scanDependencies",
+            {"common_logger": 'echo "$@"', "rpm": "return 1"},
+            {"sys_type": "yum", step: "1"},
+        )
+        assert_failure(result)
+        assert f"To perform the {operation}, the following package/s must be installed:" in result.stdout
+        assert f"will be removed after the {operation}:" in result.stdout
+        if step == "start_indexer_cluster":
+            assert "installation" not in result.stdout
+
 
 class TestInstallCommonVerifyPackageSignature:
     """Tests for installCommon_verifyPackageSignature on RPM packages.
@@ -1082,17 +1099,6 @@ class TestInstallCommonCleanExit:
         assert "installation" not in result.stdout
         assert "ROLLBACK" in result.stdout
 
-    def test_stops_the_indexer_security_initializer(self):
-        # Like indexer_startCluster: timeout in a background subshell, out of the reach of Ctrl+C
-        script = (
-            "( timeout 30 sleep 30 ) &\n"
-            "indexer_init_pid=$!\n"
-            "sleep 0.5\n"
-            "( installCommon_cleanExit )\n"
-            'SECONDS=0; wait "${indexer_init_pid}"; echo "stopped after ${SECONDS}s"'
-        )
-        result = run_bash_function(BASE_SOURCES, script, self.MOCKS, stdin="n\n")
-        assert result.stdout.endswith("stopped after 0s\n")
 
 
 class TestInstallCommonLogRunHeader:

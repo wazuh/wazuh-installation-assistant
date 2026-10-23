@@ -14,9 +14,11 @@ function installCommon_cleanExit() {
         eval "kill -9 $spin_pid ${debug}"
     fi
 
-    # The Wazuh indexer security initializer runs in its own process group, which Ctrl+C does not reach
+    # The Wazuh indexer security initializer runs in its own process group, which Ctrl+C does not reach.
+    # It must end before the rollback removes anything.
     if [ -n "${indexer_init_pid}" ]; then
         eval "pkill -INT -P ${indexer_init_pid} ${debug}"
+        wait "${indexer_init_pid}"
     fi
 
     local question="Do you want to remove the ongoing installation?"
@@ -455,6 +457,17 @@ function installCommon_logRunHeader() {
 
 }
 
+# Names what this run does, for its messages
+function installCommon_operationName() {
+
+    if [ -n "${start_indexer_cluster}" ]; then
+        echo "cluster initialization"
+    else
+        echo "installation"
+    fi
+
+}
+
 function installCommon_removeCentOSrepositories() {
 
     eval "rm -f ${centos_repo} ${debug}"
@@ -582,10 +595,9 @@ function installCommon_rollBack() {
     eval "systemctl daemon-reload ${debug}"
 
     if [ -z "${uninstall}" ]; then
-        local operation="Installation"
-        if [ -n "${start_indexer_cluster}" ]; then
-            operation="Cluster initialization"
-        fi
+        local operation
+        operation=$(installCommon_operationName)
+        operation="${operation^}"
         if [ -n "${rollback_conf}" ] || [ -n "${overwrite}" ]; then
             common_logger "${operation} cleaned."
         else
@@ -673,9 +685,11 @@ function installCommon_scanDependencies() {
         joined_deps_not_installed="${joined_deps_not_installed%, }"
         joined_assistant_not_installed="${joined_assistant_not_installed%, }"
 
-        message="To perform the installation, the following package/s must be installed: ${joined_deps_not_installed}."
+        local operation
+        operation=$(installCommon_operationName)
+        message="To perform the ${operation}, the following package/s must be installed: ${joined_deps_not_installed}."
         if [ "${#assistant_deps_to_install[@]}" -gt 0 ]; then
-            message+=" The following package/s will be removed after the installation: ${joined_assistant_not_installed}."
+            message+=" The following package/s will be removed after the ${operation}: ${joined_assistant_not_installed}."
         fi
         message+=" Add the -id|--install-dependencies parameter to install them automatically or install them manually."
         common_logger -w "${message}"

@@ -155,7 +155,7 @@ function indexer_startCluster() {
     # indexer node. Its wrapper finds the host, port and admin certificate by itself.
     # timeout runs it in its own process group, out of the reach of Ctrl+C, so it runs in the
     # background: wait returns on Ctrl+C and installCommon_cleanExit stops it.
-    ( eval "timeout ${indexer_cluster_timeout} bash /usr/share/wazuh-indexer/bin/indexer-security-init.sh ${debug}; exit \${PIPESTATUS[0]}" ) &
+    ( eval "timeout ${indexer_cluster_timeout} bash ${indexer_security_init} ${debug}; exit \${PIPESTATUS[0]}" ) &
     indexer_init_pid=$!
     wait "${indexer_init_pid}"
     e_code=$?

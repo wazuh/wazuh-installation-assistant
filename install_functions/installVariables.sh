@@ -44,7 +44,8 @@ readonly base_dest_folder="wazuh-offline"
 http_port=443
 wazuh_aio_ports=( 9200 9300 1514 1515 1516 1517 55000 "${http_port}")
 readonly wazuh_indexer_ports=( 9200 9300 )
-# Seconds the Wazuh indexer security initializer may wait for the cluster to form
+# The Wazuh indexer security initializer and the seconds it may wait for the cluster to form
+readonly indexer_security_init="/usr/share/wazuh-indexer/bin/indexer-security-init.sh"
 readonly indexer_cluster_timeout=300
 readonly wazuh_manager_ports=( 1514 1515 1516 1517 55000 )
 wazuh_dashboard_port="${http_port}"
