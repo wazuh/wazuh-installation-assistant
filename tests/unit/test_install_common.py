@@ -6,7 +6,8 @@ Covers: installCommon_getConfig, installCommon_installPrerequisites,
         installCommon_createInstallFiles, installCommon_placeFromTar,
         installCommon_placeCredentials, installCommon_createPasswords,
         installCommon_scanDependencies, installCommon_extractConfig,
-        installCommon_createCertificates, installCommon_logRunHeader
+        installCommon_createCertificates, installCommon_logRunHeader,
+        installCommon_rollBack, installCommon_cleanExit
 """
 
 import shutil
@@ -974,6 +975,18 @@ class TestInstallCommonRollBack:
         assert_success(result)
         assert result.stdout.splitlines() == ["deps", "systemctl daemon-reload"]
 
+    def test_start_cluster_messages_do_not_mention_an_installation(self):
+        result = self._run({"start_indexer_cluster": "1", "logfile": "/var/log/wazuh-install.log"})
+        assert_success(result)
+        assert result.stdout.splitlines() == [
+            "Cluster initialization cleaned. Check the /var/log/wazuh-install.log file to learn more about the issue."
+        ]
+
+    def test_start_cluster_after_ctrl_c(self):
+        result = self._run({"start_indexer_cluster": "1", "rollback_conf": "y"})
+        assert_success(result)
+        assert result.stdout.splitlines() == ["Cluster initialization cleaned."]
+
     def test_removing_dependencies_is_a_noop_when_none_were_scanned(self):
         # The uninstall flow never runs installCommon_scanDependencies, so nothing is removed
         mocks = {"common_logger": 'echo "$@"', "yum": "exit 1", "apt-get": "exit 1"}
@@ -983,6 +996,103 @@ class TestInstallCommonRollBack:
             )
             assert_success(result)
             assert result.stdout == ""
+
+
+class TestInstallCommonRollBackScope:
+    """installCommon_rollBack removes only the components of the failed step, also on a host with all of them."""
+
+    HOST = {
+        "sys_type": "apt-get",
+        "wazuh_installed": "1",
+        "indexer_installed": "1",
+        "dashboard_installed": "1",
+        "wazuh_remaining_files": "1",
+        "indexer_remaining_files": "1",
+        "dashboard_remaining_files": "1",
+    }
+    MOCKS = {
+        "common_logger": "true",
+        "common_checkAptLock": "true",
+        "apt-get": 'echo "purge $3"',
+        "apt": "true",
+        "rm": 'shift; printf "rm %s\\n" "$@"',
+        "installCommon_removeWIADependencies": "true",
+        "systemctl": "true",
+    }
+    ALL = {"manager", "indexer", "dashboard"}
+
+    @staticmethod
+    def _component(item):
+        if "wazuh-manager" in item:
+            return "manager"
+        if "wazuh-indexer" in item or "opensearch" in item or "securityadmin" in item:
+            return "indexer"
+        if "dashboard" in item:
+            return "dashboard"
+        raise AssertionError(f"Unknown item removed: {item}")
+
+    def _run(self, step):
+        result = run_bash_function(BASE_SOURCES, "installCommon_rollBack", self.MOCKS, {**self.HOST, step: "1"})
+        assert_success(result)
+        return result.stdout.splitlines()
+
+    @pytest.mark.parametrize(
+        "step, removed",
+        [
+            ("start_indexer_cluster", set()),
+            ("indexer", {"indexer"}),
+            ("dashboard", {"dashboard"}),
+            ("wazuh", {"manager"}),
+            ("AIO", ALL),
+            ("uninstall", ALL),
+        ],
+    )
+    def test_removes_only_the_components_of_the_step(self, step, removed):
+        lines = self._run(step)
+        assert {self._component(line) for line in lines} == removed
+
+    @pytest.mark.parametrize("step", ["start_indexer_cluster", "dashboard", "wazuh"])
+    def test_keeps_the_log_directory_of_the_indexer(self, step):
+        assert "rm /var/log/wazuh-indexer/" not in self._run(step)
+
+    def test_indexer_step_removes_its_log_directory(self):
+        lines = self._run("indexer")
+        assert "purge wazuh-indexer" in lines
+        assert "rm /var/log/wazuh-indexer/" in lines
+
+
+class TestInstallCommonCleanExit:
+    """installCommon_cleanExit runs on Ctrl+C: it stops the indexer security initializer and asks about the cleanup."""
+
+    MOCKS = {"common_checkInstalled": "true", "installCommon_rollBack": 'echo "ROLLBACK"'}
+
+    def _run(self, answer, env=None):
+        return run_bash_function(BASE_SOURCES, "installCommon_cleanExit", self.MOCKS, env, stdin=f"{answer}\n")
+
+    def test_installation_question(self):
+        result = self._run("n")
+        assert result.returncode == 1
+        assert "Do you want to remove the ongoing installation?[Y/N]" in result.stdout
+        assert "ROLLBACK" not in result.stdout
+
+    def test_start_cluster_question(self):
+        result = self._run("y", {"start_indexer_cluster": "1"})
+        assert result.returncode == 1
+        assert "Do you want to clean up the ongoing cluster initialization?[Y/N]" in result.stdout
+        assert "installation" not in result.stdout
+        assert "ROLLBACK" in result.stdout
+
+    def test_stops_the_indexer_security_initializer(self):
+        # Like indexer_startCluster: timeout in a background subshell, out of the reach of Ctrl+C
+        script = (
+            "( timeout 30 sleep 30 ) &\n"
+            "indexer_init_pid=$!\n"
+            "sleep 0.5\n"
+            "( installCommon_cleanExit )\n"
+            'SECONDS=0; wait "${indexer_init_pid}"; echo "stopped after ${SECONDS}s"'
+        )
+        result = run_bash_function(BASE_SOURCES, script, self.MOCKS, stdin="n\n")
+        assert result.stdout.endswith("stopped after 0s\n")
 
 
 class TestInstallCommonLogRunHeader:

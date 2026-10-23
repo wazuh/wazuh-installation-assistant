@@ -142,9 +142,31 @@ function indexer_startCluster() {
 
     common_logger -d "Starting Wazuh indexer cluster."
 
+    # The initializer waits with no output until the cluster elects a cluster manager node,
+    # which needs the Wazuh indexer nodes of config.yml to be running.
+    local nodes
+    nodes=$(printf '%s, ' "${indexer_node_names[@]}")
+    nodes="${nodes%, }"
+    if [ -n "${start_indexer_cluster}" ]; then
+        common_logger "Waiting up to ${indexer_cluster_timeout} seconds for the Wazuh indexer cluster to form. The Wazuh indexer service must be running on these nodes of config.yml: ${nodes}."
+    fi
+
     # The package leaves loading the security configuration to the operator, once, from one
     # indexer node. Its wrapper finds the host, port and admin certificate by itself.
-    eval "bash /usr/share/wazuh-indexer/bin/indexer-security-init.sh ${debug}; e_code=\${PIPESTATUS[0]}"
+    # timeout runs it in its own process group, out of the reach of Ctrl+C, so it runs in the
+    # background: wait returns on Ctrl+C and installCommon_cleanExit stops it.
+    ( eval "timeout ${indexer_cluster_timeout} bash /usr/share/wazuh-indexer/bin/indexer-security-init.sh ${debug}; exit \${PIPESTATUS[0]}" ) &
+    indexer_init_pid=$!
+    wait "${indexer_init_pid}"
+    e_code=$?
+    indexer_init_pid=""
+
+    if [ "${e_code}" == 124 ]; then
+        common_logger -e "The Wazuh indexer cluster did not form in ${indexer_cluster_timeout} seconds."
+        if [ -n "${start_indexer_cluster}" ]; then
+            common_logger -e "Check that the Wazuh indexer service is running on these nodes of config.yml and that they can reach each other: ${nodes}. Then run the assistant with -s|--start-cluster again."
+        fi
+    fi
     if [  "${e_code}" != 0  ]; then
         common_logger -e "The Wazuh indexer cluster security configuration could not be initialized."
         installCommon_rollBack

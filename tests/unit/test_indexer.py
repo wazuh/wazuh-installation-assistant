@@ -230,20 +230,66 @@ class TestIndexerCopyCertificates:
 
 
 class TestIndexerStartCluster:
-    """indexer_startCluster runs the security initializer the package ships."""
+    """indexer_startCluster runs the security initializer the package ships, with a time limit."""
 
-    def _run(self, rc, debug=""):
+    NODES = "node-1, node-2, node-3"
+
+    def _run(self, rc, debug="", env=None):
         return run_bash_function(
             BASE_SOURCES,
             "indexer_startCluster",
-            {**IGNORE_LOGGER, "bash": f'[[ "$*" == *indexer-security-init.sh* ]] && return {rc}', "installCommon_rollBack": "true"},
-            {"debug": debug},
+            {
+                "common_logger": 'echo "LOG:$*"',
+                "timeout": f'[ "$1" = 300 ] && [[ "$*" == *indexer-security-init.sh* ]] && return {rc}',
+                "installCommon_rollBack": 'echo "ROLLBACK"',
+            },
+            {"debug": debug, "indexer_cluster_timeout": "300", **(env or {})},
         )
+
+    def _start_cluster(self, rc):
+        return self._run(rc, env={"start_indexer_cluster": "1", "indexer_node_names": '("node-1" "node-2" "node-3")'})
 
     @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
     def test_success(self, debug):
-        assert_success(self._run(0, debug))
+        result = self._run(0, debug)
+        assert_success(result)
+        assert "ROLLBACK" not in result.stdout
 
     @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
     def test_fail_when_the_initializer_fails(self, debug):
-        assert_failure(self._run(1, debug))
+        result = self._run(1, debug)
+        assert_failure(result)
+        assert "ROLLBACK" in result.stdout
+        assert "did not form" not in result.stdout
+
+    def test_start_cluster_names_the_nodes_while_waiting(self):
+        result = self._start_cluster(0)
+        assert_success(result)
+        assert f"Waiting up to 300 seconds for the Wazuh indexer cluster to form. The Wazuh indexer service must be running on these nodes of config.yml: {self.NODES}." in result.stdout
+
+    def test_all_in_one_does_not_print_the_wait(self):
+        result = self._run(0, env={"AIO": "1"})
+        assert_success(result)
+        assert "Waiting" not in result.stdout
+
+    def test_fail_on_timeout_names_the_nodes(self):
+        result = self._start_cluster(124)
+        assert_failure(result)
+        assert "LOG:-e The Wazuh indexer cluster did not form in 300 seconds." in result.stdout
+        assert f"these nodes of config.yml and that they can reach each other: {self.NODES}." in result.stdout
+        assert "ROLLBACK" in result.stdout
+
+    def test_trap_runs_during_the_wait(self):
+        """A trapped signal, like SIGINT on Ctrl+C, runs its trap at once and not at the end of the time limit."""
+        script = (
+            "trap 'echo \"TRAP after ${SECONDS}s\"; pkill -P \"${indexer_init_pid}\"; exit 1' SIGUSR1\n"
+            "( sleep 0.5; kill -USR1 $$ ) &\n"
+            "SECONDS=0\n"
+            "indexer_startCluster\n"
+            'echo "not reached"'
+        )
+        result = run_bash_function(
+            BASE_SOURCES, script, {**IGNORE_LOGGER, "timeout": "sleep 20"}, {"indexer_cluster_timeout": "300"}
+        )
+        assert result.returncode == 1
+        assert result.stdout.splitlines() == ["TRAP after 0s"]

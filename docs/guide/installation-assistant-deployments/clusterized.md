@@ -129,6 +129,8 @@ bash wazuh-install-5.0.0.sh --start-cluster
 > [!NOTE]
 > You only have to initialize the cluster once, there is no need to run this command on every node.
 
+The assistant waits up to 300 seconds for the Wazuh indexer cluster to form, and names the Wazuh indexer nodes of `config.yml` that must be running. If the time runs out, start the Wazuh indexer service on those nodes and run `--start-cluster` again. Cancelling `--start-cluster` with Ctrl+C, or a failure, leaves the Wazuh indexer installed.
+
 ### Testing the cluster installation
 
 Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster is functioning as expected by following the steps below.
