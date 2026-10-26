@@ -209,6 +209,30 @@ class TestInstallCommonInstallList:
         assert "curl" not in result.stdout.split("deps=")[1]
 
 
+class TestInstallCommonPackageOutputLog:
+    """The output of apt-get and yum keeps its line breaks in the log."""
+
+    @pytest.mark.parametrize("func, cmd", [
+        ("installCommon_aptInstall", "apt-get"),
+        ("installCommon_yumInstall", "yum"),
+    ])
+    def test_log_keeps_line_breaks(self, tmp_path, func, cmd):
+        log = tmp_path / "install.log"
+        result = run_bash_function(
+            BASE_SOURCES,
+            f"{func} wazuh-manager",
+            {
+                **IGNORE_LOGGER,
+                "common_checkAptLock": "true",
+                "common_checkYumLock": "true",
+                cmd: "printf 'line one\\nline two\\n'",
+            },
+            {"attempt": "0", "max_attempts": "5", "debug": f">> {log} 2>&1"},
+        )
+        assert_success(result)
+        assert log.read_text().splitlines() == ["line one", "line two"]
+
+
 class TestInstallCommonStartService:
     """Tests for installCommon_startService.
 
