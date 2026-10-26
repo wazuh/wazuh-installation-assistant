@@ -68,7 +68,7 @@ function installCommon_aptInstall() {
     if [ "${attempt}" -ne "${max_attempts}" ]; then
         apt_output=$(eval "${command} 2>&1")
         install_result="${PIPESTATUS[0]}"
-        eval "echo \${apt_output} ${debug}"
+        eval "echo \"\${apt_output}\" ${debug}"
     fi
 
 }
@@ -692,7 +692,7 @@ function installCommon_scanDependencies() {
             message+=" The following package/s will be removed after the ${operation}: ${joined_assistant_not_installed}."
         fi
         message+=" Add the -id|--install-dependencies parameter to install them automatically or install them manually."
-        common_logger -w "${message}"
+        common_logger -e "${message}"
         exit 1
     fi
 
@@ -869,7 +869,7 @@ function installCommon_yumRemoveWIADependencies(){
                 yum_output=$(yum remove ${dep} -y 2>&1)
                 yum_code="${PIPESTATUS[0]}"
 
-                eval "echo \${yum_output} ${debug}"
+                eval "echo \"\${yum_output}\" ${debug}"
                 if [  "${yum_code}" != 0  ]; then
                     common_logger -e "Cannot remove dependency: ${dep}."
                     exit 1
@@ -914,7 +914,7 @@ function installCommon_aptRemoveWIADependencies(){
                 apt_output=$(apt-get remove --purge ${dep} -y 2>&1)
                 apt_code="${PIPESTATUS[0]}"
 
-                eval "echo \${apt_output} ${debug}"
+                eval "echo \"\${apt_output}\" ${debug}"
                 if [  "${apt_code}" != 0  ]; then
                     common_logger -e "Cannot remove dependency: ${dep}."
                     exit 1
@@ -1187,7 +1187,7 @@ function installCommon_yumInstall() {
     if [ "${attempt}" -ne "${max_attempts}" ]; then
         yum_output=$(eval "${command} 2>&1")
         install_result="${PIPESTATUS[0]}"
-        eval "echo \${yum_output} ${debug}"
+        eval "echo \"\${yum_output}\" ${debug}"
     fi
 
 }
