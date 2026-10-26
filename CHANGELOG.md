@@ -110,6 +110,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1162](https://github.com/wazuh/wazuh-installation-assistant/issues/1162) | Keep the Wazuh indexer and its `/var/log/wazuh-indexer/` directory when `--start-cluster` is cancelled or fails: a rollback now only removes the files and systemd links of the components of the failed step. `--start-cluster` names the Wazuh indexer nodes of `config.yml` while it waits for the cluster to form, stops after 300 seconds with a clear error, and its messages no longer mention an installation |
 | [#1156](https://github.com/wazuh/wazuh-installation-assistant/issues/1156) | Align the docs with the 5.0.0 packages: certificates owned by root with the service group, the offline package signature check, supported Ubuntu versions, missing options and node procedures, the `artifact_urls.yaml` name in the `-d` help, the Server API passwords in a cluster, and the upgrade and backup guides, which now follow the Wazuh manager documentation |
 | [#1157](https://github.com/wazuh/wazuh-installation-assistant/issues/1157) | Configure nodes that only have `dns` in `config.yml` with that name instead of skipping them, which shifted or emptied the addresses of the other nodes |
 | [#1158](https://github.com/wazuh/wazuh-installation-assistant/issues/1158) | Allow combining certificate options in one run of `wazuh-certs-tool.sh` (for example `-wi -wd`): every option writes to the same temporary directory, which is moved to `wazuh-certificates` once |
