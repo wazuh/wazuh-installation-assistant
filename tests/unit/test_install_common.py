@@ -797,10 +797,11 @@ class TestInstallCommonScanDependencies:
         result = run_bash_function(
             [*BASE_SOURCES, "install_functions/installVariables.sh"],
             "installCommon_scanDependencies",
-            {"common_logger": 'echo "$@"', "rpm": "return 1"},
+            {"common_logger": 'printf "%s\\n" "$*"', "rpm": "return 1"},
             {"sys_type": "yum", step: "1"},
         )
         assert_failure(result)
+        assert result.stdout.startswith("-e ")
         assert f"To perform the {operation}, the following package/s must be installed:" in result.stdout
         assert f"will be removed after the {operation}:" in result.stdout
         if step == "start_indexer_cluster":
