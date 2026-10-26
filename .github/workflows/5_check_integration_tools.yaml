@@ -999,8 +999,13 @@ jobs:
           on_agent() { ssh $AGENT_SSH_OPTS "$AGENT_REMOTE" "$@"; }
           pass() { echo "- ✅ $*" | tee -a "$RESULTS_FILE"; }
           fail() { echo "- ❌ $*" | tee -a "$RESULTS_FILE"; exit 1; }
-          # Returns 0 if the agent host opens a TCP connection to the port of the server
-          agent_reaches() { on_agent "timeout 5 bash -c '</dev/tcp/${SERVER_PRIVATE_IP}/$1'" 2>/dev/null; }
+          # Returns 0 if the agent host opens a TCP connection to the port of the server, and prints the result
+          agent_reaches() {
+            local out rc
+            out=$(on_agent "timeout 5 bash -c '</dev/tcp/${SERVER_PRIVATE_IP}/$1' 2>&1"); rc=$?
+            echo "  agent host -> server:$1: $([ $rc -eq 0 ] && echo connected || echo "not connected (exit ${rc}) ${out##*: }")"
+            return $rc
+          }
           HELPERS
           : > "$RESULTS_FILE"
           if [ "${{ needs.build_tools.outputs.package_type }}" = "staging" ]; then
@@ -1082,6 +1087,7 @@ jobs:
         run: |
           source /tmp/firewall_helpers.sh
           # Only the ports something listens on tell whether firewalld blocks them
+          on_server "sudo ss -Hltn | awk '{print \$4}' | grep -E ':(443|1514|1515|1517)\$' | sort -u"
           LISTENING=""
           for port in ${{ env.FIREWALL_PORTS }}; do
             if on_server "sudo ss -Hltn 'sport = :${port}' | grep -q ."; then
@@ -1163,14 +1169,15 @@ jobs:
           # The token goes on the standard input, so it is not on a command line
           printf '%s' "$ENROLLMENT_TOKEN" | on_agent "
             TOKEN=\$(cat)
-            sudo apt-get update -q
-            sudo WAZUH_ENROLLMENT_TOKEN=\"\$TOKEN\" WAZUH_AGENT_NAME='${{ env.AGENT_NAME }}' apt-get install -y /tmp/wazuh-agent.deb
+            sudo apt-get update -qq
+            sudo DEBIAN_FRONTEND=noninteractive WAZUH_ENROLLMENT_TOKEN=\"\$TOKEN\" WAZUH_AGENT_NAME='${{ env.AGENT_NAME }}' \\
+              apt-get install -y -q -o Dpkg::Use-Pty=0 /tmp/wazuh-agent.deb
           " || fail "The Wazuh agent package cannot be installed"
           on_agent "sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent" \
             || fail "The Wazuh agent cannot be started"
           on_agent "
             for i in \$(seq 1 36); do
-              sudo grep -q 'Token bootstrap: enrollment succeeded' /var/ossec/logs/ossec.log && exit 0
+              sudo grep 'Token bootstrap: enrollment succeeded' /var/ossec/logs/ossec.log && exit 0
               sleep 5
             done
             echo '--- Last 30 lines of the agent log ---'; sudo tail -30 /var/ossec/logs/ossec.log
@@ -1182,16 +1189,22 @@ jobs:
         timeout-minutes: 5
         run: |
           source /tmp/firewall_helpers.sh
+          # WAZUH_MANAGER_API_PASSWORD is the password of the Server API `wazuh` user
           on_server "
             API_PW=\$(sudo grep '^WAZUH_MANAGER_API_PASSWORD=' /etc/wazuh-manager/export/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"')
+            [ -n \"\$API_PW\" ] || { echo 'ERROR: WAZUH_MANAGER_API_PASSWORD not found in /etc/wazuh-manager/export/credentials.env'; exit 1; }
+            JWT=\$(curl -sk -u \"wazuh:\${API_PW}\" -X POST 'https://localhost:55000/security/user/authenticate?raw=true')
+            [ -n \"\$JWT\" ] && [[ \"\$JWT\" != *'\"error\"'* ]] || { echo \"ERROR: the Server API refuses the wazuh user: \$JWT\"; exit 1; }
             for i in \$(seq 1 36); do
-              JWT=\$(curl -sk -u \"wazuh-internal-client:\${API_PW}\" -X POST 'https://localhost:55000/security/user/authenticate?raw=true')
-              status=\$(curl -sk -H \"Authorization: Bearer \${JWT}\" 'https://localhost:55000/agents?name=${{ env.AGENT_NAME }}&select=status' \
-                | grep -o '\"status\": *\"[a-z_]*\"' | head -n 1)
-              echo \"  attempt \$i: \${status:-no agent}\"
-              [[ \"\$status\" == *'\"active\"' ]] && exit 0
+              resp=\$(curl -sk -H \"Authorization: Bearer \${JWT}\" 'https://localhost:55000/agents?name=${{ env.AGENT_NAME }}&select=name,status')
+              if grep -q '\"status\": *\"active\"' <<< \"\$resp\"; then
+                echo \"GET /agents?name=${{ env.AGENT_NAME }}&select=name,status\"
+                echo \"\$resp\"
+                exit 0
+              fi
               sleep 5
             done
+            echo \"Last answer: \$resp\"
             exit 1
           " && pass "The agent is active in the Wazuh server API" \
             || fail "The agent is not active in the Wazuh server API after 3 minutes"
