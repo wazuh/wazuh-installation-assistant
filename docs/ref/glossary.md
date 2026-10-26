@@ -158,7 +158,7 @@ User accounts for accessing the Wazuh Manager REST API, used for management and 
 
 ### System Requirements Check
 
-The initial validation phase that verifies the system meets minimum requirements, including available disk space, memory, supported operating system, required ports availability, and necessary permissions.
+The initial validation phase that verifies the system meets minimum requirements, including memory, CPU cores, supported operating system, required ports availability, and necessary permissions.
 
 ### Certificate Generation
 

@@ -12,7 +12,7 @@ Minimum and recommended hardware of each node, from the installation guides of t
 | Wazuh manager | 8 GB RAM, 4 CPU cores | |
 | Wazuh dashboard | 4 GB RAM, 2 CPU cores, 2 GB of free disk space | 8 GB RAM, 4 CPU cores, 10 GB of free disk space |
 
-A host that runs several components, such as an all-in-one installation, needs the resources of all of them.
+A host that runs several components needs 8 GB of RAM and 4 CPU cores, the minimum the installation assistant checks for an all-in-one installation, instead of the sum of the components. A host that only runs the Wazuh dashboard needs the dashboard figures above. The assistant warns below these figures and continues the installation.
 
 The disk space of the Wazuh indexer depends on the events per second (EPS) of the monitored endpoints. To store 90 days of events, estimate 3.7 GB per server (0.25 EPS), 1.5 GB per workstation (0.1 EPS) and 7.4 GB per network device (0.5 EPS). The disk space of the Wazuh manager depends on the alert rate and the retention period.
 
