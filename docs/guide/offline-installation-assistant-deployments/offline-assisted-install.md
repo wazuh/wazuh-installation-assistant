@@ -33,7 +33,6 @@ The following dependencies must be installed on the Wazuh single node:
 **DEB-based systems:**
 
 - adduser
-- apt-transport-https
 - curl
 - debconf
 - diffutils
@@ -196,7 +195,6 @@ The following dependencies must be installed on the Wazuh manager nodes, besides
 
 **DEB-based systems:**
 
-- apt-transport-https
 - curl
 - diffutils
 - gnupg
