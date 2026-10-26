@@ -692,7 +692,7 @@ function installCommon_scanDependencies() {
             message+=" The following package/s will be removed after the ${operation}: ${joined_assistant_not_installed}."
         fi
         message+=" Add the -id|--install-dependencies parameter to install them automatically or install them manually."
-        common_logger -w "${message}"
+        common_logger -e "${message}"
         exit 1
     fi
 
