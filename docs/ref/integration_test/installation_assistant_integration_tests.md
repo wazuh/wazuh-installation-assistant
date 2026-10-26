@@ -35,6 +35,8 @@ flowchart TD
     E --> F[vm_test\nubuntu-24-amd64]
     E --> G[vm_test\nubuntu-24-arm64]
     E --> H[vm_test\n...]
+    D --> I{AIO installer?}
+    I -- Yes --> J[firewall_check\nserver redhat-9-amd64 with firewalld\nagent ubuntu-24-amd64]
 ```
 
 **Labels:**
@@ -50,6 +52,8 @@ flowchart TD
 
 When triggered by a PR label, the OS matrix always expands to all 8 supported systems and `package_type` is always `staging`.
 
+`test/install` and `test/assistant` also run the [`firewall_check`](#job-4--firewall_check-aio-installer-only) job.
+
 ### workflow_dispatch flow
 
 ```mermaid
@@ -58,6 +62,8 @@ flowchart TD
     D --> E{systems input}
     E -- specific OSes --> F[vm_test\nper specified OS]
     E -- all --> G[vm_test\nper all 8 OSes]
+    D --> I{AIO installer?}
+    I -- Yes --> J[firewall_check\nserver redhat-9-amd64 with firewalld\nagent ubuntu-24-amd64]
 ```
 
 ---
@@ -218,7 +224,6 @@ Runs when `install_mode == offline`. All package preparation happens on the runn
 
 After any installation mode completes:
 
-- **Disable host firewall**: `ufw disable` on Ubuntu; `systemctl stop firewalld` on RedHat
 - **Wait for dashboard** (installer/all only): checks that `/etc/wazuh` does not exist, then polls `https://localhost/status` with the `admin` password read from `/etc/wazuh-indexer/export/credentials.env` up to 5 minutes until HTTP 200
 - **Run cert-tool** (cert-tool/all only): copies `config.yml`, removes any previous `/tmp/wazuh-certificates` and runs `sudo bash /tmp/wazuh-certs-tool.sh -A`, which uses the root CA in `/tmp/wazuh-ca`, next to the tool, and creates it if it does not exist
 - **Run passwords-tool** (passwords-tool/all only): saves the `admin` password set by the installation as `WAZUH_OLD_PASSWORD` (masked), runs `wazuh-passwords-tool.sh -u kibanaserver` without `-p` and checks that the generated password is saved in `/etc/wazuh-indexer/export/credentials.env`, is accepted by the indexer and replaces the previous one (both masked), then runs `wazuh-passwords-tool.sh -u <user> -p` with the new password on the standard input for `admin`, `kibanaserver`, `wazuh-manager`, `wazuh` and `wazuh-internal-client`, restarts services, then polls indexer port 9200, dashboard port 443, and manager API port 55000 until all accept the new credentials
@@ -274,6 +279,44 @@ python3 wazuh-automation/deployability/modules/allocation/main.py \
 
 After the cleanup, the job fails when `test_runner` reported a failed test (`run_tests` or `run_tests_uninstall` outcome `failure`), so that the check of the PR fails.
 
+The VMs of `vm_test` have no host firewall running: the RedHat images do not include firewalld and ufw is inactive on Ubuntu. The tests of `vm_test` run on the VM itself, over the loopback interface, which a host firewall does not filter. `firewall_check` covers a host with the firewall enabled.
+
+### Job 4 — `firewall_check` (AIO installer only)
+
+Runs when `install_mode == aio` and `tool_type` is `installer` or `all` (labels `test/install` and `test/assistant`, or a manual run with those inputs), in parallel with `vm_test`. It does not depend on the `systems` input: it always uses one server and one agent VM.
+
+| VM | System | Size |
+|---|---|---|
+| Wazuh server | `redhat-9-amd64` | `xlarge` |
+| Wazuh agent | `ubuntu-24-amd64` | `small` |
+
+The agent VM reaches the server through its private address, so the traffic goes through the firewall of the server. Each step records a ✅/❌ line, and a failed check fails the job.
+
+| Step | What it does |
+|---|---|
+| Enable firewalld on the server | Installs firewalld, allows the SSH port of the allocator (the default zone only allows port 22) and starts firewalld |
+| Run installer (AIO) | `sudo bash /tmp/wazuh-install.sh -a {DEV_FLAG} -id`, with firewalld running |
+| Check the firewall warning of the installer | The installation log has `The system has Firewalld enabled` |
+| Wait for wazuh-dashboard | Polls `https://localhost/status` on the server, as `vm_test` does |
+| Check that firewalld blocks the agent host | From the agent VM, a TCP connection to every port of `443 1514 1515 1517` that listens on the server fails. `443` and `1517` must be listening |
+| Open the documented ports on the server | `firewall-cmd --permanent --add-port=<port>/tcp` for `443 1514 1515 1517`, then `firewall-cmd --reload` |
+| Check that the agent host reaches the server | From the agent VM, the same TCP connections succeed, and `https://{SERVER_PRIVATE_IP}/status` answers HTTP 200 with the `admin` account |
+| Get the Wazuh agent package URL | `staging`: runs the presigned URL script with `--process test_ansible`, which includes the agent packages. `production`: downloads `artifact_urls_{version}.yaml` from `packages.wazuh.com`. Takes `wazuh_agent_amd64_deb` |
+| Enroll an agent from the agent host | Mints a token on the server with `wazuh-manager-authd --create-enrollment-token --address {SERVER_PRIVATE_IP} --ttl 1h --max-uses 1`, installs the agent package with `WAZUH_ENROLLMENT_TOKEN` and `WAZUH_AGENT_NAME=firewall-check-agent`, starts it, and waits up to 3 minutes for `Token bootstrap: enrollment succeeded` in `/var/ossec/logs/ossec.log` |
+| Check that the agent is active | Polls `GET /agents?name=firewall-check-agent` on the server API (`wazuh-internal-client`) up to 3 minutes until the status is `active` |
+| Uninstall Wazuh | `sudo bash /tmp/wazuh-install.sh --uninstall` with firewalld running, when the installation succeeded |
+
+The admin password, the enrollment token and the agent package URL are masked in the log and passed on the standard input, not on a command line.
+
+Reporting and cleanup:
+
+| Output | When | Content |
+|---|---|---|
+| Step summary | Always | The ✅/❌ lines |
+| PR comment | `pull_request` trigger only | Posts or updates a comment (marker: `<!-- integration-check-firewall -->`) with ✅/❌ and the lines |
+
+Both VMs are deallocated always, even on failure.
+
 ---
 
 ## Required Secrets and Variables
@@ -315,5 +358,7 @@ gha_{github.run_id}_{system}_tool_check
 ```
 
 Example: `gha_12345678_ubuntu-24-amd64_tool_check`
+
+The VMs of `firewall_check` are named `gha_{github.run_id}_redhat-9-amd64_firewall_server` and `gha_{github.run_id}_ubuntu-24-amd64_firewall_agent`.
 
 VMs are tagged with `termination-date: 1d` — they are automatically terminated after 24 hours as a safety net, even if the cleanup step fails.

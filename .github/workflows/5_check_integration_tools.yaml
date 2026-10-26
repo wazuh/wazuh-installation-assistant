@@ -898,3 +898,372 @@ jobs:
         run: |
           echo "Integration tests failed: run_tests=${{ steps.run_tests.outcome }}, run_tests_uninstall=${{ steps.run_tests_uninstall.outcome }}"
           exit 1
+
+  # -------------------------------------------------------------------------
+  # Job 4: All-in-one installation on a host with firewalld enabled.
+  #
+  # The Wazuh server runs on a RHEL host with firewalld enabled and the
+  # agent on another host, so the traffic goes through the firewall (the
+  # tests of vm_test run on the host itself, over the loopback interface,
+  # which firewalld does not filter). The ports must be closed before they
+  # are opened as the documentation says, and open after: an agent enrolls
+  # and the Wazuh dashboard answers.
+  # -------------------------------------------------------------------------
+  firewall_check:
+    needs: [build_tools]
+    if: |
+      always() && needs.build_tools.result == 'success' &&
+      needs.build_tools.outputs.install_mode == 'aio' &&
+      (needs.build_tools.outputs.tool_type == 'installer' || needs.build_tools.outputs.tool_type == 'all')
+    runs-on: ubuntu-24.04
+    env:
+      SERVER_SYSTEM: redhat-9-amd64
+      AGENT_SYSTEM: ubuntu-24-amd64
+      AGENT_NAME: firewall-check-agent
+      # Ports an agent and a user reach from another host (requirements and firewall warning)
+      FIREWALL_PORTS: '443 1514 1515 1517'
+      # The check is meaningless if these ports are not listening on the server
+      FIREWALL_REQUIRED_PORTS: '443 1517'
+      RESULTS_FILE: firewall-check-results.md
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Setup
+      # -----------------------------------------------------------------------
+      - name: Checkout wazuh-automation
+        uses: actions/checkout@v6
+        with:
+          repository: wazuh/wazuh-automation
+          ref: ${{ env.AUTOMATION_REFERENCE }}
+          token: ${{ secrets.GH_CLONE_TOKEN }}
+          path: wazuh-automation
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install requirements
+        run: |
+          pip install -r wazuh-automation/deployability/deps/requirements.txt
+          pip install pyyaml --quiet
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          role-session-name: assistant-firewall-${{ github.run_id }}
+          aws-region: ${{ env.REGION }}
+
+      # -----------------------------------------------------------------------
+      # Provision: one instance for the Wazuh server and one for the agent
+      # -----------------------------------------------------------------------
+      - name: Allocate instances
+        run: |
+          allocate() {
+            local role="$1" system="$2" size="$3" dir="/tmp/allocator_${1,,}"
+            mkdir -p "$dir"
+            python3 wazuh-automation/deployability/modules/allocation/main.py \
+              --action create \
+              --provider aws \
+              --size "$size" \
+              --composite-name "$system" \
+              --working-dir "$dir" \
+              --track-output "$dir/track.yml" \
+              --inventory-output "$dir/inventory.yml" \
+              --instance-name "gha_${{ github.run_id }}_${system}_firewall_${role,,}" \
+              --label-team devops \
+              --label-termination-date 1d
+            sed -n '/hosts:/,/^[^ ]/p' "$dir/inventory.yml" | grep "ansible_" | sed 's/^[ ]*//g' \
+              | sed 's/: */=/g' | sed 's/-o StrictHostKeyChecking=no/"-o StrictHostKeyChecking=no"/g' \
+              > "$dir/inventory_vars.yml"
+            find "$dir" -name '*-key-*' -exec chmod 600 {} \;
+            (
+              source "$dir/inventory_vars.yml"
+              [ -n "${ansible_host_private_ip:-}" ] || { echo "ERROR: no private IP in the allocator inventory of the ${role,,}"; exit 1; }
+              echo "${role}_SSH_PORT=$ansible_port" >> "$GITHUB_ENV"
+              echo "${role}_PRIVATE_IP=$ansible_host_private_ip" >> "$GITHUB_ENV"
+              echo "${role}_SSH_OPTS=-o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=20 -p $ansible_port -i $ansible_ssh_private_key_file" >> "$GITHUB_ENV"
+              echo "${role}_SCP_OPTS=-o StrictHostKeyChecking=no -P $ansible_port -i $ansible_ssh_private_key_file" >> "$GITHUB_ENV"
+              echo "${role}_REMOTE=$ansible_user@$ansible_host" >> "$GITHUB_ENV"
+            )
+          }
+          allocate SERVER "${{ env.SERVER_SYSTEM }}" xlarge
+          allocate AGENT "${{ env.AGENT_SYSTEM }}" small
+
+      - name: Set helpers and package flag
+        run: |
+          # Helpers sourced by the next steps: run a command on each host and record a result
+          cat > /tmp/firewall_helpers.sh <<'HELPERS'
+          on_server() { ssh $SERVER_SSH_OPTS "$SERVER_REMOTE" "$@"; }
+          on_agent() { ssh $AGENT_SSH_OPTS "$AGENT_REMOTE" "$@"; }
+          pass() { echo "- ✅ $*" | tee -a "$RESULTS_FILE"; }
+          fail() { echo "- ❌ $*" | tee -a "$RESULTS_FILE"; exit 1; }
+          # Returns 0 if the agent host opens a TCP connection to the port of the server
+          agent_reaches() { on_agent "timeout 5 bash -c '</dev/tcp/${SERVER_PRIVATE_IP}/$1'" 2>/dev/null; }
+          HELPERS
+          : > "$RESULTS_FILE"
+          if [ "${{ needs.build_tools.outputs.package_type }}" = "staging" ]; then
+            echo "DEV_FLAG=-d local" >> $GITHUB_ENV
+          else
+            echo "DEV_FLAG=" >> $GITHUB_ENV
+          fi
+
+      # -----------------------------------------------------------------------
+      # Enable firewalld on the server, as RHEL does on a new installation
+      # -----------------------------------------------------------------------
+      - name: Enable firewalld on the server
+        run: |
+          source /tmp/firewall_helpers.sh
+          # The allocator serves SSH on another port than 22, the only one the default zone allows
+          on_server "
+            set -e
+            sudo dnf install -y firewalld
+            if systemctl is-active -q firewalld; then
+              sudo firewall-cmd --permanent --add-port=${SERVER_SSH_PORT}/tcp
+              sudo firewall-cmd --reload
+            else
+              sudo firewall-offline-cmd --add-port=${SERVER_SSH_PORT}/tcp
+              sudo systemctl enable --now firewalld
+            fi
+          "
+          on_server "sudo firewall-cmd --state && sudo firewall-cmd --list-all" \
+            && pass "firewalld is running on the server (${{ env.SERVER_SYSTEM }})" \
+            || fail "firewalld is not running on the server"
+
+      # -----------------------------------------------------------------------
+      # Install with assistant AIO
+      # -----------------------------------------------------------------------
+      - name: Run installer (AIO)
+        id: install
+        timeout-minutes: 60
+        run: |
+          source /tmp/firewall_helpers.sh
+          aws s3 cp "s3://${{ secrets.CI_DEV_INTERNAL_S3_BUCKET }}/wazuh-installation-assistant/5_check_integration_tools/${{ github.run_id }}/built-tools/" "/tmp/built-tools/" --recursive
+          scp $SERVER_SCP_OPTS /tmp/built-tools/wazuh-install.sh /tmp/built-tools/artifact_urls.yaml "$SERVER_REMOTE:/tmp/"
+          on_server "
+            { while true; do echo \"\$(date '+%H:%M:%S') [heartbeat] AIO installation in progress...\"; sleep 60; done } &
+            HB=\$!
+            sudo bash /tmp/wazuh-install.sh -a ${{ env.DEV_FLAG }} -id 2>&1 | tee /tmp/install-aio.log
+            RESULT=\${PIPESTATUS[0]}
+            kill \$HB 2>/dev/null || true
+            [ \$RESULT -ne 0 ] && { echo '--- Last 50 lines of install log ---'; tail -50 /tmp/install-aio.log; }
+            exit \$RESULT
+          " && pass "The all-in-one installation succeeds with firewalld running" \
+            || fail "The all-in-one installation fails with firewalld running"
+
+      - name: Check the firewall warning of the installer
+        run: |
+          source /tmp/firewall_helpers.sh
+          on_server "grep -q 'The system has Firewalld enabled' /tmp/install-aio.log" \
+            && pass "The installer warns that firewalld is enabled" \
+            || fail "The installer does not warn that firewalld is enabled"
+
+      - name: Wait for wazuh-dashboard
+        timeout-minutes: 5
+        run: |
+          source /tmp/firewall_helpers.sh
+          on_server "
+            ADMIN_PW=\$(sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"')
+            for i in \$(seq 1 30); do
+              code=\$(curl -sk -u \"admin:\${ADMIN_PW}\" -o /dev/null -w '%{http_code}' 'https://localhost/status')
+              [ \"\$code\" = '200' ] && exit 0
+              echo \"  attempt \$i: HTTP \$code, retrying in 10s...\"
+              sleep 10
+            done
+            exit 1
+          " && pass "The Wazuh dashboard answers on the server itself" \
+            || fail "The Wazuh dashboard does not answer on the server itself after 5 minutes"
+
+      # -----------------------------------------------------------------------
+      # Ports closed: the agent host must not reach the server
+      # -----------------------------------------------------------------------
+      - name: Check that firewalld blocks the agent host
+        run: |
+          source /tmp/firewall_helpers.sh
+          # Only the ports something listens on tell whether firewalld blocks them
+          LISTENING=""
+          for port in ${{ env.FIREWALL_PORTS }}; do
+            if on_server "sudo ss -Hltn 'sport = :${port}' | grep -q ."; then
+              LISTENING+="${port} "
+            else
+              echo "Nothing listens on port ${port} of the server, it is not checked"
+            fi
+          done
+          for port in ${{ env.FIREWALL_REQUIRED_PORTS }}; do
+            [[ " ${LISTENING} " == *" ${port} "* ]] || fail "Nothing listens on port ${port} of the server"
+          done
+          echo "LISTENING_PORTS=${LISTENING% }" >> "$GITHUB_ENV"
+          for port in ${LISTENING}; do
+            agent_reaches "$port" && fail "Port ${port} of the server is reachable from the agent host before it is opened"
+          done
+          pass "Ports ${LISTENING% } of the server are blocked from the agent host before they are opened"
+
+      # -----------------------------------------------------------------------
+      # Open the documented ports
+      # -----------------------------------------------------------------------
+      - name: Open the documented ports on the server
+        run: |
+          source /tmp/firewall_helpers.sh
+          ADD_PORTS=""
+          for port in ${{ env.FIREWALL_PORTS }}; do ADD_PORTS+=" --add-port=${port}/tcp"; done
+          on_server "sudo firewall-cmd --permanent ${ADD_PORTS} && sudo firewall-cmd --reload && sudo firewall-cmd --list-ports" \
+            && pass "Ports ${{ env.FIREWALL_PORTS }} opened with firewall-cmd" \
+            || fail "firewall-cmd could not open ports ${{ env.FIREWALL_PORTS }}"
+
+      # -----------------------------------------------------------------------
+      # Ports open: the agent host reaches the server, enrolls, and the
+      # dashboard answers
+      # -----------------------------------------------------------------------
+      - name: Check that the agent host reaches the server
+        run: |
+          source /tmp/firewall_helpers.sh
+          for port in ${LISTENING_PORTS}; do
+            agent_reaches "$port" || fail "Port ${port} of the server is not reachable from the agent host after it is opened"
+          done
+          pass "Ports ${LISTENING_PORTS} of the server are reachable from the agent host after they are opened"
+          ADMIN_PW=$(on_server "sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"'")
+          [ -n "$ADMIN_PW" ] || fail "WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh-indexer/export/credentials.env"
+          echo "::add-mask::${ADMIN_PW}"
+          # The password goes to curl on the standard input, as a config line, so it is not on a command line
+          code=$(printf 'user = "admin:%s"\n' "$(printf '%s' "$ADMIN_PW" | sed 's/[\\"]/\\&/g')" \
+            | on_agent "curl -sk -K - -o /dev/null -w '%{http_code}' 'https://${SERVER_PRIVATE_IP}/status'")
+          [ "$code" = "200" ] && pass "The Wazuh dashboard answers the agent host (HTTP 200)" \
+            || fail "The Wazuh dashboard does not answer the agent host (HTTP ${code})"
+
+      - name: Get the Wazuh agent package URL
+        run: |
+          source /tmp/firewall_helpers.sh
+          VERSION="${{ needs.build_tools.outputs.wazuh_version }}"
+          if [ "${{ needs.build_tools.outputs.package_type }}" = "staging" ]; then
+            python ${{ env.GENERATE_PRESIGNED_URLS_SCRIPT_PATH }} \
+              --process test_ansible \
+              --wazuh-version "$VERSION" \
+              --aws-s3-bucket-dev "${{ vars.AWS_S3_BUCKET_DEV }}"
+          else
+            curl -sSfo /tmp/artifact_urls.yaml "https://packages.wazuh.com/production/${VERSION%%.*}.x/artifact-urls/artifact_urls_${VERSION}.yaml" \
+              || fail "The production artifact URLs of ${VERSION} cannot be downloaded"
+          fi
+          AGENT_URL=$(grep '^wazuh_agent_amd64_deb:' /tmp/artifact_urls.yaml | cut -d' ' -f2- | tr -d '"' | xargs)
+          [ -n "$AGENT_URL" ] || fail "No wazuh_agent_amd64_deb in the artifact URLs"
+          echo "::add-mask::${AGENT_URL}"
+          echo "AGENT_URL=${AGENT_URL}" >> "$GITHUB_ENV"
+
+      - name: Enroll an agent from the agent host
+        timeout-minutes: 15
+        run: |
+          source /tmp/firewall_helpers.sh
+          # The token must name an address of the agent listener certificate: the private address
+          ENROLLMENT_TOKEN=$(on_server "sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token \
+            --address ${SERVER_PRIVATE_IP} --ttl 1h --max-uses 1 --description firewall-check")
+          [ -n "$ENROLLMENT_TOKEN" ] || fail "The enrollment token for ${SERVER_PRIVATE_IP} cannot be created"
+          echo "::add-mask::${ENROLLMENT_TOKEN}"
+          printf '%s' "$AGENT_URL" | on_agent 'curl -sSfLo /tmp/wazuh-agent.deb "$(cat)"' \
+            || fail "The Wazuh agent package cannot be downloaded"
+          # The token goes on the standard input, so it is not on a command line
+          printf '%s' "$ENROLLMENT_TOKEN" | on_agent "
+            TOKEN=\$(cat)
+            sudo apt-get update -q
+            sudo WAZUH_ENROLLMENT_TOKEN=\"\$TOKEN\" WAZUH_AGENT_NAME='${{ env.AGENT_NAME }}' apt-get install -y /tmp/wazuh-agent.deb
+          " || fail "The Wazuh agent package cannot be installed"
+          on_agent "sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent" \
+            || fail "The Wazuh agent cannot be started"
+          on_agent "
+            for i in \$(seq 1 36); do
+              sudo grep -q 'Token bootstrap: enrollment succeeded' /var/ossec/logs/ossec.log && exit 0
+              sleep 5
+            done
+            echo '--- Last 30 lines of the agent log ---'; sudo tail -30 /var/ossec/logs/ossec.log
+            exit 1
+          " && pass "The agent enrolls through the opened ports (Token bootstrap: enrollment succeeded)" \
+            || fail "The agent does not enroll after 3 minutes"
+
+      - name: Check that the agent is active
+        timeout-minutes: 5
+        run: |
+          source /tmp/firewall_helpers.sh
+          on_server "
+            API_PW=\$(sudo grep '^WAZUH_MANAGER_API_PASSWORD=' /etc/wazuh-manager/export/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"')
+            for i in \$(seq 1 36); do
+              JWT=\$(curl -sk -u \"wazuh-internal-client:\${API_PW}\" -X POST 'https://localhost:55000/security/user/authenticate?raw=true')
+              status=\$(curl -sk -H \"Authorization: Bearer \${JWT}\" 'https://localhost:55000/agents?name=${{ env.AGENT_NAME }}&select=status' \
+                | grep -o '\"status\": *\"[a-z_]*\"' | head -n 1)
+              echo \"  attempt \$i: \${status:-no agent}\"
+              [[ \"\$status\" == *'\"active\"' ]] && exit 0
+              sleep 5
+            done
+            exit 1
+          " && pass "The agent is active in the Wazuh server API" \
+            || fail "The agent is not active in the Wazuh server API after 3 minutes"
+
+      # -----------------------------------------------------------------------
+      # Uninstall with firewalld running
+      # -----------------------------------------------------------------------
+      - name: Uninstall Wazuh
+        if: always() && steps.install.outcome == 'success'
+        timeout-minutes: 30
+        run: |
+          source /tmp/firewall_helpers.sh
+          on_server "sudo bash /tmp/wazuh-install.sh --uninstall 2>&1 | tee /tmp/install-uninstall.log; exit \${PIPESTATUS[0]}" \
+            && pass "The uninstallation succeeds with firewalld running" \
+            || fail "The uninstallation fails with firewalld running"
+
+      - name: Create step summary
+        if: always()
+        run: |
+          echo "## 🧱 Firewall check — AIO on ${{ env.SERVER_SYSTEM }} with firewalld, agent on ${{ env.AGENT_SYSTEM }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -s "$RESULTS_FILE" ]; then cat "$RESULTS_FILE" >> $GITHUB_STEP_SUMMARY; else echo "No results." >> $GITHUB_STEP_SUMMARY; fi
+
+      - name: Post PR comment with results
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- integration-check-firewall -->';
+            let body = `${marker}\n## 🧱 Firewall check — AIO on \`${process.env.SERVER_SYSTEM}\` with firewalld, agent on \`${process.env.AGENT_SYSTEM}\`\n\n`;
+            body += process.env.JOB_STATUS === 'success' ? '✅ **All checks passed!**\n\n' : '❌ **Some checks failed**\n\n';
+            if (fs.existsSync(process.env.RESULTS_FILE)) {
+              body += fs.readFileSync(process.env.RESULTS_FILE, 'utf8') + '\n';
+            }
+            body += `- **Workflow:** [View Details](${context.payload.repository.html_url}/actions/runs/${context.runId})\n`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body,
+              });
+            }
+
+      # -----------------------------------------------------------------------
+      # Cleanup: always deallocate both instances
+      # -----------------------------------------------------------------------
+      - name: Configure AWS credentials for cleanup
+        if: always()
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          role-session-name: assistant-firewall-cleanup-${{ github.run_id }}
+          aws-region: ${{ env.REGION }}
+
+      - name: Deallocate instances
+        if: always()
+        run: |
+          RESULT=0
+          for dir in /tmp/allocator_server /tmp/allocator_agent; do
+            [ -f "$dir/track.yml" ] || continue
+            python3 wazuh-automation/deployability/modules/allocation/main.py \
+              --action delete \
+              --track-output "$dir/track.yml" || RESULT=1
+          done
+          exit $RESULT
