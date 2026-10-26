@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- None
+- Accept Red Hat Enterprise Linux 10 in the recommended systems check and list Ubuntu 24.04 in its message ([#1150](https://github.com/wazuh/wazuh-installation-assistant/issues/1150))
 
 ### Fixed
 

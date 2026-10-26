@@ -249,7 +249,7 @@ function check_dist() {
     if [ "${DIST_NAME}" == "centos" ] && { [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ]; }; then
         notsupported=1
     fi
-    if [ "${DIST_NAME}" == "rhel" ] && { [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ] && [ "${DIST_VER}" -ne "9" ]; }; then
+    if [ "${DIST_NAME}" == "rhel" ] && { [ "${DIST_VER}" -ne "7" ] && [ "${DIST_VER}" -ne "8" ] && [ "${DIST_VER}" -ne "9" ] && [ "${DIST_VER}" -ne "10" ]; }; then
         notsupported=1
     fi
 
@@ -283,7 +283,7 @@ function check_dist() {
     fi
 
     if [ -n "${notsupported}" ]; then
-        common_logger "The recommended systems are: Red Hat Enterprise Linux 7, 8, 9; CentOS 7, 8; Amazon Linux 2; Amazon Linux 2023; Ubuntu 16.04, 18.04, 20.04, 22.04; Rocky Linux 9.4."
+        common_logger "The recommended systems are: Red Hat Enterprise Linux 7, 8, 9, 10; CentOS 7, 8; Amazon Linux 2; Amazon Linux 2023; Ubuntu 16.04, 18.04, 20.04, 22.04, 24.04; Rocky Linux 9.4."
         common_logger -w "The current system does not match with the list of recommended systems. The installation may not work properly."
     fi
     common_logger -d "Detected distribution name: ${DIST_NAME}"
