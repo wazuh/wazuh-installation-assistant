@@ -1,7 +1,7 @@
 """
 Unit tests for common_functions/common.sh
 
-Covers: common_checkSystem, common_checkInstalled, common_curl
+Covers: common_checkSystem, common_checkInstalled, common_isDebInstalled, common_curl
 """
 
 import pytest
@@ -63,6 +63,49 @@ class TestCommonCheckInstalled:
         }
         result = self._run(env_vars={"sys_type": "yum"}, extra_mocks=mocks)
         assert_success(result)
+
+    def test_success_all_installed_apt(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            'common_checkInstalled; echo "${wazuh_installed}${indexer_installed}${dashboard_installed}"',
+            {**IGNORE_LOGGER, "dpkg-query": "echo installed"},
+            {"sys_type": "apt-get"},
+        )
+        assert_success(result)
+        assert result.stdout.strip() == "111"
+
+    def test_logs_the_check_at_info_level(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "common_checkInstalled",
+            {"common_logger": 'echo "$@"', "dpkg-query": "return 1"},
+            {"sys_type": "apt-get"},
+        )
+        assert_success(result)
+        assert "Checking Wazuh installation." in result.stdout.splitlines()
+
+
+class TestCommonIsDebInstalled:
+    """apt list --installed also lists the packages whose configuration failed."""
+
+    @pytest.mark.parametrize(
+        "status, installed",
+        [
+            ("installed", True),
+            ("half-configured", True),
+            ("unpacked", True),
+            ("config-files", False),
+            ("not-installed", False),
+            ("", False),
+        ],
+    )
+    def test_status(self, status, installed):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "common_isDebInstalled wazuh-manager",
+            {**IGNORE_LOGGER, "dpkg-query": f'echo -n "{status}"'},
+        )
+        assert (result.returncode == 0) == installed
 
 
 class TestCommonCurl:
