@@ -206,7 +206,7 @@ Option to uninstall all Wazuh central components from the system.
 
 ### --start-cluster
 
-Option to initialize security settings for the Wazuh Indexer cluster. Must be run after all Indexer nodes are installed.
+Option to initialize security settings for the Wazuh Indexer cluster. Must be run after all Indexer nodes are installed. It waits up to 300 seconds for the cluster to form. If it is cancelled or fails, it does not remove the Wazuh indexer.
 
 ### --offline-installation
 
