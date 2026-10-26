@@ -47,7 +47,7 @@ function getHelp() {
     echo -e "                The passwords that --generate-config-files keeps next to the root CA, if this host has it."
     echo -e "        A new password is saved in each of these files that exists on this host and holds that user."
     echo -e ""
-    exit 1
+    exit "${1:-1}"
 
 }
 
@@ -83,7 +83,7 @@ function main() {
                 shift 1
                 ;;
             "-h"|"--help")
-                getHelp
+                getHelp 0
                 ;;
             *)
                 getHelp
