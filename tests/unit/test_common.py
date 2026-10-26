@@ -74,7 +74,7 @@ class TestCommonCheckInstalled:
         assert_success(result)
         assert result.stdout.strip() == "111"
 
-    def test_logs_the_check_at_info_level(self):
+    def test_logs_the_check_at_debug_level(self):
         result = run_bash_function(
             BASE_SOURCES,
             "common_checkInstalled",
@@ -82,7 +82,7 @@ class TestCommonCheckInstalled:
             {"sys_type": "apt-get"},
         )
         assert_success(result)
-        assert "Checking Wazuh installation." in result.stdout.splitlines()
+        assert "-d Checking Wazuh installation." in result.stdout.splitlines()
 
 
 class TestCommonIsDebInstalled:

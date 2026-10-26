@@ -77,7 +77,7 @@ function common_checkRoot() {
 
 function common_checkInstalled() {
 
-    common_logger "Checking Wazuh installation."
+    common_logger -d "Checking Wazuh installation."
     wazuh_installed=""
     indexer_installed=""
     dashboard_installed=""
