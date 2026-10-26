@@ -295,7 +295,8 @@ class TestIndexerStartCluster:
             BASE_SOURCES, script, {**IGNORE_LOGGER, "timeout": "sleep 20"}, {"indexer_cluster_timeout": "300"}
         )
         assert result.returncode == 1
-        assert result.stdout.splitlines() == ["TRAP after 0s"]
+        # SECONDS counts whole seconds, so the 0.5 seconds may show as 0 or 1
+        assert result.stdout.splitlines() in (["TRAP after 0s"], ["TRAP after 1s"])
 
     @pytest.mark.parametrize("debug", ["", VERBOSE_DEBUG])
     def test_ctrl_c_stops_the_initializer_before_the_question(self, tmp_path, debug):
@@ -314,7 +315,7 @@ class TestIndexerStartCluster:
             "SECONDS=0\n"
             "( me=$BASHPID\n"
             "  trap installCommon_cleanExit SIGUSR1\n"
-            f'  ( until [ -s "{tmp_path}/child.pid" ]; do sleep 0.1; done; kill -USR1 "${{me}}" ) &\n'
+            f'  ( for _ in $(seq 100); do [ -s "{tmp_path}/child.pid" ] && break; sleep 0.1; done; kill -USR1 "${{me}}" ) &\n'
             "  indexer_startCluster )\n"
             'echo "cleanExit ended after ${SECONDS}s"\n'
         )
