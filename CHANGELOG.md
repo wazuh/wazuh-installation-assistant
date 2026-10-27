@@ -4,6 +4,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1169](https://github.com/wazuh/wazuh-installation-assistant/issues/1169) | Test the all-in-one installation on a RHEL host with firewalld enabled, with an agent on another host that enrolls once the documented ports are opened, and remove the integration test step that disabled the host firewall, which had no firewall to disable |
 | [#1177](https://github.com/wazuh/wazuh-installation-assistant/issues/1177) | Add a `Next steps` part to the installation summary that explains how to enroll agents with a token and links to the agent installation guide |
 | [#6790](https://github.com/wazuh/internal-devel-requests/issues/6790) | Check that every Wazuh package is signed with the Wazuh key, whose fingerprint is pinned, before installing it; include the key in the offline bundle, refuse `http://` artifact URLs, and add `--skip-signature-check` for unsigned development packages |
 | [#1121](https://github.com/wazuh/wazuh-installation-assistant/issues/1121) | Issue the Server API certificate (`apid.pem`) from root-ca in wazuh-certs-tool, deploy it, and add the `-ap\|--api-san` option |
