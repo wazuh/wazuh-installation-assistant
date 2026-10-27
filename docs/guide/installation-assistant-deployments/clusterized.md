@@ -277,3 +277,5 @@ sudo systemctl enable --now wazuh-agent
 To check the enrollment, look for `Token bootstrap: enrollment succeeded` in `/var/ossec/logs/ossec.log` on the endpoint. The agent then shows as `active` in the Wazuh server API (`GET /agents`) and in the Wazuh dashboard.
 
 See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
+
+The agents connect to the Wazuh manager nodes on port 1517. Every Wazuh manager node also listens on ports 1514 and 1515 for Wazuh 4.x agents. To close them when no Wazuh agent runs 4.x, see [Close the legacy ports 1514 and 1515](../security.md#close-the-legacy-ports-1514-and-1515).

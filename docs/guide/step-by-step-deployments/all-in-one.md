@@ -597,6 +597,8 @@ To check the enrollment, look for `Token bootstrap: enrollment succeeded` in `/v
 
 See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
 
+The agents connect to the Wazuh manager on port 1517. The Wazuh manager also listens on ports 1514 and 1515 for Wazuh 4.x agents, and the Wazuh server API listens on all network interfaces. To close what your deployment does not need, see [Network exposure](../security.md#network-exposure).
+
 ## Checking the accounts
 
 Once the three components are installed and running, check the accounts and store the passwords in a safe place.

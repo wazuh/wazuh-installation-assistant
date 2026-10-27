@@ -32,7 +32,7 @@ The search and analytics engine for Wazuh, responsible for indexing and storing 
 
 ### Wazuh Manager
 
-Also referred to as **Wazuh Manager**, this is the core component that analyzes data received from agents, triggers alerts, and manages agent communication. It uses port 1517 for agent communication over HTTPS, 1515 for agent enrollment, 1516 for cluster communication between Wazuh manager nodes, and 55000 for the API. Port 1514 is the legacy agent channel. It is optional and disabled by default. Can be deployed in cluster mode with master and worker nodes for load balancing and redundancy.
+Also referred to as **Wazuh Manager**, this is the core component that analyzes data received from agents, triggers alerts, and manages agent communication. It uses port 1517 for agent enrollment and communication over HTTPS, 1516 for cluster communication between Wazuh manager nodes, and 55000 for the API. Ports 1514 and 1515 are the legacy agent connection and enrollment channels, used only by Wazuh 4.x agents. The Wazuh manager package enables them by default. Can be deployed in cluster mode with master and worker nodes for load balancing and redundancy.
 
 ### Wazuh Dashboard
 

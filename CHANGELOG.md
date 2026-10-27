@@ -4,6 +4,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1170](https://github.com/wazuh/wazuh-installation-assistant/issues/1170) | Document the legacy ports 1514 and 1515 and the Wazuh server API listening on all interfaces, as the packages set them, and how to close them |
 | [#6790](https://github.com/wazuh/internal-devel-requests/issues/6790) | Check that every Wazuh package is signed with the Wazuh key, whose fingerprint is pinned, before installing it; include the key in the offline bundle, refuse `http://` artifact URLs, and add `--skip-signature-check` for unsigned development packages |
 | [#1121](https://github.com/wazuh/wazuh-installation-assistant/issues/1121) | Issue the Server API certificate (`apid.pem`) from root-ca in wazuh-certs-tool, deploy it, and add the `-ap\|--api-san` option |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Publish the shared `wazuh-credentials.sh` library used by the component packages as a build artifact |

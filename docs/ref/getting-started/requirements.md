@@ -27,5 +27,8 @@ The recommended operating systems for Wazuh 5.x are Amazon Linux 2023, Ubuntu 24
 | 1516/tcp | Wazuh manager cluster | Other Wazuh manager nodes |
 | 55000/tcp | Wazuh server API, on the master node | Wazuh dashboard |
 | 443/tcp | Wazuh dashboard | Users |
-| 1515/tcp | Wazuh manager (enrollment) | Wazuh agents |
-| 1517/tcp | Wazuh manager (agent connection) | Wazuh agents |
+| 1517/tcp | Wazuh manager (agent enrollment and connection) | Wazuh agents |
+| 1514/tcp | Wazuh manager (legacy agent connection) | Wazuh 4.x agents |
+| 1515/tcp | Wazuh manager (legacy agent enrollment) | Wazuh 4.x agents |
+
+Wazuh 5.x agents only use port 1517. The Wazuh manager package opens ports 1514 and 1515 by default, so Wazuh 4.x agents can connect, enroll and be upgraded remotely. If no Wazuh agent runs 4.x, you can close them. The Wazuh server API listens on all network interfaces by default. See [Network exposure](../../guide/security.md#network-exposure).
