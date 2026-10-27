@@ -451,6 +451,8 @@ To renew the certificates of a deployment, run the certs tool again on the node 
 
     Use `-wd` for the Wazuh dashboard, `-wm` for the Wazuh manager nodes, `-a` for the admin certificate, or `-A` for all of them. The existing root CA is reused, so every node keeps trusting the others, and agents keep trusting the Wazuh manager.
 
+    The Wazuh manager certificates carry the `ip` and `dns` of `config.yml` plus only the `-as|--agent-san` and `-ap|--api-san` addresses of this run: an address added in a previous run is not kept. If the current certificates were created with `-as` or `-ap`, pass every address again, for example `-wm -as 203.0.113.7 -as manager.example.com`.
+
 3. Copy each file to its node, with the name, owner and mode the component expects:
 
     | Node | File in `wazuh-certificates` | Destination | Owner and mode |
@@ -595,7 +597,9 @@ The tool never prints a password. A new password is saved in every credential fi
 - The `local.env` file of each package that uses the password: `/etc/wazuh-indexer/local.env`, `/etc/wazuh-manager/local.env` or `/etc/wazuh-dashboard/local.env`.
 - The `credentials.env` file that `--generate-config-files` keeps next to the root CA: `wazuh-ca/credentials.env` next to the tool, or in `WAZUH_CA_DIR`. So a later `--generate-config-files` gives the new password to new nodes.
 
-The tool only updates the files that already hold the key, and prints the files and the key. A generated password must be saved in at least one file: if there is none, the tool stops with an error. Use `-p` to set a password you know.
+The tool updates the files that already hold the key, and prints the files and the key. If there is none, it creates the `local.env` file of the package that owns the user (`/etc/wazuh-indexer/local.env` or `/etc/wazuh-manager/local.env`, `root:root` `0600`) and saves the password there, so the password is never lost.
+
+If the credential files or the whole `export/` directory were deleted, run the tool with `-a|--change-all`. The packages publish `export/credentials.env` only once, when they are installed, and do not write it again on a restart, so `-u` only records the password of that user: `-a` rotates every password and saves all of them in the `local.env` files it creates.
 
 Read the new password in the file of the owner, for example:
 
