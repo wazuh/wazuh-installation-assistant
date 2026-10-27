@@ -39,6 +39,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1168](https://github.com/wazuh/wazuh-installation-assistant/issues/1168) | Log one line per package whose signature was verified, with the fingerprint of the Wazuh key, log the check for an existing installation as INFO, and detect the installed DEB packages with `dpkg-query` instead of `apt list --installed` |
 | [#1139](https://github.com/wazuh/wazuh-installation-assistant/issues/1139) | Adapt to the 5.0.0 RC 2 per-package credentials: write each package `local.env`, CA and certificates under `/etc/<package>` instead of `/etc/wazuh`, keep the `-g` root CA and passwords in `wazuh-ca/`, read passwords from the package `export/` files, move the manager configuration to `/etc/wazuh-manager`, and print the package credential problems when a service does not start |
 | [#1144](https://github.com/wazuh/wazuh-installation-assistant/issues/1144) | Print the admin password at the end of an all-in-one install when the output is an interactive terminal, keeping it out of the install log and of redirected output |
 | [#3870](https://github.com/wazuh/wazuh-automation/issues/3870) | Adapt the integration tests to install-time credentials: agent listener address in the distributed flow, no install files in the offline flow, password generated without -p, expected version of the branch, and fail the job when a test fails |
