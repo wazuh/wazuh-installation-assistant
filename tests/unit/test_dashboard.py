@@ -236,7 +236,7 @@ class TestDashboardInitialize:
         logger = f'if [ "$1" = -nl ]; then shift; echo "$*"; else echo "$*" | tee -a "{install_log}"; fi'
         mocks = {"common_logger": logger, "curl": curl, "sleep": "true", "installCommon_rollBack": "echo ROLLBACK",
                  "dashboard_stdoutIsTerminal": "false", **(extra_mocks or {})}
-        result = run_bash_function(BASE_SOURCES, "dashboard_initialize", mocks, {"http_port": "443", **env})
+        result = run_bash_function(BASE_SOURCES, "dashboard_initialize", mocks, {"http_port": "443", "wazuh_version": "5.0.0", **env})
         return result, log.read_text().splitlines()
 
     DISTRIBUTED = {
@@ -301,6 +301,26 @@ class TestDashboardInitialize:
         assert "The passwords of the other users are in wazuh-install-files/credentials.env of wazuh-install-files.tar." in result.stdout
         assert "\n        sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-\n" in result.stdout
 
+    TOKEN_COMMAND = "    sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>\n"
+    DOCS = "For more information, see https://documentation.wazuh.com/5.0/installation-guide/wazuh-agent/index.html\n"
+
+    def test_aio_prints_the_next_steps_to_enroll_agents(self, tmp_path):
+        result, _ = self._run(tmp_path, {"AIO": "1"})
+        assert_success(result)
+        assert "--- Next steps ---\n" in result.stdout
+        assert "use Deploy new agent in the Wazuh dashboard, or create an enrollment token on this server:\n" in result.stdout
+        assert self.TOKEN_COMMAND in result.stdout
+        assert self.DOCS in result.stdout
+        assert result.stdout.endswith(self.DOCS)
+
+    def test_distributed_next_steps_point_to_the_manager(self, tmp_path):
+        result, _ = self._run(tmp_path, self.DISTRIBUTED)
+        assert_success(result)
+        assert "create an enrollment token on the Wazuh manager (the master node in a cluster):\n" in result.stdout
+        assert "this server" not in result.stdout
+        assert self.TOKEN_COMMAND in result.stdout
+        assert self.DOCS in result.stdout
+
     def test_distributed_picks_the_node_of_dashname(self, tmp_path):
         env = {**self.DISTRIBUTED, "dashboard_node_names": "(dashboard1 dashboard2)", "dashboard_node_ips": "(10.0.0.5 10.0.0.6)", "dashname": "dashboard2"}
         result, urls = self._run(tmp_path, env)
@@ -334,6 +354,7 @@ class TestDashboardInitialize:
         assert message in result.stdout
         assert "ROLLBACK" in result.stdout
         assert "--- Summary ---" not in result.stdout
+        assert "--- Next steps ---" not in result.stdout
 
     def test_aio_timeout_checks_the_local_indexer(self, tmp_path):
         result, urls = self._run(tmp_path, {"AIO": "1"}, dashboard_codes=("000",), indexer_code="000")
