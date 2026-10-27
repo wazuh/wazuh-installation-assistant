@@ -1,8 +1,10 @@
 """
 Unit tests for common_functions/common.sh
 
-Covers: common_checkSystem, common_checkInstalled, common_isDebInstalled, common_curl
+Covers: common_checkSystem, common_checkInstalled, common_isDebInstalled, common_curl, common_logger
 """
+
+import os
 
 import pytest
 
@@ -138,3 +140,27 @@ class TestCommonCurl:
         )
         assert_success(result)
         assert calls.read_text().count("call") == 2
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="needs a regular user")
+class TestCommonLoggerAsRegularUser:
+    """A regular user only writes the log from the certs tool. The installer
+    does not set cert_tool_script_name, which used to match any script."""
+
+    def _run(self, tmp_path, script_name):
+        logfile = tmp_path / "wazuh-install.log"
+        result = run_bash_function(
+            BASE_SOURCES,
+            'common_logger "message"',
+            env_vars={"logfile": str(logfile), "cert_tool_script_name": script_name},
+        )
+        assert_success(result)
+        assert "message" in result.stdout
+        return logfile
+
+    def test_installer_does_not_write_the_log(self, tmp_path):
+        assert not self._run(tmp_path, "").exists()
+
+    def test_certs_tool_writes_the_log(self, tmp_path):
+        # The test runs the function from bash, so $0 is bash.
+        assert "message" in self._run(tmp_path, "bash").read_text()

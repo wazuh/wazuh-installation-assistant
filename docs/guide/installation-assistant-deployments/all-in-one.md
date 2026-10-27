@@ -14,7 +14,7 @@
    > ```
 
    > [!NOTE]
-   > The assistant stops if a package it needs, such as `apt-transport-https`, is missing, and names it. Install it, or add `-id` to the command to install it automatically. To install packages that are not published yet, add `-d local` and list them in `artifact_urls.yaml`, as described in [Use development packages](../../ref/getting-started/usage.md#use-development-packages).
+   > The assistant stops if a package it needs, such as `gnupg`, is missing, and names it. Install it, or add `-id` to the command to install it automatically. To install packages that are not published yet, add `-d local` and list them in `artifact_urls.yaml`, as described in [Use development packages](../../ref/getting-started/usage.md#use-development-packages).
 
    Once the assistant finishes the installation, the output shows the access credentials and a message that confirms that the installation was successful. There is one `You can access` line per address of the Wazuh dashboard certificate. In an interactive terminal, the `Password:` line shows the `admin` password, followed by the command that prints it again. The password is not written to `/var/log/wazuh-install.log`, and when the output is redirected, as with cloud-init or CI, only the command is shown.
 
