@@ -22,7 +22,7 @@ Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_
 sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-
 ```
 
-The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/certs/root-ca.pem`, so `$WAZUH_INDEXER_IP_ADDRESS` must be a name or an address of that certificate.
+The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/certs/root-ca.pem`. In an all-in-one installation, use `127.0.0.1` (not `localhost`) as `$WAZUH_INDEXER_IP_ADDRESS`: by default the Wazuh indexer listens on that address only, and its certificate names only that IP address.
 
 1. Disable shard replication to prevent shard replicas from being created while Wazuh indexer nodes are being taken offline for the upgrade.
 
@@ -136,7 +136,7 @@ Repeat steps 1 to 3 above on all Wazuh indexer nodes before proceeding to the [p
 
 Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_INDEXER_IP_ADDRESS`, `$USERNAME`, and `$PASSWORD`.
 
-The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/certs/root-ca.pem`, so `$WAZUH_INDEXER_IP_ADDRESS` must be a name or an address of that certificate.
+The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/certs/root-ca.pem`. In an all-in-one installation, use `127.0.0.1` (not `localhost`) as `$WAZUH_INDEXER_IP_ADDRESS`: by default the Wazuh indexer listens on that address only, and its certificate names only that IP address.
 
 1. Check that the newly upgraded Wazuh indexer nodes are in the cluster.
 
