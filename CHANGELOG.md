@@ -4,6 +4,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1177](https://github.com/wazuh/wazuh-installation-assistant/issues/1177) | Add a `Next steps` part to the installation summary that explains how to enroll agents with a token and links to the agent installation guide |
 | [#6790](https://github.com/wazuh/internal-devel-requests/issues/6790) | Check that every Wazuh package is signed with the Wazuh key, whose fingerprint is pinned, before installing it; include the key in the offline bundle, refuse `http://` artifact URLs, and add `--skip-signature-check` for unsigned development packages |
 | [#1121](https://github.com/wazuh/wazuh-installation-assistant/issues/1121) | Issue the Server API certificate (`apid.pem`) from root-ca in wazuh-certs-tool, deploy it, and add the `-ap\|--api-san` option |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Publish the shared `wazuh-credentials.sh` library used by the component packages as a build artifact |
@@ -39,6 +40,7 @@
 | Issue | Comment |
 | - | - |
 | [#1179](https://github.com/wazuh/wazuh-installation-assistant/issues/1179) | wazuh-passwords-tool creates the `local.env` of the package that owns the user when no credential file of the host holds it, so a new password is never lost; clarify the Wazuh dashboard dependencies, the `-as\|-ap` addresses on certificate renewal and the manager certificate order in the docs; explain that `-wi\|-wd\|-wm` take no argument; fix the offline guides: the Wazuh indexer packages load their content snapshots offline, keep `update_on_start` enabled, and list every tool the assistant checks on each host |
+| [#1168](https://github.com/wazuh/wazuh-installation-assistant/issues/1168) | Log one line per package whose signature was verified, with the fingerprint of the Wazuh key, log the check for an existing installation as INFO, and detect the installed DEB packages with `dpkg-query` instead of `apt list --installed` |
 | [#1139](https://github.com/wazuh/wazuh-installation-assistant/issues/1139) | Adapt to the 5.0.0 RC 2 per-package credentials: write each package `local.env`, CA and certificates under `/etc/<package>` instead of `/etc/wazuh`, keep the `-g` root CA and passwords in `wazuh-ca/`, read passwords from the package `export/` files, move the manager configuration to `/etc/wazuh-manager`, and print the package credential problems when a service does not start |
 | [#1144](https://github.com/wazuh/wazuh-installation-assistant/issues/1144) | Print the admin password at the end of an all-in-one install when the output is an interactive terminal, keeping it out of the install log and of redirected output |
 | [#3870](https://github.com/wazuh/wazuh-automation/issues/3870) | Adapt the integration tests to install-time credentials: agent listener address in the distributed flow, no install files in the offline flow, password generated without -p, expected version of the branch, and fail the job when a test fails |
