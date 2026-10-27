@@ -1002,6 +1002,7 @@ function installCommon_verifyPackageSignature() {
         installCommon_verifyDebSignature "${package_file}"
     fi
     rm -rf "${verify_dir}"
+    common_logger "Signature of $(basename "${package_file}") verified with the Wazuh GPG key ${key_fingerprint}."
 
 }
 
