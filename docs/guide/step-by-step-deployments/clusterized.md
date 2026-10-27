@@ -417,7 +417,7 @@ When every Wazuh indexer node is running, run the Wazuh indexer `indexer-securit
 
 ### Testing the cluster installation
 
-Run the commands on a Wazuh indexer node. The Wazuh indexer publishes its CA certificate in `/etc/wazuh-indexer/export/ca.pem`. Only `root` and the `wazuh-indexer` group can read it, so run `curl` with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+Run the commands on a Wazuh indexer node. `curl` verifies the certificate with the CA published in `/etc/wazuh-indexer/export/ca.pem`, which only `root` and the `wazuh-indexer` group can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
   1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`.
 
@@ -958,7 +958,7 @@ See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/doc
 
 Once every component is installed and running, remove the copies of the passwords and certificates you made for the installation. Leave the `local.env` and `export/credentials.env` files of each package in place: they belong to the packages.
 
-1. Check that the accounts work. Run the Wazuh indexer commands on a Wazuh indexer node and the Wazuh server API commands on the master node, and replace the addresses with the IP address or DNS name of that node in `config.yml`. Each package has its own CA, published in its `export/` directory, and only `root` can read the one of the Wazuh manager, so run `curl` with `sudo`. When `curl` asks for a password, enter the value of the key given for each account.
+1. Check that the accounts work. Run the Wazuh indexer commands on a Wazuh indexer node and the Wazuh server API commands on the master node, replacing the addresses with the IP address or DNS name of that node in `config.yml`. Use the CA published in the `export/` directory of the package you connect to: `/etc/wazuh-indexer/export/ca.pem` for the Wazuh indexer and `/etc/wazuh-manager/export/ca.pem` for the Wazuh server API. Only `root` (and the `wazuh-indexer` group, for the first one) can read them, so run `curl` with `sudo`. When `curl` asks for a password, enter the value of the key given for each account.
 
     ```bash
     # Wazuh indexer: admin (WAZUH_INDEXER_ADMIN_PASSWORD), kibanaserver (WAZUH_INDEXER_KIBANASERVER_PASSWORD) and wazuh-manager (WAZUH_INDEXER_MANAGER_PASSWORD)

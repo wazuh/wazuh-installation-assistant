@@ -135,7 +135,7 @@ The assistant waits up to 300 seconds for the Wazuh indexer cluster to form, and
 
 Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster is functioning as expected by following the steps below.
 
-  1. Run the following command on a Wazuh indexer node to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`. The Wazuh indexer CA certificate is in `/etc/wazuh-indexer/export/ca.pem`, readable by `root` and the `wazuh-indexer` group only, so run `curl` with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+  1. Run the following command on a Wazuh indexer node to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`. `curl` verifies the certificate with the CA published in `/etc/wazuh-indexer/export/ca.pem`, which only `root` and the `wazuh-indexer` group can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
       ```bash
       sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
@@ -194,7 +194,7 @@ Your Wazuh manager is now successfully installed, repeat this process on every W
       /var/wazuh-manager/bin/cluster_control -l
       ```
 
-  3. On the master node, check that the Wazuh server API answers. Replace `<MASTER_IP>` with the IP address or DNS name of the master node in `config.yml`. The Wazuh server API CA certificate is in `/etc/wazuh-manager/export/ca.pem`, readable by `root` only, so run `curl` with `sudo`. When `curl` asks for the password, enter the `WAZUH_MANAGER_API_PASSWORD` value of `/etc/wazuh-manager/export/credentials.env` (`sudo grep '^WAZUH_MANAGER_API_PASSWORD=' /etc/wazuh-manager/export/credentials.env | cut -d= -f2-`):
+  3. On the master node, check that the Wazuh server API answers. Replace `<MASTER_IP>` with the IP address or DNS name of the master node in `config.yml`. `curl` verifies the certificate with the CA published in `/etc/wazuh-manager/export/ca.pem`, which only `root` can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_MANAGER_API_PASSWORD` value of `/etc/wazuh-manager/export/credentials.env` (`sudo grep '^WAZUH_MANAGER_API_PASSWORD=' /etc/wazuh-manager/export/credentials.env | cut -d= -f2-`):
 
       ```bash
       sudo curl --cacert /etc/wazuh-manager/export/ca.pem -u wazuh -X POST "https://<MASTER_IP>:55000/security/user/authenticate?raw=true"
