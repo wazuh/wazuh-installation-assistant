@@ -22,11 +22,13 @@ Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_
 sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-
 ```
 
+The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/certs/root-ca.pem`, so `$WAZUH_INDEXER_IP_ADDRESS` must be a name or an address of that certificate.
+
 1. Disable shard replication to prevent shard replicas from being created while Wazuh indexer nodes are being taken offline for the upgrade.
 
     ```bash
-    curl -X PUT "https://$WAZUH_INDEXER_IP_ADDRESS:9200/_cluster/settings" \
-    -u $USERNAME:$PASSWORD -k -H "Content-Type: application/json" -d '
+    sudo curl --cacert /etc/wazuh-indexer/certs/root-ca.pem -X PUT "https://$WAZUH_INDEXER_IP_ADDRESS:9200/_cluster/settings" \
+    -u $USERNAME:$PASSWORD -H "Content-Type: application/json" -d '
     {
         "persistent": {
             "cluster.routing.allocation.enable": "primaries"
@@ -55,7 +57,7 @@ sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials
 1. Perform a flush operation on the cluster to commit transaction log entries to the index.
 
     ```bash
-    curl -X POST "https://$WAZUH_INDEXER_IP_ADDRESS:9200/_flush" -u $USERNAME:$PASSWORD -k
+    sudo curl --cacert /etc/wazuh-indexer/certs/root-ca.pem -X POST "https://$WAZUH_INDEXER_IP_ADDRESS:9200/_flush" -u $USERNAME:$PASSWORD
     ```
 
     **Output**
@@ -134,17 +136,19 @@ Repeat steps 1 to 3 above on all Wazuh indexer nodes before proceeding to the [p
 
 Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_INDEXER_IP_ADDRESS`, `$USERNAME`, and `$PASSWORD`.
 
+The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/certs/root-ca.pem`, so `$WAZUH_INDEXER_IP_ADDRESS` must be a name or an address of that certificate.
+
 1. Check that the newly upgraded Wazuh indexer nodes are in the cluster.
 
     ```bash
-    curl -k -u $USERNAME:$PASSWORD https://$WAZUH_INDEXER_IP_ADDRESS:9200/_cat/nodes?v
+    sudo curl --cacert /etc/wazuh-indexer/certs/root-ca.pem -u $USERNAME:$PASSWORD https://$WAZUH_INDEXER_IP_ADDRESS:9200/_cat/nodes?v
     ```
 
 2. Re-enable shard allocation.
 
     ```bash
-    curl -X PUT "https://$WAZUH_INDEXER_IP_ADDRESS:9200/_cluster/settings" \
-    -u $USERNAME:$PASSWORD -k -H "Content-Type: application/json" -d '
+    sudo curl --cacert /etc/wazuh-indexer/certs/root-ca.pem -X PUT "https://$WAZUH_INDEXER_IP_ADDRESS:9200/_cluster/settings" \
+    -u $USERNAME:$PASSWORD -H "Content-Type: application/json" -d '
     {
         "persistent": {
             "cluster.routing.allocation.enable": "all"
@@ -174,7 +178,7 @@ Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_
 3. Check the health of the Wazuh indexer cluster again, until the shard allocation has finished and the status is `green`.
 
     ```bash
-    curl -k -u $USERNAME:$PASSWORD "https://$WAZUH_INDEXER_IP_ADDRESS:9200/_cluster/health?pretty"
+    sudo curl --cacert /etc/wazuh-indexer/certs/root-ca.pem -u $USERNAME:$PASSWORD "https://$WAZUH_INDEXER_IP_ADDRESS:9200/_cluster/health?pretty"
     ```
 
     Wait until `status` is `green` and `relocating_shards`, `initializing_shards` and `unassigned_shards` are `0`.
