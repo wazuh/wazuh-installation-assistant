@@ -110,6 +110,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1171](https://github.com/wazuh/wazuh-installation-assistant/issues/1171) | Verify the post-install checks of the guides with `curl --cacert` and the CA certificate each package publishes in `export/`, instead of turning TLS verification off with `curl -k` |
 | [#1172](https://github.com/wazuh/wazuh-installation-assistant/issues/1172) | `-h\|--help` of the installation assistant, wazuh-certs-tool and wazuh-passwords-tool exits with 0; the help of `-d` no longer names a versioned script; the apt and yum output keeps its line breaks in the log |
 | [#1164](https://github.com/wazuh/wazuh-installation-assistant/issues/1164) | Stop requiring `apt-transport-https`, an empty transitional package on Ubuntu 26.04, and report missing packages as an error. Running a command that does not need root, such as `-V`, as a regular user no longer tries to write the log file |
 | [#1162](https://github.com/wazuh/wazuh-installation-assistant/issues/1162) | Keep the Wazuh indexer and its `/var/log/wazuh-indexer/` directory when `--start-cluster` is cancelled or fails: a rollback now only removes the files and systemd links of the components of the failed step. `--start-cluster` names the Wazuh indexer nodes of `config.yml` while it waits for the cluster to form, stops after 300 seconds with a clear error, and its messages no longer mention an installation |
