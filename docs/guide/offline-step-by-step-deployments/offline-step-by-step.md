@@ -242,7 +242,7 @@ Follow these steps on the master node and on every worker node.
 
     The root CA of the deployment also signed the Wazuh indexer certificates, so it is placed as `indexer-ca.pem` too.
 
-2. Install the Wazuh manager. The package uses the files you placed instead of issuing its own, and gives the `remoted` and `apid` pairs their owner.
+2. Install the Wazuh manager. The package uses the files you placed instead of issuing its own, and gives the `remoted` and `apid` pairs their owner. Do not install it before placing them: without the certificates, the package creates its own root CA and a `remoted.pem` without the `-as|--agent-san` addresses, and placing the certificates afterwards makes the Wazuh manager fail to start.
 
     **RPM-based systems:**
 

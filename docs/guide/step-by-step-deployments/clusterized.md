@@ -527,7 +527,7 @@ rm -rf wazuh-certificates
 
 The root CA of the deployment is also the CA that signed the Wazuh indexer certificates, so it is placed as `indexer-ca.pem` too. The package uses these files instead of issuing its own, and gives the `remoted` and `apid` pairs their owner. `remoted.pem` is served to the agents by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515. `apid.pem` is served by the Server API on port 55000.
 
-Do not install the package before placing the certificates: without them, the package creates its own root CA and a `remoted.pem` with the addresses of the host, without the ones passed with `-as|--agent-san`. An agent enrollment token for those addresses then fails with `ERROR 9025`, and placing the certificates afterwards makes the Wazuh manager fail to start with `INVALID ... not issued by the manager's CA`.
+Do not install the package before placing the certificates and `local.env`: without the certificates, the package creates its own root CA and a `remoted.pem` with the addresses of the host, without the ones passed with `-as|--agent-san`. An agent enrollment token for those addresses then fails with `ERROR 9025`, and placing the certificates afterwards makes the Wazuh manager fail to start with `INVALID ... not issued by the manager's CA`.
 
 **Recommended action**: If no other Wazuh components will be installed on this node, remove the `wazuh-certificates.tar` file.
 
