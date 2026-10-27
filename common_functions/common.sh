@@ -85,7 +85,7 @@ function common_checkInstalled() {
     if [ "${sys_type}" == "yum" ]; then
         rpm -q wazuh-manager --quiet && wazuh_installed=1
     elif [ "${sys_type}" == "apt-get" ]; then
-        wazuh_installed=$(apt list --installed  2>/dev/null | grep wazuh-manager)
+        common_isDebInstalled wazuh-manager && wazuh_installed=1
     fi
 
     if [ -d "/var/wazuh-manager" ]; then
@@ -97,7 +97,7 @@ function common_checkInstalled() {
         rpm -q wazuh-indexer --quiet && indexer_installed=1
 
     elif [ "${sys_type}" == "apt-get" ]; then
-        indexer_installed=$(apt list --installed 2>/dev/null | grep wazuh-indexer)
+        common_isDebInstalled wazuh-indexer && indexer_installed=1
     fi
 
     if [ -d "/var/lib/wazuh-indexer/" ] || [ -d "/usr/share/wazuh-indexer" ] || [ -d "/etc/wazuh-indexer" ] || [ -f "${base_path}/search-guard-tlstool*" ]; then
@@ -108,13 +108,22 @@ function common_checkInstalled() {
     if [ "${sys_type}" == "yum" ]; then
         eval "rpm -q wazuh-dashboard --quiet && dashboard_installed=1"
     elif [ "${sys_type}" == "apt-get" ]; then
-        dashboard_installed=$(apt list --installed  2>/dev/null | grep wazuh-dashboard)
+        common_isDebInstalled wazuh-dashboard && dashboard_installed=1
     fi
 
     if [ -d "/var/lib/wazuh-dashboard/" ] || [ -d "/usr/share/wazuh-dashboard" ] || [ -d "/etc/wazuh-dashboard" ] || [ -d "/run/wazuh-dashboard/" ]; then
         common_logger -d "There are Wazuh dashboard remaining files."
         dashboard_remaining_files=1
     fi
+
+}
+
+# Also true while the package is half installed, as apt list --installed reports it.
+function common_isDebInstalled() {
+
+    local status
+    status=$(dpkg-query -W -f='${db:Status-Status}' "${1}" 2>/dev/null)
+    [ -n "${status}" ] && [ "${status}" != "not-installed" ] && [ "${status}" != "config-files" ]
 
 }
 

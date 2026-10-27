@@ -206,7 +206,11 @@ The assistant reads `artifact_urls.yaml` from the directory of the script and do
 
 #### Package signature check
 
-Before installing a package, the assistant checks that it is signed with the Wazuh key, also in offline installations. It downloads the key from `https://packages.wazuh.com/key/GPG-KEY-WAZUH`, or takes it from `wazuh-offline.tar.gz` in an offline installation, and only trusts it if its fingerprint is `0DCF CA55 47B1 9D2A 6099 5060 96B3 EE5F 2911 1145`. An unsigned package, a package signed with another key, or a modified package stops the installation.
+Before installing a package, the assistant checks that it is signed with the Wazuh key, also in offline installations. It downloads the key from `https://packages.wazuh.com/key/GPG-KEY-WAZUH`, or takes it from `wazuh-offline.tar.gz` in an offline installation, and only trusts it if its fingerprint is `0DCF CA55 47B1 9D2A 6099 5060 96B3 EE5F 2911 1145`. An unsigned package, a package signed with another key, or a modified package stops the installation. Every verified package leaves a line in the output and in `/var/log/wazuh-install.log`:
+
+```
+INFO: Signature of wazuh-manager_5.0.0-1_amd64.deb verified with the Wazuh GPG key 0DCFCA5547B19D2A6099506096B3EE5F29111145.
+```
 
 Packages in the nightly, pre-release and production repositories are signed. Development builds that did not go through the signing process are not, and need the `--skip-signature-check` option, which is only accepted along with `-d`:
 
