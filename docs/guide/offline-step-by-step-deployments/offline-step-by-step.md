@@ -33,15 +33,15 @@ apt install ./wazuh-offline/wazuh-packages/wazuh-dashboard*.deb
 
 Check the package signatures first, as described in [Verify the package signatures](#verify-the-package-signatures). Install one package at a time, in the order and at the step of the guide where it is installed.
 
-When you configure the Wazuh indexer, also disable the tasks that need Internet access, as described in [Installing the Wazuh indexer](#installing-the-wazuh-indexer), step 5.
+When you configure the Wazuh indexer, you can also stop its daily update check, as described in [Installing the Wazuh indexer](#installing-the-wazuh-indexer), step 5.
 
-> [!IMPORTANT]
-> Without access to Wazuh CTI, the Wazuh indexer gets no vulnerability content, so vulnerability detection has no CVE feed and scans nothing. There is no offline feed in Wazuh 5.x. See [Migrating Vulnerability Detection to CTI-Based Feeds](https://github.com/wazuh/wazuh/blob/5.0.0/docs/guide/migration/vulnerability-detection-cti-feeds.md).
+> [!NOTE]
+> Each Wazuh indexer package ships a snapshot of the ruleset, IoCs and vulnerabilities content, and loads it on its first start without Internet access, so vulnerability detection works offline. The content is as recent as the package. To update it later, see [Offline content updates](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/modules/content-manager/offline-update.md).
 
 ## Distributed deployment
 
-> [!IMPORTANT]
-> Without access to Wazuh CTI, the Wazuh indexer gets no vulnerability content, so vulnerability detection has no CVE feed and scans nothing. There is no offline feed in Wazuh 5.x. See [Migrating Vulnerability Detection to CTI-Based Feeds](https://github.com/wazuh/wazuh/blob/5.0.0/docs/guide/migration/vulnerability-detection-cti-feeds.md).
+> [!NOTE]
+> Each Wazuh indexer package ships a snapshot of the ruleset, IoCs and vulnerabilities content, and loads it on its first start without Internet access, so vulnerability detection works offline. The content is as recent as the package. To update it later, see [Offline content updates](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/modules/content-manager/offline-update.md).
 
 ### How the passwords and certificates are shared
 
@@ -178,15 +178,13 @@ Follow these steps on every Wazuh indexer node.
         - "C=US,L=California,O=Wazuh,OU=Wazuh,CN=indexer-2"
         ```
 
-5. Disable the tasks that need Internet access. Add these settings to `/etc/wazuh-indexer/opensearch.yml`:
+5. Optionally, stop the daily update check, which needs Internet access. Add this setting to `/etc/wazuh-indexer/opensearch.yml`:
 
     ```yaml
-    plugins.content_manager.catalog.update_on_start: false
-    plugins.content_manager.catalog.update_on_schedule: false
     plugins.content_manager.telemetry.enabled: false
     ```
 
-    See the [offline configuration of the Wazuh indexer](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/modules/content-manager/configuration.md#offline-configuration--disabling-automatic-updates).
+    Do not set `plugins.content_manager.catalog.update_on_start` to `false`: the first content update, at start, is what loads the snapshots shipped in the package. Without it, the Wazuh indexer ends with no rules, decoders or CVE documents, and logs no error.
 
 6. Set the Java heap of the Wazuh indexer. The package sets 1 GB, which is not enough: the Wazuh dashboard fails on its first start with `circuit_breaking_exception`. On a host dedicated to the Wazuh indexer, use half of the memory of the host:
 
@@ -244,7 +242,7 @@ Follow these steps on the master node and on every worker node.
 
     The root CA of the deployment also signed the Wazuh indexer certificates, so it is placed as `indexer-ca.pem` too.
 
-2. Install the Wazuh manager. The package uses the files you placed instead of issuing its own, and gives the `remoted` and `apid` pairs their owner.
+2. Install the Wazuh manager. The package uses the files you placed instead of issuing its own, and gives the `remoted` and `apid` pairs their owner. Do not install it before placing them: without the certificates, the package creates its own root CA and a `remoted.pem` without the `-as|--agent-san` addresses, and placing the certificates afterwards makes the Wazuh manager fail to start.
 
     **RPM-based systems:**
 
@@ -316,9 +314,9 @@ Follow these steps on the master node and on every worker node.
 
 1. Install the following dependencies, if missing.
 
-    **RPM-based systems:** `libcap openssl diffutils util-linux`
+    **RPM-based systems:** `tar`
 
-    **DEB-based systems:** `tar curl libcap2-bin openssl diffutils`
+    **DEB-based systems:** `tar`
 
 2. Place the passwords, the root CA certificate and the certificate of this node, replacing `<DASHBOARD_NODE_NAME>` with the name of the node as defined in `config.yml`. For example, `dashboard`.
 

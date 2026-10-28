@@ -27,21 +27,27 @@ The following dependencies must be installed on the Wazuh single node:
 - openssl
 - procps-ng
 - sed
+- systemd
 - tar
 - util-linux
 
 **DEB-based systems:**
 
 - adduser
+- coreutils
 - curl
 - debconf
 - diffutils
+- gawk
 - gnupg
+- grep
 - hostname
 - iproute2
 - libcap2-bin
 - openssl
 - procps
+- sed
+- systemd
 - tar
 - util-linux
 
@@ -105,21 +111,34 @@ The following dependencies must be installed on the Wazuh indexer nodes, besides
 **RPM-based systems:**
 
 - coreutils
+- curl
 - diffutils
+- gawk
+- grep
 - hostname
 - iproute
 - openssl
 - procps-ng
+- sed
+- systemd
+- tar
 - util-linux
 
 **DEB-based systems:**
 
 - adduser
+- coreutils
+- curl
 - debconf
 - diffutils
+- gawk
+- grep
 - iproute2
 - openssl
 - procps
+- sed
+- systemd
+- tar
 
 #### Installation Steps
 
@@ -187,6 +206,8 @@ The following dependencies must be installed on the Wazuh manager nodes, besides
 
 **RPM-based systems:**
 
+- coreutils
+- curl
 - diffutils
 - findutils
 - gawk
@@ -194,17 +215,27 @@ The following dependencies must be installed on the Wazuh manager nodes, besides
 - hostname
 - iproute
 - openssl
+- procps-ng
 - sed
+- systemd
+- tar
 - util-linux
 
 **DEB-based systems:**
 
+- coreutils
 - curl
 - diffutils
+- gawk
 - gnupg
+- grep
 - hostname
 - iproute2
 - openssl
+- procps
+- sed
+- systemd
+- tar
 - util-linux
 
 #### Installation Steps
@@ -225,17 +256,31 @@ The following dependencies must be installed on the Wazuh dashboard node, beside
 
 **RPM-based systems:**
 
+- coreutils
+- curl
 - diffutils
+- gawk
+- grep
 - libcap
 - openssl
+- procps-ng
+- sed
+- systemd
+- tar
 - util-linux
 
 **DEB-based systems:**
 
+- coreutils
 - curl
 - diffutils
+- gawk
+- grep
 - libcap2-bin
 - openssl
+- procps
+- sed
+- systemd
 - tar
 
 #### Installation Steps
