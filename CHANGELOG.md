@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Check the Wazuh API response when changing an API user password and stop on a refused change ([#1154](https://github.com/wazuh/wazuh-installation-assistant/issues/1154))
 - Use each server node's own certificate in `ossec.conf` instead of the first node's ([#1063](https://github.com/wazuh/wazuh-installation-assistant/pull/1063))
 
 ### Deleted

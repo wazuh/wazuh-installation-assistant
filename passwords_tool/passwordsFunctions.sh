@@ -87,9 +87,9 @@ function passwords_changePasswordApi() {
     if [ -n "${changeall}" ]; then
         for i in "${!api_passwords[@]}"; do
             if [ -n "${wazuh_installed}" ]; then
-                passwords_getApiUserId "${api_users[i]}"
-                WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
-                common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
+                if ! passwords_changeApiUserPassword "${api_users[i]}" "${api_passwords[i]}"; then
+                    exit 1
+                fi
                 if [ "${api_users[i]}" == "${adminUser}" ]; then
                     sleep 1
                     adminPassword="${api_passwords[i]}"
@@ -105,9 +105,9 @@ function passwords_changePasswordApi() {
         done
     else
         if [ -n "${wazuh_installed}" ]; then
-            passwords_getApiUserId "${nuser}"
-            WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-            common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
+            if ! passwords_changeApiUserPassword "${nuser}" "${password}"; then
+                exit 1
+            fi
             if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
                 common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
             fi
@@ -116,6 +116,22 @@ function passwords_changePasswordApi() {
                 passwords_changeDashboardApiPassword "${password}"
         fi
     fi
+}
+
+function passwords_changeApiUserPassword() {
+
+    passwords_getApiUserId "${1}"
+    WAZUH_PASS_API='{\"password\":\"'"${2}"'\"}'
+    api_response=$(common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -w \"\\n%{http_code}\" --max-time 300 --retry 5 --retry-delay 5)
+    curl_exit_code="$?"
+    api_http_code="${api_response##*$'\n'}"
+    api_body="${api_response%$'\n'*}"
+    if [ "${curl_exit_code}" -ne 0 ] || [ "${api_http_code}" != "200" ] || ! echo "${api_body}" | grep -q '"error": *0[,}]'; then
+        api_error=$(echo "${api_body}" | grep -o '"\(detail\|message\)": *"[^"]*"' | head -n 1 | cut -d '"' -f 4)
+        common_logger -e "The Wazuh API did not change the password of user ${1} (HTTP code ${api_http_code:-none}, curl exit code ${curl_exit_code}): ${api_error:-no error detail returned}"
+        return 1
+    fi
+
 }
 
 function passwords_changeDashboardApiPassword() {
