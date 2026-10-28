@@ -207,11 +207,11 @@ Follow these steps on every Wazuh indexer node.
     /usr/share/wazuh-indexer/bin/indexer-security-init.sh
     ```
 
-9. Check that every Wazuh indexer node joined the cluster and that its status is `green`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+9. Check that every Wazuh indexer node joined the cluster and that its status is `green`. Run the commands on a Wazuh indexer node, and replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`. `curl` verifies the certificate with the CA published in `/etc/wazuh-indexer/export/ca.pem`, which only `root` and the `wazuh-indexer` group can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
     ```bash
-    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
-    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cluster/health?pretty
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cluster/health?pretty
     ```
 
 ### Installing the Wazuh manager

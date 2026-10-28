@@ -164,10 +164,10 @@ The following dependencies must be installed on the Wazuh indexer nodes, besides
 
 ### Testing the cluster installation
 
-1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the configured Wazuh indexer IP address. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+1. Run the following command on a Wazuh indexer node to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`. `curl` verifies the certificate with the CA published in `/etc/wazuh-indexer/export/ca.pem`, which only `root` and the `wazuh-indexer` group can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
     ```bash
-    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
     ```
 
     **Output example:**
@@ -192,10 +192,10 @@ The following dependencies must be installed on the Wazuh indexer nodes, besides
     }
 ```
 
-2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command, then execute it. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command with the IP address or DNS name of the same node, then execute it there. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
     ```bash
-    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
     ```
 
 ### Installing the Wazuh manager

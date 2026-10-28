@@ -730,8 +730,10 @@ sed -i 's|^WAZUH_MANAGER_WUI_PASSWORD=.*|WAZUH_MANAGER_WUI_PASSWORD=<WAZUH_WUI_P
 > The Wazuh dashboard login does not show a wrong `kibanaserver` password: it sends the credentials of the user who logs in to the Wazuh indexer. The Wazuh dashboard server itself uses `kibanaserver`, so check its state instead. It is `red` (`Unable to retrieve version information from OpenSearch nodes`) until `opensearch.password` is updated:
 >
 > ```bash
-> curl -k -u admin https://<WAZUH_DASHBOARD_IP_ADDRESS>/api/status
+> sudo curl --cacert /etc/wazuh-dashboard/export/ca.pem -u admin https://<WAZUH_DASHBOARD_IP_ADDRESS>/api/status
 > ```
+>
+> The address must be one of the names in the Wazuh dashboard certificate. Only `root` can read `/etc/wazuh-dashboard/export/ca.pem`, so run `curl` with `sudo`. In a distributed deployment the Wazuh dashboard does not publish `export/ca.pem`: use `/etc/wazuh-dashboard/certs/indexer-ca.pem`, the same CA.
 >
 > A wrong `wazuh-internal-client` password shows as an error of the Wazuh server API connection in the Wazuh dashboard.
 
