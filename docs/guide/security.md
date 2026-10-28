@@ -83,14 +83,20 @@ A deployment installed step by step does not need the Wazuh installation assista
 
 ## Network exposure
 
-The Wazuh installation assistant keeps the network settings of the Wazuh manager as the package sets them, with one exception: on an all-in-one installation without `-ap|--api-san`, the Wazuh server API listens only on the local host. After the installation, the Wazuh manager listens on these ports:
+The Wazuh installation assistant keeps the network settings of the Wazuh manager as the package sets them, with two exceptions:
+
+- On an all-in-one installation without `-ap|--api-san`, the Wazuh server API listens only on the local host.
+- In a cluster of more than one Wazuh manager node, the cluster port 1516 listens on all IPv4 interfaces, so the nodes can reach each other. The package sets it to `127.0.0.1`.
+
+After the installation, the Wazuh manager listens on these ports:
 
 | Port | Service | Listens on | Used by |
 | ---- | ------- | ---------- | ------- |
-| 1517/tcp | Agent enrollment and connection (HTTPS) | All network interfaces | Wazuh 5.x agents |
-| 1514/tcp | Legacy agent connection | All network interfaces | Wazuh 4.x agents |
-| 1515/tcp | Legacy agent enrollment | All network interfaces | Wazuh 4.x agents |
-| 55000/tcp | Wazuh server API | All network interfaces. On an all-in-one installation without `-ap\|--api-san`, only `127.0.0.1` and `::1` | Wazuh dashboard, and any tool that calls the API |
+| 1517/tcp | Agent enrollment and connection (HTTPS) | All IPv4 interfaces (`0.0.0.0`) | Wazuh 5.x agents |
+| 1514/tcp | Legacy agent connection | All IPv4 interfaces (`0.0.0.0`) | Wazuh 4.x agents |
+| 1515/tcp | Legacy agent enrollment | All IPv4 interfaces (`0.0.0.0`) | Wazuh 4.x agents |
+| 1516/tcp | Wazuh manager cluster | `127.0.0.1`. In a cluster of more than one Wazuh manager node, all IPv4 interfaces (`0.0.0.0`) | Other Wazuh manager nodes |
+| 55000/tcp | Wazuh server API | All IPv4 and IPv6 interfaces (`0.0.0.0` and `::`). On an all-in-one installation without `-ap\|--api-san`, only `127.0.0.1` and `::1` | Wazuh dashboard, and any tool that calls the API |
 
 If your deployment does not need some of them, you can close them as described below. The full list of ports is in [Required ports](../ref/getting-started/requirements.md#required-ports).
 
