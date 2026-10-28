@@ -578,7 +578,7 @@ Access the Wazuh web interface with your `admin` user credentials. This is the a
 - Username: `admin`
 - Password: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `/etc/wazuh-indexer/export/credentials.env`
 
-When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, import the `/etc/wazuh-dashboard/ca/root-ca.pem` file into the certificate manager of the browser. Alternatively, you can configure a certificate from a trusted authority.
+When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, import the `/etc/wazuh-dashboard/export/ca.pem` file into the certificate manager of the browser. The `export/` directory is readable by `root` only, so copy the file first with `sudo cp /etc/wazuh-dashboard/export/ca.pem ~/wazuh-dashboard-ca.pem && sudo chown "$USER" ~/wazuh-dashboard-ca.pem`, and then bring it to the machine of the browser (for example with `scp`). Alternatively, you can configure a certificate from a trusted authority.
 
 ## Enrolling agents
 
