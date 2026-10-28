@@ -287,7 +287,7 @@ install -d -m 0750 -o root -g root /etc/wazuh-manager
 echo 'WAZUH_MANAGER_REMOTED_CERT_SANS=IP:<HOST_IP_ADDRESS>,IP:203.0.113.10,DNS:wazuh.example.com' >> /etc/wazuh-manager/local.env
 ```
 
-The package also issues the certificate of the Server API, `apid.pem`, for the addresses it finds on the host plus `localhost`, `127.0.0.1` and `::1`. To add an address API clients dial, add `WAZUH_MANAGER_APID_CERT_SANS` to the same file, for example `WAZUH_MANAGER_APID_CERT_SANS=IP:<HOST_IP_ADDRESS>,DNS:api.example.com`. It is independent from `WAZUH_MANAGER_REMOTED_CERT_SANS`.
+The package also issues the certificate of the Server API, `apid.pem`, for the addresses it finds on the host plus `localhost`, `127.0.0.1` and `::1`. To add an address API clients dial, add `WAZUH_MANAGER_APID_CERT_SANS` to the same file. You only need it if you let other hosts reach the Server API, which this guide keeps on the local host. For example, `WAZUH_MANAGER_APID_CERT_SANS=IP:<HOST_IP_ADDRESS>,DNS:api.example.com`. It is independent from `WAZUH_MANAGER_REMOTED_CERT_SANS`.
 
 The Wazuh indexer and the Wazuh dashboard packages work the same way with `WAZUH_INDEXER_CERT_SANS` in `/etc/wazuh-indexer/local.env` and `WAZUH_DASHBOARD_CERT_SANS` in `/etc/wazuh-dashboard/local.env`, set before installing each package. Without it, the Wazuh dashboard certificate names the host name, its FQDN and the addresses of the default-route interfaces, so set `WAZUH_DASHBOARD_CERT_SANS` when browsers reach it by another name or address. Each list replaces the addresses the package finds, so include those too.
 
@@ -365,7 +365,15 @@ yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
 
 ### Configuring the Wazuh manager
 
-There is nothing to configure. The package connects the Wazuh manager to the Wazuh indexer on `127.0.0.1`. It imports the indexer CA and the client pair the Wazuh indexer issued for it from `/etc/wazuh-indexer/export/` (`ca.pem` and `manager-client.pem` with its key), and stores the password of its Wazuh indexer user in its keystore.
+Keep the Wazuh server API off the network, as the Wazuh indexer. Its only client is the Wazuh dashboard on this host. In `/var/wazuh-manager/api/configuration/api.yaml`, replace the commented `host` line so it listens on `127.0.0.1` and `::1` only:
+
+```bash
+sed -i -E "s|^(# )?host:.*|host: ['127.0.0.1', '::1']|" /var/wazuh-manager/api/configuration/api.yaml
+```
+
+To let other hosts reach the API later, see [The Wazuh server API on an all-in-one installation](../security.md#the-wazuh-server-api-on-an-all-in-one-installation).
+
+There is nothing else to configure. The package connects the Wazuh manager to the Wazuh indexer on `127.0.0.1`. It imports the indexer CA and the client pair the Wazuh indexer issued for it from `/etc/wazuh-indexer/export/` (`ca.pem` and `manager-client.pem` with its key), and stores the password of its Wazuh indexer user in its keystore.
 
 ### Starting the Wazuh manager service
 
@@ -597,7 +605,7 @@ To check the enrollment, look for `Token bootstrap: enrollment succeeded` in `/v
 
 See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
 
-The agents connect to the Wazuh manager on port 1517. The Wazuh manager also listens on ports 1514 and 1515 for Wazuh 4.x agents, and the Wazuh server API listens on all network interfaces. To close what your deployment does not need, see [Network exposure](../security.md#network-exposure).
+The agents connect to the Wazuh manager on port 1517. The Wazuh manager also listens on ports 1514 and 1515 for Wazuh 4.x agents. To close them when no Wazuh agent runs 4.x, see [Network exposure](../security.md#network-exposure).
 
 ## Checking the accounts
 

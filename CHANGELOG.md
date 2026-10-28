@@ -4,7 +4,6 @@
 
 | Issue | Comment |
 | - | - |
-| [#1170](https://github.com/wazuh/wazuh-installation-assistant/issues/1170) | Document the legacy ports 1514 and 1515 and the Wazuh server API listening on all interfaces, as the packages set them, and how to close them |
 | [#1169](https://github.com/wazuh/wazuh-installation-assistant/issues/1169) | Test the all-in-one installation on a RHEL host with firewalld enabled, with an agent on another host that enrolls once the documented ports are opened, and remove the integration test step that disabled the host firewall, which had no firewall to disable |
 | [#1177](https://github.com/wazuh/wazuh-installation-assistant/issues/1177) | Add a `Next steps` part to the installation summary that explains how to enroll agents with a token and links to the agent installation guide |
 | [#6790](https://github.com/wazuh/internal-devel-requests/issues/6790) | Check that every Wazuh package is signed with the Wazuh key, whose fingerprint is pinned, before installing it; include the key in the offline bundle, refuse `http://` artifact URLs, and add `--skip-signature-check` for unsigned development packages |
@@ -41,6 +40,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1170](https://github.com/wazuh/wazuh-installation-assistant/issues/1170) | Make the Wazuh server API of an all-in-one install listen only on `127.0.0.1` and `::1`, and document it, the legacy ports 1514 and 1515, and how to close them |
 | [#1168](https://github.com/wazuh/wazuh-installation-assistant/issues/1168) | Log one line per package whose signature was verified, with the fingerprint of the Wazuh key, log the check for an existing installation as INFO, and detect the installed DEB packages with `dpkg-query` instead of `apt list --installed` |
 | [#1139](https://github.com/wazuh/wazuh-installation-assistant/issues/1139) | Adapt to the 5.0.0 RC 2 per-package credentials: write each package `local.env`, CA and certificates under `/etc/<package>` instead of `/etc/wazuh`, keep the `-g` root CA and passwords in `wazuh-ca/`, read passwords from the package `export/` files, move the manager configuration to `/etc/wazuh-manager`, and print the package credential problems when a service does not start |
 | [#1144](https://github.com/wazuh/wazuh-installation-assistant/issues/1144) | Print the admin password at the end of an all-in-one install when the output is an interactive terminal, keeping it out of the install log and of redirected output |

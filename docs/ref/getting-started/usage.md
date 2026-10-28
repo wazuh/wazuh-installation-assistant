@@ -409,7 +409,9 @@ sudo bash wazuh-certs-tool-5.0.0.sh -A --api-san api.example.com --api-san 203.0
 
 `wazuh-install-5.0.0.sh` takes the same option with `-a` and `-g`. On an all-in-one install
 the Wazuh manager package issues the certificate with the addresses of the host, and the
-option adds the ones the host cannot see:
+option adds the ones the host cannot see. The Wazuh server API of an all-in-one install only
+listens on the local host, so this is only useful after you let other hosts reach it. See
+[The Wazuh server API on an all-in-one installation](../../guide/security.md#the-wazuh-server-api-on-an-all-in-one-installation):
 
 ```bash
 sudo bash wazuh-install-5.0.0.sh -a --api-san api.example.com

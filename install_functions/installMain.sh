@@ -434,6 +434,7 @@ function main() {
         manager_setRemotedSans
         manager_setApidSans
         manager_install
+        manager_setApiLoopback
         installCommon_startService "wazuh-manager"
         common_logger "--- Wazuh dashboard ---"
         dashboard_install

@@ -83,14 +83,14 @@ A deployment installed step by step does not need the Wazuh installation assista
 
 ## Network exposure
 
-The Wazuh installation assistant keeps the network settings of the Wazuh manager as the package sets them. After the installation, the Wazuh manager listens on these ports on all network interfaces:
+The Wazuh installation assistant keeps the network settings of the Wazuh manager as the package sets them, with one exception: on an all-in-one installation, the Wazuh server API listens only on the local host. After the installation, the Wazuh manager listens on these ports:
 
-| Port | Service | Used by |
-| ---- | ------- | ------- |
-| 1517/tcp | Agent enrollment and connection (HTTPS) | Wazuh 5.x agents |
-| 1514/tcp | Legacy agent connection | Wazuh 4.x agents |
-| 1515/tcp | Legacy agent enrollment | Wazuh 4.x agents |
-| 55000/tcp | Wazuh server API | Wazuh dashboard, and any tool that calls the API |
+| Port | Service | Listens on | Used by |
+| ---- | ------- | ---------- | ------- |
+| 1517/tcp | Agent enrollment and connection (HTTPS) | All network interfaces | Wazuh 5.x agents |
+| 1514/tcp | Legacy agent connection | All network interfaces | Wazuh 4.x agents |
+| 1515/tcp | Legacy agent enrollment | All network interfaces | Wazuh 4.x agents |
+| 55000/tcp | Wazuh server API | All network interfaces. On an all-in-one installation, only `127.0.0.1` and `::1` | Wazuh dashboard, and any tool that calls the API |
 
 If your deployment does not need some of them, you can close them as described below. The full list of ports is in [Required ports](../ref/getting-started/requirements.md#required-ports).
 
@@ -123,29 +123,29 @@ The Wazuh manager package enables the legacy listener (`<remote><legacy><enabled
 
 Then close ports 1514 and 1515 in the firewall. See [Retiring the legacy channel](https://github.com/wazuh/wazuh/blob/5.0.0/docs/guide/migration/agent-manager-protocol.md#retiring-the-legacy-channel).
 
-### Keep the Wazuh server API on the local host
+### The Wazuh server API on an all-in-one installation
 
-The Wazuh server API listens on port 55000 of all network interfaces (`0.0.0.0` and `::`). In an all-in-one installation, its only client is the Wazuh dashboard on the same host, which reaches it at `https://localhost:55000` (`wazuh_core.hosts` in `/etc/wazuh-dashboard/opensearch_dashboards.yml`). If no other host needs the API, make it listen only on the local host:
+The Wazuh manager package makes the Wazuh server API listen on port 55000 of all network interfaces (`0.0.0.0` and `::`). On an all-in-one installation, its only client is the Wazuh dashboard on the same host, which reaches it at `https://localhost:55000` (`wazuh_core.hosts` in `/etc/wazuh-dashboard/opensearch_dashboards.yml`). So the Wazuh installation assistant makes it listen only on the local host, as it does with the Wazuh indexer. It replaces the commented line `# host: ['0.0.0.0', '::']` of `/var/wazuh-manager/api/configuration/api.yaml` with:
 
-1. In `/var/wazuh-manager/api/configuration/api.yaml`, replace the commented line `# host: ['0.0.0.0', '::']` with:
+```yaml
+host: ['127.0.0.1', '::1']
+```
 
-    ```yaml
-    host: ['127.0.0.1', '::1']
-    ```
+Other hosts cannot reach the API, so scripts and integrations that call it must run on this host. To check it, run:
 
-2. Restart the Wazuh manager:
+```bash
+sudo ss -tlnp | grep ':55000'
+```
 
-    ```bash
-    sudo systemctl restart wazuh-manager
-    ```
+To reach the API from other hosts, comment out the `host` line again, which restores the default of the package, or set it to the addresses the API must listen on. Then restart the Wazuh manager:
 
-3. Check that port 55000 only listens on `127.0.0.1` and `[::1]`:
+```bash
+sudo systemctl restart wazuh-manager
+```
 
-    ```bash
-    sudo ss -tlnp | grep ':55000'
-    ```
+Open port 55000 in the firewall only to the hosts that need it. If they reach the API at an address the certificate does not name, see [Name the address API clients dial](../ref/getting-started/usage.md#name-the-address-api-clients-dial).
 
-After this change, other hosts cannot reach the API, so scripts and integrations that call it must run on this host. Do not do it on the master node of a deployment where the Wazuh dashboard runs on another host: the Wazuh dashboard would lose access to the API. The Wazuh manager package keeps `api.yaml` when it is upgraded. See the [`host` option](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/server-api/configuration.md#host) of the Wazuh server API.
+In a distributed deployment, the Wazuh server API keeps the default of the package, because the Wazuh dashboard reaches the master node from another host. The Wazuh manager package keeps `api.yaml` when it is upgraded. See the [`host` option](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/server-api/configuration.md#host) of the Wazuh server API.
 
 ## Least privilege
 
