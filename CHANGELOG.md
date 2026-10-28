@@ -4,6 +4,8 @@
 
 | Issue | Comment |
 | - | - |
+| [#1169](https://github.com/wazuh/wazuh-installation-assistant/issues/1169) | Test the all-in-one installation on a RHEL host with firewalld enabled, with an agent on another host that enrolls once the documented ports are opened, and remove the integration test step that disabled the host firewall, which had no firewall to disable |
+| [#1177](https://github.com/wazuh/wazuh-installation-assistant/issues/1177) | Add a `Next steps` part to the installation summary that explains how to enroll agents with a token and links to the agent installation guide |
 | [#6790](https://github.com/wazuh/internal-devel-requests/issues/6790) | Check that every Wazuh package is signed with the Wazuh key, whose fingerprint is pinned, before installing it; include the key in the offline bundle, refuse `http://` artifact URLs, and add `--skip-signature-check` for unsigned development packages |
 | [#1121](https://github.com/wazuh/wazuh-installation-assistant/issues/1121) | Issue the Server API certificate (`apid.pem`) from root-ca in wazuh-certs-tool, deploy it, and add the `-ap\|--api-san` option |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Publish the shared `wazuh-credentials.sh` library used by the component packages as a build artifact |
@@ -38,6 +40,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1168](https://github.com/wazuh/wazuh-installation-assistant/issues/1168) | Log one line per package whose signature was verified, with the fingerprint of the Wazuh key, log the check for an existing installation as INFO, and detect the installed DEB packages with `dpkg-query` instead of `apt list --installed` |
 | [#1139](https://github.com/wazuh/wazuh-installation-assistant/issues/1139) | Adapt to the 5.0.0 RC 2 per-package credentials: write each package `local.env`, CA and certificates under `/etc/<package>` instead of `/etc/wazuh`, keep the `-g` root CA and passwords in `wazuh-ca/`, read passwords from the package `export/` files, move the manager configuration to `/etc/wazuh-manager`, and print the package credential problems when a service does not start |
 | [#1144](https://github.com/wazuh/wazuh-installation-assistant/issues/1144) | Print the admin password at the end of an all-in-one install when the output is an interactive terminal, keeping it out of the install log and of redirected output |
 | [#3870](https://github.com/wazuh/wazuh-automation/issues/3870) | Adapt the integration tests to install-time credentials: agent listener address in the distributed flow, no install files in the offline flow, password generated without -p, expected version of the branch, and fail the job when a test fails |
@@ -111,6 +114,7 @@
 | Issue | Comment |
 | - | - |
 | [#1165](https://github.com/wazuh/wazuh-installation-assistant/issues/1165) | Align the requirements page, the all-in-one guides and the glossary with the minimum hardware the installation assistant checks and the CA file the dashboard publishes for sharing |
+| [#1171](https://github.com/wazuh/wazuh-installation-assistant/issues/1171) | Verify the post-install checks of the guides, and the checks of the upgrade guide, with `curl --cacert` and the CA certificate each package publishes in `export/` or keeps in `certs/`, instead of turning TLS verification off with `curl -k` |
 | [#1172](https://github.com/wazuh/wazuh-installation-assistant/issues/1172) | `-h\|--help` of the installation assistant, wazuh-certs-tool and wazuh-passwords-tool exits with 0; the help of `-d` no longer names a versioned script; the apt and yum output keeps its line breaks in the log |
 | [#1164](https://github.com/wazuh/wazuh-installation-assistant/issues/1164) | Stop requiring `apt-transport-https`, an empty transitional package on Ubuntu 26.04, and report missing packages as an error. Running a command that does not need root, such as `-V`, as a regular user no longer tries to write the log file |
 | [#1162](https://github.com/wazuh/wazuh-installation-assistant/issues/1162) | Keep the Wazuh indexer and its `/var/log/wazuh-indexer/` directory when `--start-cluster` is cancelled or fails: a rollback now only removes the files and systemd links of the components of the failed step. `--start-cluster` names the Wazuh indexer nodes of `config.yml` while it waits for the cluster to form, stops after 300 seconds with a clear error, and its messages no longer mention an installation |

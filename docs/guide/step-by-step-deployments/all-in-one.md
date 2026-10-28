@@ -206,12 +206,12 @@ Run the Wazuh indexer `indexer-security-init.sh` script. It loads the security c
 
 ### Testing the cluster installation
 
-When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+The Wazuh indexer publishes its CA certificate in `/etc/wazuh-indexer/export/ca.pem`. Only `root` and the `wazuh-indexer` group can read it, so run `curl` with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
   1. Run the following command to confirm that the installation is successful.
 
       ```bash
-      curl -k -u admin https://127.0.0.1:9200
+      sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://127.0.0.1:9200
       ```
 
       ```json
@@ -230,7 +230,7 @@ When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` valu
   2. Run the following command to check that the cluster is working correctly and that its status is `green`.
 
       ```bash
-      curl -k -u admin https://127.0.0.1:9200/_cluster/health?pretty
+      sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://127.0.0.1:9200/_cluster/health?pretty
       ```
 
 ## Wazuh manager
@@ -601,16 +601,16 @@ See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/doc
 
 Once the three components are installed and running, check the accounts and store the passwords in a safe place.
 
-1. Check that the accounts work. When `curl` asks for a password, enter the value of the key given for each account.
+1. Check that the accounts work. Each package has its own CA, published in its `export/` directory, and `curl` verifies the certificate with the CA of the service it connects to. Only `root` can read the `export/` directory of the Wazuh manager, so run `curl` with `sudo`. When `curl` asks for a password, enter the value of the key given for each account.
 
     ```bash
     # Wazuh indexer: admin (WAZUH_INDEXER_ADMIN_PASSWORD), kibanaserver (WAZUH_INDEXER_KIBANASERVER_PASSWORD) and wazuh-manager (WAZUH_INDEXER_MANAGER_PASSWORD)
-    curl -k -u admin https://127.0.0.1:9200/_cluster/health?pretty
-    curl -k -u kibanaserver https://127.0.0.1:9200/_plugins/_security/authinfo?pretty
-    curl -k -u wazuh-manager https://127.0.0.1:9200/_plugins/_security/authinfo?pretty
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://127.0.0.1:9200/_cluster/health?pretty
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u kibanaserver https://127.0.0.1:9200/_plugins/_security/authinfo?pretty
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u wazuh-manager https://127.0.0.1:9200/_plugins/_security/authinfo?pretty
     # Wazuh server API: wazuh (WAZUH_MANAGER_API_PASSWORD) and wazuh-internal-client (WAZUH_MANAGER_WUI_PASSWORD)
-    curl -k -u wazuh -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
-    curl -k -u wazuh-internal-client -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
+    sudo curl --cacert /etc/wazuh-manager/export/ca.pem -u wazuh -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
+    sudo curl --cacert /etc/wazuh-manager/export/ca.pem -u wazuh-internal-client -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
     ```
 
     Log in to the Wazuh dashboard, and check that it reaches the Wazuh server API: the dashboard shows an error of the Wazuh server API connection otherwise.

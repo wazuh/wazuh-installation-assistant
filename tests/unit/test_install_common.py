@@ -870,6 +870,23 @@ class TestInstallCommonVerifyPackageSignature:
     def test_success_unsigned_with_skip(self):
         assert_success(self._run("(none)", skip="1"))
 
+    def test_success_logs_the_package_and_the_key_fingerprint(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "installCommon_verifyPackageSignature /tmp/wazuh-manager_5.0.0-1_amd64.deb",
+            {
+                "common_logger": 'echo "$@"',
+                "installCommon_getWazuhGPGKey": f"key_fingerprint={WAZUH_FINGERPRINT}",
+                "installCommon_verifyDebSignature": "true",
+            },
+            {"skip_signature_check": ""},
+        )
+        assert_success(result)
+        assert (
+            f"Signature of wazuh-manager_5.0.0-1_amd64.deb verified with the Wazuh GPG key {WAZUH_FINGERPRINT}."
+            in result.stdout.splitlines()
+        )
+
 
 class TestInstallCommonGetWazuhGPGKey:
     """Tests for installCommon_getWazuhGPGKey with the key of the offline bundle.

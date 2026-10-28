@@ -206,7 +206,11 @@ The assistant reads `artifact_urls.yaml` from the directory of the script and do
 
 #### Package signature check
 
-Before installing a package, the assistant checks that it is signed with the Wazuh key, also in offline installations. It downloads the key from `https://packages.wazuh.com/key/GPG-KEY-WAZUH`, or takes it from `wazuh-offline.tar.gz` in an offline installation, and only trusts it if its fingerprint is `0DCF CA55 47B1 9D2A 6099 5060 96B3 EE5F 2911 1145`. An unsigned package, a package signed with another key, or a modified package stops the installation.
+Before installing a package, the assistant checks that it is signed with the Wazuh key, also in offline installations. It downloads the key from `https://packages.wazuh.com/key/GPG-KEY-WAZUH`, or takes it from `wazuh-offline.tar.gz` in an offline installation, and only trusts it if its fingerprint is `0DCF CA55 47B1 9D2A 6099 5060 96B3 EE5F 2911 1145`. An unsigned package, a package signed with another key, or a modified package stops the installation. Every verified package leaves a line in the output and in `/var/log/wazuh-install.log`:
+
+```
+INFO: Signature of wazuh-manager_5.0.0-1_amd64.deb verified with the Wazuh GPG key 0DCFCA5547B19D2A6099506096B3EE5F29111145.
+```
 
 Packages in the nightly, pre-release and production repositories are signed. Development builds that did not go through the signing process are not, and need the `--skip-signature-check` option, which is only accepted along with `-d`:
 
@@ -722,8 +726,10 @@ sed -i 's|^WAZUH_MANAGER_WUI_PASSWORD=.*|WAZUH_MANAGER_WUI_PASSWORD=<WAZUH_WUI_P
 > The Wazuh dashboard login does not show a wrong `kibanaserver` password: it sends the credentials of the user who logs in to the Wazuh indexer. The Wazuh dashboard server itself uses `kibanaserver`, so check its state instead. It is `red` (`Unable to retrieve version information from OpenSearch nodes`) until `opensearch.password` is updated:
 >
 > ```bash
-> curl -k -u admin https://<WAZUH_DASHBOARD_IP_ADDRESS>/api/status
+> sudo curl --cacert /etc/wazuh-dashboard/export/ca.pem -u admin https://<WAZUH_DASHBOARD_IP_ADDRESS>/api/status
 > ```
+>
+> The address must be one of the names in the Wazuh dashboard certificate. Only `root` can read `/etc/wazuh-dashboard/export/ca.pem`, so run `curl` with `sudo`. In a distributed deployment the Wazuh dashboard does not publish `export/ca.pem`: use `/etc/wazuh-dashboard/certs/indexer-ca.pem`, the same CA.
 >
 > A wrong `wazuh-internal-client` password shows as an error of the Wazuh server API connection in the Wazuh dashboard.
 
