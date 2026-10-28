@@ -51,4 +51,4 @@ Access ``https://<WAZUH_DASHBOARD_IP_ADDRESS>`` and using your credentials:
 >
 > Each package keeps its CA and the private key of that CA in its `ca/` directory: `/etc/wazuh-indexer/ca`, `/etc/wazuh-manager/ca` and `/etc/wazuh-dashboard/ca`. To trust the Wazuh dashboard certificate in your browser, import `/etc/wazuh-dashboard/ca/root-ca.pem`. Back up the three directories in a safe place: you need them to renew certificates later. See [Security](../security.md).
 >
-> The Wazuh server API only listens on the local host (`127.0.0.1` and `::1`), so other hosts cannot reach it. The Wazuh manager also listens on ports 1514 and 1515 for Wazuh 4.x agents. To change it or to close what your deployment does not need, see [Network exposure](../security.md#network-exposure).
+> The Wazuh server API only listens on the local host (`127.0.0.1` and `::1`), so other hosts cannot reach it. If you install with `-ap|--api-san`, it listens on all network interfaces. The Wazuh manager also listens on ports 1514 and 1515 for Wazuh 4.x agents. To change it or to close what your deployment does not need, see [Network exposure](../security.md#network-exposure).

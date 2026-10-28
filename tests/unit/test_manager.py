@@ -325,7 +325,7 @@ class TestManagerSetApidSans:
 
 
 class TestManagerSetApiLoopback:
-    """Tests for manager_setApiLoopback: on an all-in-one the Server API listens on loopback only."""
+    """Tests for manager_setApiLoopback: on an all-in-one the Server API listens on loopback only, unless -ap|--api-san is given."""
 
     PACKAGE_API_YAML = (
         "# USE THIS FILE AS A TEMPLATE. UNCOMMENT LINES TO APPLY CUSTOM CONFIGURATION\n"
@@ -337,12 +337,12 @@ class TestManagerSetApiLoopback:
         "#  enabled: yes\n"
     )
 
-    def _run(self, api_conf):
+    def _run(self, api_conf, api_san=()):
         return run_bash_function(
             BASE_SOURCES,
             "manager_setApiLoopback",
             {"common_logger": 'echo "LOG $*"'},
-            {"manager_api_conf_file": str(api_conf), "debug": ""},
+            {"api_san": f"({' '.join(api_san)})", "manager_api_conf_file": str(api_conf), "debug": ""},
         )
 
     def test_success_sets_loopback_in_package_template(self, tmp_path):
@@ -374,3 +374,12 @@ class TestManagerSetApiLoopback:
         result = self._run(tmp_path / "missing.yaml")
         assert_success(result)
         assert "LOG -w Could not set the host option" in result.stdout
+
+    def test_success_keeps_package_default_with_api_san(self, tmp_path):
+        api_conf = tmp_path / "api.yaml"
+        api_conf.write_text(self.PACKAGE_API_YAML)
+        result = self._run(api_conf, ["api.example.com"])
+        assert_success(result)
+        assert api_conf.read_text() == self.PACKAGE_API_YAML
+        assert "LOG -d Server API addresses given with -ap|--api-san" in result.stdout
+        assert "LOG -w" not in result.stdout

@@ -83,14 +83,14 @@ A deployment installed step by step does not need the Wazuh installation assista
 
 ## Network exposure
 
-The Wazuh installation assistant keeps the network settings of the Wazuh manager as the package sets them, with one exception: on an all-in-one installation, the Wazuh server API listens only on the local host. After the installation, the Wazuh manager listens on these ports:
+The Wazuh installation assistant keeps the network settings of the Wazuh manager as the package sets them, with one exception: on an all-in-one installation without `-ap|--api-san`, the Wazuh server API listens only on the local host. After the installation, the Wazuh manager listens on these ports:
 
 | Port | Service | Listens on | Used by |
 | ---- | ------- | ---------- | ------- |
 | 1517/tcp | Agent enrollment and connection (HTTPS) | All network interfaces | Wazuh 5.x agents |
 | 1514/tcp | Legacy agent connection | All network interfaces | Wazuh 4.x agents |
 | 1515/tcp | Legacy agent enrollment | All network interfaces | Wazuh 4.x agents |
-| 55000/tcp | Wazuh server API | All network interfaces. On an all-in-one installation, only `127.0.0.1` and `::1` | Wazuh dashboard, and any tool that calls the API |
+| 55000/tcp | Wazuh server API | All network interfaces. On an all-in-one installation without `-ap\|--api-san`, only `127.0.0.1` and `::1` | Wazuh dashboard, and any tool that calls the API |
 
 If your deployment does not need some of them, you can close them as described below. The full list of ports is in [Required ports](../ref/getting-started/requirements.md#required-ports).
 
@@ -137,7 +137,9 @@ Other hosts cannot reach the API, so scripts and integrations that call it must 
 sudo ss -tlnp | grep ':55000'
 ```
 
-To reach the API from other hosts, comment out the `host` line again, which restores the default of the package, or set it to the addresses the API must listen on. Then restart the Wazuh manager:
+If other hosts must call the API, pass `-ap|--api-san` with the address they use when you install the all-in-one. The assistant adds it to the certificate of the API and leaves `api.yaml` as the package ships it, so the API listens on all network interfaces. See [Name the address API clients dial](../ref/getting-started/usage.md#name-the-address-api-clients-dial).
+
+To reach the API from other hosts after the installation, comment out the `host` line again, which restores the default of the package, or set it to the addresses the API must listen on. Then restart the Wazuh manager:
 
 ```bash
 sudo systemctl restart wazuh-manager

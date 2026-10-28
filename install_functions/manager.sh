@@ -121,7 +121,13 @@ function manager_setApidSans() {
 # On an all-in-one install the only client of the Server API is the Wazuh dashboard of this
 # host, so the API listens on loopback only, like the Wazuh indexer. The package ships api.yaml
 # with every option commented out and does not start the service, so this applies on the first start.
+# Addresses given with -ap|--api-san mean other hosts call the API, so it keeps the package default.
 function manager_setApiLoopback() {
+
+    if [ "${#api_san[@]}" -ne 0 ]; then
+        common_logger -d "Server API addresses given with -ap|--api-san: the Wazuh server API keeps listening on all network interfaces."
+        return 0
+    fi
 
     common_logger -d "Setting the Wazuh server API to listen on 127.0.0.1 and ::1 only."
     eval "sed -i -E \"s|^(# )?host:.*|host: ['127.0.0.1', '::1']|\" ${manager_api_conf_file} ${debug}"
