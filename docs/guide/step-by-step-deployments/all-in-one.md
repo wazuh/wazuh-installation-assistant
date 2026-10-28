@@ -398,18 +398,18 @@ Follow these steps to install the Wazuh dashboard.
 
 ### Installing package dependencies
 
-Install the following packages, if missing. These are the lists the Wazuh installation assistant installs for each component: they include what the assistant itself uses to place the files, such as `cmp` from `diffutils`.
+Install the following packages, if missing. The Wazuh dashboard package only needs the account tools (`passwd`, `useradd`, `userdel`), which it declares itself; `tar` and `curl` are used in the steps below.
 
 #### APT
 
 ```bash
-apt install tar curl libcap2-bin openssl diffutils
+apt install tar curl
 ```
 
 #### YUM
 
 ```bash
-yum install libcap openssl diffutils util-linux
+yum install tar curl
 ```
 
 > [!NOTE]

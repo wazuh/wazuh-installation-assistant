@@ -4,7 +4,8 @@ Unit tests for passwords_tool/passwordsFunctions.sh
 Covers: passwords_checkPassword, passwords_generatePassword,
         passwords_readPassword, passwords_checkUser,
         passwords_checkCredentialsFile, passwords_getEnvKey,
-        passwords_saveCredential, passwords_hashPassword,
+        passwords_saveCredential, passwords_getOwnerFile,
+        passwords_checkOwnerDirs, passwords_hashPassword,
         passwords_isServiceActive, passwords_changePassword,
         passwords_changePasswordApi, passwords_updateKeystores,
         passwords_updateDashboardKeystore,
@@ -267,7 +268,7 @@ class TestPasswordsSaveCredential:
 
     A new password is written in every credential file of the host that already
     holds the key: the export/credentials.env of the owner and the local.env of each
-    package that uses it. A generated password must be saved in at least one of them.
+    package that uses it. When none holds it, the local.env of the owner is created.
     """
 
     KEYS = {
@@ -332,15 +333,42 @@ class TestPasswordsSaveCredential:
         result = self._run(tmp_path, "", ["indexer/export/credentials.env"])
         assert "wazuh-ca" not in result.stdout
 
-    def test_supplied_password_never_creates_a_file(self, tmp_path):
-        result = self._run(tmp_path, "", [])
-        assert "SET:" not in result.stdout
-        assert "status:0" in result.stdout
+    def test_without_any_file_the_owner_local_env_is_created(self, tmp_path):
+        for generated in ("1", ""):
+            result = self._run(tmp_path, generated, [])
+            assert f"SET:{tmp_path}/indexer/local.env:WAZUH_INDEXER_ADMIN_PASSWORD" in result.stdout
+            assert "status:0 failed:[]" in result.stdout
+            assert f"{tmp_path}/indexer/local.env (created)" in result.stdout
 
-    def test_generated_password_without_any_file_fails(self, tmp_path):
-        result = self._run(tmp_path, "1", [])
+    def test_without_any_file_an_api_user_goes_to_the_manager_local_env(self, tmp_path):
+        result = self._run(tmp_path, "1", [], user="wazuh-internal-client")
+        sets = [line for line in result.stdout.splitlines() if line.startswith("SET:")]
+        assert sets == [f"SET:{tmp_path}/manager/local.env:WAZUH_MANAGER_WUI_PASSWORD"]
+
+    def test_existing_files_do_not_create_the_owner_local_env(self, tmp_path):
+        result = self._run(tmp_path, "1", ["indexer/export/credentials.env"])
+        assert "indexer/local.env" not in result.stdout
+        assert "(created)" not in result.stdout
+
+    def test_failed_creation_is_reported(self, tmp_path):
+        result = self._run(tmp_path, "1", [], set_status=1)
         assert "status:1 failed:[1]" in result.stdout
-        assert "there is no credentials file on this host" in result.stdout
+        assert "could not be created to save it" in result.stdout
+
+    def test_created_file_is_root_0600(self, tmp_path):
+        """The real common_envSet creates the owner local.env as 0600."""
+        (tmp_path / "indexer").mkdir()
+        env = {"indexer_config_path": str(tmp_path / "indexer"),
+               "manager_config_path": str(tmp_path / "manager"),
+               "dashboard_config_path": str(tmp_path / "dashboard"),
+               "base_path": str(tmp_path / "tools"), "WAZUH_CA_DIR": ""}
+        result = run_bash_function(
+            BASE_SOURCES, 'passwords_saveCredential admin "NewPassword123" 1',
+            {**IGNORE_LOGGER, "chown": "true"}, env)
+        assert_success(result)
+        created = tmp_path / "indexer" / "local.env"
+        assert created.read_text() == "WAZUH_INDEXER_ADMIN_PASSWORD=NewPassword123\n"
+        assert oct(created.stat().st_mode & 0o777) == "0o600"
 
     def test_api_user_uses_the_manager_files(self, tmp_path):
         result = self._run(tmp_path, "1", ["manager/export/credentials.env", "dashboard/local.env"], user="wazuh-internal-client")
@@ -351,6 +379,34 @@ class TestPasswordsSaveCredential:
         result = self._run(tmp_path, "1", ["indexer/export/credentials.env"], set_status=1)
         assert "status:1 failed:[1]" in result.stdout
         assert "was applied, but it could not be saved" in result.stdout
+
+
+class TestPasswordsCheckOwnerDirs:
+    """No password is changed when the owner package has no configuration directory."""
+
+    def _run(self, tmp_path, env):
+        (tmp_path / "indexer").mkdir()
+        env = {"indexer_config_path": str(tmp_path / "indexer"),
+               "manager_config_path": str(tmp_path / "manager"), **env}
+        return run_bash_function(BASE_SOURCES, "passwords_checkOwnerDirs",
+                                 {"common_logger": 'echo "LOG:$*"'}, env)
+
+    def test_success_when_the_owner_dir_exists(self, tmp_path):
+        assert_success(self._run(tmp_path, {"nuser": "admin"}))
+
+    def test_fail_when_the_owner_dir_is_missing(self, tmp_path):
+        result = self._run(tmp_path, {"nuser": "wazuh"})
+        assert_failure(result)
+        assert f"{tmp_path}/manager does not exist" in result.stdout
+        assert "No password was changed." in result.stdout
+
+    def test_change_all_checks_every_user(self, tmp_path):
+        result = self._run(tmp_path, {"users": "(admin kibanaserver)", "api_users": "(wazuh)"})
+        assert_failure(result)
+        assert "user wazuh" in result.stdout
+
+    def test_only_the_selected_user_is_checked(self, tmp_path):
+        assert_success(self._run(tmp_path, {"nuser": "admin", "api_users": "(wazuh)"}))
 
 
 class TestPasswordsGetDeploymentFile:

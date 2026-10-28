@@ -53,8 +53,10 @@ wazuh_dashboard_port="${http_port}"
 # `lsof` and `openssl` are installed separately
 wia_yum_dependencies=( systemd grep tar coreutils sed procps-ng gawk curl )
 readonly wia_apt_dependencies=( systemd grep tar coreutils sed procps gawk curl )
-# What each package requires, including what its credentials resolver uses. The offline
-# installation only checks these lists, and the assistant never removes a package in them.
+# What the assistant installs for each component: what the package and its credentials
+# resolver use, plus what the assistant itself uses, so a list can hold more than the
+# package declares. The offline installation only checks these lists, and the assistant
+# never removes a package in them.
 # diffutils is also needed before the install: the tar files are placed with cmp.
 readonly wazuh_yum_dependencies=( diffutils findutils gawk grep hostname iproute openssl sed util-linux )
 readonly wazuh_apt_dependencies=( gnupg curl openssl iproute2 hostname util-linux diffutils )
