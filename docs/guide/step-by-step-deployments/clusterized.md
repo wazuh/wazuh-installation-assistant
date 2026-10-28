@@ -525,7 +525,7 @@ install -m 0640 wazuh-certificates/$NODE_NAME-apid-key.pem /etc/wazuh-manager/ce
 rm -rf wazuh-certificates
 ```
 
-The root CA of the deployment is also the CA that signed the Wazuh indexer certificates, so it is placed as `indexer-ca.pem` too. The package uses these files instead of issuing its own, and gives the `remoted` and `apid` pairs their owner. `remoted.pem` is served to the agents by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515. `apid.pem` is served by the Server API on port 55000.
+The root CA of the deployment is also the CA that signed the Wazuh indexer certificates, so it is placed as `indexer-ca.pem` too. The package uses these files instead of issuing its own, and gives the `remoted` and `apid` pairs their owner. `remoted.pem` is served to the agents by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, the legacy enrollment port. `apid.pem` is served by the Server API on port 55000.
 
 Do not install the package before placing the certificates and `local.env`: without the certificates, the package creates its own root CA and a `remoted.pem` with the addresses of the host, without the ones passed with `-as|--agent-san`. An agent enrollment token for those addresses then fails with `ERROR 9025`, and placing the certificates afterwards makes the Wazuh manager fail to start with `INVALID ... not issued by the manager's CA`.
 
@@ -955,6 +955,8 @@ sudo systemctl enable --now wazuh-agent
 To check the enrollment, look for `Token bootstrap: enrollment succeeded` in `/var/ossec/logs/ossec.log` on the endpoint. The agent then shows as `active` in the Wazuh server API (`GET /agents`) and in the Wazuh dashboard.
 
 See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
+
+The agents connect to the Wazuh manager nodes on port 1517. Every Wazuh manager node also listens on ports 1514 and 1515 for Wazuh 4.x agents. To close them when no Wazuh agent runs 4.x, see [Close the legacy ports 1514 and 1515](../security.md#close-the-legacy-ports-1514-and-1515).
 
 ## Removing the credentials files
 

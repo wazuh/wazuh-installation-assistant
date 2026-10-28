@@ -2,7 +2,7 @@
 Unit tests for install_functions/manager.sh
 
 Covers: manager_install, manager_startCluster, manager_configure, manager_copyCertificates,
-        manager_setRemotedSans, manager_setApidSans
+        manager_setRemotedSans, manager_setApidSans, manager_setApiLoopback
 """
 
 import pytest
@@ -322,3 +322,64 @@ class TestManagerSetApidSans:
         assert_success(result)
         assert env == "WAZUH_MANAGER_APID_CERT_SANS=IP:203.0.113.7,DNS:api.example.com,IP:10.0.0.5,DNS:host.example.com\n"
         assert "REMOTED" not in env
+
+
+class TestManagerSetApiLoopback:
+    """Tests for manager_setApiLoopback: on an all-in-one the Server API listens on loopback only, unless -ap|--api-san is given."""
+
+    PACKAGE_API_YAML = (
+        "# USE THIS FILE AS A TEMPLATE. UNCOMMENT LINES TO APPLY CUSTOM CONFIGURATION\n"
+        "\n"
+        "# host: ['0.0.0.0', '::']\n"
+        "# port: 55000\n"
+        "\n"
+        "# https:\n"
+        "#  enabled: yes\n"
+    )
+
+    def _run(self, api_conf, api_san=()):
+        return run_bash_function(
+            BASE_SOURCES,
+            "manager_setApiLoopback",
+            {"common_logger": 'echo "LOG $*"'},
+            {"api_san": f"({' '.join(api_san)})", "manager_api_conf_file": str(api_conf), "debug": ""},
+        )
+
+    def test_success_sets_loopback_in_package_template(self, tmp_path):
+        api_conf = tmp_path / "api.yaml"
+        api_conf.write_text(self.PACKAGE_API_YAML)
+        result = self._run(api_conf)
+        assert_success(result)
+        assert api_conf.read_text() == self.PACKAGE_API_YAML.replace(
+            "# host: ['0.0.0.0', '::']", "host: ['127.0.0.1', '::1']"
+        )
+        assert "LOG -w" not in result.stdout
+
+    def test_success_replaces_an_uncommented_host(self, tmp_path):
+        api_conf = tmp_path / "api.yaml"
+        api_conf.write_text("host: ['0.0.0.0', '::']\nport: 55000\n")
+        result = self._run(api_conf)
+        assert_success(result)
+        assert api_conf.read_text() == "host: ['127.0.0.1', '::1']\nport: 55000\n"
+
+    def test_success_warns_when_host_option_is_missing(self, tmp_path):
+        api_conf = tmp_path / "api.yaml"
+        api_conf.write_text("# port: 55000\n")
+        result = self._run(api_conf)
+        assert_success(result)
+        assert api_conf.read_text() == "# port: 55000\n"
+        assert "LOG -w Could not set the host option" in result.stdout
+
+    def test_success_warns_when_file_is_missing(self, tmp_path):
+        result = self._run(tmp_path / "missing.yaml")
+        assert_success(result)
+        assert "LOG -w Could not set the host option" in result.stdout
+
+    def test_success_keeps_package_default_with_api_san(self, tmp_path):
+        api_conf = tmp_path / "api.yaml"
+        api_conf.write_text(self.PACKAGE_API_YAML)
+        result = self._run(api_conf, ["api.example.com"])
+        assert_success(result)
+        assert api_conf.read_text() == self.PACKAGE_API_YAML
+        assert "LOG -d Server API addresses given with -ap|--api-san" in result.stdout
+        assert "LOG -w" not in result.stdout

@@ -19,7 +19,7 @@ The installation bundle (`wazuh-install-files.tar`) is created once with `wazuh-
 - The `config.yml` the bundle was generated from
 - When `config.yml` has more than one Wazuh Manager node, the cluster key (`clusterkey`)
 
-The Wazuh manager package creates its own CA and issues its certificates when it is installed without them, as in an all-in-one installation. In a distributed deployment the node receives them in the bundle instead, and the Wazuh manager does not start until `remoted.pem` and `remoted-key.pem` are present in `/etc/wazuh-manager/certs`. That pair is served by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, so agents can verify the manager they dial by pinning `root-ca.pem`. `<node>-remoted.pem` is a chain: the leaf followed by the root CA, and its `notBefore` is backdated one day so an agent whose clock lags does not reject a freshly issued certificate. The daemons open the listener pair, like the indexer connector files (`indexer-ca.pem`, `indexer-connector.pem` and its key), after dropping privileges, so they read it through the `wazuh-manager` group: every PEM in `certs/` is owned by `root:wazuh-manager` with mode `640`. The Wazuh manager refuses to start when a certificate is owned by another user, such as `wazuh-manager`. The Server API pair, `apid.pem` and `apid-key.pem`, has the same profile, owner and mode, and is served by `wazuh-manager-apid` on port 55000. The Wazuh manager does not self-sign it: when the pair is missing, the Wazuh manager does not start.
+The Wazuh manager package creates its own CA and issues its certificates when it is installed without them, as in an all-in-one installation. In a distributed deployment the node receives them in the bundle instead, and the Wazuh manager does not start until `remoted.pem` and `remoted-key.pem` are present in `/etc/wazuh-manager/certs`. That pair is served by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, the legacy enrollment port, so agents can verify the manager they dial by pinning `root-ca.pem`. `<node>-remoted.pem` is a chain: the leaf followed by the root CA, and its `notBefore` is backdated one day so an agent whose clock lags does not reject a freshly issued certificate. The daemons open the listener pair, like the indexer connector files (`indexer-ca.pem`, `indexer-connector.pem` and its key), after dropping privileges, so they read it through the `wazuh-manager` group: every PEM in `certs/` is owned by `root:wazuh-manager` with mode `640`. The Wazuh manager refuses to start when a certificate is owned by another user, such as `wazuh-manager`. The Server API pair, `apid.pem` and `apid-key.pem`, has the same profile, owner and mode, and is served by `wazuh-manager-apid` on port 55000. The Wazuh manager does not self-sign it: when the pair is missing, the Wazuh manager does not start.
 
 The root CA private key (`root-ca.key`) is not in the bundle: it stays in the `wazuh-ca` directory of the node where the bundle was generated. This directory is next to `wazuh-install-5.0.0.sh`, or in the directory set in the `WAZUH_CA_DIR` environment variable. It also keeps the passwords (`credentials.env`), so running `--generate-config-files` again reuses the same CA and passwords to add Wazuh indexer or Wazuh dashboard nodes. It also generates a new cluster key, so do not use it to add Wazuh manager nodes: see [Add a Wazuh manager node to an existing deployment](../ref/getting-started/usage.md#add-a-wazuh-manager-node-to-an-existing-deployment). Anyone holding the key can issue a certificate with `CN=admin`, which the Wazuh indexer accepts as its superuser without a password, and a certificate issued that way cannot be revoked. Keeping it on one node, instead of on every node, limits that exposure to a single host. Back up the `wazuh-ca` directory of that node in a safe place: the key is only needed to add nodes or renew certificates with `wazuh-certs-tool-5.0.0.sh`.
 
@@ -80,6 +80,80 @@ A deployment installed step by step does not need the Wazuh installation assista
 - **The nodes that use the changed password** keep the previous one in their keystores until you update them and restart the service:
   - After changing `wazuh-manager`, on every Wazuh manager node, as described in [Update the Wazuh manager nodes](../ref/getting-started/usage.md#update-the-wazuh-manager-nodes).
   - After changing `kibanaserver` or `wazuh-internal-client`, on every Wazuh dashboard node (keystore entries `opensearch.password` and `wazuh_core.hosts.default.password`), as described in [Update the Wazuh dashboard nodes](../ref/getting-started/usage.md#update-the-wazuh-dashboard-nodes).
+
+## Network exposure
+
+The Wazuh installation assistant keeps the network settings of the Wazuh manager as the package sets them, with two exceptions:
+
+- On an all-in-one installation without `-ap|--api-san`, the Wazuh server API listens only on the local host.
+- In a cluster of more than one Wazuh manager node, the cluster port 1516 listens on all IPv4 interfaces, so the nodes can reach each other. The package sets it to `127.0.0.1`.
+
+After the installation, the Wazuh manager listens on these ports:
+
+| Port | Service | Listens on | Used by |
+| ---- | ------- | ---------- | ------- |
+| 1517/tcp | Agent enrollment and connection (HTTPS) | All IPv4 interfaces (`0.0.0.0`) | Wazuh 5.x agents |
+| 1514/tcp | Legacy agent connection | All IPv4 interfaces (`0.0.0.0`) | Wazuh 4.x agents |
+| 1515/tcp | Legacy agent enrollment | All IPv4 interfaces (`0.0.0.0`) | Wazuh 4.x agents |
+| 1516/tcp | Wazuh manager cluster | `127.0.0.1`. In a cluster of more than one Wazuh manager node, all IPv4 interfaces (`0.0.0.0`) | Other Wazuh manager nodes |
+| 55000/tcp | Wazuh server API | All IPv4 and IPv6 interfaces (`0.0.0.0` and `::`). On an all-in-one installation without `-ap\|--api-san`, only `127.0.0.1` and `::1` | Wazuh dashboard, and any tool that calls the API |
+
+If your deployment does not need some of them, you can close them as described below. The full list of ports is in [Required ports](../ref/getting-started/requirements.md#required-ports).
+
+### Close the legacy ports 1514 and 1515
+
+The Wazuh manager package enables the legacy listener (`<remote><legacy><enabled>yes</enabled>`) so Wazuh 4.x agents can connect, enroll and be upgraded remotely. Wazuh 5.x agents only use port 1517. Keep the legacy listener while any Wazuh agent still runs 4.x. When none does, disable it on every Wazuh manager node:
+
+1. In `/etc/wazuh-manager/wazuh-manager.conf`, set `enabled` to `no` in the `legacy` block of `remote`:
+
+    ```xml
+    <legacy>
+      <enabled>no</enabled>
+      ...
+    </legacy>
+    ```
+
+2. Restart the Wazuh manager:
+
+    ```bash
+    sudo systemctl restart wazuh-manager
+    ```
+
+    Port 1515 closes with port 1514, unless `<auth><legacy_enrollment>` is set to `yes` in the same file.
+
+3. Check that only port 1517 is open. `/var/wazuh-manager/logs/wazuh-manager.log` shows `Legacy listener disabled (remote.legacy.enabled is false)`.
+
+    ```bash
+    sudo ss -tlnp | grep -E ':(1514|1515|1517)\b'
+    ```
+
+Then close ports 1514 and 1515 in the firewall. See [Retiring the legacy channel](https://github.com/wazuh/wazuh/blob/5.0.0/docs/guide/migration/agent-manager-protocol.md#retiring-the-legacy-channel).
+
+### The Wazuh server API on an all-in-one installation
+
+The Wazuh manager package makes the Wazuh server API listen on port 55000 of all network interfaces (`0.0.0.0` and `::`). On an all-in-one installation, its only client is the Wazuh dashboard on the same host, which reaches it at `https://localhost:55000` (`wazuh_core.hosts` in `/etc/wazuh-dashboard/opensearch_dashboards.yml`). So the Wazuh installation assistant makes it listen only on the local host, as it does with the Wazuh indexer. It replaces the commented line `# host: ['0.0.0.0', '::']` of `/var/wazuh-manager/api/configuration/api.yaml` with:
+
+```yaml
+host: ['127.0.0.1', '::1']
+```
+
+Other hosts cannot reach the API, so scripts and integrations that call it must run on this host. To check it, run:
+
+```bash
+sudo ss -tlnp | grep ':55000'
+```
+
+If other hosts must call the API, pass `-ap|--api-san` with the address they use when you install the all-in-one. The assistant adds it to the certificate of the API and leaves `api.yaml` as the package ships it, so the API listens on all network interfaces. See [Name the address API clients dial](../ref/getting-started/usage.md#name-the-address-api-clients-dial).
+
+To reach the API from other hosts after the installation, comment out the `host` line again, which restores the default of the package, or set it to the addresses the API must listen on. Then restart the Wazuh manager:
+
+```bash
+sudo systemctl restart wazuh-manager
+```
+
+Open port 55000 in the firewall only to the hosts that need it. If they reach the API at an address the certificate does not name, see [Name the address API clients dial](../ref/getting-started/usage.md#name-the-address-api-clients-dial).
+
+In a distributed deployment, the Wazuh server API keeps the default of the package, because the Wazuh dashboard reaches the master node from another host. The Wazuh manager package keeps `api.yaml` when it is upgraded. See the [`host` option](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/server-api/configuration.md#host) of the Wazuh server API.
 
 ## Least privilege
 
