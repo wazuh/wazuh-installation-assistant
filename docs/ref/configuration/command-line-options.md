@@ -74,9 +74,9 @@ A new password is saved in every credential file on the host that holds that use
 - The `local.env` file of each package that uses the password: `/etc/wazuh-indexer/local.env`, `/etc/wazuh-manager/local.env` and `/etc/wazuh-dashboard/local.env`.
 - The `credentials.env` file that `--generate-config-files` keeps next to the root CA: `wazuh-ca/credentials.env` next to the tool, or in `WAZUH_CA_DIR`.
 
-The tool only updates the files that already hold the key. If there is none, a generated password is an error, and a password given with `-p` is not saved.
+The tool updates the files that already hold the key. If there is none, it creates the `local.env` file of the package that owns the user, `root:root` `0600`, and saves the password there: `/etc/wazuh-indexer/local.env` for the indexer users, and `/etc/wazuh-manager/local.env` for the API users. The tool never writes in `export/`, which only the package writes. If the configuration directory of the owner does not exist, the tool stops before changing any password.
 
-> **warning**: That error comes after the new password has been applied in the Wazuh indexer or the Server API: `The new password of user <user> was applied, but there is no credentials file on this host to save it.` The generated password is not shown anywhere, so run the tool again for that user with `-p` and a password you know. Run it with `-p` from the start on a host with no credential file.
+If the credential files or the whole `export/` directory were deleted, run the tool with `-a|--change-all`. The packages publish `export/credentials.env` only once, when they are installed, and do not write it again on a restart, so `-u` only records the password of that user: `-a` rotates every password and saves all of them in the `local.env` files it creates.
 
 ### The address agents dial
 

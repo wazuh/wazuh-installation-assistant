@@ -464,7 +464,7 @@ class TestCertCheckRootCA:
 
 
 class TestCertRejectCAPaths:
-    """The options no longer take root CA files: the CA directory is used."""
+    """The options take no argument: nodes come from config.yml, the root CA from its directory."""
 
     def _run(self, value):
         return run_bash_function(
@@ -476,8 +476,14 @@ class TestCertRejectCAPaths:
     def test_fail_with_a_path(self):
         result = self._run("/root/root-ca.pem")
         assert_failure(result)
-        assert "does not take root CA files anymore" in result.stdout
+        assert "takes no argument, got '/root/root-ca.pem'" in result.stdout
         assert "WAZUH_CA_DIR" in result.stdout
+
+    def test_fail_with_a_node_name(self):
+        result = self._run("manager-1")
+        assert_failure(result)
+        assert "takes no argument, got 'manager-1'" in result.stdout
+        assert "every node of config.yml" in result.stdout
 
     def test_success_with_the_next_option(self):
         assert_success(self._run("-v"))
