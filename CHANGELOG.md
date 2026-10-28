@@ -114,7 +114,7 @@
 
 | Issue | Comment |
 | - | - |
-| [#1165](https://github.com/wazuh/wazuh-installation-assistant/issues/1165) | Align the requirements page, the all-in-one guides and the glossary with the minimum hardware the installation assistant checks and the CA file the dashboard publishes for sharing |
+| [#1165](https://github.com/wazuh/wazuh-installation-assistant/issues/1165) | Align the requirements page, the all-in-one guides and the glossary with the minimum hardware the installation assistant checks and the CA file the dashboard publishes for sharing, and give the disk space of an all-in-one installation instead of the 4.x figures per agent |
 | [#1171](https://github.com/wazuh/wazuh-installation-assistant/issues/1171) | Verify the post-install checks of the guides, and the checks of the upgrade guide, with `curl --cacert` and the CA certificate each package publishes in `export/` or keeps in `certs/`, instead of turning TLS verification off with `curl -k` |
 | [#1172](https://github.com/wazuh/wazuh-installation-assistant/issues/1172) | `-h\|--help` of the installation assistant, wazuh-certs-tool and wazuh-passwords-tool exits with 0; the help of `-d` no longer names a versioned script; the apt and yum output keeps its line breaks in the log |
 | [#1164](https://github.com/wazuh/wazuh-installation-assistant/issues/1164) | Stop requiring `apt-transport-https`, an empty transitional package on Ubuntu 26.04, and report missing packages as an error. Running a command that does not need root, such as `-V`, as a regular user no longer tries to write the log file |
