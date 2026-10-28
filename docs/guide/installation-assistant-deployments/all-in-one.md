@@ -27,6 +27,10 @@
    INFO:     To read the password again, run:
    INFO:         sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-
    INFO: The passwords of the other users are in /etc/wazuh-indexer/export/credentials.env and /etc/wazuh-manager/export/credentials.env.
+   INFO: --- Next steps ---
+   INFO: To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on this server:
+   INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>
+   INFO: For more information, see https://documentation.wazuh.com/5.0/installation-guide/wazuh-agent/index.html
    INFO: Installation finished.
    ```
 

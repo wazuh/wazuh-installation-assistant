@@ -252,6 +252,9 @@ function main() {
 # -------------- Uninstall case  ------------------------------------
 
     common_checkSystem
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+        common_logger "Checking for an existing Wazuh installation."
+    fi
     common_checkInstalled
     checks_arguments
     cert_validateAgentSan

@@ -154,6 +154,14 @@ function dashboard_initialize() {
     common_logger "        ${password_command}"
     common_logger "The passwords of the other users are in ${credentials_file}."
 
+    # Agents enroll only with a token, created on the manager master node.
+    local token_node="this server"
+    [ -z "${AIO}" ] && token_node="the Wazuh manager (the master node in a cluster)"
+    common_logger "--- Next steps ---"
+    common_logger "To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on ${token_node}:"
+    common_logger "    sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>"
+    common_logger "For more information, see https://documentation.wazuh.com/${wazuh_version%.*}/installation-guide/wazuh-agent/index.html"
+
 }
 
 function dashboard_stdoutIsTerminal() {
