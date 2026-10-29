@@ -806,6 +806,7 @@ jobs:
           INSTALL_MODE: ${{ needs.build_tools.outputs.install_mode }}
           OS: ${{ matrix.system }}
           RUN_OUTCOME: ${{ steps.run_tests.outcome }}
+          UNINSTALL_OUTCOME: ${{ steps.run_tests_uninstall.outcome }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -813,11 +814,12 @@ jobs:
             const tool = process.env.TOOL;
             const mode = process.env.INSTALL_MODE;
             const os = process.env.OS;
-            const outcome = process.env.RUN_OUTCOME;
+            const passed = process.env.RUN_OUTCOME === 'success'
+              && process.env.UNINSTALL_OUTCOME !== 'failure';
             const marker = `<!-- integration-check-${tool}-${mode}-${os} -->`;
 
             let body = `${marker}\n## 🧪 Integration Tests — \`${tool}\` [\`${mode}\`] on \`${os}\`\n\n`;
-            body += outcome === 'success'
+            body += passed
               ? '✅ **All tests passed!**\n\n'
               : '❌ **Some tests failed**\n\n';
 
