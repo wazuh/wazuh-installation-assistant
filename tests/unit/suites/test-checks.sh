@@ -750,7 +750,7 @@ test-75-check_dist-centos-stream-10-rejected() {
 
 test-76-check_dist-ubuntu-accepted-versions() {
     load-check_dist
-    for version in 16 18 20 22 24; do
+    for version in 16 18 20 22 24 26; do
         assert-check_dist supported ubuntu "${version}" 04
     done
 }
@@ -760,9 +760,9 @@ test-77-check_dist-ubuntu-24.10-rejected() {
     assert-check_dist 1 ubuntu 24 10
 }
 
-test-78-check_dist-ubuntu-26.04-rejected() {
+test-78-check_dist-ubuntu-26.10-rejected() {
     load-check_dist
-    assert-check_dist 1 ubuntu 26 04
+    assert-check_dist 1 ubuntu 26 10
 }
 
 test-79-check_dist-amzn-2-accepted() {
@@ -822,7 +822,7 @@ test-86-check_dist-unsupported-system-prints-recommended-systems() {
 
 test-86-check_dist-unsupported-system-prints-recommended-systems-assert() {
     @out "-d Checking system distribution."
-    @out "The recommended systems are: Red Hat Enterprise Linux 7, 8, 9, 10; CentOS 7, 8; Amazon Linux 2; Amazon Linux 2023; Ubuntu 16.04, 18.04, 20.04, 22.04, 24.04; Rocky Linux 9.4."
+    @out "The recommended systems are: Red Hat Enterprise Linux 7, 8, 9, 10; CentOS 7, 8; Amazon Linux 2; Amazon Linux 2023; Ubuntu 16.04, 18.04, 20.04, 22.04, 24.04, 26.04; Rocky Linux 9.4."
     @out "-w The current system does not match with the list of recommended systems. The installation may not work properly."
     @out "-d Detected distribution name: centos"
     @out "-d Detected distribution version: 10"
