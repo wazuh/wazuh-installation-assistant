@@ -70,7 +70,6 @@
 | [#855](https://github.com/wazuh/wazuh-installation-assistant/issues/855) | Minor change in step-by-step AIO documentation |
 | [#835](https://github.com/wazuh/wazuh-installation-assistant/issues/835) | E2E documentation error found |
 | [#829](https://github.com/wazuh/wazuh-installation-assistant/issues/829) | Change run_as: false default reference to run_as: true |
-| [#793](https://github.com/wazuh/wazuh-installation-assistant/issues/793) | Recommended systems in the installation assistant differ from the compatibility matrix. |
 | [#792](https://github.com/wazuh/wazuh-installation-assistant/issues/792) | Delete Vulnerability Detection configuration log from the installation assistant |
 | [#776](https://github.com/wazuh/wazuh-installation-assistant/issues/776) | wazuh-certs-tool script referenced but never used on Clusterized installations. |
 | [#757](https://github.com/wazuh/wazuh-installation-assistant/issues/757) | Update step-by-step installation documentation. |
@@ -81,7 +80,6 @@
 | [#673](https://github.com/wazuh/wazuh-installation-assistant/issues/673) | Ensure correct Wazuh manager certificates ownership |
 | [#668](https://github.com/wazuh/wazuh-installation-assistant/issues/668) | Standarize Artifact URL keys. |
 | [#663](https://github.com/wazuh/wazuh-installation-assistant/issues/663) | unneeded verification of package sudo in wazuh-password-tool.sh. |
-| [#602](https://github.com/wazuh/wazuh-installation-assistant/issues/602) | Missing documentation in the wazuh-installation-assistant repository |
 | [#656](https://github.com/wazuh/wazuh-installation-assistant/issues/656) | Review and update the passwords tool's naming conventions. |
 | [#655](https://github.com/wazuh/wazuh-installation-assistant/pull/655) | Installation assistant update pre release and prod artifact urls file paths bucket and naming. |
 | [#650](https://github.com/wazuh/wazuh-installation-assistant/pull/650) | Updated wazuh-installation-assistant documentation config and tooling versions to meet new standards. |
