@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Accept Red Hat Enterprise Linux 10 and Ubuntu 26.04 in the recommended systems check and list Ubuntu 24.04 and 26.04 in its message ([#1150](https://github.com/wazuh/wazuh-installation-assistant/issues/1150))
+- Parse the Wazuh API JSON responses of the passwords tool with the Wazuh manager's Python interpreter instead of `grep` ([#1189](https://github.com/wazuh/wazuh-installation-assistant/issues/1189))
 
 ### Fixed
 
@@ -31,6 +32,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Check the Wazuh API response when changing an API user password and stop on a refused change ([#1154](https://github.com/wazuh/wazuh-installation-assistant/issues/1154))
 - Use each server node's own certificate in `ossec.conf` instead of the first node's ([#1063](https://github.com/wazuh/wazuh-installation-assistant/pull/1063))
 
 ### Deleted
