@@ -6,18 +6,18 @@
 | - | - |
 | [#1169](https://github.com/wazuh/wazuh-installation-assistant/issues/1169) | Test the all-in-one installation on a RHEL host with firewalld enabled, with an agent on another host that enrolls once the documented ports are opened, and remove the integration test step that disabled the host firewall, which had no firewall to disable |
 | [#1177](https://github.com/wazuh/wazuh-installation-assistant/issues/1177) | Add a `Next steps` part to the installation summary that explains how to enroll agents with a token and links to the agent installation guide |
-| [#6790](https://github.com/wazuh/internal-devel-requests/issues/6790) | Check that every Wazuh package is signed with the Wazuh key, whose fingerprint is pinned, before installing it; include the key in the offline bundle, refuse `http://` artifact URLs, and add `--skip-signature-check` for unsigned development packages |
+| [#1116](https://github.com/wazuh/wazuh-installation-assistant/pull/1116) | Check that every Wazuh package is signed with the Wazuh key, whose fingerprint is pinned, before installing it; include the key in the offline bundle, refuse `http://` artifact URLs, and add `--skip-signature-check` for unsigned development packages |
 | [#1121](https://github.com/wazuh/wazuh-installation-assistant/issues/1121) | Issue the Server API certificate (`apid.pem`) from root-ca in wazuh-certs-tool, deploy it, and add the `-ap\|--api-san` option |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Publish the shared `wazuh-credentials.sh` library used by the component packages as a build artifact |
 | [#1027](https://github.com/wazuh/wazuh-installation-assistant/issues/1027) | Complete the agent listener certificate: SAN coverage, ip lists, public addresses, and a load balancer leaf |
 | [#1009](https://github.com/wazuh/wazuh-installation-assistant/issues/1009) | Issue the agent listener certificate from root-ca in wazuh-certs-tool and deploy it |
 | [#996](https://github.com/wazuh/wazuh-installation-assistant/issues/996) | Restore the -a\|--change-all option in wazuh-passwords-tool.sh to rotate all Wazuh indexer and Wazuh API passwords in one execution. |
-| [#862](https://github.com/wazuh/wazuh-installation-assistant/pull/862) | Added bump-issue-link input in the 5.x bumper workflow. |
+| [#861](https://github.com/wazuh/wazuh-installation-assistant/issues/861) | Added bump-issue-link input in the 5.x bumper workflow. |
 | [#894](https://github.com/wazuh/wazuh-installation-assistant/pull/894) | Add integration test module docs |
 | [#843](https://github.com/wazuh/wazuh-installation-assistant/issues/843) | The passwords tool corrupts the admin hash |
-| [#805](https://github.com/wazuh/wazuh-installation-assistant/issues/805) | Add open and reopened types for pull requests trigger in check_unit_tests workflow |
+| [#805](https://github.com/wazuh/wazuh-installation-assistant/pull/805) | Add open and reopened types for pull requests trigger in check_unit_tests workflow |
 | [#785](https://github.com/wazuh/wazuh-installation-assistant/issues/785) | Dashboard connection error messages with the API. |
-| [#784](https://github.com/wazuh/wazuh-installation-assistant/issues/784) | Added support for pre-release installation in documentation |
+| [#784](https://github.com/wazuh/wazuh-installation-assistant/pull/784) | Added support for pre-release installation in documentation |
 | [#710](https://github.com/wazuh/wazuh-installation-assistant/issues/710) | Add repository installation documentation |
 | [#778](https://github.com/wazuh/wazuh-installation-assistant/issues/778) | Inconsistency in Amazon Linux 2023 dependencies in the assistant |
 | [#713](https://github.com/wazuh/wazuh-installation-assistant/issues/713) | Support Revert bump functionality in wazuh-installation-assistant |
@@ -45,10 +45,10 @@
 | [#1168](https://github.com/wazuh/wazuh-installation-assistant/issues/1168) | Log one line per package whose signature was verified, with the fingerprint of the Wazuh key, log the check for an existing installation as INFO, and detect the installed DEB packages with `dpkg-query` instead of `apt list --installed` |
 | [#1139](https://github.com/wazuh/wazuh-installation-assistant/issues/1139) | Adapt to the 5.0.0 RC 2 per-package credentials: write each package `local.env`, CA and certificates under `/etc/<package>` instead of `/etc/wazuh`, keep the `-g` root CA and passwords in `wazuh-ca/`, read passwords from the package `export/` files, move the manager configuration to `/etc/wazuh-manager`, and print the package credential problems when a service does not start |
 | [#1144](https://github.com/wazuh/wazuh-installation-assistant/issues/1144) | Print the admin password at the end of an all-in-one install when the output is an interactive terminal, keeping it out of the install log and of redirected output |
-| [#3870](https://github.com/wazuh/wazuh-automation/issues/3870) | Adapt the integration tests to install-time credentials: agent listener address in the distributed flow, no install files in the offline flow, password generated without -p, expected version of the branch, and fail the job when a test fails |
+| [#1128](https://github.com/wazuh/wazuh-installation-assistant/pull/1128) | Adapt the integration tests to install-time credentials: agent listener address in the distributed flow, no install files in the offline flow, password generated without -p, expected version of the branch, and fail the job when a test fails |
 | [#1112](https://github.com/wazuh/wazuh-installation-assistant/issues/1112) | Keep the log of every run in `/var/log/wazuh-install.log`: each run appends to it with a header line (date, assistant version and options) instead of emptying it |
 | [#1105](https://github.com/wazuh/wazuh-installation-assistant/issues/1105) | Rename the Wazuh server API user `wazuh-wui` to `wazuh-internal-client`. The `WAZUH_MANAGER_WUI_PASSWORD` key keeps its name |
-| [#1110](https://github.com/wazuh/wazuh-installation-assistant/issues/1110) | Start the OVA and AMI integration tests from PR labels |
+| [#1110](https://github.com/wazuh/wazuh-installation-assistant/pull/1110) | Start the OVA and AMI integration tests from PR labels |
 | [#1092](https://github.com/wazuh/wazuh-installation-assistant/issues/1092) | Say how to share the CA when the credentials library creates a new one |
 | [#1093](https://github.com/wazuh/wazuh-installation-assistant/issues/1093) | Print the real dashboard addresses and the exact command that reads the admin password in the install summary, and log it |
 | [#1091](https://github.com/wazuh/wazuh-installation-assistant/issues/1091) | Write credentials.env values unquoted when they need no quoting, and describe the user of each key in its header |
@@ -60,39 +60,38 @@
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Let the component packages create the credentials in wazuh-install.sh: the all-in-one installation no longer creates certificates or passwords, and in a distributed installation -g generates the passwords and the certificates and each node places them before its package is installed |
 | [#1025](https://github.com/wazuh/wazuh-installation-assistant/issues/1025) | Restrict the passwords the shared credentials library generates and accepts to `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with at least one uppercase letter, one lowercase letter, one digit and one symbol |
 | [#970](https://github.com/wazuh/wazuh-installation-assistant/issues/970) | Deploy manager indexer certificates as root:wazuh-manager |
-| [#972](https://github.com/wazuh/wazuh-installation-assistant/issues/972) | Change Codebuild runners to Github runners |
-| [#909](https://github.com/wazuh/wazuh-installation-assistant/issues/909) | Change upload and download methods |
+| [#972](https://github.com/wazuh/wazuh-installation-assistant/pull/972) | Change Codebuild runners to Github runners |
+| [#909](https://github.com/wazuh/wazuh-installation-assistant/pull/909) | Change upload and download methods |
 | [#928](https://github.com/wazuh/wazuh-installation-assistant/issues/928) | Update deployment for Wazuh Indexer 5.0.0 RBAC. |
-| [#917](https://github.com/wazuh/wazuh-installation-assistant/pull/917) | The Wazuh indexer heap size was modified for the AIO installation. |
+| [#915](https://github.com/wazuh/wazuh-installation-assistant/issues/915) | The Wazuh indexer heap size was modified for the AIO installation. |
 | [#930](https://github.com/wazuh/wazuh-installation-assistant/pull/930) | Add new WF for changelog check |
-| [#885](https://github.com/wazuh/wazuh-installation-assistant/issues/885) | PR Revamp 5.0.0 |
-| [#876](https://github.com/wazuh/wazuh-installation-assistant/issues/876) | Migrate GH runner to codebuild |
+| [#885](https://github.com/wazuh/wazuh-installation-assistant/pull/885) | PR Revamp 5.0.0 |
+| [#876](https://github.com/wazuh/wazuh-installation-assistant/pull/876) | Migrate GH runner to codebuild |
 | [#855](https://github.com/wazuh/wazuh-installation-assistant/issues/855) | Minor change in step-by-step AIO documentation |
 | [#835](https://github.com/wazuh/wazuh-installation-assistant/issues/835) | E2E documentation error found |
 | [#829](https://github.com/wazuh/wazuh-installation-assistant/issues/829) | Change run_as: false default reference to run_as: true |
-| [#793](https://github.com/wazuh/wazuh-installation-assistant/issues/793) | Recommended systems in the installation assistant differ from the compatibility matrix. |
 | [#792](https://github.com/wazuh/wazuh-installation-assistant/issues/792) | Delete Vulnerability Detection configuration log from the installation assistant |
 | [#776](https://github.com/wazuh/wazuh-installation-assistant/issues/776) | wazuh-certs-tool script referenced but never used on Clusterized installations. |
 | [#757](https://github.com/wazuh/wazuh-installation-assistant/issues/757) | Update step-by-step installation documentation. |
 | [#720](https://github.com/wazuh/wazuh-installation-assistant/issues/720) | Change the destination path of the artifact_urls file in wazuh-installation-assistant. |
 | [#694](https://github.com/wazuh/wazuh-installation-assistant/issues/694) | Improve the usage example for DNS or IP in config.yml |
 | [#649](https://github.com/wazuh/wazuh-installation-assistant/issues/649) | Adapt the config.yml component names to match the default certificate names. |
-| [#678](https://github.com/wazuh/wazuh-installation-assistant/issues/678) | Updated GitHub actions version for wazuh-installation-assistant main workflows. |
+| [#678](https://github.com/wazuh/wazuh-installation-assistant/pull/678) | Updated GitHub actions version for wazuh-installation-assistant main workflows. |
 | [#673](https://github.com/wazuh/wazuh-installation-assistant/issues/673) | Ensure correct Wazuh manager certificates ownership |
 | [#668](https://github.com/wazuh/wazuh-installation-assistant/issues/668) | Standarize Artifact URL keys. |
 | [#663](https://github.com/wazuh/wazuh-installation-assistant/issues/663) | unneeded verification of package sudo in wazuh-password-tool.sh. |
-| [#602](https://github.com/wazuh/wazuh-installation-assistant/issues/602) | Missing documentation in the wazuh-installation-assistant repository |
 | [#656](https://github.com/wazuh/wazuh-installation-assistant/issues/656) | Review and update the passwords tool's naming conventions. |
-| [#655](https://github.com/wazuh/wazuh-installation-assistant/issues/655) | Installation assistant update pre release and prod artifact urls file paths bucket and naming. |
-| [#650](https://github.com/wazuh/wazuh-installation-assistant/issues/650) | Updated wazuh-installation-assistant documentation config and tooling versions to meet new standards. |
-| [#641](https://github.com/wazuh/wazuh-installation-assistant/issues/641) | Update artifact generation jobs to use wz-linux dedicated runner group |
+| [#655](https://github.com/wazuh/wazuh-installation-assistant/pull/655) | Installation assistant update pre release and prod artifact urls file paths bucket and naming. |
+| [#650](https://github.com/wazuh/wazuh-installation-assistant/pull/650) | Updated wazuh-installation-assistant documentation config and tooling versions to meet new standards. |
+| [#641](https://github.com/wazuh/wazuh-installation-assistant/pull/641) | Update artifact generation jobs to use wz-linux dedicated runner group |
 | [#625](https://github.com/wazuh/wazuh-installation-assistant/issues/625) | Wazuh Manager/Agent Separation — Breaking Changes Summary |
 | [#619](https://github.com/wazuh/wazuh-installation-assistant/issues/619) | Verify that the Wazuh installation tools comply with the development naming convention |
 | [#600](https://github.com/wazuh/wazuh-installation-assistant/issues/600) | Change path and artifact names |
 | [#601](https://github.com/wazuh/wazuh-installation-assistant/issues/601) | Change server references to manager |
-| [#562](https://github.com/wazuh/wazuh-installation-assistant/issues/562) | Composite names update |
+| [#562](https://github.com/wazuh/wazuh-installation-assistant/pull/562) | Composite names update |
 | [#519](https://github.com/wazuh/wazuh-installation-assistant/issues/519) | Change component installation to use packages instead of repositories |
 | [#538](https://github.com/wazuh/wazuh-installation-assistant/issues/538) | Change the wazuh.yml references to opensearch_dashboards.yml |
+| [#514](https://github.com/wazuh/wazuh-installation-assistant/issues/514) | Remove Filebeat references from the installation assistant |
 | [#510](https://github.com/wazuh/wazuh-installation-assistant/issues/510) | Remove Filebeat references from the certs tool |
 
 ### Removed
@@ -116,7 +115,7 @@
 
 | Issue | Comment |
 | - | - |
-| [#1192](https://github.com/wazuh/wazuh-installation-assistant/issues/1192) | Fixing integration tests |
+| [#1192](https://github.com/wazuh/wazuh-installation-assistant/pull/1192) | Fixing integration tests |
 | [#1165](https://github.com/wazuh/wazuh-installation-assistant/issues/1165) | Align the requirements page, the all-in-one guides and the glossary with the minimum hardware the installation assistant checks and the CA file the dashboard publishes for sharing, and give the disk space of an all-in-one installation instead of the 4.x figures per agent |
 | [#1171](https://github.com/wazuh/wazuh-installation-assistant/issues/1171) | Verify the post-install checks of the guides, and the checks of the upgrade guide, with `curl --cacert` and the CA certificate each package publishes in `export/` or keeps in `certs/`, instead of turning TLS verification off with `curl -k` |
 | [#1172](https://github.com/wazuh/wazuh-installation-assistant/issues/1172) | `-h\|--help` of the installation assistant, wazuh-certs-tool and wazuh-passwords-tool exits with 0; the help of `-d` no longer names a versioned script; the apt and yum output keeps its line breaks in the log |
@@ -142,17 +141,17 @@
 | [#1068](https://github.com/wazuh/wazuh-installation-assistant/issues/1068) | Fix unclosed code fence and stale build artifact names in the generate-artifacts-manually guide and the glossary |
 | [#1060](https://github.com/wazuh/wazuh-installation-assistant/issues/1060) | Fix broken code blocks in the documentation |
 | [#1086](https://github.com/wazuh/wazuh-installation-assistant/pull/1086) | wazuh-certs-tool.sh and the distributed install no longer use fixed temporary directories in /tmp that another local user can create first |
-| [#6125](https://github.com/wazuh/internal-devel-requests/issues/6125) | wazuh-certs-tool.sh no longer relaxes generated private key permissions to world-readable |
+| [#1026](https://github.com/wazuh/wazuh-installation-assistant/pull/1026) | wazuh-certs-tool.sh no longer relaxes generated private key permissions to world-readable |
 | [#1023](https://github.com/wazuh/wazuh-installation-assistant/issues/1023) | Check the Wazuh manager keystore writes in the passwords tool and the installation assistant, and stop before the new password reaches the Wazuh indexer when a write fails |
 | [#999](https://github.com/wazuh/wazuh-installation-assistant/issues/999) | Write both keystore keys for the wazuh-manager user, guard the manager restart with the service state, restart the services after the new passwords reach the Wazuh indexer, and document the multi-node procedure |
 | [#992](https://github.com/wazuh/wazuh-installation-assistant/issues/992) | Remove test_check_wazuh_manager_monitord, daemon retired in 5.0.0 |
 | [#950](https://github.com/wazuh/wazuh-installation-assistant/issues/950) | Align the passwords tool minimum length with the 12-character Wazuh server API policy |
-| [#976](https://github.com/wazuh/wazuh-installation-assistant/pull/976) | Report skipped bumps in the repository bumper workflow |
-| [#956](https://github.com/wazuh/wazuh-installation-assistant/issues/956) | Fixed changelog check workflow to accept Prior versions entries |
+| [#969](https://github.com/wazuh/wazuh-installation-assistant/issues/969) | Report skipped bumps in the repository bumper workflow |
+| [#956](https://github.com/wazuh/wazuh-installation-assistant/pull/956) | Fixed changelog check workflow to accept Prior versions entries |
 | [#933](https://github.com/wazuh/wazuh-installation-assistant/issues/933) | E2E Documentation issues in Release 5.0.0. |
 | [#924](https://github.com/wazuh/wazuh-installation-assistant/issues/924) | Change minimum hardware requirements |
 | [#925](https://github.com/wazuh/wazuh-installation-assistant/issues/925) | Fix typo |
-| [#922](https://github.com/wazuh/wazuh-installation-assistant/pull/922) | Fix bumper workflow failure when bump produces no changes |
+| [#913](https://github.com/wazuh/wazuh-installation-assistant/issues/913) | Fix bumper workflow failure when bump produces no changes |
 | [#875](https://github.com/wazuh/wazuh-installation-assistant/issues/875) | Bumper script issue when the tag is set to false |
 | [#822](https://github.com/wazuh/wazuh-installation-assistant/issues/822) | Incorrect behavior when using the -d option in the Installation Assistant |
 | [#793](https://github.com/wazuh/wazuh-installation-assistant/issues/793) | Recommended systems in the installation assistant differ from the compatibility matrix |
