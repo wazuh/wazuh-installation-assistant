@@ -87,9 +87,9 @@ function passwords_changePasswordApi() {
     if [ -n "${changeall}" ]; then
         for i in "${!api_passwords[@]}"; do
             if [ -n "${wazuh_installed}" ]; then
-                passwords_getApiUserId "${api_users[i]}"
-                WAZUH_PASS_API='{\"password\":\"'"${api_passwords[i]}"'\"}'
-                common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
+                if ! passwords_changeApiUserPassword "${api_users[i]}" "${api_passwords[i]}"; then
+                    exit 1
+                fi
                 if [ "${api_users[i]}" == "${adminUser}" ]; then
                     sleep 1
                     adminPassword="${api_passwords[i]}"
@@ -105,9 +105,9 @@ function passwords_changePasswordApi() {
         done
     else
         if [ -n "${wazuh_installed}" ]; then
-            passwords_getApiUserId "${nuser}"
-            WAZUH_PASS_API='{\"password\":\"'"${password}"'\"}'
-            common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -o /dev/null --max-time 300 --retry 5 --retry-delay 5 --fail
+            if ! passwords_changeApiUserPassword "${nuser}" "${password}"; then
+                exit 1
+            fi
             if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
                 common_logger -nl $"The password for Wazuh API user ${nuser} is ${password}"
             fi
@@ -116,6 +116,22 @@ function passwords_changePasswordApi() {
                 passwords_changeDashboardApiPassword "${password}"
         fi
     fi
+}
+
+function passwords_changeApiUserPassword() {
+
+    passwords_getApiUserId "${1}"
+    WAZUH_PASS_API='{\"password\":\"'"${2}"'\"}'
+    api_response=$(common_curl -s -k -X PUT -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" -d "$WAZUH_PASS_API" "https://localhost:55000/security/users/${user_id}" -w \"\\n%{http_code}\" --max-time 300 --retry 5 --retry-delay 5)
+    curl_exit_code="$?"
+    api_http_code="${api_response##*$'\n'}"
+    api_body="${api_response%$'\n'*}"
+    if [ "${curl_exit_code}" -ne 0 ] || [ "${api_http_code}" != "200" ] || ! echo "${api_body}" | passwords_parseApiResponse succeeded; then
+        api_error=$(echo "${api_body}" | passwords_parseApiResponse error)
+        common_logger -e "The Wazuh API did not change the password of user ${1} (HTTP code ${api_http_code:-none}, curl exit code ${curl_exit_code}): ${api_error:-no error detail returned}"
+        return 1
+    fi
+
 }
 
 function passwords_changeDashboardApiPassword() {
@@ -346,7 +362,7 @@ function passwords_getApiToken() {
 
 function passwords_getApiUsers() {
 
-    mapfile -t api_users < <(common_curl -s -k -X GET -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\"  \"https://localhost:55000/security/users?pretty=true\" --max-time 300 --retry 5 --retry-delay 5 | grep username | awk -F': ' '{print $2}' | sed -e "s/[\'\",]//g")
+    mapfile -t api_users < <(common_curl -s -k -X GET -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\"  \"https://localhost:55000/security/users\" --max-time 300 --retry 5 --retry-delay 5 | passwords_parseApiResponse usernames)
 
 }
 
@@ -363,7 +379,7 @@ function passwords_getApiUserId() {
     user_id=""
 
     while [ "${api_user_lookup_attempt}" -lt "${api_user_lookup_retries}" ]; do
-        user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users?pretty=true\" | grep -B2 -A2 "\"username\": \"${1}\"" | grep '"id"' | grep -o '[0-9]\+')
+        user_id=$(common_curl -s -k -H \"Authorization: Bearer $TOKEN_API\" -H \"Content-Type: application/json\" \"https://localhost:55000/security/users\" | passwords_parseApiResponse user_id "${1}")
 
         if [ -n "${user_id}" ]; then
             break
@@ -405,6 +421,43 @@ function passwords_getNetworkHost() {
     if [ "${IP}" == "0.0.0.0" ]; then
         IP="localhost"
     fi
+}
+
+function passwords_parseApiResponse() {
+
+    # Reads a Wazuh API JSON answer from stdin with the Python interpreter
+    # shipped by the Wazuh manager. Queries: succeeded (exit code), error,
+    # usernames and user_id <username>.
+    wazuh_python="/var/ossec/framework/python/bin/python3"
+    if [ ! -x "${wazuh_python}" ]; then
+        return 1
+    fi
+    "${wazuh_python}" -c '
+import json, sys
+try:
+    answer = json.load(sys.stdin)
+    data = answer.get("data") or {}
+    items = data.get("affected_items") or []
+    query = sys.argv[1]
+    if query == "succeeded":
+        sys.exit(0 if type(answer.get("error")) is int and answer["error"] == 0 else 1)
+    elif query == "error":
+        failed = data.get("failed_items") or [{}]
+        message = answer.get("detail") or (failed[0].get("error") or {}).get("message") or answer.get("message")
+        if message:
+            print(message)
+    elif query == "usernames":
+        for item in items:
+            print(item["username"])
+    elif query == "user_id":
+        for item in items:
+            if item.get("username") == sys.argv[2]:
+                print(item["id"])
+                break
+except (ValueError, AttributeError, KeyError, TypeError, IndexError):
+    sys.exit(1)
+' "$@" 2>/dev/null
+
 }
 
 function passwords_readFileUsers() {
