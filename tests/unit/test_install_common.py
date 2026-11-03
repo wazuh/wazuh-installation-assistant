@@ -486,9 +486,9 @@ class TestInstallCommonDownloadArtifactURLs:
         assert expected_file.exists()
 
     def test_prerelease_mode_constructs_correct_url(self, tmp_path):
-        """Pre-release mode: URL should be https://bucket/pre-release/5.x/artifact-urls/artifact_urls_5.0.0-rc2.yaml"""
+        """Pre-release mode: URL should be https://bucket/pre-release/5.x/artifact-urls/artifact_urls_5.0.0-rc3.yaml"""
         # The repository bumper keeps this version-stage string in sync
-        release = "5.0.0-rc2"
+        release = "5.0.0-rc3"
         result = self._run(tmp_path, devrepo="pre-release", staging_url_stage=release.split("-")[1])
         assert_success(result)
 
