@@ -240,17 +240,11 @@ jobs:
     - name: inventory
       run: cat $ALLOCATOR_PATH/inventory
 
-    # In a pull request the version of the branch is usually not released yet: its packages are not in
-    # the repository until the release candidate, and the tag the installer needs for the Filebeat
-    # template does not exist until the release. Test with the highest released version of the line
-    # instead. workflow_dispatch installs the version of the selected reference.
     - name: Select released version
       if: github.event_name == 'pull_request'
       run: |
         bash .github/actions/installation-assistant/select-released-version.sh "$PKG_REPOSITORY" install_functions/installVariables.sh
 
-    # The certificates are generated with the installer built in this workspace, so it must use the same
-    # version as the hosts. WAZUH_VERSION_OVERRIDE is only available from the next step on.
     - name: Set released version in the workspace installer
       if: github.event_name == 'pull_request' && env.WAZUH_VERSION_OVERRIDE != ''
       run: |

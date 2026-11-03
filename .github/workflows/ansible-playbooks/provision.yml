@@ -189,8 +189,7 @@
         depth: 1
         force: true
 
-    # The installer is built from this clone, so a released version is set here when the version of the
-    # pull request branch is not released (see select-released-version.sh). Empty in workflow_dispatch.
+    # Set by select-released-version.sh in pull requests. Empty in workflow_dispatch.
     - name: Set the Wazuh version to install
       replace:
         path: "{{ tmp_path }}/install_functions/installVariables.sh"
