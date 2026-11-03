@@ -13,6 +13,10 @@ on:
       - 'install_functions/**'
       - 'passwords_tool/**'
       - 'tests/**'
+      - '.github/actions/installation-assistant/**'
+      - '.github/workflows/ansible-playbooks/**'
+      - '.github/workflows/4_test_installation_assistant.yml'
+      - '.github/workflows/4_test_installation_assistant_distributed.yml'
   workflow_dispatch:
     inputs:
       REPOSITORY:
@@ -174,6 +178,15 @@ jobs:
     - name: inventory
       run: cat $ALLOCATOR_PATH/inventory
 
+    # In a pull request the version of the branch is usually not released yet: its packages are not in
+    # the repository until the release candidate, and the tag the installer needs for the Filebeat
+    # template does not exist until the release. Test with the highest released version of the line
+    # instead. workflow_dispatch installs the version of the selected reference.
+    - name: Select released version
+      if: github.event_name == 'pull_request'
+      run: |
+        bash .github/actions/installation-assistant/select-released-version.sh "$PKG_REPOSITORY" install_functions/installVariables.sh
+
     - name: Execute provision playbook
       run: |
         INSTALL_DEPS=true
@@ -189,6 +202,7 @@ jobs:
         -e "install_deps=$INSTALL_DEPS" \
         -e "install_python=$INSTALL_PYTHON" \
         -e "install_pip_deps=$INSTALL_PIP_DEPS" \
+        -e "wazuh_version_override=$WAZUH_VERSION_OVERRIDE" \
         "$VERBOSITY"
 
     - name: Execute AIO installation playbook
