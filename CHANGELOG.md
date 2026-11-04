@@ -9,6 +9,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#974](https://github.com/wazuh/wazuh-installation-assistant/pull/974) | Adapt Allocator install and invocation to the new installable Python package |
 
 ### Removed
 
