@@ -4,9 +4,9 @@ nodes:
     - name: indexer
       ip: "<indexer-node-ip>"
     #- name: indexer-2
-    #  ip: "<indexer-node-ip>"
+    #  ip: "<indexer-2-node-ip>"
     #- name: indexer-3
-    #  ip: "<indexer-node-ip>"
+    #  ip: "<indexer-3-node-ip>"
 
   # Wazuh manager nodes
   # If there is more than one Wazuh manager
@@ -16,10 +16,19 @@ nodes:
       ip: "<wazuh-manager-ip>"
     #  node_type: master
     #- name: manager-2
-    #  ip: "<wazuh-manager-ip>"
+    #  ip: "<wazuh-manager-2-ip>"
     #  node_type: worker
     #- name: manager-3
-    #  ip: "<wazuh-manager-ip>"
+    #  ip: "<wazuh-manager-3-ip>"
+    #  node_type: worker
+    # Another way to write manager-2, use it instead of the one above. ip and dns
+    # also accept a list. The first ip is the address the components use:
+    #- name: manager-2
+    #  ip:
+    #    - "<wazuh-manager-2-ip>"
+    #    - "<wazuh-manager-2-second-ip>"
+    #  dns:
+    #    - "<wazuh-manager-2-name>"
     #  node_type: worker
 
   # Wazuh dashboard nodes
@@ -27,21 +36,7 @@ nodes:
     - name: dashboard
       ip: "<dashboard-node-ip>"
 
-  # ip and dns both accept a list, for a node reachable at more than one address.
-  # Every item reaches the certificate of the node; the first one is the address
-  # the components are configured with.
-  #- name: manager-2
-  #  ip:
-  #    - "<wazuh-manager-ip>"
-  #    - "<wazuh-manager-second-ip>"
-  #  dns:
-  #    - "<wazuh-manager-name>"
-
-  # Optional. Only for a proxy that TERMINATES the agents' TLS session: it issues the
-  # certificate that proxy serves, from the same root-ca the agents pin. A layer 4
-  # passthrough load balancer terminates nothing and needs --agent-san with its
-  # address instead, so that address reaches the listener certificate of every
-  # manager node.
+  # Optional: only for a proxy that terminates the agents' TLS session. A passthrough load balancer needs --agent-san instead.
   #load_balancer:
   #  - name: lb
   #    dns:
