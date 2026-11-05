@@ -45,7 +45,7 @@ yum install coreutils diffutils hostname iproute openssl procps-ng util-linux
 #### APT
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -54,7 +54,7 @@ apt update
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -206,12 +206,12 @@ Run the Wazuh indexer `indexer-security-init.sh` script. It loads the security c
 
 ### Testing the cluster installation
 
-When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+The Wazuh indexer publishes its CA certificate in `/etc/wazuh-indexer/export/ca.pem`. Only `root` and the `wazuh-indexer` group can read it, so run `curl` with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
   1. Run the following command to confirm that the installation is successful.
 
       ```bash
-      curl -k -u admin https://127.0.0.1:9200
+      sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://127.0.0.1:9200
       ```
 
       ```json
@@ -230,7 +230,7 @@ When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` valu
   2. Run the following command to check that the cluster is working correctly and that its status is `green`.
 
       ```bash
-      curl -k -u admin https://127.0.0.1:9200/_cluster/health?pretty
+      sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://127.0.0.1:9200/_cluster/health?pretty
       ```
 
 ## Wazuh manager
@@ -248,7 +248,7 @@ Install and configure the Wazuh manager following step-by-step instructions. The
 #### APT
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -257,7 +257,7 @@ apt update
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -287,7 +287,7 @@ install -d -m 0750 -o root -g root /etc/wazuh-manager
 echo 'WAZUH_MANAGER_REMOTED_CERT_SANS=IP:<HOST_IP_ADDRESS>,IP:203.0.113.10,DNS:wazuh.example.com' >> /etc/wazuh-manager/local.env
 ```
 
-The package also issues the certificate of the Server API, `apid.pem`, for the addresses it finds on the host plus `localhost`, `127.0.0.1` and `::1`. To add an address API clients dial, add `WAZUH_MANAGER_APID_CERT_SANS` to the same file, for example `WAZUH_MANAGER_APID_CERT_SANS=IP:<HOST_IP_ADDRESS>,DNS:api.example.com`. It is independent from `WAZUH_MANAGER_REMOTED_CERT_SANS`.
+The package also issues the certificate of the Server API, `apid.pem`, for the addresses it finds on the host plus `localhost`, `127.0.0.1` and `::1`. To add an address API clients dial, add `WAZUH_MANAGER_APID_CERT_SANS` to the same file. You only need it if you let other hosts reach the Server API, which this guide keeps on the local host. For example, `WAZUH_MANAGER_APID_CERT_SANS=IP:<HOST_IP_ADDRESS>,DNS:api.example.com`. It is independent from `WAZUH_MANAGER_REMOTED_CERT_SANS`.
 
 The Wazuh indexer and the Wazuh dashboard packages work the same way with `WAZUH_INDEXER_CERT_SANS` in `/etc/wazuh-indexer/local.env` and `WAZUH_DASHBOARD_CERT_SANS` in `/etc/wazuh-dashboard/local.env`, set before installing each package. Without it, the Wazuh dashboard certificate names the host name, its FQDN and the addresses of the default-route interfaces, so set `WAZUH_DASHBOARD_CERT_SANS` when browsers reach it by another name or address. Each list replaces the addresses the package finds, so include those too.
 
@@ -365,7 +365,15 @@ yum -y install ./wazuh-manager-5.0.1-<STAGE>.aarch64.rpm
 
 ### Configuring the Wazuh manager
 
-There is nothing to configure. The package connects the Wazuh manager to the Wazuh indexer on `127.0.0.1`. It imports the indexer CA and the client pair the Wazuh indexer issued for it from `/etc/wazuh-indexer/export/` (`ca.pem` and `manager-client.pem` with its key), and stores the password of its Wazuh indexer user in its keystore.
+Keep the Wazuh server API off the network, as the Wazuh indexer. Its only client is the Wazuh dashboard on this host. In `/var/wazuh-manager/api/configuration/api.yaml`, replace the commented `host` line so it listens on `127.0.0.1` and `::1` only:
+
+```bash
+sed -i -E "s|^(# )?host:.*|host: ['127.0.0.1', '::1']|" /var/wazuh-manager/api/configuration/api.yaml
+```
+
+To let other hosts reach the API later, see [The Wazuh server API on an all-in-one installation](../security.md#the-wazuh-server-api-on-an-all-in-one-installation).
+
+There is nothing else to configure. The package connects the Wazuh manager to the Wazuh indexer on `127.0.0.1`. It imports the indexer CA and the client pair the Wazuh indexer issued for it from `/etc/wazuh-indexer/export/` (`ca.pem` and `manager-client.pem` with its key), and stores the password of its Wazuh indexer user in its keystore.
 
 ### Starting the Wazuh manager service
 
@@ -390,18 +398,18 @@ Follow these steps to install the Wazuh dashboard.
 
 ### Installing package dependencies
 
-Install the following packages, if missing. These are the lists the Wazuh installation assistant installs for each component: they include what the assistant itself uses to place the files, such as `cmp` from `diffutils`.
+Install the following packages, if missing. The Wazuh dashboard package only needs the account tools (`passwd`, `useradd`, `userdel`), which it declares itself; `tar` and `curl` are used in the steps below.
 
 #### APT
 
 ```bash
-apt install tar curl libcap2-bin openssl diffutils
+apt install tar curl
 ```
 
 #### YUM
 
 ```bash
-yum install libcap openssl diffutils util-linux
+yum install tar curl
 ```
 
 > [!NOTE]
@@ -415,7 +423,7 @@ yum install libcap openssl diffutils util-linux
 #### APT
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -424,7 +432,7 @@ apt update
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -570,7 +578,7 @@ Access the Wazuh web interface with your `admin` user credentials. This is the a
 - Username: `admin`
 - Password: the `WAZUH_INDEXER_ADMIN_PASSWORD` value in `/etc/wazuh-indexer/export/credentials.env`
 
-When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, import the `/etc/wazuh-dashboard/ca/root-ca.pem` file into the certificate manager of the browser. Alternatively, you can configure a certificate from a trusted authority.
+When you access the Wazuh dashboard for the first time, the browser shows a warning message stating that the certificate was not issued by a trusted authority. An exception can be added in the advanced options of the web browser. For increased security, import the `/etc/wazuh-dashboard/export/ca.pem` file into the certificate manager of the browser. The `export/` directory is readable by `root` only, so copy the file first with `sudo cp /etc/wazuh-dashboard/export/ca.pem ~/wazuh-dashboard-ca.pem && sudo chown "$USER" ~/wazuh-dashboard-ca.pem`, and then bring it to the machine of the browser (for example with `scp`). Alternatively, you can configure a certificate from a trusted authority.
 
 ## Enrolling agents
 
@@ -597,20 +605,22 @@ To check the enrollment, look for `Token bootstrap: enrollment succeeded` in `/v
 
 See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.1/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
 
+The agents connect to the Wazuh manager on port 1517. The Wazuh manager also listens on ports 1514 and 1515 for Wazuh 4.x agents. To close them when no Wazuh agent runs 4.x, see [Network exposure](../security.md#network-exposure).
+
 ## Checking the accounts
 
 Once the three components are installed and running, check the accounts and store the passwords in a safe place.
 
-1. Check that the accounts work. When `curl` asks for a password, enter the value of the key given for each account.
+1. Check that the accounts work. Each package has its own CA, published in its `export/` directory, and `curl` verifies the certificate with the CA of the service it connects to. Only `root` can read the `export/` directory of the Wazuh manager, so run `curl` with `sudo`. When `curl` asks for a password, enter the value of the key given for each account.
 
     ```bash
     # Wazuh indexer: admin (WAZUH_INDEXER_ADMIN_PASSWORD), kibanaserver (WAZUH_INDEXER_KIBANASERVER_PASSWORD) and wazuh-manager (WAZUH_INDEXER_MANAGER_PASSWORD)
-    curl -k -u admin https://127.0.0.1:9200/_cluster/health?pretty
-    curl -k -u kibanaserver https://127.0.0.1:9200/_plugins/_security/authinfo?pretty
-    curl -k -u wazuh-manager https://127.0.0.1:9200/_plugins/_security/authinfo?pretty
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://127.0.0.1:9200/_cluster/health?pretty
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u kibanaserver https://127.0.0.1:9200/_plugins/_security/authinfo?pretty
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u wazuh-manager https://127.0.0.1:9200/_plugins/_security/authinfo?pretty
     # Wazuh server API: wazuh (WAZUH_MANAGER_API_PASSWORD) and wazuh-internal-client (WAZUH_MANAGER_WUI_PASSWORD)
-    curl -k -u wazuh -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
-    curl -k -u wazuh-internal-client -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
+    sudo curl --cacert /etc/wazuh-manager/export/ca.pem -u wazuh -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
+    sudo curl --cacert /etc/wazuh-manager/export/ca.pem -u wazuh-internal-client -X POST "https://127.0.0.1:55000/security/user/authenticate?raw=true"
     ```
 
     Log in to the Wazuh dashboard, and check that it reaches the Wazuh server API: the dashboard shows an error of the Wazuh server API connection otherwise.

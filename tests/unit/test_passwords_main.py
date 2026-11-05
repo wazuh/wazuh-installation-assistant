@@ -39,6 +39,7 @@ BASE_MOCKS = {
     "passwords_readPassword": 'echo "READPASSWORD_CALLED"; password="ValidPass1234"',
     "passwords_generatePassword": 'echo "GENERATEPASSWORD_CALLED"; password="AutoGenPass1234"',
     "passwords_generatePasswords": 'echo "GENERATEPASSWORDS_CALLED"',
+    "passwords_checkOwnerDirs": 'echo "CHECKOWNERDIRS_CALLED"',
     "passwords_checkPassword": 'echo "CHECKPASSWORD_CALLED:$*"',
     "passwords_getNetworkHost": 'echo "GETNETWORKHOST_CALLED"',
     "passwords_generateHash": 'echo "GENERATEHASH_CALLED"',
@@ -125,6 +126,26 @@ class TestPasswordsMainCredentialsFileCheck:
         )
         assert_failure(result)
         assert "CHANGEPASSWORD_CALLED" not in result.stdout
+
+
+class TestPasswordsMainOwnerDirsCheck:
+    """The owner directories are checked after the passwords are chosen and before any change."""
+
+    def test_checked_before_any_change(self):
+        result = _run("-a", checkinstalled="indexer_installed=1 wazuh_installed=1")
+        assert_success(result)
+        out = result.stdout
+        assert out.index("GENERATEPASSWORDS_CALLED") < out.index("CHECKOWNERDIRS_CALLED") < out.index("CHANGEPASSWORD_CALLED")
+
+    def test_a_failed_check_stops_the_run(self):
+        result = _run(
+            "-a",
+            extra_mocks={"passwords_checkOwnerDirs": "exit 1"},
+            checkinstalled="indexer_installed=1 wazuh_installed=1",
+        )
+        assert_failure(result)
+        assert "CHANGEPASSWORD_CALLED" not in result.stdout
+        assert "CHANGEPASSWORDAPI_CALLED" not in result.stdout
 
 
 class TestPasswordsMainChangeAllIndexerOnly:

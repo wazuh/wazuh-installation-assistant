@@ -65,11 +65,11 @@ def get_dashboard_ip():
 def get_api_ip():
 
     with open("/var/wazuh-manager/api/configuration/api.yaml", 'r') as stream:
-        dictionary = yaml.safe_load(stream)
-    try:
-      ip = dictionary.get('host')
-    except:
-      ip = '127.0.0.1'
+        dictionary = yaml.safe_load(stream) or {}
+    ip = dictionary.get('host', '127.0.0.1')
+    # host can be one address or a list, such as ['127.0.0.1', '::1'] on an all-in-one
+    if isinstance(ip, list):
+        ip = ip[0]
     return ip
 
 def api_call_indexer(host,query,address,api_protocol,api_user,api_pass,api_port):

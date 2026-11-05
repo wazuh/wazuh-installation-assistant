@@ -1,8 +1,10 @@
 """
 Unit tests for common_functions/common.sh
 
-Covers: common_checkSystem, common_checkInstalled, common_curl
+Covers: common_checkSystem, common_checkInstalled, common_isDebInstalled, common_curl, common_logger
 """
+
+import os
 
 import pytest
 
@@ -64,6 +66,49 @@ class TestCommonCheckInstalled:
         result = self._run(env_vars={"sys_type": "yum"}, extra_mocks=mocks)
         assert_success(result)
 
+    def test_success_all_installed_apt(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            'common_checkInstalled; echo "${wazuh_installed}${indexer_installed}${dashboard_installed}"',
+            {**IGNORE_LOGGER, "dpkg-query": "echo installed"},
+            {"sys_type": "apt-get"},
+        )
+        assert_success(result)
+        assert result.stdout.strip() == "111"
+
+    def test_logs_the_check_at_debug_level(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "common_checkInstalled",
+            {"common_logger": 'echo "$@"', "dpkg-query": "return 1"},
+            {"sys_type": "apt-get"},
+        )
+        assert_success(result)
+        assert "-d Checking Wazuh installation." in result.stdout.splitlines()
+
+
+class TestCommonIsDebInstalled:
+    """apt list --installed also lists the packages whose configuration failed."""
+
+    @pytest.mark.parametrize(
+        "status, installed",
+        [
+            ("installed", True),
+            ("half-configured", True),
+            ("unpacked", True),
+            ("config-files", False),
+            ("not-installed", False),
+            ("", False),
+        ],
+    )
+    def test_status(self, status, installed):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "common_isDebInstalled wazuh-manager",
+            {**IGNORE_LOGGER, "dpkg-query": f'echo -n "{status}"'},
+        )
+        assert (result.returncode == 0) == installed
+
 
 class TestCommonCurl:
     """common_curl returns the exit code of curl, also when debug sends the
@@ -95,3 +140,27 @@ class TestCommonCurl:
         )
         assert_success(result)
         assert calls.read_text().count("call") == 2
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="needs a regular user")
+class TestCommonLoggerAsRegularUser:
+    """A regular user only writes the log from the certs tool. The installer
+    does not set cert_tool_script_name, which used to match any script."""
+
+    def _run(self, tmp_path, script_name):
+        logfile = tmp_path / "wazuh-install.log"
+        result = run_bash_function(
+            BASE_SOURCES,
+            'common_logger "message"',
+            env_vars={"logfile": str(logfile), "cert_tool_script_name": script_name},
+        )
+        assert_success(result)
+        assert "message" in result.stdout
+        return logfile
+
+    def test_installer_does_not_write_the_log(self, tmp_path):
+        assert not self._run(tmp_path, "").exists()
+
+    def test_certs_tool_writes_the_log(self, tmp_path):
+        # The test runs the function from bash, so $0 is bash.
+        assert "message" in self._run(tmp_path, "bash").read_text()

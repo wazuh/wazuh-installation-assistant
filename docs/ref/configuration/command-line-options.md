@@ -10,7 +10,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
 | `-as`, `--agent-san <ip\|dns>` | Adds an extra address to the subject alternative name of the agent listener certificate of every Wazuh manager node. Repeat it for more than one. Use it for the address agents dial when the host cannot know it: a load balancer shared by a cluster, a published name, a NAT address. Must be used along with `-a` or `-g`. |
-| `-ap`, `--api-san <ip\|dns>` | Adds an extra address to the subject alternative name of the Server API certificate of every Wazuh manager node. Repeat it for more than one. Use it for the address API clients dial when the host cannot know it: a load balancer, a published name, a NAT address. Must be used along with `-a` or `-g`. |
+| `-ap`, `--api-san <ip\|dns>` | Adds an extra address to the subject alternative name of the Server API certificate of every Wazuh manager node. Repeat it for more than one. Use it for the address API clients dial when the host cannot know it: a load balancer, a published name, a NAT address. With `-a`, the Server API also listens on all network interfaces instead of only on the local host. Must be used along with `-a` or `-g`. |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.0.1.sh. See [Use development packages](../getting-started/usage.md#use-development-packages). |
 | `--skip-signature-check` | Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with `-d`. See [Use development packages](../getting-started/usage.md#use-development-packages). |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb). Must be used along with `-da`. |
@@ -74,9 +74,9 @@ A new password is saved in every credential file on the host that holds that use
 - The `local.env` file of each package that uses the password: `/etc/wazuh-indexer/local.env`, `/etc/wazuh-manager/local.env` and `/etc/wazuh-dashboard/local.env`.
 - The `credentials.env` file that `--generate-config-files` keeps next to the root CA: `wazuh-ca/credentials.env` next to the tool, or in `WAZUH_CA_DIR`.
 
-The tool only updates the files that already hold the key. If there is none, a generated password is an error, and a password given with `-p` is not saved.
+The tool updates the files that already hold the key. If there is none, it creates the `local.env` file of the package that owns the user, `root:root` `0600`, and saves the password there: `/etc/wazuh-indexer/local.env` for the indexer users, and `/etc/wazuh-manager/local.env` for the API users. The tool never writes in `export/`, which only the package writes. If the configuration directory of the owner does not exist, the tool stops before changing any password.
 
-> **warning**: That error comes after the new password has been applied in the Wazuh indexer or the Server API: `The new password of user <user> was applied, but there is no credentials file on this host to save it.` The generated password is not shown anywhere, so run the tool again for that user with `-p` and a password you know. Run it with `-p` from the start on a host with no credential file.
+If the credential files or the whole `export/` directory were deleted, run the tool with `-a|--change-all`. The packages publish `export/credentials.env` only once, when they are installed, and do not write it again on a restart, so `-u` only records the password of that user: `-a` rotates every password and saves all of them in the `local.env` files it creates.
 
 ### The address agents dial
 

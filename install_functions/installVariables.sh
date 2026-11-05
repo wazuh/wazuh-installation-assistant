@@ -27,6 +27,7 @@ readonly dashboard_cert_path="${dashboard_config_path}/certs"
 readonly manager_cert_path="${manager_config_path}/certs"
 readonly indexer_cert_path="${indexer_config_path}/certs"
 readonly manager_conf_file="${manager_config_path}/wazuh-manager.conf"
+readonly manager_api_conf_file="/var/wazuh-manager/api/configuration/api.yaml"
 readonly credential_keys=( WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD )
 # The passwords each component needs: a node only receives the ones of its components.
 readonly indexer_credential_keys=( WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD )
@@ -44,16 +45,21 @@ readonly base_dest_folder="wazuh-offline"
 http_port=443
 wazuh_aio_ports=( 9200 9300 1514 1515 1516 1517 55000 "${http_port}")
 readonly wazuh_indexer_ports=( 9200 9300 )
+# The Wazuh indexer security initializer and the seconds it may wait for the cluster to form
+readonly indexer_security_init="/usr/share/wazuh-indexer/bin/indexer-security-init.sh"
+readonly indexer_cluster_timeout=300
 readonly wazuh_manager_ports=( 1514 1515 1516 1517 55000 )
 wazuh_dashboard_port="${http_port}"
 # `lsof` and `openssl` are installed separately
 wia_yum_dependencies=( systemd grep tar coreutils sed procps-ng gawk curl )
 readonly wia_apt_dependencies=( systemd grep tar coreutils sed procps gawk curl )
-# What each package requires, including what its credentials resolver uses. The offline
-# installation only checks these lists, and the assistant never removes a package in them.
+# What the assistant installs for each component: what the package and its credentials
+# resolver use, plus what the assistant itself uses, so a list can hold more than the
+# package declares. The offline installation only checks these lists, and the assistant
+# never removes a package in them.
 # diffutils is also needed before the install: the tar files are placed with cmp.
 readonly wazuh_yum_dependencies=( diffutils findutils gawk grep hostname iproute openssl sed util-linux )
-readonly wazuh_apt_dependencies=( apt-transport-https gnupg curl openssl iproute2 hostname util-linux diffutils )
+readonly wazuh_apt_dependencies=( gnupg curl openssl iproute2 hostname util-linux diffutils )
 readonly indexer_yum_dependencies=( coreutils diffutils hostname iproute openssl procps-ng util-linux )
 readonly indexer_apt_dependencies=( debconf adduser procps openssl diffutils iproute2 )
 readonly dashboard_yum_dependencies=( libcap diffutils openssl util-linux )
