@@ -695,3 +695,135 @@ test-69-checks_previousCertificate-all-correct() {
     @assert-success
     @rm /tmp/tarfile.tar
 }
+
+function load-check_dist() {
+    @load_function "${base_dir}/checks.sh" check_dist
+}
+
+function mock-dist_detect() {
+    eval "function dist_detect() { DIST_NAME='${1}'; DIST_VER='${2}'; DIST_SUBVER='${3:-}'; }"
+}
+
+# Usage: assert-check_dist <supported|1> <DIST_NAME> <DIST_VER> [DIST_SUBVER]
+function assert-check_dist() {
+    declare expected="${1}"
+    shift
+    mock-dist_detect "$@"
+    notsupported=""
+    check_dist
+    @assert-equals "${expected}" "${notsupported:-supported}"
+}
+
+test-70-check_dist-rhel-accepted-versions() {
+    load-check_dist
+    for version in 7 8 9 10; do
+        assert-check_dist supported rhel "${version}"
+    done
+}
+
+test-71-check_dist-rhel-6-rejected() {
+    load-check_dist
+    assert-check_dist 1 rhel 6
+}
+
+test-72-check_dist-rhel-11-rejected() {
+    load-check_dist
+    assert-check_dist 1 rhel 11
+}
+
+test-73-check_dist-centos-accepted-versions() {
+    load-check_dist
+    for version in 7 8; do
+        assert-check_dist supported centos "${version}"
+    done
+}
+
+test-74-check_dist-centos-stream-9-rejected() {
+    load-check_dist
+    assert-check_dist 1 centos 9
+}
+
+test-75-check_dist-centos-stream-10-rejected() {
+    load-check_dist
+    assert-check_dist 1 centos 10
+}
+
+test-76-check_dist-ubuntu-accepted-versions() {
+    load-check_dist
+    for version in 16 18 20 22 24 26; do
+        assert-check_dist supported ubuntu "${version}" 04
+    done
+}
+
+test-77-check_dist-ubuntu-24.10-rejected() {
+    load-check_dist
+    assert-check_dist 1 ubuntu 24 10
+}
+
+test-78-check_dist-ubuntu-26.10-rejected() {
+    load-check_dist
+    assert-check_dist 1 ubuntu 26 10
+}
+
+test-79-check_dist-amzn-2-accepted() {
+    load-check_dist
+    assert-check_dist supported amzn 2
+}
+
+test-80-check_dist-amzn-2023-accepted-and-checks-special-deps() {
+    load-check_dist
+    function checks_specialDepsAL2023() { al2023_deps_checked=1; }
+    al2023_deps_checked=""
+    assert-check_dist supported amzn 2023
+    @assert-equals "1" "${al2023_deps_checked:-not-called}"
+}
+
+test-81-check_dist-amzn-1-rejected() {
+    load-check_dist
+    assert-check_dist 1 amzn 1
+}
+
+test-82-check_dist-rocky-9.4-accepted() {
+    load-check_dist
+    assert-check_dist supported rocky 9 4
+}
+
+test-83-check_dist-rocky-9.5-rejected() {
+    load-check_dist
+    assert-check_dist 1 rocky 9 5
+}
+
+test-84-check_dist-unknown-distribution-rejected() {
+    load-check_dist
+    assert-check_dist 1 debian 12
+}
+
+test-85-check_dist-supported-system-no-recommended-systems-message() {
+    load-check_dist
+    function common_logger() { printf '%s\n' "$*"; }
+    mock-dist_detect rhel 10
+    notsupported=""
+    check_dist
+}
+
+test-85-check_dist-supported-system-no-recommended-systems-message-assert() {
+    @out "-d Checking system distribution."
+    @out "-d Detected distribution name: rhel"
+    @out "-d Detected distribution version: 10"
+}
+
+test-86-check_dist-unsupported-system-prints-recommended-systems() {
+    load-check_dist
+    function common_logger() { printf '%s\n' "$*"; }
+    mock-dist_detect centos 10
+    notsupported=""
+    check_dist
+}
+
+test-86-check_dist-unsupported-system-prints-recommended-systems-assert() {
+    @out "-d Checking system distribution."
+    @out "The recommended systems are: Red Hat Enterprise Linux 7, 8, 9, 10; CentOS 7, 8; Amazon Linux 2; Amazon Linux 2023; Ubuntu 16.04, 18.04, 20.04, 22.04, 24.04, 26.04; Rocky Linux 9.4."
+    @out "-w The current system does not match with the list of recommended systems. The installation may not work properly."
+    @out "-d Detected distribution name: centos"
+    @out "-d Detected distribution version: 10"
+}
