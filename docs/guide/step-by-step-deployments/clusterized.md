@@ -59,7 +59,7 @@ yum install coreutils diffutils hostname iproute openssl procps-ng util-linux
 #### APT
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -68,7 +68,7 @@ apt update
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -417,12 +417,12 @@ When every Wazuh indexer node is running, run the Wazuh indexer `indexer-securit
 
 ### Testing the cluster installation
 
-When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+Run the commands on a Wazuh indexer node. `curl` verifies the certificate with the CA published in `/etc/wazuh-indexer/export/ca.pem`, which only `root` and the `wazuh-indexer` group can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
-  1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of a Wazuh indexer node.
+  1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`.
 
       ```bash
-      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
+      sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
       ```
 
       ```json
@@ -441,8 +441,8 @@ When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` valu
   2. Run the following commands to check that every Wazuh indexer node joined the cluster and that its status is `green`.
 
       ```bash
-      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
-      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cluster/health?pretty
+      sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+      sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cluster/health?pretty
       ```
 
       ```bash
@@ -468,7 +468,7 @@ Follow these steps on the master node and on every worker node.
 #### APT
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -477,7 +477,7 @@ apt update
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -525,7 +525,9 @@ install -m 0640 wazuh-certificates/$NODE_NAME-apid-key.pem /etc/wazuh-manager/ce
 rm -rf wazuh-certificates
 ```
 
-The root CA of the deployment is also the CA that signed the Wazuh indexer certificates, so it is placed as `indexer-ca.pem` too. The package uses these files instead of issuing its own, and gives the `remoted` and `apid` pairs their owner. `remoted.pem` is served to the agents by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515. `apid.pem` is served by the Server API on port 55000.
+The root CA of the deployment is also the CA that signed the Wazuh indexer certificates, so it is placed as `indexer-ca.pem` too. The package uses these files instead of issuing its own, and gives the `remoted` and `apid` pairs their owner. `remoted.pem` is served to the agents by `wazuh-manager-remoted` on port 1517 and reused by `wazuh-manager-authd` on port 1515, the legacy enrollment port. `apid.pem` is served by the Server API on port 55000.
+
+Do not install the package before placing the certificates and `local.env`: without the certificates, the package creates its own root CA and a `remoted.pem` with the addresses of the host, without the ones passed with `-as|--agent-san`. An agent enrollment token for those addresses then fails with `ERROR 9025`, and placing the certificates afterwards makes the Wazuh manager fail to start with `INVALID ... not issued by the manager's CA`.
 
 **Recommended action**: If no other Wazuh components will be installed on this node, remove the `wazuh-certificates.tar` file.
 
@@ -705,18 +707,18 @@ Follow these steps to install the Wazuh dashboard.
 
 ### Installing package dependencies
 
-Install the following packages, if missing. These are the lists the Wazuh installation assistant installs for each component: they include what the assistant itself uses to place the files, such as `cmp` from `diffutils`.
+Install the following packages, if missing. The Wazuh dashboard package only needs the account tools (`passwd`, `useradd`, `userdel`), which it declares itself; `tar` and `curl` are used in the steps below.
 
 #### APT
 
 ```bash
-apt install tar curl libcap2-bin openssl diffutils
+apt install tar curl
 ```
 
 #### YUM
 
 ```bash
-yum install libcap openssl diffutils util-linux
+yum install tar curl
 ```
 
 > [!NOTE]
@@ -730,7 +732,7 @@ yum install libcap openssl diffutils util-linux
 #### APT
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/production/5.x/apt/ stable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -739,7 +741,7 @@ apt update
 To use `pre-release` packages instead, run the following commands:
 
 ```bash
-apt install gnupg apt-transport-https
+apt install gnupg
 curl -fsS https://packages-staging.xdrsiem.wazuh.info/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/apt/ unstable main" | tee /etc/apt/sources.list.d/wazuh.list
 apt update
@@ -954,20 +956,22 @@ To check the enrollment, look for `Token bootstrap: enrollment succeeded` in `/v
 
 See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.0.1/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
 
+The agents connect to the Wazuh manager nodes on port 1517. Every Wazuh manager node also listens on ports 1514 and 1515 for Wazuh 4.x agents. To close them when no Wazuh agent runs 4.x, see [Close the legacy ports 1514 and 1515](../security.md#close-the-legacy-ports-1514-and-1515).
+
 ## Removing the credentials files
 
 Once every component is installed and running, remove the copies of the passwords and certificates you made for the installation. Leave the `local.env` and `export/credentials.env` files of each package in place: they belong to the packages.
 
-1. Check that the accounts work. When `curl` asks for a password, enter the value of the key given for each account.
+1. Check that the accounts work. Run the Wazuh indexer commands on a Wazuh indexer node and the Wazuh server API commands on the master node, replacing the addresses with the IP address or DNS name of that node in `config.yml`. Use the CA published in the `export/` directory of the package you connect to: `/etc/wazuh-indexer/export/ca.pem` for the Wazuh indexer and `/etc/wazuh-manager/export/ca.pem` for the Wazuh server API. Only `root` (and the `wazuh-indexer` group, for the first one) can read them, so run `curl` with `sudo`. When `curl` asks for a password, enter the value of the key given for each account.
 
     ```bash
     # Wazuh indexer: admin (WAZUH_INDEXER_ADMIN_PASSWORD), kibanaserver (WAZUH_INDEXER_KIBANASERVER_PASSWORD) and wazuh-manager (WAZUH_INDEXER_MANAGER_PASSWORD)
-    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cluster/health?pretty
-    curl -k -u kibanaserver https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_plugins/_security/authinfo?pretty
-    curl -k -u wazuh-manager https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_plugins/_security/authinfo?pretty
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cluster/health?pretty
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u kibanaserver https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_plugins/_security/authinfo?pretty
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u wazuh-manager https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_plugins/_security/authinfo?pretty
     # Wazuh server API on the master node: wazuh (WAZUH_MANAGER_API_PASSWORD) and wazuh-internal-client (WAZUH_MANAGER_WUI_PASSWORD)
-    curl -k -u wazuh -X POST "https://<MASTER_NODE_IP>:55000/security/user/authenticate?raw=true"
-    curl -k -u wazuh-internal-client -X POST "https://<MASTER_NODE_IP>:55000/security/user/authenticate?raw=true"
+    sudo curl --cacert /etc/wazuh-manager/export/ca.pem -u wazuh -X POST "https://<MASTER_NODE_IP>:55000/security/user/authenticate?raw=true"
+    sudo curl --cacert /etc/wazuh-manager/export/ca.pem -u wazuh-internal-client -X POST "https://<MASTER_NODE_IP>:55000/security/user/authenticate?raw=true"
     ```
 
     Log in to the Wazuh dashboard, and check that it reaches the Wazuh server API: the dashboard shows an error of the Wazuh server API connection otherwise.

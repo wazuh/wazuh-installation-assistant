@@ -16,8 +16,7 @@ tests/unit/
 ├── test_manager.py              # manager.sh — install (apt/yum), cluster start
 ├── test_indexer.py              # indexer.sh — install (apt/yum), configure
 ├── test_dashboard.py            # dashboard.sh — install (apt/yum), configure
-├── test_offline.py              # wazuh-offline-installation.sh — offline package checks
-└── legacy/                      # Preserved Bach/Docker tests (not executed, kept as reference)
+└── test_offline.py              # wazuh-offline-installation.sh — offline package checks
 ```
 
 ## Requirements
@@ -412,9 +411,3 @@ The coverage report measures **Python code** (the test files and `conftest.py`),
 The coverage numbers reflect how much of the test infrastructure itself runs — `conftest.py` at 96% means one helper function (`bash_runner` fixture) is defined but not used by any test. This is expected and not a problem.
 
 To check which bash code paths are exercised, review the test cases manually and ensure both the success and failure branches of each bash function are covered by at least one test.
-
----
-
-## Legacy tests
-
-The original Bach/Docker-based test suites are preserved in [`legacy/`](legacy/) for historical reference. They are **not executed** by the CI pipeline or by Hatch. See [`legacy/README.md`](legacy/README.md) for their original usage instructions.

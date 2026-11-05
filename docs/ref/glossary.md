@@ -32,7 +32,7 @@ The search and analytics engine for Wazuh, responsible for indexing and storing 
 
 ### Wazuh Manager
 
-Also referred to as **Wazuh Manager**, this is the core component that analyzes data received from agents, triggers alerts, and manages agent communication. It uses port 1517 for agent communication over HTTPS, 1515 for agent enrollment, 1516 for cluster communication between Wazuh manager nodes, and 55000 for the API. Port 1514 is the legacy agent channel. It is optional and disabled by default. Can be deployed in cluster mode with master and worker nodes for load balancing and redundancy.
+Also referred to as **Wazuh Manager**, this is the core component that analyzes data received from agents, triggers alerts, and manages agent communication. It uses port 1517 for agent enrollment and communication over HTTPS, 1516 for cluster communication between Wazuh manager nodes, and 55000 for the API. Ports 1514 and 1515 are the legacy agent connection and enrollment channels, used only by Wazuh 4.x agents. The Wazuh manager package enables them by default. Can be deployed in cluster mode with master and worker nodes for load balancing and redundancy.
 
 ### Wazuh Dashboard
 
@@ -158,7 +158,7 @@ User accounts for accessing the Wazuh Manager REST API, used for management and 
 
 ### System Requirements Check
 
-The initial validation phase that verifies the system meets minimum requirements, including available disk space, memory, supported operating system, required ports availability, and necessary permissions.
+The initial validation phase that verifies the system meets minimum requirements, including memory, CPU cores, supported operating system, required ports availability, and necessary permissions.
 
 ### Certificate Generation
 
@@ -206,7 +206,7 @@ Option to uninstall all Wazuh central components from the system.
 
 ### --start-cluster
 
-Option to initialize security settings for the Wazuh Indexer cluster. Must be run after all Indexer nodes are installed.
+Option to initialize security settings for the Wazuh Indexer cluster. Must be run after all Indexer nodes are installed. It waits up to 300 seconds for the cluster to form. If it is cancelled or fails, it does not remove the Wazuh indexer.
 
 ### --offline-installation
 
