@@ -115,6 +115,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1200](https://github.com/wazuh/wazuh-installation-assistant/issues/1200) | Add `localhost`, `127.0.0.1` and `::1` to the agent listener certificate (`remoted.pem`) of each Wazuh manager node, as the Wazuh manager package does, so an enrollment token for a loopback address works on a distributed or step-by-step installation |
 | [#1192](https://github.com/wazuh/wazuh-installation-assistant/pull/1192) | Fixing integration tests |
 | [#1165](https://github.com/wazuh/wazuh-installation-assistant/issues/1165) | Align the requirements page, the all-in-one guides and the glossary with the minimum hardware the installation assistant checks and the CA file the dashboard publishes for sharing, and give the disk space of an all-in-one installation instead of the 4.x figures per agent |
 | [#1171](https://github.com/wazuh/wazuh-installation-assistant/issues/1171) | Verify the post-install checks of the guides, and the checks of the upgrade guide, with `curl --cacert` and the CA certificate each package publishes in `export/` or keeps in `certs/`, instead of turning TLS verification off with `curl -k` |
