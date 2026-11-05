@@ -10,7 +10,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | -------- | ------------- |
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
 | `-as`, `--agent-san <ip\|dns>` | Adds an extra address to the subject alternative name of the agent listener certificate of every Wazuh manager node. Repeat it for more than one. Must be used along with `-a` or `-g`. See [Name the address agents dial](#name-the-address-agents-dial). |
-| `-ap`, `--api-san <ip\|dns>` | Adds an extra address to the subject alternative name of the Server API certificate of every Wazuh manager node. Repeat it for more than one. Must be used along with `-a` or `-g`. See [Name the address API clients dial](#name-the-address-api-clients-dial). |
+| `-ap`, `--api-san <ip\|dns>` | Adds an extra address to the subject alternative name of the Server API certificate of every Wazuh manager node. Repeat it for more than one. With `-a`, the Server API also listens on all network interfaces instead of only on the local host. Must be used along with `-a` or `-g`. See [Name the address API clients dial](#name-the-address-api-clients-dial). |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.1.0.sh. See [Use development packages](#use-development-packages). |
 | `--skip-signature-check` | Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with `-d`. See [Use development packages](#use-development-packages). |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
@@ -206,7 +206,11 @@ The assistant reads `artifact_urls.yaml` from the directory of the script and do
 
 #### Package signature check
 
-Before installing a package, the assistant checks that it is signed with the Wazuh key, also in offline installations. It downloads the key from `https://packages.wazuh.com/key/GPG-KEY-WAZUH`, or takes it from `wazuh-offline.tar.gz` in an offline installation, and only trusts it if its fingerprint is `0DCF CA55 47B1 9D2A 6099 5060 96B3 EE5F 2911 1145`. An unsigned package, a package signed with another key, or a modified package stops the installation.
+Before installing a package, the assistant checks that it is signed with the Wazuh key, also in offline installations. It downloads the key from `https://packages.wazuh.com/key/GPG-KEY-WAZUH`, or takes it from `wazuh-offline.tar.gz` in an offline installation, and only trusts it if its fingerprint is `0DCF CA55 47B1 9D2A 6099 5060 96B3 EE5F 2911 1145`. An unsigned package, a package signed with another key, or a modified package stops the installation. Every verified package leaves a line in the output and in `/var/log/wazuh-install.log`:
+
+```
+INFO: Signature of wazuh-manager_5.1.0-1_amd64.deb verified with the Wazuh GPG key 0DCFCA5547B19D2A6099506096B3EE5F29111145.
+```
 
 Packages in the nightly, pre-release and production repositories are signed. Development builds that did not go through the signing process are not, and need the `--skip-signature-check` option, which is only accepted along with `-d`:
 
@@ -411,6 +415,11 @@ option adds the ones the host cannot see:
 sudo bash wazuh-install-5.1.0.sh -a --api-san api.example.com
 ```
 
+With this option, the Wazuh server API of an all-in-one install keeps the default of the
+package and listens on all network interfaces, because other hosts call it. Without it, the
+API only listens on the local host. See
+[The Wazuh server API on an all-in-one installation](../../guide/security.md#the-wazuh-server-api-on-an-all-in-one-installation).
+
 #### Create the certificate of a TLS-terminating load balancer
 
 When a proxy terminates the agents' TLS session, it is the proxy's certificate that agents
@@ -450,6 +459,8 @@ To renew the certificates of a deployment, run the certs tool again on the node 
     ```
 
     Use `-wd` for the Wazuh dashboard, `-wm` for the Wazuh manager nodes, `-a` for the admin certificate, or `-A` for all of them. The existing root CA is reused, so every node keeps trusting the others, and agents keep trusting the Wazuh manager.
+
+    The Wazuh manager certificates carry the `ip` and `dns` of `config.yml` plus only the `-as|--agent-san` and `-ap|--api-san` addresses of this run: an address added in a previous run is not kept. If the current certificates were created with `-as` or `-ap`, pass every address again, for example `-wm -as 203.0.113.7 -as manager.example.com`.
 
 3. Copy each file to its node, with the name, owner and mode the component expects:
 
@@ -517,7 +528,7 @@ A new Wazuh indexer node must hold a certificate signed by the root CA of the de
 
 1. Go to the node that holds `root-ca.key`, and set `CA_DIR` to its directory, as in step 1 of [Renew and deploy certificates](#renew-and-deploy-certificates).
 
-2. Write a `config.yml` with the new node only, and create its certificates with `-wi`, which only uses an existing root CA. Check that the certificate chains to the root CA of the deployment: the command must print `OK`.
+2. Write a `config.yml` with the new node only, and create its certificates and the admin certificates with `-wi -a`. Both options only use an existing root CA. The new node needs the admin pair too: the package reads it to fill `plugins.security.authcz.admin_dn` and to create its keystore. Check that both certificates chain to the root CA of the deployment: the command must print `OK` for each one.
 
     ```yaml
     nodes:
@@ -528,11 +539,23 @@ A new Wazuh indexer node must hold a certificate signed by the root CA of the de
 
     ```bash
     sudo rm -rf wazuh-certificates
-    sudo WAZUH_CA_DIR=$CA_DIR bash wazuh-certs-tool-5.1.0.sh -wi
-    sudo openssl verify -CAfile $CA_DIR/root-ca.pem wazuh-certificates/indexer-4.pem
+    sudo WAZUH_CA_DIR=$CA_DIR bash wazuh-certs-tool-5.1.0.sh -wi -a
+    sudo openssl verify -CAfile $CA_DIR/root-ca.pem wazuh-certificates/indexer-4.pem wazuh-certificates/admin.pem
     ```
 
-3. On the new node, **before** installing the package, place `root-ca.pem` in `/etc/wazuh-indexer/ca/`, the three `WAZUH_INDEXER_*` passwords of the deployment in `/etc/wazuh-indexer/local.env`, and the pair of the node in `/etc/wazuh-indexer/certs/`, as in [Deploying certificates and passwords](../../guide/step-by-step-deployments/clusterized.md#deploying-certificates-and-passwords). A package installed without them creates its own CA and pair, and placing them later does not configure it. Then install and configure the package as the other Wazuh indexer nodes, listing every node, the new one included, in `discovery.seed_hosts` and `plugins.security.nodes_dn`. Do not run `indexer-security-init.sh`: the cluster is already initialized.
+3. Copy `root-ca.pem`, the pair of the node and the admin pair from `wazuh-certificates` to the new node. There, **before** installing the package, place them with the names the package uses, as in [Deploying certificates and passwords](../../guide/step-by-step-deployments/clusterized.md#deploying-certificates-and-passwords). For example, with the files in a `wazuh-certificates` directory in the current directory:
+
+    ```bash
+    NODE_NAME=indexer-4
+    sudo install -d -m 0750 -o root -g root /etc/wazuh-indexer /etc/wazuh-indexer/ca /etc/wazuh-indexer/certs
+    sudo install -m 0640 wazuh-certificates/root-ca.pem /etc/wazuh-indexer/ca/root-ca.pem
+    sudo install -m 0640 wazuh-certificates/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
+    sudo install -m 0640 wazuh-certificates/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
+    sudo install -m 0600 wazuh-certificates/admin.pem /etc/wazuh-indexer/certs/admin.pem
+    sudo install -m 0600 wazuh-certificates/admin-key.pem /etc/wazuh-indexer/certs/admin-key.pem
+    ```
+
+    Also place the three `WAZUH_INDEXER_*` passwords of the deployment in `/etc/wazuh-indexer/local.env`. A package installed without these files creates its own CA and pair, and placing them later does not configure it. Without the admin pair, the package leaves `plugins.security.authcz.admin_dn` empty, cannot create its keystore, and the node does not start. Then install and configure the package as the other Wazuh indexer nodes, listing every node, the new one included, in `discovery.seed_hosts` and `plugins.security.nodes_dn`. Do not run `indexer-security-init.sh`: the cluster is already initialized.
 
 4. On every existing Wazuh indexer node, add the new node to `discovery.seed_hosts` and its subject to `plugins.security.nodes_dn` in `/etc/wazuh-indexer/opensearch.yml`, and restart the nodes one at a time, waiting until the cluster is `green` before the next one.
 
@@ -595,7 +618,9 @@ The tool never prints a password. A new password is saved in every credential fi
 - The `local.env` file of each package that uses the password: `/etc/wazuh-indexer/local.env`, `/etc/wazuh-manager/local.env` or `/etc/wazuh-dashboard/local.env`.
 - The `credentials.env` file that `--generate-config-files` keeps next to the root CA: `wazuh-ca/credentials.env` next to the tool, or in `WAZUH_CA_DIR`. So a later `--generate-config-files` gives the new password to new nodes.
 
-The tool only updates the files that already hold the key, and prints the files and the key. A generated password must be saved in at least one file: if there is none, the tool stops with an error. Use `-p` to set a password you know.
+The tool updates the files that already hold the key, and prints the files and the key. If there is none, it creates the `local.env` file of the package that owns the user (`/etc/wazuh-indexer/local.env` or `/etc/wazuh-manager/local.env`, `root:root` `0600`) and saves the password there, so the password is never lost.
+
+If the credential files or the whole `export/` directory were deleted, run the tool with `-a|--change-all`. The packages publish `export/credentials.env` only once, when they are installed, and do not write it again on a restart, so `-u` only records the password of that user: `-a` rotates every password and saves all of them in the `local.env` files it creates.
 
 Read the new password in the file of the owner, for example:
 
@@ -722,8 +747,10 @@ sed -i 's|^WAZUH_MANAGER_WUI_PASSWORD=.*|WAZUH_MANAGER_WUI_PASSWORD=<WAZUH_WUI_P
 > The Wazuh dashboard login does not show a wrong `kibanaserver` password: it sends the credentials of the user who logs in to the Wazuh indexer. The Wazuh dashboard server itself uses `kibanaserver`, so check its state instead. It is `red` (`Unable to retrieve version information from OpenSearch nodes`) until `opensearch.password` is updated:
 >
 > ```bash
-> curl -k -u admin https://<WAZUH_DASHBOARD_IP_ADDRESS>/api/status
+> sudo curl --cacert /etc/wazuh-dashboard/export/ca.pem -u admin https://<WAZUH_DASHBOARD_IP_ADDRESS>/api/status
 > ```
+>
+> The address must be one of the names in the Wazuh dashboard certificate. Only `root` can read `/etc/wazuh-dashboard/export/ca.pem`, so run `curl` with `sudo`. In a distributed deployment the Wazuh dashboard does not publish `export/ca.pem`: use `/etc/wazuh-dashboard/certs/indexer-ca.pem`, the same CA.
 >
 > A wrong `wazuh-internal-client` password shows as an error of the Wazuh server API connection in the Wazuh dashboard.
 

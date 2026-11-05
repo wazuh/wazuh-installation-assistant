@@ -516,3 +516,22 @@ class TestChecksUninstallComponents:
         result = self._run({"dashboard_remaining_files": "/etc/wazuh-dashboard"})
         assert_success(result)
         assert "Wazuh dashboard not found" not in result.stdout
+
+
+class TestCheckDist:
+    """check_dist warns on a system that is not supported, naming what the run does."""
+
+    @pytest.mark.parametrize(
+        "step, operation",
+        [("indexer", "installation"), ("start_indexer_cluster", "cluster initialization")],
+    )
+    def test_unsupported_system_warning_names_the_operation(self, step, operation):
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installCommon.sh"],
+            "check_dist",
+            {"common_logger": 'echo "$@"', "dist_detect": "DIST_NAME=debian; DIST_VER=12"},
+            {step: "1"},
+        )
+        assert_success(result)
+        assert f"The {operation} may not work properly." in result.stdout
+

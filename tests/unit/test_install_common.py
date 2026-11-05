@@ -6,7 +6,8 @@ Covers: installCommon_getConfig, installCommon_installPrerequisites,
         installCommon_createInstallFiles, installCommon_placeFromTar,
         installCommon_placeCredentials, installCommon_createPasswords,
         installCommon_scanDependencies, installCommon_extractConfig,
-        installCommon_createCertificates, installCommon_logRunHeader
+        installCommon_createCertificates, installCommon_logRunHeader,
+        installCommon_rollBack, installCommon_cleanExit
 """
 
 import shutil
@@ -211,6 +212,30 @@ class TestInstallCommonInstallList:
         assert_success(result)
         assert "deps=" in result.stdout
         assert "curl" not in result.stdout.split("deps=")[1]
+
+
+class TestInstallCommonPackageOutputLog:
+    """The output of apt-get and yum keeps its line breaks in the log."""
+
+    @pytest.mark.parametrize("func, cmd", [
+        ("installCommon_aptInstall", "apt-get"),
+        ("installCommon_yumInstall", "yum"),
+    ])
+    def test_log_keeps_line_breaks(self, tmp_path, func, cmd):
+        log = tmp_path / "install.log"
+        result = run_bash_function(
+            BASE_SOURCES,
+            f"{func} wazuh-manager",
+            {
+                **IGNORE_LOGGER,
+                "common_checkAptLock": "true",
+                "common_checkYumLock": "true",
+                cmd: "printf 'line one\\nline two\\n'",
+            },
+            {"attempt": "0", "max_attempts": "5", "debug": f">> {log} 2>&1"},
+        )
+        assert_success(result)
+        assert log.read_text().splitlines() == ["line one", "line two"]
 
 
 class TestInstallCommonStartService:
@@ -821,6 +846,24 @@ class TestInstallCommonScanDependencies:
         for dep in ["openssl", "diffutils", "gawk", "iproute"]:
             assert dep in deps
 
+    @pytest.mark.parametrize(
+        "step, operation",
+        [("wazuh", "installation"), ("start_indexer_cluster", "cluster initialization")],
+    )
+    def test_missing_dependencies_message_names_the_operation(self, step, operation):
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installVariables.sh"],
+            "installCommon_scanDependencies",
+            {"common_logger": 'printf "%s\\n" "$*"', "rpm": "return 1"},
+            {"sys_type": "yum", step: "1"},
+        )
+        assert_failure(result)
+        assert result.stdout.startswith("-e ")
+        assert f"To perform the {operation}, the following package/s must be installed:" in result.stdout
+        assert f"will be removed after the {operation}:" in result.stdout
+        if step == "start_indexer_cluster":
+            assert "installation" not in result.stdout
+
 
 class TestInstallCommonVerifyPackageSignature:
     """Tests for installCommon_verifyPackageSignature on RPM packages.
@@ -867,6 +910,23 @@ class TestInstallCommonVerifyPackageSignature:
 
     def test_success_unsigned_with_skip(self):
         assert_success(self._run("(none)", skip="1"))
+
+    def test_success_logs_the_package_and_the_key_fingerprint(self):
+        result = run_bash_function(
+            BASE_SOURCES,
+            "installCommon_verifyPackageSignature /tmp/wazuh-manager_5.1.0-1_amd64.deb",
+            {
+                "common_logger": 'echo "$@"',
+                "installCommon_getWazuhGPGKey": f"key_fingerprint={WAZUH_FINGERPRINT}",
+                "installCommon_verifyDebSignature": "true",
+            },
+            {"skip_signature_check": ""},
+        )
+        assert_success(result)
+        assert (
+            f"Signature of wazuh-manager_5.1.0-1_amd64.deb verified with the Wazuh GPG key {WAZUH_FINGERPRINT}."
+            in result.stdout.splitlines()
+        )
 
 
 class TestInstallCommonGetWazuhGPGKey:
@@ -1039,6 +1099,18 @@ class TestInstallCommonRollBack:
         assert_success(result)
         assert result.stdout.splitlines() == ["deps", "systemctl daemon-reload"]
 
+    def test_start_cluster_messages_do_not_mention_an_installation(self):
+        result = self._run({"start_indexer_cluster": "1", "logfile": "/var/log/wazuh-install.log"})
+        assert_success(result)
+        assert result.stdout.splitlines() == [
+            "Cluster initialization cleaned. Check the /var/log/wazuh-install.log file to learn more about the issue."
+        ]
+
+    def test_start_cluster_after_ctrl_c(self):
+        result = self._run({"start_indexer_cluster": "1", "rollback_conf": "y"})
+        assert_success(result)
+        assert result.stdout.splitlines() == ["Cluster initialization cleaned."]
+
     def test_removing_dependencies_is_a_noop_when_none_were_scanned(self):
         # The uninstall flow never runs installCommon_scanDependencies, so nothing is removed
         mocks = {"common_logger": 'echo "$@"', "yum": "exit 1", "apt-get": "exit 1"}
@@ -1051,6 +1123,92 @@ class TestInstallCommonRollBack:
             )
             assert_success(result)
             assert result.stdout == ""
+
+
+class TestInstallCommonRollBackScope:
+    """installCommon_rollBack removes only the components of the failed step, also on a host with all of them."""
+
+    HOST = {
+        "sys_type": "apt-get",
+        "wazuh_installed": "1",
+        "indexer_installed": "1",
+        "dashboard_installed": "1",
+        "wazuh_remaining_files": "1",
+        "indexer_remaining_files": "1",
+        "dashboard_remaining_files": "1",
+    }
+    MOCKS = {
+        "common_logger": "true",
+        "common_checkAptLock": "true",
+        "apt-get": 'echo "purge $3"',
+        "apt": "true",
+        "rm": 'shift; printf "rm %s\\n" "$@"',
+        "installCommon_removeWIADependencies": "true",
+        "systemctl": "true",
+    }
+    ALL = {"manager", "indexer", "dashboard"}
+
+    @staticmethod
+    def _component(item):
+        if "wazuh-manager" in item:
+            return "manager"
+        if "wazuh-indexer" in item or "opensearch" in item or "securityadmin" in item:
+            return "indexer"
+        if "dashboard" in item:
+            return "dashboard"
+        raise AssertionError(f"Unknown item removed: {item}")
+
+    def _run(self, step):
+        result = run_bash_function(BASE_SOURCES, "installCommon_rollBack", self.MOCKS, {**self.HOST, step: "1"})
+        assert_success(result)
+        return result.stdout.splitlines()
+
+    @pytest.mark.parametrize(
+        "step, removed",
+        [
+            ("start_indexer_cluster", set()),
+            ("indexer", {"indexer"}),
+            ("dashboard", {"dashboard"}),
+            ("wazuh", {"manager"}),
+            ("AIO", ALL),
+            ("uninstall", ALL),
+        ],
+    )
+    def test_removes_only_the_components_of_the_step(self, step, removed):
+        lines = self._run(step)
+        assert {self._component(line) for line in lines} == removed
+
+    @pytest.mark.parametrize("step", ["start_indexer_cluster", "dashboard", "wazuh"])
+    def test_keeps_the_log_directory_of_the_indexer(self, step):
+        assert "rm /var/log/wazuh-indexer/" not in self._run(step)
+
+    def test_indexer_step_removes_its_log_directory(self):
+        lines = self._run("indexer")
+        assert "purge wazuh-indexer" in lines
+        assert "rm /var/log/wazuh-indexer/" in lines
+
+
+class TestInstallCommonCleanExit:
+    """installCommon_cleanExit runs on Ctrl+C: it stops the indexer security initializer and asks about the cleanup."""
+
+    MOCKS = {"common_checkInstalled": "true", "installCommon_rollBack": 'echo "ROLLBACK"'}
+
+    def _run(self, answer, env=None):
+        return run_bash_function(BASE_SOURCES, "installCommon_cleanExit", self.MOCKS, env, stdin=f"{answer}\n")
+
+    def test_installation_question(self):
+        result = self._run("n")
+        assert result.returncode == 1
+        assert "Do you want to remove the ongoing installation?[Y/N]" in result.stdout
+        assert "ROLLBACK" not in result.stdout
+
+    def test_start_cluster_question(self):
+        result = self._run("y", {"start_indexer_cluster": "1"})
+        assert result.returncode == 1
+        assert "Do you want to clean up the ongoing cluster initialization?[Y/N]" in result.stdout
+        assert "installation" not in result.stdout
+        assert "ROLLBACK" in result.stdout
+
 
 
 class TestInstallCommonLogRunHeader:

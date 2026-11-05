@@ -75,7 +75,7 @@ function getHelp() {
     echo -e "        The tool must be run as root."
     echo -e ""
 
-    exit 1
+    exit "${1:-1}"
 
 }
 
@@ -136,7 +136,7 @@ function main() {
                 shift 1
                 ;;
             "-h"|"--help")
-                getHelp
+                getHelp 0
                 ;;
             "-v"|"--verbose")
                 debugEnabled=1

@@ -27,22 +27,27 @@ The following dependencies must be installed on the Wazuh single node:
 - openssl
 - procps-ng
 - sed
+- systemd
 - tar
 - util-linux
 
 **DEB-based systems:**
 
 - adduser
-- apt-transport-https
+- coreutils
 - curl
 - debconf
 - diffutils
+- gawk
 - gnupg
+- grep
 - hostname
 - iproute2
 - libcap2-bin
 - openssl
 - procps
+- sed
+- systemd
 - tar
 - util-linux
 
@@ -72,6 +77,10 @@ INFO:     Password: <ADMIN_PASSWORD>
 INFO:     To read the password again, run:
 INFO:         sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-
 INFO: The passwords of the other users are in /etc/wazuh-indexer/export/credentials.env and /etc/wazuh-manager/export/credentials.env.
+INFO: --- Next steps ---
+INFO: To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on this server:
+INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>
+INFO: For more information, see https://documentation.wazuh.com/5.1/installation-guide/wazuh-agent/index.html
 INFO: Installation finished.
 ```
 
@@ -102,21 +111,34 @@ The following dependencies must be installed on the Wazuh indexer nodes, besides
 **RPM-based systems:**
 
 - coreutils
+- curl
 - diffutils
+- gawk
+- grep
 - hostname
 - iproute
 - openssl
 - procps-ng
+- sed
+- systemd
+- tar
 - util-linux
 
 **DEB-based systems:**
 
 - adduser
+- coreutils
+- curl
 - debconf
 - diffutils
+- gawk
+- grep
 - iproute2
 - openssl
 - procps
+- sed
+- systemd
+- tar
 
 #### Installation Steps
 
@@ -138,12 +160,14 @@ The following dependencies must be installed on the Wazuh indexer nodes, besides
 
     > **Note:** You only have to initialize the cluster once. There is no need to run this command on every node.
 
+    The assistant waits up to 300 seconds for the Wazuh indexer cluster to form, and names the Wazuh indexer nodes of `config.yml` that must be running. If the time runs out, start the Wazuh indexer service on those nodes and run `--start-cluster` again. Cancelling `--start-cluster` with Ctrl+C, or a failure, leaves the Wazuh indexer installed.
+
 ### Testing the cluster installation
 
-1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the configured Wazuh indexer IP address. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+1. Run the following command on a Wazuh indexer node to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`. `curl` verifies the certificate with the CA published in `/etc/wazuh-indexer/export/ca.pem`, which only `root` and the `wazuh-indexer` group can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
     ```bash
-    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
     ```
 
     **Output example:**
@@ -168,10 +192,10 @@ The following dependencies must be installed on the Wazuh indexer nodes, besides
     }
 ```
 
-2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command, then execute it. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+2. Verify that the cluster is running correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` in the following command with the IP address or DNS name of the same node, then execute it there. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
     ```bash
-    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+    sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
     ```
 
 ### Installing the Wazuh manager
@@ -182,6 +206,8 @@ The following dependencies must be installed on the Wazuh manager nodes, besides
 
 **RPM-based systems:**
 
+- coreutils
+- curl
 - diffutils
 - findutils
 - gawk
@@ -189,18 +215,27 @@ The following dependencies must be installed on the Wazuh manager nodes, besides
 - hostname
 - iproute
 - openssl
+- procps-ng
 - sed
+- systemd
+- tar
 - util-linux
 
 **DEB-based systems:**
 
-- apt-transport-https
+- coreutils
 - curl
 - diffutils
+- gawk
 - gnupg
+- grep
 - hostname
 - iproute2
 - openssl
+- procps
+- sed
+- systemd
+- tar
 - util-linux
 
 #### Installation Steps
@@ -221,17 +256,31 @@ The following dependencies must be installed on the Wazuh dashboard node, beside
 
 **RPM-based systems:**
 
+- coreutils
+- curl
 - diffutils
+- gawk
+- grep
 - libcap
 - openssl
+- procps-ng
+- sed
+- systemd
+- tar
 - util-linux
 
 **DEB-based systems:**
 
+- coreutils
 - curl
 - diffutils
+- gawk
+- grep
 - libcap2-bin
 - openssl
+- procps
+- sed
+- systemd
 - tar
 
 #### Installation Steps
@@ -256,6 +305,10 @@ INFO:     User: admin (Wazuh dashboard login and Wazuh indexer administrator)
 INFO:     Password: to read it from wazuh-install-files.tar, run:
 INFO:         sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-
 INFO: The passwords of the other users are in wazuh-install-files/credentials.env of wazuh-install-files.tar.
+INFO: --- Next steps ---
+INFO: To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on the Wazuh manager (the master node in a cluster):
+INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>
+INFO: For more information, see https://documentation.wazuh.com/5.1/installation-guide/wazuh-agent/index.html
 INFO: Installation finished.
 ```
 

@@ -30,19 +30,13 @@ function getHelp() {
     echo -e "                Adds an extra address to the subject alternative name of the Server"
     echo -e "                API certificate of every Wazuh manager node. Repeat it for more than"
     echo -e "                one. Use it for the address API clients dial when the host cannot know"
-    echo -e "                it: a load balancer, a published name, a NAT address."
+    echo -e "                it: a load balancer, a published name, a NAT address. With -a, the"
+    echo -e "                Server API also listens on all network interfaces instead of only"
+    echo -e "                on the local host."
     echo -e "                Must be used along with one of these options: -a, -g"
     echo -e ""
     echo -e "        -d [pre-release|local],  --development"
-<<<<<<< HEAD
-    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.1.0.sh."
-=======
-<<<<<<< HEAD
-    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.1.sh."
-=======
-    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yaml file located in the same path as the wazuh-install-5.0.0.sh."
->>>>>>> origin/5.0.0
->>>>>>> origin/5.0.1
+    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yaml file located in the same directory as this script."
     echo -e ""
     echo -e "        --skip-signature-check"
     echo -e "                Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with -d."
@@ -88,7 +82,7 @@ function getHelp() {
     echo -e ""
     echo -e "        -wm,  --wazuh-manager <manager-node-name>"
     echo -e "                Install and configure Wazuh manager, used for distributed deployments."
-    exit 1
+    exit "${1:-1}"
 
 }
 
@@ -153,7 +147,7 @@ function main() {
                 shift 1
                 ;;
             "-h"|"--help")
-                getHelp
+                getHelp 0
                 ;;
             "-id"|"--install-dependencies")
                 install_dependencies=1
@@ -260,6 +254,9 @@ function main() {
 # -------------- Uninstall case  ------------------------------------
 
     common_checkSystem
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+        common_logger "Checking for an existing Wazuh installation."
+    fi
     common_checkInstalled
     checks_arguments
     cert_validateAgentSan
@@ -439,6 +436,7 @@ function main() {
         manager_setRemotedSans
         manager_setApidSans
         manager_install
+        manager_setApiLoopback
         installCommon_startService "wazuh-manager"
         common_logger "--- Wazuh dashboard ---"
         dashboard_install
