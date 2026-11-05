@@ -3,7 +3,7 @@
 Install and configure the Wazuh indexer as a multi-node cluster on a 64-bit (x86_64/AMD64 or AARCH64/ARM64) architecture using the assisted installation method. The Wazuh indexer is a highly scalable full-text search engine. It offers advanced security, alerting, index management, deep performance analysis, and several other features.
 
 > [!NOTE]
-> The assistant stops if a package it needs, such as `apt-transport-https`, is missing, and names it. Install it, or add `-id` to the installation commands of this guide to install it automatically. To install packages that are not published yet, add `-d local` and list them in `artifact_urls.yaml`, as described in [Use development packages](../../ref/getting-started/usage.md#use-development-packages).
+> The assistant stops if a package it needs, such as `gnupg`, is missing, and names it. Install it, or add `-id` to the installation commands of this guide to install it automatically. To install packages that are not published yet, add `-d local` and list them in `artifact_urls.yaml`, as described in [Use development packages](../../ref/getting-started/usage.md#use-development-packages).
 
 ## Wazuh indexer
 
@@ -129,14 +129,16 @@ bash wazuh-install-5.1.0.sh --start-cluster
 > [!NOTE]
 > You only have to initialize the cluster once, there is no need to run this command on every node.
 
+The assistant waits up to 300 seconds for the Wazuh indexer cluster to form, and names the Wazuh indexer nodes of `config.yml` that must be running. If the time runs out, start the Wazuh indexer service on those nodes and run `--start-cluster` again. Cancelling `--start-cluster` with Ctrl+C, or a failure, leaves the Wazuh indexer installed.
+
 ### Testing the cluster installation
 
 Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster is functioning as expected by following the steps below.
 
-  1. Run the following command to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+  1. Run the following command on a Wazuh indexer node to confirm that the installation is successful. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`. `curl` verifies the certificate with the CA published in `/etc/wazuh-indexer/export/ca.pem`, which only `root` and the `wazuh-indexer` group can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
       ```bash
-      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
+      sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
       ```
 
       ```json
@@ -152,10 +154,10 @@ Verify that the Wazuh indexer installed correctly and the Wazuh indexer cluster 
       }
       ```
 
-  2. Run the following command to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address of the Wazuh indexer. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+  2. Run the following command on the same node to check if the cluster is working correctly. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` on a Wazuh indexer node (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
       ```bash
-      curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+      sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
       ```
 
       ```bash
@@ -192,10 +194,10 @@ Your Wazuh manager is now successfully installed, repeat this process on every W
       /var/wazuh-manager/bin/cluster_control -l
       ```
 
-  3. Check that the Wazuh server API answers. Replace `<MASTER_IP>` with the IP address of the master node and `<WAZUH_MANAGER_API_PASSWORD>` with the `WAZUH_MANAGER_API_PASSWORD` value of `/etc/wazuh-manager/export/credentials.env` on the master node:
+  3. On the master node, check that the Wazuh server API answers. Replace `<MASTER_IP>` with the IP address or DNS name of the master node in `config.yml`. `curl` verifies the certificate with the CA published in `/etc/wazuh-manager/export/ca.pem`, which only `root` can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_MANAGER_API_PASSWORD` value of `/etc/wazuh-manager/export/credentials.env` (`sudo grep '^WAZUH_MANAGER_API_PASSWORD=' /etc/wazuh-manager/export/credentials.env | cut -d= -f2-`):
 
       ```bash
-      curl -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://<MASTER_IP>:55000/security/user/authenticate?raw=true"
+      sudo curl --cacert /etc/wazuh-manager/export/ca.pem -u wazuh -X POST "https://<MASTER_IP>:55000/security/user/authenticate?raw=true"
       ```
 
 The Wazuh server API only runs on the master node. The Wazuh dashboard connects to the master.
@@ -233,6 +235,10 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
         INFO:     Password: to read it from wazuh-install-files.tar, run:
         INFO:         sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-
         INFO: The passwords of the other users are in wazuh-install-files/credentials.env of wazuh-install-files.tar.
+        INFO: --- Next steps ---
+        INFO: To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on the Wazuh manager (the master node in a cluster):
+        INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>
+        INFO: For more information, see https://documentation.wazuh.com/5.1/installation-guide/wazuh-agent/index.html
         INFO: Installation finished.
       ```
 
@@ -275,3 +281,5 @@ sudo systemctl enable --now wazuh-agent
 To check the enrollment, look for `Token bootstrap: enrollment succeeded` in `/var/ossec/logs/ossec.log` on the endpoint. The agent then shows as `active` in the Wazuh server API (`GET /agents`) and in the Wazuh dashboard.
 
 See the [Wazuh agent installation](https://github.com/wazuh/wazuh/blob/5.1.0/docs/ref/getting-started/installation.md#agent) for the other platforms and options.
+
+The agents connect to the Wazuh manager nodes on port 1517. Every Wazuh manager node also listens on ports 1514 and 1515 for Wazuh 4.x agents. To close them when no Wazuh agent runs 4.x, see [Close the legacy ports 1514 and 1515](../security.md#close-the-legacy-ports-1514-and-1515).

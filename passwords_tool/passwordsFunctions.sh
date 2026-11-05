@@ -709,9 +709,43 @@ function passwords_getDeploymentFile() {
 
 }
 
+# Prints the local.env of the package that owns a key. The tool creates it when no
+# credential file of this host holds the key, so a new password is never lost.
+function passwords_getOwnerFile() {
+
+    case "${1}" in
+        WAZUH_INDEXER_*) echo "${indexer_config_path}/local.env" ;;
+        WAZUH_MANAGER_*) echo "${manager_config_path}/local.env" ;;
+        *) return 1 ;;
+    esac
+
+}
+
+# Checks, before any password is changed, that the configuration directory of the
+# package that owns each user exists, so a new password always has a file to go to.
+function passwords_checkOwnerDirs() {
+
+    local user key dir
+    local -a to_change=("${users[@]}" "${api_users[@]}")
+
+    if [ -n "${nuser}" ]; then
+        to_change=("${nuser}")
+    fi
+
+    for user in "${to_change[@]}"; do
+        key=$(passwords_getEnvKey "${user}") || continue
+        dir=$(dirname "$(passwords_getOwnerFile "${key}")")
+        if [ ! -d "${dir}" ]; then
+            common_logger -e "${dir} does not exist, so the new password of user ${user} could not be saved. No password was changed."
+            exit 1;
+        fi
+    done
+
+}
+
 # Records a new password in the credential files of this host that already hold the
-# key, so they never keep an old one. A generated password must be saved in at least
-# one of them, because it is not shown anywhere else.
+# key, so they never keep an old one. When none of them holds it, the local.env of
+# the package that owns the user is created with it.
 function passwords_saveCredential() {
 
     local user="${1}"
@@ -735,12 +769,13 @@ function passwords_saveCredential() {
     done
 
     if [ "${#saved[@]}" -eq 0 ]; then
-        if [ -n "${generated}" ]; then
-            common_logger -e "The new password of user ${user} was applied, but there is no credentials file on this host to save it. Run the tool again for this user with -p to set a password you know."
+        file=$(passwords_getOwnerFile "${key}")
+        if ! common_envSet "${file}" "${key}" "${new_password}"; then
+            common_logger -e "The new password of user ${user} was applied, but ${file} could not be created to save it. Run the tool again for this user with -p to set a password you know."
             save_failed=1
             return 1
         fi
-        return 0
+        saved+=("${file} (created)")
     fi
 
     if [ -n "${generated}" ]; then

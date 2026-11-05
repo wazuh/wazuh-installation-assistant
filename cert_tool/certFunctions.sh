@@ -1529,12 +1529,13 @@ function cert_readConfig() {
 
 }
 
-# The root CA is no longer given on the command line: it is read from the CA
-# directory. Fails when the argument after an option is a path instead of an option.
+# These options take no argument: the nodes come from config.yml and the root CA from
+# the CA directory. Fails when the next argument is a value, such as a node name or an
+# old root CA path, instead of an option.
 function cert_rejectCAPaths() {
 
     if [[ -n "${2}" && "${2}" != -* ]]; then
-        common_logger -e "${1} does not take root CA files anymore. The root CA is read from $(common_caGetDir 2>/dev/null). Set WAZUH_CA_DIR to use the root CA of another directory."
+        common_logger -e "${1} takes no argument, got '${2}': it issues the certificates of every node of config.yml it applies to, with the root CA of $(common_caGetDir 2>/dev/null). Set WAZUH_CA_DIR to use the root CA of another directory."
         exit 1
     fi
 

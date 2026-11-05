@@ -242,7 +242,7 @@ function check_dist() {
 
     if [ -n "${notsupported}" ]; then
         common_logger "The supported systems are: Red Hat Enterprise Linux 9, 10; Amazon Linux 2023; Ubuntu 24.04, 26.04."
-        common_logger -w "The current system does not match with the list of supported systems. The installation may not work properly."
+        common_logger -w "The current system does not match with the list of supported systems. The $(installCommon_operationName) may not work properly."
     fi
     common_logger -d "Detected distribution name: ${DIST_NAME}"
     common_logger -d "Detected distribution version: ${DIST_VER}"
