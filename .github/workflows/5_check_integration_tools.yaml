@@ -947,7 +947,7 @@ jobs:
 
       - name: Install requirements
         run: |
-          pip install -r wazuh-automation/deployability/deps/requirements.txt
+          pip install ./wazuh-automation/deployability/modules/allocation
           pip install pyyaml --quiet
 
       - name: Configure AWS credentials
@@ -965,7 +965,7 @@ jobs:
           allocate() {
             local role="$1" system="$2" size="$3" dir="/tmp/allocator_${1,,}"
             mkdir -p "$dir"
-            python3 wazuh-automation/deployability/modules/allocation/main.py \
+            wazuh-allocator \
               --action create \
               --provider aws \
               --size "$size" \
@@ -1277,7 +1277,7 @@ jobs:
           RESULT=0
           for dir in /tmp/allocator_server /tmp/allocator_agent; do
             [ -f "$dir/track.yml" ] || continue
-            python3 wazuh-automation/deployability/modules/allocation/main.py \
+            wazuh-allocator \
               --action delete \
               --track-output "$dir/track.yml" || RESULT=1
           done
