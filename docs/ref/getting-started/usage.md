@@ -371,7 +371,9 @@ You can create only the certificates for a component as well as the CA or admin 
 
 An agent checks the manager's listener certificate against the address it dialled before
 enrolling, so that address has to be in the certificate. The `ip` and `dns` fields of each
-manager node cover the case where agents dial the node itself. When they dial an address
+manager node cover the case where agents dial the node itself. The certificate also names
+`localhost`, `127.0.0.1` and `::1`, like the one the Wazuh manager package issues, so an
+agent on the Wazuh manager node can enroll through loopback. When agents dial an address
 no single node owns, add it with `-as`, `--agent-san`, repeated once per value:
 
 ```bash

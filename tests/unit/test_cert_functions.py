@@ -740,7 +740,35 @@ class TestCertGenerateApidcertificateRealOpenSSL:
         assert "agents.example.com" not in self._san(issued / "wazuh-master-apid.pem")
         remoted = self._san(issued / "wazuh-master-remoted.pem")
         assert "api.example.com" not in remoted
-        assert "localhost" not in remoted
+        assert "203.0.113.20" not in remoted
+
+    def test_success_remoted_san_node_loopback_and_agent_san(self, issued):
+        """The agent listener names loopback, like the certificate the manager package issues."""
+        san = self._san(issued / "wazuh-master-remoted.pem")
+        for entry in (
+            "IP Address:10.0.1.11", "DNS:wazuh-api", "DNS:wazuh-master", "DNS:localhost",
+            "IP Address:127.0.0.1", "IP Address:0:0:0:0:0:0:0:1", "DNS:agents.example.com",
+        ):
+            assert entry in san, san
+
+    def test_success_remoted_loopback_listed_once(self, tmp_path):
+        """A node on 127.0.0.1 does not get loopback twice in the agent listener SAN."""
+        env = {
+            "cert_tmp_path": str(tmp_path),
+            "rootcakey": make_ca(tmp_path),
+            "manager_node_names": "(wazuh-master)",
+            "manager_node_ip_1": "(127.0.0.1)",
+            "manager_node_dns_1": "()",
+            "agent_san": "(10.0.1.11)",
+            "api_san": "()",
+        }
+        assert_success(
+            run_bash_function(BASE_SOURCES, "cert_generateManagercertificates", IGNORE_LOGGER, env)
+        )
+        san = self._san(tmp_path / "wazuh-master-remoted.pem")
+        assert san.count("IP Address:127.0.0.1") == 1, san
+        assert san.count("DNS:localhost") == 1, san
+        assert "IP Address:10.0.1.11" in san, san
 
     def test_success_chain_and_verification(self, issued):
         cert = issued / "wazuh-master-apid.pem"
