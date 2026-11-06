@@ -281,9 +281,9 @@ nodes:
     - name: indexer
       ip: "<indexer-node-ip>"
     #- name: indexer-2
-    #  ip: "<indexer-node-ip>"
+    #  ip: "<indexer-2-node-ip>"
     #- name: indexer-3
-    #  ip: "<indexer-node-ip>"
+    #  ip: "<indexer-3-node-ip>"
 
   # Wazuh manager nodes
   # If there is more than one Wazuh manager
@@ -293,10 +293,10 @@ nodes:
       ip: "<wazuh-manager-ip>"
     #  node_type: master
     #- name: manager-2
-    #  ip: "<wazuh-manager-ip>"
+    #  ip: "<wazuh-manager-2-ip>"
     #  node_type: worker
     #- name: manager-3
-    #  ip: "<wazuh-manager-ip>"
+    #  ip: "<wazuh-manager-3-ip>"
     #  node_type: worker
 
   # Wazuh dashboard nodes
@@ -530,7 +530,7 @@ A new Wazuh indexer node must hold a certificate signed by the root CA of the de
 
 1. Go to the node that holds `root-ca.key`, and set `CA_DIR` to its directory, as in step 1 of [Renew and deploy certificates](#renew-and-deploy-certificates).
 
-2. Write a `config.yml` with the new node only, and create its certificates with `-wi`, which only uses an existing root CA. Check that the certificate chains to the root CA of the deployment: the command must print `OK`.
+2. Write a `config.yml` with the new node only, and create its certificates and the admin certificates with `-wi -a`. Both options only use an existing root CA. The new node needs the admin pair too: the package reads it to fill `plugins.security.authcz.admin_dn` and to create its keystore. Check that both certificates chain to the root CA of the deployment: the command must print `OK` for each one.
 
     ```yaml
     nodes:
@@ -541,11 +541,23 @@ A new Wazuh indexer node must hold a certificate signed by the root CA of the de
 
     ```bash
     sudo rm -rf wazuh-certificates
-    sudo WAZUH_CA_DIR=$CA_DIR bash wazuh-certs-tool-5.0.0.sh -wi
-    sudo openssl verify -CAfile $CA_DIR/root-ca.pem wazuh-certificates/indexer-4.pem
+    sudo WAZUH_CA_DIR=$CA_DIR bash wazuh-certs-tool-5.0.0.sh -wi -a
+    sudo openssl verify -CAfile $CA_DIR/root-ca.pem wazuh-certificates/indexer-4.pem wazuh-certificates/admin.pem
     ```
 
-3. On the new node, **before** installing the package, place `root-ca.pem` in `/etc/wazuh-indexer/ca/`, the three `WAZUH_INDEXER_*` passwords of the deployment in `/etc/wazuh-indexer/local.env`, and the pair of the node in `/etc/wazuh-indexer/certs/`, as in [Deploying certificates and passwords](../../guide/step-by-step-deployments/clusterized.md#deploying-certificates-and-passwords). A package installed without them creates its own CA and pair, and placing them later does not configure it. Then install and configure the package as the other Wazuh indexer nodes, listing every node, the new one included, in `discovery.seed_hosts` and `plugins.security.nodes_dn`. Do not run `indexer-security-init.sh`: the cluster is already initialized.
+3. Copy `root-ca.pem`, the pair of the node and the admin pair from `wazuh-certificates` to the new node. There, **before** installing the package, place them with the names the package uses, as in [Deploying certificates and passwords](../../guide/step-by-step-deployments/clusterized.md#deploying-certificates-and-passwords). For example, with the files in a `wazuh-certificates` directory in the current directory:
+
+    ```bash
+    NODE_NAME=indexer-4
+    sudo install -d -m 0750 -o root -g root /etc/wazuh-indexer /etc/wazuh-indexer/ca /etc/wazuh-indexer/certs
+    sudo install -m 0640 wazuh-certificates/root-ca.pem /etc/wazuh-indexer/ca/root-ca.pem
+    sudo install -m 0640 wazuh-certificates/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
+    sudo install -m 0640 wazuh-certificates/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
+    sudo install -m 0600 wazuh-certificates/admin.pem /etc/wazuh-indexer/certs/admin.pem
+    sudo install -m 0600 wazuh-certificates/admin-key.pem /etc/wazuh-indexer/certs/admin-key.pem
+    ```
+
+    Also place the three `WAZUH_INDEXER_*` passwords of the deployment in `/etc/wazuh-indexer/local.env`. A package installed without these files creates its own CA and pair, and placing them later does not configure it. Without the admin pair, the package leaves `plugins.security.authcz.admin_dn` empty, cannot create its keystore, and the node does not start. Then install and configure the package as the other Wazuh indexer nodes, listing every node, the new one included, in `discovery.seed_hosts` and `plugins.security.nodes_dn`. Do not run `indexer-security-init.sh`: the cluster is already initialized.
 
 4. On every existing Wazuh indexer node, add the new node to `discovery.seed_hosts` and its subject to `plugins.security.nodes_dn` in `/etc/wazuh-indexer/opensearch.yml`, and restart the nodes one at a time, waiting until the cluster is `green` before the next one.
 

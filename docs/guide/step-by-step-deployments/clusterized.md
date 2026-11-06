@@ -229,9 +229,9 @@ The certificates tool ships with the Wazuh indexer package. On the first Wazuh i
         - name: indexer-1
           ip: "<indexer-node-ip>"
         - name: indexer-2
-          ip: "<indexer-node-ip>"
+          ip: "<indexer-2-node-ip>"
         #- name: indexer-3
-        #  ip: "<indexer-node-ip>"
+        #  ip: "<indexer-3-node-ip>"
 
       # Wazuh manager nodes
       # If there is more than one Wazuh manager
@@ -241,7 +241,7 @@ The certificates tool ships with the Wazuh indexer package. On the first Wazuh i
           ip: "<wazuh-manager-ip>"
           node_type: master
         - name: worker
-          ip: "<wazuh-manager-ip>"
+          ip: "<wazuh-manager-2-ip>"
           node_type: worker
 
       # Wazuh dashboard nodes
