@@ -189,6 +189,16 @@
         depth: 1
         force: true
 
+    # Set by select-released-version.sh in pull requests. Empty in workflow_dispatch.
+    - name: Set the Wazuh version to install
+      replace:
+        path: "{{ tmp_path }}/install_functions/installVariables.sh"
+        regexp: '^readonly wazuh_version=.*$'
+        replace: 'readonly wazuh_version="{{ wazuh_version_override }}"'
+      when:
+        - wazuh_version_override is defined
+        - wazuh_version_override | length > 0
+
     - name: Generate Installation assistant
       command: "bash {{ tmp_path }}/builder.sh -i"
 
