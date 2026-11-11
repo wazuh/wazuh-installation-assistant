@@ -115,6 +115,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1200](https://github.com/wazuh/wazuh-installation-assistant/issues/1200) | Add `localhost`, `127.0.0.1` and `::1` to the agent listener certificate (`remoted.pem`) of each Wazuh manager node, as the Wazuh manager package does, so an enrollment token for a loopback address works on a distributed or step-by-step installation |
 | [#1201](https://github.com/wazuh/wazuh-installation-assistant/issues/1201) | Move the multi-address example of the `config.yml` template into the Wazuh manager section so it can be uncommented in place, give each commented node its own placeholder, and shorten the `load_balancer` comment |
 | [#1202](https://github.com/wazuh/wazuh-installation-assistant/issues/1202) | Create and place the admin certificate in the procedure to add a Wazuh indexer node to an existing deployment, without which the new node does not start |
 | [#1192](https://github.com/wazuh/wazuh-installation-assistant/pull/1192) | Fixing integration tests |

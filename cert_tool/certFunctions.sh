@@ -429,10 +429,11 @@ function cert_generateManagercertificates() {
             cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${manager_name}-key.pem" -out "${cert_tmp_path}/${manager_name}.csr" -config "${cert_tmp_path}/${manager_name}.conf"
             common_logger -d "Creating the Wazuh manager certificates."
             cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${manager_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${rootcakey}" -CAcreateserial -out "${cert_tmp_path}/${manager_name}.pem" -extfile "${cert_tmp_path}/${manager_name}.conf" -extensions v3_req -days 3650
-            # Agent-facing listener leaf for this manager node: the node SAN plus the
-            # addresses given with --agent-san, which every node shares. Only this leaf
-            # gets them; the manager certificate above keeps the node SAN alone.
-            cert_generateRemotedcertificate "${manager_name}" "${manager_san[@]}" "${agent_san[@]}"
+            # Agent-facing listener leaf for this manager node: the node SAN, loopback (the
+            # manager package adds it too) and the addresses given with --agent-san, which
+            # every node shares. Only this leaf gets them; the manager certificate above
+            # keeps the node SAN alone.
+            cert_generateRemotedcertificate "${manager_name}" "${manager_san[@]}" localhost 127.0.0.1 ::1 "${agent_san[@]}"
             # Server API leaf: the node SAN, loopback and the addresses given with
             # --api-san. It never takes the --agent-san addresses.
             cert_generateApidcertificate "${manager_name}" "${manager_san[@]}" localhost 127.0.0.1 ::1 "${api_san[@]}"
