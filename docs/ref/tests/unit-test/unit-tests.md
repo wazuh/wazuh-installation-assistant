@@ -1,12 +1,12 @@
 # Unit tests
 
-Unit tests for the Wazuh Installation Assistant scripts. Tests are written in **Python pytest** and run bash functions directly via `subprocess`, with mock injection to avoid real system calls. No Docker required.
+Unit tests for the Wazuh Installation Assistant scripts. Tests are written in **Python pytest** and run bash functions directly via `subprocess`, with mock injection to avoid real system calls. On Linux, no Docker is required.
 
 ## Requirements
 
 - Python >= 3.11
 - [Hatch](https://hatch.pypa.io/) — recommended (`pip install hatch`)
-- `bash` available on the host (standard on Linux/macOS)
+- A Linux host with `bash`, `ps` and `pkill` (`procps`), as on the CI runners. The tests create `/run/systemd/system` when it is missing, so run them as root or with that directory already in place. They do not run on macOS, where that directory cannot be created: use a Linux container instead, for example `docker run --rm -it -v "$PWD":/repo -w /repo python:3.12 bash`, and install `procps` in it.
 
 ## Test structure
 
@@ -14,11 +14,16 @@ Tests live in `tests/unit/` alongside their configuration.
 
 ```
 tests/unit/
+├── README.md
 ├── conftest.py                  # Shared helpers: run_bash_function, assert_success, assert_failure
+├── fixtures/
 ├── test_checks.py               # checks.sh — argument validation, arch, health, cert checks
 ├── test_common.py               # common.sh — system detection, package manager checks
 ├── test_cert_functions.py       # certFunctions.sh — cert generation, OpenSSL checks, config parsing
 ├── test_passwords_functions.py  # passwordsFunctions.sh — password validation, generation, API token
+├── test_passwords_main.py       # passwordsMain.sh — argument parsing, change-all and single-user flows
+├── test_help.py                 # getHelp exit codes of the three tools
+├── test_offline.py              # wazuh-offline-installation.sh — offline_extractFiles
 ├── test_credentials.py          # credentials.sh — env files, password rules and generation, root CA
 ├── test_install_common.py       # installCommon.sh — config retrieval, prerequisites, service start
 ├── test_manager.py              # manager.sh — install (apt/yum), cluster start
@@ -32,8 +37,11 @@ tests/unit/
 | --------- | ----------- |
 | `test_checks.py` | `install_functions/checks.sh` |
 | `test_common.py` | `common_functions/common.sh` |
-| `test_cert_functions.py` | `install_functions/certFunctions.sh` |
+| `test_cert_functions.py` | `cert_tool/certFunctions.sh` |
 | `test_passwords_functions.py` | `passwords_tool/passwordsFunctions.sh` |
+| `test_passwords_main.py` | `passwords_tool/passwordsMain.sh` |
+| `test_help.py` | `install_functions/installMain.sh`, `cert_tool/certMain.sh`, `passwords_tool/passwordsMain.sh` (`getHelp`) |
+| `test_offline.py` | `install_functions/wazuh-offline-installation.sh` |
 | `test_credentials.py` | `common_functions/credentials.sh` |
 | `test_install_common.py` | `install_functions/installCommon.sh` |
 | `test_manager.py` | `install_functions/manager.sh` |
@@ -70,7 +78,7 @@ pytest tests/unit/test_passwords_functions.py -v
 pytest tests/unit/test_passwords_functions.py::TestPasswordsCheckPassword -v
 
 # Run a single test method
-pytest tests/unit/test_passwords_functions.py::TestPasswordsCheckPassword::test_fail_no_uppercase -v
+pytest tests/unit/test_passwords_functions.py::TestPasswordsCheckPassword::test_error_names_the_missing_class -v
 
 # Filter by keyword across all files
 pytest tests/unit/ -k "fail"
@@ -88,12 +96,12 @@ The source code of this project is entirely bash scripts. There is no Python app
 
 ### Step-by-step flow
 
-The following example tests that `passwords_checkPassword` rejects a password without an uppercase letter:
+The following example tests that `passwords_checkPassword` rejects a password without a symbol and names the missing class:
 
 ```python
-def test_fail_no_uppercase(self):
-    result = self._run("invalidpass1.")
-    assert_failure(result)
+def test_error_names_the_missing_class(self):
+    result = self._run("Abcdefghij12")
+    assert "password must contain at least one symbol" in result.stdout
 ```
 
 **Step 1** — `_run` calls `run_bash_function` (defined in `conftest.py`):
@@ -101,16 +109,14 @@ def test_fail_no_uppercase(self):
 ```python
 def _run(self, password):
     return run_bash_function(
-        source_files=["common_functions/commonVariables.sh",
-                       "common_functions/common.sh",
-                       "passwords_tool/passwordsFunctions.sh"],
-        func_call=f'passwords_checkPassword "{password}"',
-        mock_funcs={
-            "common_logger":          "true",
-            "installCommon_rollBack": "true",
-        },
+        BASE_SOURCES,
+        'passwords_checkPassword "${CHECKED}"',
+        {"common_logger": 'echo "LOG:$*"'},
+        {"CHECKED": password},
     )
 ```
+
+`BASE_SOURCES` lists `common_functions/commonVariables.sh`, `common_functions/common.sh`, `common_functions/credentials.sh`, `passwords_tool/passwordsVariables.sh` and `passwords_tool/passwordsFunctions.sh`.
 
 **Step 2** — `run_bash_function` assembles a bash script string:
 
@@ -119,15 +125,16 @@ set +e
 
 source "/repo/common_functions/commonVariables.sh"
 source "/repo/common_functions/common.sh"
+source "/repo/common_functions/credentials.sh"
+source "/repo/passwords_tool/passwordsVariables.sh"
 source "/repo/passwords_tool/passwordsFunctions.sh"
 
-function common_logger { true; }
+function common_logger { echo "LOG:$*"; }
 export -f common_logger
 
-function installCommon_rollBack { true; }
-export -f installCommon_rollBack
+export CHECKED=Abcdefghij12
 
-passwords_checkPassword "invalidpass1."
+passwords_checkPassword "${CHECKED}"
 ```
 
 **Step 3** — Python runs the script in a subprocess:
@@ -136,9 +143,9 @@ passwords_checkPassword "invalidpass1."
 subprocess.run(["bash", "-c", script], capture_output=True, text=True)
 ```
 
-**Step 4** — The real bash function runs with the mocked commands injected. The function checks for uppercase, lowercase, digit, and symbol requirements. With `"invalidpass1."` (no uppercase), it calls `common_logger` (mock — does nothing), calls `installCommon_rollBack` (mock — does nothing), then exits 1.
+**Step 4** — The real bash function runs with the mocked commands injected. `passwords_checkPassword` calls `common_passwordValidate`, which checks the character set, the length, and the lowercase, uppercase, digit, and symbol requirements. With `"Abcdefghij12"` (no symbol), it returns 1 with the reason. `passwords_checkPassword` passes the reason to `common_logger` (mock — prints `LOG:-e Invalid password: password must contain at least one symbol from . , _ + : @ % ^ = ~ -.`), then exits 1.
 
-**Step 5** — Python receives `returncode=1`. `assert_failure(result)` passes.
+**Step 5** — Python receives `returncode=1` and the mock output in `stdout`. The assertion on the message passes.
 
 ## Mocking
 
@@ -221,36 +228,41 @@ Each test should change **exactly one thing** from the valid/happy-path baseline
 ### Wrong — two conditions failing at once
 
 ```python
-def test_fail_no_uppercase(self):
-    result = self._run("invalidpass1!")   # ! is also not a valid symbol
-    assert_failure(result)
+REJECTED = [
+    "abcdefghij1!",   # no uppercase letter, but ! is also not a valid symbol
+]
 ```
 
-This passes, but not necessarily because of the missing uppercase. If someone later adds '!' to the valid symbol set, the test still passes — but for the wrong reason.
+This passes, but not because of the missing uppercase: `common_passwordValidate` checks the character set first and rejects the `!` before it reaches the uppercase check. If the uppercase check breaks, the test still passes — for the wrong reason.
 
 ### Correct — only one condition fails
 
 ```python
-def test_fail_no_uppercase(self):
-    result = self._run("invalidpass1.")   # . is valid; only uppercase is missing
-    assert_failure(result)
+REJECTED = [
+    "abcdefghij1.",   # . is valid; only uppercase is missing
+]
 ```
 
 Now every other requirement is satisfied. If the test fails (function exits 0), it can only be because the uppercase check is broken.
 
 ### Baseline for `passwords_checkPassword`
 
-The valid symbol set accepted by the bash function is exactly: `. * + ? -`
+The rule is the one of `common_passwordValidate` in `common_functions/credentials.sh`: 12 to 64 characters, with at least one lowercase letter, one uppercase letter, one digit, and one symbol. The valid symbol set accepted by the bash function is exactly: `. , _ + : @ % ^ = ~ -`. Any other character, such as `*`, `?` or `!`, is rejected.
+
+The inputs live in the `ACCEPTED` and `REJECTED` lists of `tests/unit/test_passwords_functions.py`. Some of them:
 
 | Test | Input | Only condition violated |
 | ---- | ----- | ----------------------- |
-| `test_success_valid_password` | `"ValidPass1."` | none — all conditions satisfied |
-| `test_fail_no_uppercase` | `"invalidpass1."` | no uppercase letter |
-| `test_fail_no_lowercase` | `"INVALIDPASS1."` | no lowercase letter |
-| `test_fail_no_digit` | `"InvalidPass."` | no digit |
-| `test_fail_no_symbol` | `"InvalidPass1"` | no valid symbol |
-| `test_fail_too_short` | `"V1.a"` | length < 8 |
-| `test_fail_too_long` | `"A" * 61 + "1.aB"` | length > 64 |
+| `test_success` | `"Abcdefghij1."` | none — all conditions satisfied |
+| `test_fail` | `"abcdefghij1."` | no uppercase letter |
+| `test_fail` | `"ABCDEFGHIJ1."` | no lowercase letter |
+| `test_fail` | `"Abcdefghijk."` | no digit |
+| `test_fail` | `"Abcdefghij12"` | no valid symbol |
+| `test_fail` | `"Abcdefghi1."` | length < 12 |
+| `test_fail` | `"Aa1." + "b" * 61` | length > 64 |
+| `test_fail` | `"Abcdefghij1." + character` | character outside the set (for example `*` or `?`) |
+
+`test_same_answer_as_the_helper` runs every input of both lists through `passwords_checkPassword` and `common_passwordValidate` and checks that they give the same answer.
 
 ## Environment variables and bash arrays
 
@@ -292,6 +304,6 @@ Unit tests run automatically on every pull request via [`.github/workflows/5_che
 
 The coverage report measures **Python code** (the test files and `conftest.py`), not the bash scripts. Since the source code is bash, Python coverage cannot track which lines of the bash functions were exercised.
 
-The coverage numbers reflect how much of the test infrastructure itself runs. A `conftest.py` coverage of 96% means one helper (the `bash_runner` fixture) is defined but not used by any test. This is expected and not a problem.
+The coverage numbers reflect how much of the test infrastructure itself runs. `conftest.py` is not fully covered: the `bash_runner` fixture is defined but not used by any test, and the branch that creates `/run/systemd/system` only runs where that directory is missing. This is expected and not a problem.
 
 To check which bash code paths are exercised, review the test cases manually and ensure both the success and failure branches of each bash function are covered by at least one test.
