@@ -180,13 +180,7 @@ The following dependencies must be installed on the Wazuh indexer nodes, besides
     "version" : {
         "distribution" : "opensearch",
         "number" : "3.6.0",
-        "build_type" : "deb",
-        "build_hash" : "0688bb0c0d4d2384772311ab88edcd2a18a67774",
-        "build_date" : "2026-04-09T01:00:23.398850475Z",
-        "build_snapshot" : false,
-        "lucene_version" : "10.3.2",
-        "minimum_wire_compatibility_version" : "2.19.0",
-        "minimum_index_compatibility_version" : "2.0.0"
+        ...
     },
     "tagline" : "The OpenSearch Project: https://opensearch.org/"
     }

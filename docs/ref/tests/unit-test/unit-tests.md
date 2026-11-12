@@ -1,12 +1,12 @@
 # Unit tests
 
-Unit tests for the Wazuh Installation Assistant scripts. Tests are written in **Python pytest** and run bash functions directly via `subprocess`, with mock injection to avoid real system calls. No Docker required.
+Unit tests for the Wazuh Installation Assistant scripts. Tests are written in **Python pytest** and run bash functions directly via `subprocess`, with mock injection to avoid real system calls. On Linux, no Docker is required.
 
 ## Requirements
 
 - Python >= 3.11
 - [Hatch](https://hatch.pypa.io/) — recommended (`pip install hatch`)
-- `bash` available on the host (standard on Linux/macOS)
+- A Linux host with `bash`, `ps` and `pkill` (`procps`), as on the CI runners. The tests create `/run/systemd/system` when it is missing, so run them as root or with that directory already in place. They do not run on macOS, where that directory cannot be created: use a Linux container instead, for example `docker run --rm -it -v "$PWD":/repo -w /repo python:3.12 bash`, and install `procps` in it.
 
 ## Test structure
 
@@ -14,7 +14,9 @@ Tests live in `tests/unit/` alongside their configuration.
 
 ```
 tests/unit/
+├── README.md
 ├── conftest.py                  # Shared helpers: run_bash_function, assert_success, assert_failure
+├── fixtures/
 ├── test_checks.py               # checks.sh — argument validation, arch, health, cert checks
 ├── test_common.py               # common.sh — system detection, package manager checks
 ├── test_cert_functions.py       # certFunctions.sh — cert generation, OpenSSL checks, config parsing
@@ -302,6 +304,6 @@ Unit tests run automatically on every pull request via [`.github/workflows/5_che
 
 The coverage report measures **Python code** (the test files and `conftest.py`), not the bash scripts. Since the source code is bash, Python coverage cannot track which lines of the bash functions were exercised.
 
-The coverage numbers reflect how much of the test infrastructure itself runs. A `conftest.py` coverage of 96% means one helper (the `bash_runner` fixture) is defined but not used by any test. This is expected and not a problem.
+The coverage numbers reflect how much of the test infrastructure itself runs. `conftest.py` is not fully covered: the `bash_runner` fixture is defined but not used by any test, and the branch that creates `/run/systemd/system` only runs where that directory is missing. This is expected and not a problem.
 
 To check which bash code paths are exercised, review the test cases manually and ensure both the success and failure branches of each bash function are covered by at least one test.

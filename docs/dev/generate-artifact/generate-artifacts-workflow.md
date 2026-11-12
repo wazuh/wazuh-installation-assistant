@@ -10,7 +10,7 @@ This workflow builds all artifacts in the same execution. Once the execution is 
 To run the workflow, you must provide various inputs:
 
 - `wazuh_installation_assistant_reference`: Branch or tag of the wazuh-installation-assistant repository.
-- `is_stage`: Tag that indicates how to name the generated artifact. By default, the name of each artifact includes `\<version\>-\<revision\>`. If set to false, the name of the generated artifact will include `\<version\>-\<revision\>_\<commit-hash\>`. This helps identify when the file is built for development (false) or when it is built for a release or pre-release (true).
+- `is_stage`: Sets how the generated artifacts are named. Defaults to false. If set to true, each artifact is built once, named `\<version\>-\<revision\>`, for a release or pre-release. If set to false, each artifact is built twice, named `\<version\>-\<revision\>_\<commit-hash\>` and `\<version\>-latest`, for development.
 - `file_revision`: Revision number that will be added to the name of the generated artifact.
 - `checksum`: If set to true, the workflow will generate a SHA512 checksum file (`<file>.sha512`) for each generated artifact.
 - `id`: Unique identifier for the workflow execution.
