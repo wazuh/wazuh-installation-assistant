@@ -281,9 +281,9 @@ nodes:
     - name: indexer
       ip: "<indexer-node-ip>"
     #- name: indexer-2
-    #  ip: "<indexer-node-ip>"
+    #  ip: "<indexer-2-node-ip>"
     #- name: indexer-3
-    #  ip: "<indexer-node-ip>"
+    #  ip: "<indexer-3-node-ip>"
 
   # Wazuh manager nodes
   # If there is more than one Wazuh manager
@@ -293,10 +293,10 @@ nodes:
       ip: "<wazuh-manager-ip>"
     #  node_type: master
     #- name: manager-2
-    #  ip: "<wazuh-manager-ip>"
+    #  ip: "<wazuh-manager-2-ip>"
     #  node_type: worker
     #- name: manager-3
-    #  ip: "<wazuh-manager-ip>"
+    #  ip: "<wazuh-manager-3-ip>"
     #  node_type: worker
 
   # Wazuh dashboard nodes
@@ -371,7 +371,9 @@ You can create only the certificates for a component as well as the CA or admin 
 
 An agent checks the manager's listener certificate against the address it dialled before
 enrolling, so that address has to be in the certificate. The `ip` and `dns` fields of each
-manager node cover the case where agents dial the node itself. When they dial an address
+manager node cover the case where agents dial the node itself. The certificate also names
+`localhost`, `127.0.0.1` and `::1`, like the one the Wazuh manager package issues, so an
+agent on the Wazuh manager node can enroll through loopback. When agents dial an address
 no single node owns, add it with `-as`, `--agent-san`, repeated once per value:
 
 ```bash
