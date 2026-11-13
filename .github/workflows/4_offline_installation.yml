@@ -16,7 +16,6 @@ on:
       AUTOMATION_REFERENCE:
         description: 'Branch or tag of the wazuh-automation repository'
         required: true
-        default: '4.14.13'
       PKG_REPOSITORY:
         description: 'Repository environment'
         required: true
