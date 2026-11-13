@@ -69,9 +69,9 @@ nodes:
     - name: indexer
       ip: "<indexer-node-ip>"
     #- name: indexer-2
-    #  ip: "<indexer-node-ip>"
+    #  ip: "<indexer-2-node-ip>"
     #- name: indexer-3
-    #  ip: "<indexer-node-ip>"
+    #  ip: "<indexer-3-node-ip>"
 
   # Wazuh manager nodes
   # If there is more than one Wazuh manager
@@ -81,10 +81,10 @@ nodes:
       ip: "<wazuh-manager-ip>"
     #  node_type: master
     #- name: manager-2
-    #  ip: "<wazuh-manager-ip>"
+    #  ip: "<wazuh-manager-2-ip>"
     #  node_type: worker
     #- name: manager-3
-    #  ip: "<wazuh-manager-ip>"
+    #  ip: "<wazuh-manager-3-ip>"
     #  node_type: worker
 
   # Wazuh dashboard nodes
