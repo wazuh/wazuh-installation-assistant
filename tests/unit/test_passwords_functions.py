@@ -35,7 +35,7 @@ BCRYPT = "$2y$12$" + "a" * 53
 
 SYMBOLS = ".,_+:@%^=~-"
 
-# The same corpus as the credentials helper tests (#1047): the tool must give the
+# The same corpus as the credentials helper tests: the tool must give the
 # same answer as common_passwordValidate.
 ACCEPTED = (
     ["Abcdefghij1.", "Aa1." + "b" * 60, "Aa1.,_+:@%^=~-"]
@@ -522,7 +522,7 @@ class TestPasswordsIsServiceActive:
 class TestPasswordsRestartPendingServices:
     """Tests for passwords_restartPendingServices.
 
-    passwords_changePassword no longer restarts anything: it records
+    passwords_changePassword restarts nothing: it records
     restart_manager/restart_dashboard, and the restarts run from here,
     after passwords_runSecurityAdmin has applied the new hash on the
     indexer. Each restart is guarded by the service state.

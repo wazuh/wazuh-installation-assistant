@@ -170,7 +170,7 @@ Perform the following steps to restore the Wazuh indexer files on the new server
 
 ## Wazuh Manager
 
-The Wazuh manager package documents its own backup and restore: [Back Up and Restore](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/backup-restore.md) in the `wazuh/wazuh` repository. Follow it. It covers what this guide cannot keep up to date: besides `/etc/wazuh-manager` (`local.env`, `ca/`, `certs/`, `export/`, `client.keys`) and `global.db`, it includes the Server API database `rbac.db`, the keystore with the Wazuh indexer credential, `tasks.db`, the cluster differences between master and worker nodes, and the restore order.
+The Wazuh manager package documents its own backup and restore: [Back Up and Restore](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/ref/backup-restore.md) in the `wazuh/wazuh` repository. Follow it. It covers what this guide cannot keep up to date: besides `/etc/wazuh-manager` (`local.env`, `ca/`, `certs/`, `export/`, `client.keys`) and `global.db`, it includes the Server API database `rbac.db`, the keystore with the Wazuh indexer credential, `tasks.db`, the cluster differences between master and worker nodes, and the restore order.
 
 ### Manager backup procedures
 

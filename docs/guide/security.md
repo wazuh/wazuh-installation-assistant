@@ -25,7 +25,7 @@ The root CA private key (`root-ca.key`) is not in the bundle: it stays in the `w
 
 The passwords in the bundle are the ones generated with it. After a password is changed with `wazuh-passwords-tool-5.0.0.sh`, the bundle no longer matches the deployment: a node installed or reinstalled from it gets the previous password and cannot connect. Before adding or reinstalling a node, update `credentials.env` inside the bundle with the current passwords (and `credentials.env` in the `wazuh-ca` directory, so a new bundle gets them too), or install the node and then write the current passwords into its keystores as described in [Multi-node and distributed deployments](../ref/getting-started/usage.md#multi-node-and-distributed-deployments). Keep in mind what removing a component with `-u|--uninstall` does: it deletes the configuration directory of that package (`/etc/wazuh-indexer`, `/etc/wazuh-manager` or `/etc/wazuh-dashboard`), with its `local.env`, `ca/`, `certs/` and `export/`. The `wazuh-ca` directory is not removed. If the deployment no longer needs it to add nodes or renew certificates, remove it by hand.
 
-`-u|--uninstall` is not the same as removing the packages with `apt remove` or `rpm -e`. Removing the Wazuh manager package with `dpkg --remove` or `rpm -e` keeps `.save` copies of its credentials in `/etc/wazuh-manager`, among them `ca/root-ca.key.save` and `local.env.save`. The Wazuh manager never reads them: delete them by hand when you no longer need them. See [Uninstalling the Wazuh manager](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/uninstall.md).
+`-u|--uninstall` is not the same as removing the packages with `apt remove` or `rpm -e`. Removing the Wazuh manager package with `dpkg --remove` or `rpm -e` keeps `.save` copies of its credentials in `/etc/wazuh-manager`, among them `ca/root-ca.key.save` and `local.env.save`. The Wazuh manager never reads them: delete them by hand when you no longer need them. See [Uninstalling the Wazuh manager](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/ref/uninstall.md).
 
 Certificate files are stored in the following paths on each node:
 
@@ -127,7 +127,7 @@ The Wazuh manager package enables the legacy listener (`<remote><legacy><enabled
     sudo ss -tlnp | grep -E ':(1514|1515|1517)\b'
     ```
 
-Then close ports 1514 and 1515 in the firewall. See [Retiring the legacy channel](https://github.com/wazuh/wazuh/blob/5.0.0/docs/guide/migration/agent-manager-protocol.md#retiring-the-legacy-channel).
+Then close ports 1514 and 1515 in the firewall. See [Retiring the legacy channel](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/guide/migration/agent-manager-protocol.md#retiring-the-legacy-channel).
 
 ### The Wazuh server API on an all-in-one installation
 
@@ -153,7 +153,7 @@ sudo systemctl restart wazuh-manager
 
 Open port 55000 in the firewall only to the hosts that need it. If they reach the API at an address the certificate does not name, see [Name the address API clients dial](../ref/getting-started/usage.md#name-the-address-api-clients-dial).
 
-In a distributed deployment, the Wazuh server API keeps the default of the package, because the Wazuh dashboard reaches the master node from another host. The Wazuh manager package keeps `api.yaml` when it is upgraded. See the [`host` option](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/server-api/configuration.md#host) of the Wazuh server API.
+In a distributed deployment, the Wazuh server API keeps the default of the package, because the Wazuh dashboard reaches the master node from another host. The Wazuh manager package keeps `api.yaml` when it is upgraded. See the [`host` option](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/ref/modules/server-api/configuration.md#host) of the Wazuh server API.
 
 ## Least privilege
 

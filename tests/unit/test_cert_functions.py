@@ -256,7 +256,7 @@ class TestCertConvertCRLFtoLF:
 
 class TestCertCheckOpenSSL:
     """cert_checkOpenSSL checks OpenSSL and GNU stat, which the root CA helpers use.
-    A missing one used to surface later as a misleading root CA error."""
+    A missing one is reported here, not later as a misleading root CA error."""
 
     ALL_PRESENT = 'case "$2" in openssl) echo "/usr/bin/$2" ;; *) return 1 ;; esac'
 
@@ -284,8 +284,8 @@ class TestCertCheckOpenSSL:
 
 
 class TestCertMainRootCAOption:
-    """-ca is documented as --root-ca-certificates, and the singular spelling
-    was the only one the parser accepted. Both are accepted now."""
+    """-ca is documented as --root-ca-certificates. The parser accepts it and
+    the singular spelling, the only one 4.x accepts."""
 
     @pytest.mark.parametrize("option", ["-ca", "--root-ca-certificates", "--root-ca-certificate"])
     def test_every_spelling_creates_the_root_ca(self, tmp_path, option):
@@ -389,8 +389,8 @@ class TestCertGenerateRootCA:
         assert f"Generating the root certificate in {tmp_path}/ca." in result.stdout
 
     def test_warns_that_a_new_root_ca_does_not_match_an_existing_deployment(self, tmp_path):
-        # Issue #1049: a node added to an existing deployment from a host without
-        # its root CA would silently get a new, incompatible one.
+        # A node added to an existing deployment from a host without its root CA
+        # gets a new, incompatible one.
         result = self._run(tmp_path)
         assert_success(result)
         assert f"LOG:-w There is no root CA in {tmp_path}/ca, so a new one is created." in result.stdout
@@ -515,7 +515,7 @@ class TestCertGenerateAdminCertificate:
 
 
 class TestCertGenerateIndexercertificates:
-    """Tests for cert_generateIndexercertificates (replaces the removed cert_generateServercertificates)."""
+    """Tests for cert_generateIndexercertificates."""
 
     def test_fail_no_nodes(self, tmp_path):
         """Returns 1 when indexer_node_names array is empty."""
@@ -702,7 +702,7 @@ class TestCertGenerateRemotedcertificateRealOpenSSL:
 
 
 class TestCertGenerateApidcertificateRealOpenSSL:
-    """The Server API leaf the manager package requires since it stopped self-signing it."""
+    """The Server API leaf the manager package requires."""
 
     @pytest.fixture
     def issued(self, tmp_path):
@@ -1015,8 +1015,8 @@ class TestCertReadConfig:
 class TestCertNormalizeYamlFormatLists:
     """ip and dns both accept a scalar or a list.
 
-    A list under ip used to fall through the normalizer and each item was taken for a
-    node of its own, so a node could carry only one address.
+    A list under ip is normalized like one under dns, so a node can carry several
+    addresses.
     """
 
     def _normalize(self, yaml_text):
@@ -1187,7 +1187,7 @@ class TestCertIsIPv4:
         assert_success(self._run("0.0.0.0"))
 
     def test_fail_octet_out_of_range(self):
-        """999.1.1.1 used to pass and failed much later, inside openssl."""
+        """An octet out of range is rejected here, not later inside openssl."""
         assert_failure(self._run("999.1.1.1"))
         assert_failure(self._run("10.0.0.256"))
 

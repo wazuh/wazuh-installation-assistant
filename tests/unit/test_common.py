@@ -145,7 +145,7 @@ class TestCommonCurl:
 @pytest.mark.skipif(os.geteuid() == 0, reason="needs a regular user")
 class TestCommonLoggerAsRegularUser:
     """A regular user only writes the log from the certs tool. The installer
-    does not set cert_tool_script_name, which used to match any script."""
+    does not set cert_tool_script_name, and an unset name matches no script."""
 
     def _run(self, tmp_path, script_name):
         logfile = tmp_path / "wazuh-install.log"
