@@ -580,6 +580,8 @@ jobs:
         timeout-minutes: 5
         run: |
           ssh ${{ env.SSH_OPTS }} "${{ env.REMOTE }}" "
+            # The packages and the assistant keep everything in the directory of each package.
+            sudo test -e /etc/wazuh && { echo 'ERROR: /etc/wazuh exists'; exit 1; }
             ADMIN_PW=\$(sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | tail -n 1 | cut -d= -f2- | tr -d '\"')
             [ -n \"\$ADMIN_PW\" ] || { echo 'ERROR: WAZUH_INDEXER_ADMIN_PASSWORD not found in /etc/wazuh-indexer/export/credentials.env'; exit 1; }
             for i in \$(seq 1 30); do

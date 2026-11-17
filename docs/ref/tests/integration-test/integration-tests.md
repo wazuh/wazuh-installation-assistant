@@ -177,7 +177,7 @@ Runs after any installation mode (AIO, distributed, offline). Verifies that all 
 | `test_version` | The installed version and revision reported by each component match the expected values from `VERSION.json` |
 | `test_default_credentials` | The default credentials of Wazuh 4.x are rejected with HTTP 401: `admin:admin` on the indexer and the dashboard, `wazuh:wazuh` and `wazuh-internal-client:wazuh-wui` (`wazuh-wui` is the name and the default password of this account in 4.x) on the Wazuh server API |
 
-There are no default passwords: the packages save the generated ones in `/etc/wazuh-indexer/export/credentials.env` and `/etc/wazuh-manager/export/credentials.env`, and `test_runner` reads them from there over SSH.
+There are no default passwords: the packages save the generated ones in `/etc/wazuh-indexer/export/credentials.env` and `/etc/wazuh-manager/export/credentials.env`, and `test_runner` reads them from there over SSH. Before that, the workflow checks that `/etc/wazuh` does not exist: the packages and the assistant keep their files in the directory of each package.
 
 ### `cert-tool` — validate certificate generation
 

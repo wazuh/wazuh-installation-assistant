@@ -224,7 +224,7 @@ Runs when `install_mode == offline`. All package preparation happens on the runn
 
 After any installation mode completes:
 
-- **Wait for dashboard** (installer/all only): polls `https://localhost/status` with the `admin` password read from `/etc/wazuh-indexer/export/credentials.env` up to 5 minutes until HTTP 200
+- **Wait for dashboard** (installer/all only): checks that `/etc/wazuh` does not exist, then polls `https://localhost/status` with the `admin` password read from `/etc/wazuh-indexer/export/credentials.env` up to 5 minutes until HTTP 200
 - **Run cert-tool** (cert-tool/all only): copies `config.yml`, removes any previous `/tmp/wazuh-certificates` and runs `sudo bash /tmp/wazuh-certs-tool.sh -A`, which uses the root CA in `/tmp/wazuh-ca`, next to the tool, and creates it if it does not exist
 - **Run passwords-tool** (passwords-tool/all only): saves the `admin` password set by the installation as `WAZUH_OLD_PASSWORD` (masked), runs `wazuh-passwords-tool.sh -u kibanaserver` without `-p` and checks that the generated password is saved in `/etc/wazuh-indexer/export/credentials.env`, is accepted by the indexer and replaces the previous one (both masked), then runs `wazuh-passwords-tool.sh -u <user> -p` with the new password on the standard input for `admin`, `kibanaserver`, `wazuh-manager`, `wazuh` and `wazuh-internal-client`, restarts services, then polls indexer port 9200, dashboard port 443, and manager API port 55000 until all accept the new credentials
 
