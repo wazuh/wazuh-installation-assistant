@@ -175,9 +175,9 @@ Runs after any installation mode (AIO, distributed, offline). Verifies that all 
 | `test_certificates` | Certificate files exist in the expected paths for each component, file permissions are `400`, certificates are not expired, subject and issuer fields match the expected patterns. The common name of the node certificates depends on the mode: the node names of `config.yml` (`CN=indexer`, `CN=dashboard`, `CN=manager`) for distributed, and the short host name (`hostname -s`) for AIO and offline, where the packages issue them |
 | `test_logs` | Log files exist for each component, no critical error patterns (`ERROR`, `CRITICAL`, `FATAL`, `Failed to`) found in recent log entries, known false positives (e.g. `ErrorDocument`) are excluded |
 | `test_version` | The installed version and revision reported by each component match the expected values from `VERSION.json` |
-| `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401: `admin:admin` on the indexer and the dashboard, `wazuh:wazuh` and `wazuh-internal-client:wazuh-wui` (the default password of the account, named `wazuh-wui` before) on the Wazuh server API |
+| `test_default_credentials` | The default credentials of Wazuh 4.x are rejected with HTTP 401: `admin:admin` on the indexer and the dashboard, `wazuh:wazuh` and `wazuh-internal-client:wazuh-wui` (`wazuh-wui` is the name and the default password of this account in 4.x) on the Wazuh server API |
 
-There are no default passwords: the packages save the generated ones in `/etc/wazuh-indexer/export/credentials.env` and `/etc/wazuh-manager/export/credentials.env`, and `test_runner` reads them from there over SSH. Before that, the workflow checks that `/etc/wazuh` does not exist.
+There are no default passwords: the packages save the generated ones in `/etc/wazuh-indexer/export/credentials.env` and `/etc/wazuh-manager/export/credentials.env`, and `test_runner` reads them from there over SSH. Before that, the workflow checks that `/etc/wazuh` does not exist: the packages and the assistant keep their files in the directory of each package.
 
 ### `cert-tool` — validate certificate generation
 
@@ -187,7 +187,7 @@ Runs after an AIO installation. The workflow removes any previous `/tmp/wazuh-ce
 | ----------- | -------------- |
 | `test_certificates` | The installed certificates of each component, as in the `installer` test |
 | `test_cert_tool` | The tool output (`WAZUH_CERT_TOOL_OUTPUT_DIR`, `/tmp/wazuh-certificates`) does not contain `root-ca.key`, its `root-ca.pem` is the root CA in `/tmp/wazuh-ca`, and every certificate it issued verifies against that root CA |
-| `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401 |
+| `test_default_credentials` | The default credentials of Wazuh 4.x are rejected with HTTP 401 |
 
 The `config.yml` used defines three nodes (`indexer`, `manager`, `dashboard`) all pointing to `127.0.0.1`.
 
@@ -209,7 +209,7 @@ All services are restarted after the password changes. The workflow then waits f
 | ----------- | -------------- |
 | `test_services` | Services are still active and health endpoints are reachable using the new password |
 | `test_passwords` | New password is accepted by indexer (`https://localhost:9200`) and dashboard (`https://localhost/status`) with HTTP 200, old password (`WAZUH_OLD_PASSWORD`, the `admin` password set by the installation) is rejected with HTTP 401, Wazuh Manager API accepts the new `wazuh-internal-client` credentials at `https://localhost:55000/security/user/authenticate`. Without `WAZUH_OLD_PASSWORD` the old-password check fails |
-| `test_default_credentials` | The default credentials of previous versions are rejected with HTTP 401 |
+| `test_default_credentials` | The default credentials of Wazuh 4.x are rejected with HTTP 401 |
 
 ### `uninstall` — validate complete removal
 

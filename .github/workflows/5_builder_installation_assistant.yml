@@ -50,7 +50,6 @@ on:
         required: false
 
 env:
-  LAST_STAGE: $(echo ${{ inputs.wazuh_installation_assistant_reference }} | cut -d '-' -f 2)
   S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
   BUILDER_PATH: "builder.sh"
   WAZUH_INSTALL_NAME: "wazuh-install"

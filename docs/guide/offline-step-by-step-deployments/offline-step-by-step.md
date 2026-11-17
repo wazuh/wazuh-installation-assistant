@@ -36,12 +36,12 @@ Check the package signatures first, as described in [Verify the package signatur
 When you configure the Wazuh indexer, you can also stop its daily update check, as described in [Installing the Wazuh indexer](#installing-the-wazuh-indexer), step 5.
 
 > [!NOTE]
-> Each Wazuh indexer package ships a snapshot of the ruleset, IoCs and vulnerabilities content, and loads it on its first start without Internet access, so vulnerability detection works offline. The content is as recent as the package. To update it later, see [Offline content updates](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/modules/content-manager/offline-update.md).
+> Each Wazuh indexer package ships a snapshot of the ruleset, IoCs and vulnerabilities content, and loads it on its first start without Internet access, so vulnerability detection works offline. The content is as recent as the package. To update it later, see [Offline content updates](https://github.com/wazuh/wazuh-indexer-plugins/blob/v5.0.0/docs/ref/modules/content-manager/offline-update.md).
 
 ## Distributed deployment
 
 > [!NOTE]
-> Each Wazuh indexer package ships a snapshot of the ruleset, IoCs and vulnerabilities content, and loads it on its first start without Internet access, so vulnerability detection works offline. The content is as recent as the package. To update it later, see [Offline content updates](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/modules/content-manager/offline-update.md).
+> Each Wazuh indexer package ships a snapshot of the ruleset, IoCs and vulnerabilities content, and loads it on its first start without Internet access, so vulnerability detection works offline. The content is as recent as the package. To update it later, see [Offline content updates](https://github.com/wazuh/wazuh-indexer-plugins/blob/v5.0.0/docs/ref/modules/content-manager/offline-update.md).
 
 ### How the passwords and certificates are shared
 
