@@ -219,8 +219,8 @@ class TestManagerCopyCertificates:
     """
 
     MEMBERS = [
-        "root-ca.pem", "wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master-remoted.pem",
-        "wazuh-master-remoted-key.pem", "wazuh-master-apid.pem", "wazuh-master-apid-key.pem",
+        "root-ca.pem", "wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem",
+        "wazuh-master-apid.pem", "wazuh-master-apid-key.pem",
     ]
 
     def _run(self, tmp_path, members):
@@ -254,20 +254,28 @@ class TestManagerCopyCertificates:
         assert not (config / "ca" / "root-ca.key").exists()
         assert (certs / "root-ca.pem").read_text() == "root-ca.pem"
         assert (certs / "indexer-ca.pem").read_text() == "root-ca.pem"
-        assert (certs / "indexer-connector.pem").read_text() == "wazuh-master.pem"
-        assert (certs / "indexer-connector-key.pem").read_text() == "wazuh-master-key.pem"
+        assert not (certs / "indexer-connector.pem").exists()
+        assert not (certs / "indexer-connector-key.pem").exists()
         assert (certs / "remoted.pem").read_text() == "wazuh-master-remoted.pem"
         assert (certs / "remoted-key.pem").read_text() == "wazuh-master-remoted-key.pem"
         assert (certs / "apid.pem").read_text() == "wazuh-master-apid.pem"
         assert (certs / "apid-key.pem").read_text() == "wazuh-master-apid-key.pem"
 
+    def test_success_old_tar_client_pair_not_placed(self, tmp_path):
+        """A tar from an older certs tool still has <node>.pem: it is not placed."""
+        result, config = self._run(tmp_path, [*self.MEMBERS, "wazuh-master.pem", "wazuh-master-key.pem"])
+        assert_success(result)
+        assert sorted(p.name for p in (config / "certs").iterdir()) == [
+            "apid-key.pem", "apid.pem", "indexer-ca.pem", "remoted-key.pem", "remoted.pem", "root-ca.pem",
+        ]
+
     def test_fail_when_remoted_pair_missing(self, tmp_path):
-        result, _ = self._run(tmp_path, ["root-ca.pem", "wazuh-master.pem", "wazuh-master-key.pem"])
+        result, _ = self._run(tmp_path, ["root-ca.pem"])
         assert_failure(result)
 
     def test_fail_when_apid_pair_missing(self, tmp_path):
         """A tar from a certs tool that predates the Server API pair."""
-        result, _ = self._run(tmp_path, self.MEMBERS[:5])
+        result, _ = self._run(tmp_path, ["root-ca.pem", "wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem"])
         assert_failure(result)
 
 
