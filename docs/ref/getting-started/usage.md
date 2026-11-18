@@ -470,7 +470,6 @@ To renew the certificates of a deployment, run the certs tool again on the node 
     | ---- | ---------------------------- | ----------- | -------------- |
     | Wazuh indexer | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-indexer/certs/indexer.pem`, `indexer-key.pem` | `root:wazuh-indexer`, `0640` |
     | Wazuh indexer | `admin.pem`, `admin-key.pem` | `/etc/wazuh-indexer/certs/admin.pem`, `admin-key.pem` | `root:root`, `0600` |
-    | Wazuh manager | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-manager/certs/indexer-connector.pem`, `indexer-connector-key.pem` | `root:wazuh-manager`, `0640` |
     | Wazuh manager | `<node>-remoted.pem`, `<node>-remoted-key.pem` | `/etc/wazuh-manager/certs/remoted.pem`, `remoted-key.pem` | `root:wazuh-manager`, `0640` |
     | Wazuh manager | `<node>-apid.pem`, `<node>-apid-key.pem` | `/etc/wazuh-manager/certs/apid.pem`, `apid-key.pem` | `root:wazuh-manager`, `0640` |
     | Wazuh dashboard | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-dashboard/certs/dashboard.pem`, `dashboard-key.pem` | `root:wazuh-dashboard`, `0640` |

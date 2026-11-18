@@ -99,6 +99,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1225](https://github.com/wazuh/wazuh-installation-assistant/issues/1225) | Stop issuing, requiring and placing the Wazuh manager client certificate for the Wazuh indexer (`<node>.pem`, deployed as `indexer-connector.pem`): the Wazuh manager logs in to the Wazuh indexer with a password |
 | [#1147](https://github.com/wazuh/wazuh-installation-assistant/issues/1147) | Remove the legacy Bach/Docker unit tests, replaced by the pytest suite |
 | [#1139](https://github.com/wazuh/wazuh-installation-assistant/issues/1139) | Remove the shared `wazuh-credentials.sh` library and its build artifact |
 | [#961](https://github.com/wazuh/wazuh-installation-assistant/issues/961) | Remove unnecessary debhelper install-time dependency |

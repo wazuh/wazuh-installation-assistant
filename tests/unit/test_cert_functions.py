@@ -331,7 +331,7 @@ class TestCertMainCombinedOptions:
             "cert_checkRootCA": issue("root-ca"),
             "cert_generateIndexercertificates": issue("indexer-1"),
             "cert_generateDashboardcertificates": issue("dashboard-1"),
-            "cert_generateManagercertificates": issue("manager-1"),
+            "cert_generateManagercertificates": issue("manager-1-remoted"),
             "cert_verifyRemotedcertificates": 'echo "VERIFY_REMOTED:$1"',
             "cert_setpermisions": "true",
         }
@@ -359,7 +359,7 @@ class TestCertMainCombinedOptions:
         result = self._run(tmp_path, "-wi -wd -wm")
         assert_success(result)
         certs = sorted(p.name for p in (tmp_path / "wazuh-certificates").iterdir())
-        assert certs == ["dashboard-1.pem", "indexer-1.pem", "manager-1.pem", "root-ca.pem"]
+        assert certs == ["dashboard-1.pem", "indexer-1.pem", "manager-1-remoted.pem", "root-ca.pem"]
         assert result.stdout.count("VERIFY_REMOTED:") == 1
         assert f"VERIFY_REMOTED:{tmp_path}/wazuh-certificates" in result.stdout
 
@@ -611,11 +611,13 @@ class TestCertGenerateManagercertificates:
         assert_success(result)
 
     def test_success_issues_remoted_certificate(self, tmp_path):
-        """Each manager node also gets the agent listener leaf, CA appended."""
+        """Each manager node gets the agent listener and Server API leaves, CA appended,
+        and no <node>.pem client pair."""
         (tmp_path / "root-ca.pem").write_text("root-ca")
+        calls = tmp_path / "openssl-calls.log"
         mocks = {
             **IGNORE_LOGGER,
-            "openssl": "true",
+            "openssl": f'echo "$*" >> "{calls}"',
             "cert_generateCertificateconfiguration": "true",
         }
         result = run_bash_function(
@@ -632,6 +634,11 @@ class TestCertGenerateManagercertificates:
         assert_success(result)
         assert (tmp_path / "wazuh-master-remoted.pem").read_text() == "root-ca"
         assert (tmp_path / "wazuh-master-apid.pem").read_text() == "root-ca"
+        assert not (tmp_path / "wazuh-master.pem").exists()
+        openssl_calls = calls.read_text()
+        assert "wazuh-master-remoted.pem" in openssl_calls
+        for name in ("wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master.csr"):
+            assert name not in openssl_calls
 
 
 class TestCertGenerateRemotedcertificateRealOpenSSL:
@@ -1306,7 +1313,6 @@ class TestCertExtensionMatrixRealOpenSSL:
         [
             ("admin", ["TLS Web Client Authentication"]),
             ("indexer-1", ["TLS Web Server Authentication", "TLS Web Client Authentication"]),
-            ("manager-1", ["TLS Web Client Authentication"]),
             ("manager-1-remoted", ["TLS Web Server Authentication"]),
             ("manager-1-apid", ["TLS Web Server Authentication"]),
             ("dashboard-1", ["TLS Web Server Authentication"]),
@@ -1328,6 +1334,10 @@ class TestCertExtensionMatrixRealOpenSSL:
         if "TLS Web Server Authentication" not in expected_eku:
             assert "TLS Web Server Authentication" not in text
 
+    def test_success_no_manager_client_pair(self, issued):
+        """The manager logs in to the indexer with a password: no <node>.pem client pair."""
+        assert not (issued / "manager-1.pem").exists()
+        assert not (issued / "manager-1-key.pem").exists()
 
     @pytest.mark.parametrize(
         "name,expected_subject",
@@ -1337,7 +1347,6 @@ class TestCertExtensionMatrixRealOpenSSL:
             ("admin", "C=US,L=California,O=Wazuh,OU=Wazuh,CN=admin"),
             ("indexer-1", "C=US,L=California,O=Wazuh,OU=Wazuh,CN=indexer-1"),
             # The Wazuh manager and dashboard packages use the other order.
-            ("manager-1", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
             ("manager-1-remoted", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
             ("manager-1-apid", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
             ("dashboard-1", "CN=dashboard-1,OU=Wazuh,O=Wazuh,L=California,C=US"),

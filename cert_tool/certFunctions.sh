@@ -286,8 +286,6 @@ function cert_generateAdmincertificate() {
 #   indexer    serverAuth, clientAuth  it answers on the HTTP layer and is both ends
 #                                      of the transport layer inside an indexer cluster
 #   dashboard  serverAuth              it answers browsers
-#   manager    clientAuth              deployed as indexer-connector.pem, it only dials
-#                                      the indexer; the agent listener is a separate leaf
 #   admin      clientAuth              it authenticates against the indexer security API
 function cert_generateCertificateconfiguration() {
 
@@ -423,15 +421,9 @@ function cert_generateManagercertificates() {
             if [ "${#mgr_dns[@]}" -gt 0 ]; then
                 manager_san+=("${mgr_dns[@]}")
             fi
-            cert_generateCertificateconfiguration "${manager_name}" "clientAuth" "${manager_san[@]}"
-            common_logger -d "Creating the Wazuh manager tmp key pair."
-            cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${manager_name}-key.pem" -out "${cert_tmp_path}/${manager_name}.csr" -config "${cert_tmp_path}/${manager_name}.conf"
-            common_logger -d "Creating the Wazuh manager certificates."
-            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${manager_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${rootcakey}" -CAcreateserial -out "${cert_tmp_path}/${manager_name}.pem" -extfile "${cert_tmp_path}/${manager_name}.conf" -extensions v3_req -days 3650
             # Agent-facing listener leaf for this manager node: the node SAN, loopback (the
             # manager package adds it too) and the addresses given with --agent-san, which
-            # every node shares. Only this leaf gets them; the manager certificate above
-            # keeps the node SAN alone.
+            # every node shares.
             cert_generateRemotedcertificate "${manager_name}" "${manager_san[@]}" localhost 127.0.0.1 ::1 "${agent_san[@]}"
             # Server API leaf: the node SAN, loopback and the addresses given with
             # --api-san. It never takes the --agent-san addresses.
