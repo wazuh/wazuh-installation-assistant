@@ -96,7 +96,7 @@ The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/cer
     **dpkg**
 
     ```bash
-    apt install ./wazuh-indexer-<VERSION>.deb
+    apt install -y ./wazuh-indexer-<VERSION>.deb
     ```
 
     Keep your `/etc/wazuh-indexer/opensearch.yml`. The installation changed it, so on Debian-based systems `apt` asks about the file: keep the installed version. The new one is saved as `/etc/wazuh-indexer/opensearch.yml.dpkg-dist`. Without a terminal, `apt` cannot ask and the package is left half-configured; pass `-o Dpkg::Options::=--force-confold` to keep your file without the question. On RPM-based systems there is no question: the package keeps your file and, when the packaged file changed, installs the new one as `opensearch.yml.rpmnew`. Settings added to the packaged file, such as new plugin settings, do not reach an upgraded node until you bring them over. Compare the new file with yours, for example:

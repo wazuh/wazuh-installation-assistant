@@ -494,7 +494,7 @@ To renew the certificates of a deployment, run the certs tool again on the node 
 
 [Renew and deploy certificates](#renew-and-deploy-certificates) keeps the root CA. To replace the root CA itself, for example before it expires or after its private key was exposed, every certificate of the deployment is issued again from a new root CA, and every component is set to trust it. Nodes with different root CAs cannot talk to each other, so the deployment is stopped during steps 4 to 6.
 
-Agents trust the root CA of the Wazuh manager. The Wazuh manager can publish the new root CA to the agents before the switch, so that they keep connecting after it: see the [CA Bundle Rotation Runbook](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/remoted/ca-rotation.md) of the Wazuh manager, which step 3 follows. If the old root CA has already expired, agents do not connect anymore: skip step 3 and update every agent as in step 8.
+Agents trust the root CA of the Wazuh manager. The Wazuh manager can publish the new root CA to the agents before the switch, so that they keep connecting after it: see the [CA Bundle Rotation Runbook](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/ref/modules/remoted/ca-rotation.md) of the Wazuh manager, which step 3 follows. If the old root CA has already expired, agents do not connect anymore: skip step 3 and update every agent as in step 8.
 
 1. Back up the root CA directory of the deployment (see [Root CA](#root-ca)) and, on every node, `/etc/wazuh-indexer`, `/etc/wazuh-manager` and `/etc/wazuh-dashboard`.
 
@@ -522,7 +522,7 @@ Agents trust the root CA of the Wazuh manager. The Wazuh manager can publish the
     | Wazuh indexer | `root-ca.pem` | `/etc/wazuh-indexer/ca/root-ca.pem`, `/etc/wazuh-indexer/certs/root-ca.pem`, `/etc/wazuh-indexer/export/ca.pem` |
     | Wazuh indexer | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-indexer/certs/indexer.pem`, `indexer-key.pem` |
     | Wazuh indexer | `admin.pem`, `admin-key.pem` | `/etc/wazuh-indexer/certs/admin.pem`, `admin-key.pem` |
-    | Wazuh manager | `root-ca.pem` | `/etc/wazuh-manager/ca/root-ca.pem`, `/etc/wazuh-manager/certs/indexer-ca.pem`, and `/etc/wazuh-manager/certs/root-ca.pem` only if you skipped step 3 |
+    | Wazuh manager | `root-ca.pem` | `/etc/wazuh-manager/ca/root-ca.pem`, `/etc/wazuh-manager/certs/indexer-ca.pem`, and `/etc/wazuh-manager/certs/root-ca.pem` only if you skipped step 3 (see below) |
     | Wazuh manager | `<node>-remoted.pem`, `<node>-remoted-key.pem` | `/etc/wazuh-manager/certs/remoted.pem`, `remoted-key.pem` |
     | Wazuh manager | `<node>-apid.pem`, `<node>-apid-key.pem` | `/etc/wazuh-manager/certs/apid.pem`, `apid-key.pem` |
     | Wazuh dashboard | `root-ca.pem` | `/etc/wazuh-dashboard/certs/indexer-ca.pem`, `/etc/wazuh-dashboard/certs/manager-ca.pem` |
@@ -547,6 +547,10 @@ Agents trust the root CA of the Wazuh manager. The Wazuh manager can publish the
     sudo $KEYTOOL -importcert -noprompt -trustcacerts -alias wazuh-root-ca -file /etc/wazuh-indexer/certs/root-ca.pem -cacerts -storepass changeit
     ```
 
+    In a step-by-step deployment, the root CA of the deployment is in `/etc/wazuh-indexer/ca` of the first Wazuh indexer node. On that node, also copy the new `root-ca.key` from the new CA directory over `/etc/wazuh-indexer/ca/root-ca.key`, together with `root-ca.pem`, so that the key always matches the certificate next to it.
+
+    If you skipped step 3 and replaced `/etc/wazuh-manager/certs/root-ca.pem`, the bundle served to the agents changed outside `wazuh-manager-certs`, and the Wazuh manager tells the agents that it has no published bundle. After step 6, publish it again: `sudo /var/wazuh-manager/bin/wazuh-manager-certs stamp` on the master node, then `sudo /var/wazuh-manager/bin/wazuh-manager-certs --from-master` on every worker node.
+
     The Wazuh manager republishes `/etc/wazuh-manager/export/ca.pem` from `ca/root-ca.pem` when it starts, so it needs no copy. The `ca/` directory of a Wazuh manager node must not hold a `root-ca.key`: the Wazuh manager refuses to start with a key that does not match the new `root-ca.pem`. If you use a TLS-terminating load balancer, issue its certificate again from the new root CA, as in [Create the certificate of a TLS-terminating load balancer](#create-the-certificate-of-a-tls-terminating-load-balancer).
 
 6. Start the Wazuh indexer nodes and wait until the cluster is `green` with every node. Then, on the Wazuh manager master node, check the credentials and start it, and do the same on every worker node. Then start the Wazuh dashboard nodes.
@@ -555,19 +559,17 @@ Agents trust the root CA of the Wazuh manager. The Wazuh manager can publish the
     sudo /var/wazuh-manager/bin/wazuh-manager-control check && sudo systemctl start wazuh-manager
     ```
 
-7. Check that every service presents a certificate signed by the new root CA, for example `openssl s_client -connect <address>:<port> -CAfile root-ca.pem < /dev/null`, with a copy of the new `root-ca.pem`, must print `Verify return code: 0 (ok)` for the ports 9200 of every Wazuh indexer node, 1515 and 1517 of every Wazuh manager node, 55000 of the master node, and 443 of every Wazuh dashboard node. Then check the accounts, as in the last steps of the deployment guide, and that the agents are active.
+7. Check that every service presents a certificate signed by the new root CA, for example `openssl s_client -connect <address>:<port> -CAfile root-ca.pem < /dev/null`, with a copy of the new `root-ca.pem`, must print `Verify return code: 0 (ok)` for the ports 9200 of every Wazuh indexer node, 1517 of every Wazuh manager node (and 1515 if the legacy enrollment port is still open), 55000 of the master node, and 443 of every Wazuh dashboard node. Then check the accounts, as in the last steps of the deployment guide, and that the agents are active.
 
 8. Clean up:
 
     - If you did step 3, remove the old root CA from the bundle served to the agents: `sudo /var/wazuh-manager/bin/wazuh-manager-certs inspect` on the master node lists both root CAs with the same subject. The old one is the entry that does not sign the listener certificate (`signsLeaf: no`); its identity (`x509-sha256:<hex>`) is the SHA-256 fingerprint of the old `root-ca.pem`, in lowercase and without colons. Run `sudo /var/wazuh-manager/bin/wazuh-manager-certs remove <identity>` on the master node, and `--from-master` again on every worker node.
-    - Enrollment tokens minted before the change stop working. Mint new ones and revoke the old ones, as described in [Enrollment tokens and a rotation](https://github.com/wazuh/wazuh/blob/5.0.0/docs/ref/modules/remoted/ca-rotation.md#enrollment-tokens-and-a-rotation).
+    - Pinned enrollment tokens minted before step 5 stop working, and so do `--embed-ca` tokens minted before step 3. Agents already enrolled are not affected. Mint new ones and revoke the old ones, as described in [Enrollment tokens and a rotation](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/ref/modules/remoted/ca-rotation.md#enrollment-tokens-and-a-rotation).
     - An agent that did not adopt the new root CA (it was offline during the overlap window, step 3 was skipped, or it uses its own `<certificate_authorities>` file) does not connect anymore. With the agent stopped, install the new root CA with a new enrollment token: `sudo /var/ossec/bin/wazuh-agent-auth --token-file <token-file> --certs-only`. The agent keeps its ID.
-    - Keep the new root CA as the root CA of the deployment: copy `root-ca.pem` and `root-ca.key` from the new CA directory over the ones in the current CA directory (`wazuh-ca` next to `wazuh-install-5.0.0.sh`, or `WAZUH_CA_DIR`), and back it up. Do not replace the whole directory: the new one has no `credentials.env`, and `--generate-config-files` would then create new passwords that do not match the deployment. Then remove the new CA directory. Store the backup of the old root CA offline, or destroy it once every agent is connected.
+    - Keep the new root CA as the root CA of the deployment: copy `root-ca.pem` and `root-ca.key` from the new CA directory over the ones in the current CA directory (`wazuh-ca` next to `wazuh-install-5.0.0.sh`, or `WAZUH_CA_DIR`; in a step-by-step deployment this was done in step 5), and back it up. Do not replace the whole directory: the new one has no `credentials.env`, and `--generate-config-files` would then create new passwords that do not match the deployment. Then remove the new CA directory. Store the backup of the old root CA offline, or destroy it once every agent is connected.
     - `wazuh-install-files.tar` holds the old certificates: remove it. Running `--generate-config-files` again creates a new one with the current passwords, but also a new cluster key, so that bundle is only valid to add Wazuh indexer or Wazuh dashboard nodes (see [Root CA](#root-ca)).
     - Users who imported the old root CA in their browsers must import the new one.
     - Remove the `wazuh-certificates` directory, and every copy of it: it holds private keys.
-
-In a step-by-step deployment, the root CA is in `/etc/wazuh-indexer/ca` of the first Wazuh indexer node: after step 2, also copy the new `root-ca.key` there, over the old one.
 
 ### Add a Wazuh manager node to an existing deployment
 
@@ -660,7 +662,7 @@ A new Wazuh indexer node must hold a certificate signed by the root CA of the de
 
 The name of a Wazuh indexer node is in the subject of its certificate, and every node only accepts the subjects listed in `plugins.security.nodes_dn`. To rename a node and keep its address, follow these steps in this order, so that every node trusts every certificate in use at each moment. If the new certificate is placed before step 2, the other nodes reject the node.
 
-1. On the node that holds `root-ca.key`, set `CA_DIR` as in step 1 of [Renew and deploy certificates](#renew-and-deploy-certificates), write a `config.yml` with the new name and the current address of the node only, under `indexer`, and create its certificate with `-wi`. The command must print `OK`:
+1. On the node that holds `root-ca.key`, set `CA_DIR` as in step 1 of [Renew and deploy certificates](#renew-and-deploy-certificates), write a `config.yml` with only this node under `indexer`, with its new name and every `ip` and `dns` value it has now, so that the new certificate names the same addresses, and create its certificate with `-wi`. The command must print `OK`:
 
     ```bash
     sudo rm -rf wazuh-certificates
