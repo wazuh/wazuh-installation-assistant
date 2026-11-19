@@ -2,6 +2,8 @@
 
 Upgrade all Wazuh central components (Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard) on a single host following step-by-step instructions.
 
+These steps upgrade a 5.x deployment to a later 5.x version. A 4.x deployment cannot be upgraded to 5.x, neither the Wazuh manager nor the Wazuh indexer and the Wazuh dashboard. Migrate it instead: install 5.0 and carry the agents, the configuration and the data across, as described in [Migration from 4.x](../migration/all-in-one.md).
+
 > [!NOTE]
 > You need root user privileges to run all the commands described below.
 
@@ -182,7 +184,7 @@ The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/cer
 
 ## Wazuh Manager
 
-**Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. For manager major version upgrades, a fresh installation is required. However, Wazuh **agents** support upgrades from 4.x to 5.x and can connect to a 5.x manager.
+A 4.x Wazuh manager cannot be upgraded to 5.x: see [Migration from 4.x](../migration/all-in-one.md). The 4.x agents connect to the Wazuh manager 5.x, and can be upgraded to 5.x later.
 
 Follow the upgrade procedure of the Wazuh manager package: [Upgrade](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/ref/upgrade.md) in the `wazuh/wazuh` repository. It covers the backup to take first (including the Server API database `rbac.db` and the keystore), the upgrade itself, the files the package preserves, and the checks afterwards. The package restarts the Wazuh manager after the upgrade only if it was running before.
 
