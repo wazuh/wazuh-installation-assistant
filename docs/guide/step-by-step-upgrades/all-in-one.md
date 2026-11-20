@@ -11,9 +11,6 @@ Upgrade all Wazuh central components (Wazuh Indexer, Wazuh Manager, and Wazuh Da
 > This documentation assumes you are already provisioned with a wazuh-indexer package through any of the possible methods.
 > Check the wazuh-indexer documentation for more information about downloading packages.
 
-> [!WARNING]
-> Upgrading the Wazuh indexer from 5.1.0 RC 1 does not move it to the RC 2 credentials layout. The resolver of the RC 2 package finds the marker RC 1 left in its data directory and resolves nothing again: it creates no `local.env` and no `export/credentials.env`, and the passwords stay in the RC 1 file `/etc/wazuh/credentials.env`. The paths in this guide do not apply to such a node.
-
 ### Preparing the upgrade
 
 Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_INDEXER_IP_ADDRESS`, `$USERNAME`, and `$PASSWORD` as in [Preparing the upgrade](#preparing-the-upgrade). `$USERNAME` is `admin`, and `$PASSWORD` is the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env`:
@@ -187,10 +184,7 @@ The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/cer
 
 **Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. For manager major version upgrades, a fresh installation is required. However, Wazuh **agents** support upgrades from 4.x to 5.x and can connect to a 5.x manager.
 
-> [!WARNING]
-> Upgrading the Wazuh manager from 5.1.0 RC 1 or an earlier pre-release is not supported ([wazuh/wazuh#40338](https://github.com/wazuh/wazuh/issues/40338)), and the package does not block it. RC 1 kept its configuration in `/var/wazuh-manager/etc`, and the RC 2 package only preserves `/etc/wazuh-manager`: the upgrade regenerates `wazuh-manager.conf`, leaves `client.keys` empty and, with no `certs/remoted.pem` in place, mints a new CA. The agents lose their keys and stop trusting the manager. Install the Wazuh manager again instead.
-
-Follow the upgrade procedure of the Wazuh manager package: [Upgrade](https://github.com/wazuh/wazuh/blob/5.1.0/docs/ref/upgrade.md) in the `wazuh/wazuh` repository. It covers the backup to take first (including the Server API database `rbac.db` and the keystore), the upgrade itself, the files the package preserves, and the checks afterwards. The package restarts the Wazuh manager after the upgrade only if it was running before.
+Follow the upgrade procedure of the Wazuh manager package: [Upgrade](https://github.com/wazuh/wazuh/blob/5.0.1/docs/ref/upgrade.md) in the `wazuh/wazuh` repository. It covers the backup to take first (including the Server API database `rbac.db` and the keystore), the upgrade itself, the files the package preserves, and the checks afterwards. The package restarts the Wazuh manager after the upgrade only if it was running before.
 
 ## Wazuh Dashboard
 

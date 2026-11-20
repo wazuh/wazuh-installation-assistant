@@ -24,6 +24,7 @@
   - [Command line options](ref/configuration/command-line-options.md)
   - [Configuration files](ref/configuration/configuration-files.md)
   - [Environment variables](ref/configuration/environment-variables.md)
+- [Glossary](ref/glossary.md)
 
 # Guide
 

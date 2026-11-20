@@ -373,7 +373,7 @@ sed -i -E "s|^(# )?host:.*|host: ['127.0.0.1', '::1']|" /var/wazuh-manager/api/c
 
 To let other hosts reach the API later, see [The Wazuh server API on an all-in-one installation](../security.md#the-wazuh-server-api-on-an-all-in-one-installation).
 
-There is nothing else to configure. The package connects the Wazuh manager to the Wazuh indexer on `127.0.0.1`. It imports the indexer CA and the client pair the Wazuh indexer issued for it from `/etc/wazuh-indexer/export/` (`ca.pem` and `manager-client.pem` with its key), and stores the password of its Wazuh indexer user in its keystore.
+There is nothing else to configure. The package connects the Wazuh manager to the Wazuh indexer on `127.0.0.1`. It imports the indexer CA from `/etc/wazuh-indexer/export/` (`ca.pem`), and stores the password of its Wazuh indexer user in its keystore.
 
 ### Starting the Wazuh manager service
 
