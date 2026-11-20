@@ -2,6 +2,8 @@
 
 Upgrade a distributed Wazuh deployment (separate Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard nodes) following step-by-step instructions.
 
+These steps upgrade a 5.x deployment to a later 5.x version. A 4.x deployment cannot be upgraded to 5.x, neither the Wazuh manager nor the Wazuh indexer and the Wazuh dashboard. Migrate it instead: install 5.0 and carry the agents, the configuration and the data across, as described in [Migration from 4.x](../migration/clusterized.md).
+
 > [!NOTE]
 > You need root user privileges to run all the commands described below.
 
@@ -11,7 +13,7 @@ Follow the Wazuh Indexer upgrade steps described in the [all-in-one](./all-in-on
 
 ## Wazuh Manager
 
-**Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. For manager major version upgrades, a fresh installation is required. However, Wazuh **agents** support upgrades from 4.x to 5.x and can connect to a 5.x manager.
+A 4.x Wazuh manager cannot be upgraded to 5.x: see [Migration from 4.x](../migration/clusterized.md). The 4.x agents connect to the Wazuh manager 5.x, and can be upgraded to 5.x later.
 
 Follow the cluster upgrade procedure of the Wazuh manager package: [Cluster upgrade](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/ref/upgrade.md#cluster-upgrade) in the `wazuh/wazuh` repository. It covers the backup of the master and the worker nodes, the upgrade order and the checks on each node.
 
