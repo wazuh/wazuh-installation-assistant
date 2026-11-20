@@ -47,14 +47,14 @@ The Wazuh installation assistant uses the following tools to enhance security du
 
 The published scripts include the version in their file names:
 
-- [Download the Wazuh installation assistant.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install-5.0.0.sh)
-- [Download the Wazuh passwords tool.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-passwords-tool-5.0.0.sh)
-- [Download the Wazuh cert tool.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-certs-tool-5.0.0.sh)
+- [Download the Wazuh installation assistant.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install-5.0.1.sh)
+- [Download the Wazuh passwords tool.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-passwords-tool-5.0.1.sh)
+- [Download the Wazuh cert tool.](https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-certs-tool-5.0.1.sh)
 
 For example:
 
 ```bash
-curl -fsSO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install-5.0.0.sh
+curl -fsSO https://packages.wazuh.com/production/5.x/installation-assistant/wazuh-install-5.0.1.sh
 ```
 
 See [Installation](docs/ref/installation/installation.md) for the download commands of each tool, including the pre-release ones.
@@ -83,12 +83,12 @@ As an alternative to downloading, use the `builder.sh` script to build the Wazuh
 
 ## Use Cases
 
-The commands below use the downloaded `wazuh-install-5.0.0.sh`. A script built with `builder.sh` is named `wazuh-install.sh`.
+The commands below use the downloaded `wazuh-install-5.0.1.sh`. A script built with `builder.sh` is named `wazuh-install.sh`.
 
 For a distributed deployment, start by downloading the configuration file as `config.yml`, next to the script, and replace the node names and IP values with the corresponding ones:
 
 ```bash
-curl -fsS -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.0.yml
+curl -fsS -o config.yml https://packages.wazuh.com/production/5.x/installation-assistant/config-5.0.1.yml
 ```
 
 For DNS-based or mixed address configurations, see [Other `config.yml` examples](docs/ref/configuration/configuration-files.md#other-configyml-examples).
@@ -101,49 +101,49 @@ For DNS-based or mixed address configurations, see [Other `config.yml` examples]
 1. Generate the passwords and certificates. Needs the `config.yml` configuration file.
 
    ```bash
-   bash wazuh-install-5.0.0.sh -g
+   bash wazuh-install-5.0.1.sh -g
    ```
 
 2. Install all central components on the local machine:
 
    ```bash
-   bash wazuh-install-5.0.0.sh -a
+   bash wazuh-install-5.0.1.sh -a
    ```
 
 3. Uninstall all central components:
 
    ```bash
-   bash wazuh-install-5.0.0.sh -u
+   bash wazuh-install-5.0.1.sh -u
    ```
 
 4. Install the Wazuh indexer specifying the same name as specified in the configuration file:
 
    ```bash
-   bash wazuh-install-5.0.0.sh --wazuh-indexer <NODE_NAME>
+   bash wazuh-install-5.0.1.sh --wazuh-indexer <NODE_NAME>
    ```
 
 5. Initialize the Wazuh indexer cluster:
 
    ```bash
-   bash wazuh-install-5.0.0.sh --start-cluster
+   bash wazuh-install-5.0.1.sh --start-cluster
    ```
 
 6. Install the Wazuh manager specifying the same name as specified in the configuration file:
 
    ```bash
-   bash wazuh-install-5.0.0.sh --wazuh-manager <NODE_NAME>
+   bash wazuh-install-5.0.1.sh --wazuh-manager <NODE_NAME>
    ```
 
 7. Install the Wazuh dashboard specifying the same name as specified in the configuration file:
 
    ```bash
-   bash wazuh-install-5.0.0.sh --wazuh-dashboard <NODE_NAME>
+   bash wazuh-install-5.0.1.sh --wazuh-dashboard <NODE_NAME>
    ```
 
 8. Display all options and help:
 
    ```bash
-   bash wazuh-install-5.0.0.sh -h
+   bash wazuh-install-5.0.1.sh -h
    ```
 
 ## Options Table

@@ -11,7 +11,7 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | `-a`, `--all-in-one` | Install and configure Wazuh server, Wazuh indexer, Wazuh dashboard. |
 | `-as`, `--agent-san <ip\|dns>` | Adds an extra address to the subject alternative name of the agent listener certificate of every Wazuh manager node. Repeat it for more than one. Must be used along with `-a` or `-g`. See [Name the address agents dial](#name-the-address-agents-dial). |
 | `-ap`, `--api-san <ip\|dns>` | Adds an extra address to the subject alternative name of the Server API certificate of every Wazuh manager node. Repeat it for more than one. With `-a`, the Server API also listens on all network interfaces instead of only on the local host. Must be used along with `-a` or `-g`. See [Name the address API clients dial](#name-the-address-api-clients-dial). |
-| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.0.1.sh. See [Use development packages](#use-development-packages). |
+| `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.0.1.sh. Must be used along with `-a`, `-wm`, `-s`, `-wi`, `-wd` or `-dw`. See [Use development packages](#use-development-packages). |
 | `--skip-signature-check` | Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with `-d`. See [Use development packages](#use-development-packages). |
 | `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb). Must be used along with `-da`. |
 | `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. It must match the package type: `amd64` or `arm64` for `deb`, `x86_64` or `aarch64` for `rpm`. |
@@ -86,7 +86,7 @@ The steps to perform the installation are as follows:
     4.3 To install the Wazuh Dashboard:
 
     ``` bash
-    sudo bash wazuh-install-5.0.1sh --wazuh-dashboard <dashboard-node-name>
+    sudo bash wazuh-install-5.0.1.sh --wazuh-dashboard <dashboard-node-name>
     # or use the short form
     sudo bash wazuh-install-5.0.1.sh -wd <dashboard-node-name>
     ```
