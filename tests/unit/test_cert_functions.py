@@ -256,7 +256,7 @@ class TestCertConvertCRLFtoLF:
 
 class TestCertCheckOpenSSL:
     """cert_checkOpenSSL checks OpenSSL and GNU stat, which the root CA helpers use.
-    A missing one used to surface later as a misleading root CA error."""
+    A missing one is reported here, not later as a misleading root CA error."""
 
     ALL_PRESENT = 'case "$2" in openssl) echo "/usr/bin/$2" ;; *) return 1 ;; esac'
 
@@ -284,8 +284,8 @@ class TestCertCheckOpenSSL:
 
 
 class TestCertMainRootCAOption:
-    """-ca is documented as --root-ca-certificates, and the singular spelling
-    was the only one the parser accepted. Both are accepted now."""
+    """-ca is documented as --root-ca-certificates. The parser accepts it and
+    the singular spelling, the only one 4.x accepts."""
 
     @pytest.mark.parametrize("option", ["-ca", "--root-ca-certificates", "--root-ca-certificate"])
     def test_every_spelling_creates_the_root_ca(self, tmp_path, option):
@@ -331,7 +331,7 @@ class TestCertMainCombinedOptions:
             "cert_checkRootCA": issue("root-ca"),
             "cert_generateIndexercertificates": issue("indexer-1"),
             "cert_generateDashboardcertificates": issue("dashboard-1"),
-            "cert_generateManagercertificates": issue("manager-1"),
+            "cert_generateManagercertificates": issue("manager-1-remoted"),
             "cert_verifyRemotedcertificates": 'echo "VERIFY_REMOTED:$1"',
             "cert_setpermisions": "true",
         }
@@ -359,7 +359,7 @@ class TestCertMainCombinedOptions:
         result = self._run(tmp_path, "-wi -wd -wm")
         assert_success(result)
         certs = sorted(p.name for p in (tmp_path / "wazuh-certificates").iterdir())
-        assert certs == ["dashboard-1.pem", "indexer-1.pem", "manager-1.pem", "root-ca.pem"]
+        assert certs == ["dashboard-1.pem", "indexer-1.pem", "manager-1-remoted.pem", "root-ca.pem"]
         assert result.stdout.count("VERIFY_REMOTED:") == 1
         assert f"VERIFY_REMOTED:{tmp_path}/wazuh-certificates" in result.stdout
 
@@ -389,8 +389,8 @@ class TestCertGenerateRootCA:
         assert f"Generating the root certificate in {tmp_path}/ca." in result.stdout
 
     def test_warns_that_a_new_root_ca_does_not_match_an_existing_deployment(self, tmp_path):
-        # Issue #1049: a node added to an existing deployment from a host without
-        # its root CA would silently get a new, incompatible one.
+        # A node added to an existing deployment from a host without its root CA
+        # gets a new, incompatible one.
         result = self._run(tmp_path)
         assert_success(result)
         assert f"LOG:-w There is no root CA in {tmp_path}/ca, so a new one is created." in result.stdout
@@ -515,7 +515,7 @@ class TestCertGenerateAdminCertificate:
 
 
 class TestCertGenerateIndexercertificates:
-    """Tests for cert_generateIndexercertificates (replaces the removed cert_generateServercertificates)."""
+    """Tests for cert_generateIndexercertificates."""
 
     def test_fail_no_nodes(self, tmp_path):
         """Returns 1 when indexer_node_names array is empty."""
@@ -611,11 +611,13 @@ class TestCertGenerateManagercertificates:
         assert_success(result)
 
     def test_success_issues_remoted_certificate(self, tmp_path):
-        """Each manager node also gets the agent listener leaf, CA appended."""
+        """Each manager node gets the agent listener and Server API leaves, CA appended,
+        and no <node>.pem client pair."""
         (tmp_path / "root-ca.pem").write_text("root-ca")
+        calls = tmp_path / "openssl-calls.log"
         mocks = {
             **IGNORE_LOGGER,
-            "openssl": "true",
+            "openssl": f'echo "$*" >> "{calls}"',
             "cert_generateCertificateconfiguration": "true",
         }
         result = run_bash_function(
@@ -632,6 +634,11 @@ class TestCertGenerateManagercertificates:
         assert_success(result)
         assert (tmp_path / "wazuh-master-remoted.pem").read_text() == "root-ca"
         assert (tmp_path / "wazuh-master-apid.pem").read_text() == "root-ca"
+        assert not (tmp_path / "wazuh-master.pem").exists()
+        openssl_calls = calls.read_text()
+        assert "wazuh-master-remoted.pem" in openssl_calls
+        for name in ("wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master.csr"):
+            assert name not in openssl_calls
 
 
 class TestCertGenerateRemotedcertificateRealOpenSSL:
@@ -702,7 +709,7 @@ class TestCertGenerateRemotedcertificateRealOpenSSL:
 
 
 class TestCertGenerateApidcertificateRealOpenSSL:
-    """The Server API leaf the manager package requires since it stopped self-signing it."""
+    """The Server API leaf the manager package requires."""
 
     @pytest.fixture
     def issued(self, tmp_path):
@@ -1015,8 +1022,8 @@ class TestCertReadConfig:
 class TestCertNormalizeYamlFormatLists:
     """ip and dns both accept a scalar or a list.
 
-    A list under ip used to fall through the normalizer and each item was taken for a
-    node of its own, so a node could carry only one address.
+    A list under ip is normalized like one under dns, so a node can carry several
+    addresses.
     """
 
     def _normalize(self, yaml_text):
@@ -1187,7 +1194,7 @@ class TestCertIsIPv4:
         assert_success(self._run("0.0.0.0"))
 
     def test_fail_octet_out_of_range(self):
-        """999.1.1.1 used to pass and failed much later, inside openssl."""
+        """An octet out of range is rejected here, not later inside openssl."""
         assert_failure(self._run("999.1.1.1"))
         assert_failure(self._run("10.0.0.256"))
 
@@ -1306,7 +1313,6 @@ class TestCertExtensionMatrixRealOpenSSL:
         [
             ("admin", ["TLS Web Client Authentication"]),
             ("indexer-1", ["TLS Web Server Authentication", "TLS Web Client Authentication"]),
-            ("manager-1", ["TLS Web Client Authentication"]),
             ("manager-1-remoted", ["TLS Web Server Authentication"]),
             ("manager-1-apid", ["TLS Web Server Authentication"]),
             ("dashboard-1", ["TLS Web Server Authentication"]),
@@ -1328,6 +1334,10 @@ class TestCertExtensionMatrixRealOpenSSL:
         if "TLS Web Server Authentication" not in expected_eku:
             assert "TLS Web Server Authentication" not in text
 
+    def test_success_no_manager_client_pair(self, issued):
+        """The manager logs in to the indexer with a password: no <node>.pem client pair."""
+        assert not (issued / "manager-1.pem").exists()
+        assert not (issued / "manager-1-key.pem").exists()
 
     @pytest.mark.parametrize(
         "name,expected_subject",
@@ -1337,7 +1347,6 @@ class TestCertExtensionMatrixRealOpenSSL:
             ("admin", "C=US,L=California,O=Wazuh,OU=Wazuh,CN=admin"),
             ("indexer-1", "C=US,L=California,O=Wazuh,OU=Wazuh,CN=indexer-1"),
             # The Wazuh manager and dashboard packages use the other order.
-            ("manager-1", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
             ("manager-1-remoted", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
             ("manager-1-apid", "CN=manager-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
             ("dashboard-1", "CN=dashboard-1,OU=Wazuh,O=Wazuh,L=California,C=US"),
