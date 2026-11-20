@@ -47,7 +47,7 @@ For DNS-based or mixed address configurations, see [Other `config.yml` examples]
 | `-v`, `--verbose` | Enables verbose mode. |
 | `-wd`, `--wazuh-dashboard-certificates` | Creates the Wazuh dashboard certificates. |
 | `-wi`, `--wazuh-indexer-certificates` | Creates the Wazuh indexer certificates. |
-| `-wm`, `--wazuh-manager-certificates` | Creates the Wazuh manager certificates. Each manager node also gets `<name>-remoted.pem` and `<name>-remoted-key.pem`, the certificate of the agent listener, and `<name>-apid.pem` and `<name>-apid-key.pem`, the certificate of the Server API. |
+| `-wm`, `--wazuh-manager-certificates` | Creates the Wazuh manager certificates. Each manager node gets `<name>-remoted.pem` and `<name>-remoted-key.pem`, the certificate of the agent listener, and `<name>-apid.pem` and `<name>-apid-key.pem`, the certificate of the Server API. |
 | `-tmp`, `--cert_tmp_path </path/to/tmp_dir>` | Uses this directory to create the certificates, instead of a new one with a random name in `/tmp`. The directory must not exist, or must be an empty directory owned by root. Symbolic links are not allowed. Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb |
 
 The tool must be run as root. The root CA is read from the `wazuh-ca` directory next to the tool, or from the directory set in `WAZUH_CA_DIR` (absolute path). Its private key, `root-ca.key`, stays there and is never copied to the `wazuh-certificates` directory. See [Root CA](../getting-started/usage.md#root-ca).

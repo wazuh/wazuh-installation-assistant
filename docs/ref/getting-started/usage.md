@@ -13,8 +13,8 @@ The Wazuh Installation Assistant is used by running the previously downloaded `w
 | `-ap`, `--api-san <ip\|dns>` | Adds an extra address to the subject alternative name of the Server API certificate of every Wazuh manager node. Repeat it for more than one. With `-a`, the Server API also listens on all network interfaces instead of only on the local host. Must be used along with `-a` or `-g`. See [Name the address API clients dial](#name-the-address-api-clients-dial). |
 | `-d [pre-release\|local]`, `--development` | Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local `artifact_urls.yaml` file located in the same path as the wazuh-install-5.0.1.sh. See [Use development packages](#use-development-packages). |
 | `--skip-signature-check` | Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with `-d`. See [Use development packages](#use-development-packages). |
-| `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb) |
-| `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. |
+| `-dw`, `--download-wazuh <deb\|rpm>` | Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb). Must be used along with `-da`. |
+| `-da`, `--download-arch <amd64\|arm64\|x86_64\|aarch64>` | Define the architecture of the packages to download for offline installation. It must match the package type: `amd64` or `arm64` for `deb`, `x86_64` or `aarch64` for `rpm`. |
 | `-g`, `--generate-config-files` | Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts. |
 | `-h`, `--help` | Display this help and exit. |
 | `-id`, `--install-dependencies` | Installs automatically the necessary dependencies for the installation. |
@@ -470,7 +470,6 @@ To renew the certificates of a deployment, run the certs tool again on the node 
     | ---- | ---------------------------- | ----------- | -------------- |
     | Wazuh indexer | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-indexer/certs/indexer.pem`, `indexer-key.pem` | `root:wazuh-indexer`, `0640` |
     | Wazuh indexer | `admin.pem`, `admin-key.pem` | `/etc/wazuh-indexer/certs/admin.pem`, `admin-key.pem` | `root:root`, `0600` |
-    | Wazuh manager | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-manager/certs/indexer-connector.pem`, `indexer-connector-key.pem` | `root:wazuh-manager`, `0640` |
     | Wazuh manager | `<node>-remoted.pem`, `<node>-remoted-key.pem` | `/etc/wazuh-manager/certs/remoted.pem`, `remoted-key.pem` | `root:wazuh-manager`, `0640` |
     | Wazuh manager | `<node>-apid.pem`, `<node>-apid-key.pem` | `/etc/wazuh-manager/certs/apid.pem`, `apid-key.pem` | `root:wazuh-manager`, `0640` |
     | Wazuh dashboard | `<node>.pem`, `<node>-key.pem` | `/etc/wazuh-dashboard/certs/dashboard.pem`, `dashboard-key.pem` | `root:wazuh-dashboard`, `0640` |
