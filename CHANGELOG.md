@@ -32,7 +32,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Install the latest released version of the line in the 4.x installation assistant tests of pull requests when the version of the branch is not released yet ([#1194](https://github.com/wazuh/wazuh-installation-assistant/issues/1194))
 
 ### Deleted
 
