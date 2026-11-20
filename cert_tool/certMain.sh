@@ -61,7 +61,7 @@ function getHelp() {
     echo -e ""
     echo -e "        -wm,  --wazuh-manager-certificates"
     echo -e "                Creates the Wazuh manager certificates."
-    echo -e "                Each manager node also gets <name>-remoted.pem and <name>-remoted-key.pem,"
+    echo -e "                Each manager node gets <name>-remoted.pem and <name>-remoted-key.pem,"
     echo -e "                the certificate of the agent listener (remoted and authd), and"
     echo -e "                <name>-apid.pem and <name>-apid-key.pem, the certificate of the Server API."
     echo -e ""

@@ -95,13 +95,13 @@ class TestPasswordsMainArguments:
         assert "CHANGEPASSWORD_CALLED" not in result.stdout
 
     def test_fail_removed_api_admin_options(self):
-        """-au/-ap are gone: rbac_control needs no Wazuh API admin credentials."""
+        """The 4.x options -au/-ap are not accepted: rbac_control needs no Wazuh API admin credentials."""
         result = _run("-a -au wazuh -ap AdminPass1234", checkinstalled="wazuh_installed=1")
         assert_failure(result)
         assert "CHANGEPASSWORDAPI_CALLED" not in result.stdout
 
     def test_fail_removed_api_flag(self):
-        """-A is gone: the Wazuh API users are known by name."""
+        """The 4.x option -A is not accepted: the Wazuh API users are known by name."""
         result = _run("-A -u wazuh", checkinstalled="wazuh_installed=1")
         assert_failure(result)
 

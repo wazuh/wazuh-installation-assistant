@@ -197,8 +197,6 @@ function manager_copyCertificates() {
     installCommon_placeFromTar "root-ca.pem" "${manager_config_path}/ca/root-ca.pem" root root 0644
     installCommon_placeFromTar "root-ca.pem" "${manager_cert_path}/root-ca.pem" root root 0640
     installCommon_placeFromTar "root-ca.pem" "${manager_cert_path}/indexer-ca.pem" root root 0640
-    installCommon_placeFromTar "${winame}.pem" "${manager_cert_path}/indexer-connector.pem" root root 0640
-    installCommon_placeFromTar "${winame}-key.pem" "${manager_cert_path}/indexer-connector-key.pem" root root 0640
     installCommon_placeFromTar "${winame}-remoted.pem" "${manager_cert_path}/remoted.pem" root root 0640
     installCommon_placeFromTar "${winame}-remoted-key.pem" "${manager_cert_path}/remoted-key.pem" root root 0640
     installCommon_placeFromTar "${winame}-apid.pem" "${manager_cert_path}/apid.pem" root root 0640

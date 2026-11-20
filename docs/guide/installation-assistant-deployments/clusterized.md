@@ -202,8 +202,6 @@ Your Wazuh manager is now successfully installed, repeat this process on every W
 
 The Wazuh server API only runs on the master node. The Wazuh dashboard connects to the master.
 
-At each start, the master node logs `WARNING: dashboard client pair not generated: /etc/wazuh-manager/ca has no key; provision it externally in /etc/wazuh-manager/export`. This is expected: the nodes only receive `root-ca.pem`, without its key, and nothing uses that pair yet.
-
 ## Wazuh dashboard
 
 Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/ARM64) architecture using the assisted installation method. Wazuh dashboard is a flexible and intuitive web interface for mining and visualizing security events and archives.

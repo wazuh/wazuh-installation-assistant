@@ -516,8 +516,6 @@ install -m 0600 /dev/null /etc/wazuh-manager/local.env
 grep -E '^(WAZUH_MANAGER_API_PASSWORD|WAZUH_MANAGER_WUI_PASSWORD|WAZUH_INDEXER_MANAGER_PASSWORD)=' wazuh-certificates/credentials.env > /etc/wazuh-manager/local.env
 install -m 0640 wazuh-certificates/root-ca.pem /etc/wazuh-manager/certs/root-ca.pem
 install -m 0640 wazuh-certificates/root-ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
-install -m 0640 wazuh-certificates/$NODE_NAME.pem /etc/wazuh-manager/certs/indexer-connector.pem
-install -m 0640 wazuh-certificates/$NODE_NAME-key.pem /etc/wazuh-manager/certs/indexer-connector-key.pem
 install -m 0640 wazuh-certificates/$NODE_NAME-remoted.pem /etc/wazuh-manager/certs/remoted.pem
 install -m 0640 wazuh-certificates/$NODE_NAME-remoted-key.pem /etc/wazuh-manager/certs/remoted-key.pem
 install -m 0640 wazuh-certificates/$NODE_NAME-apid.pem /etc/wazuh-manager/certs/apid.pem
@@ -999,5 +997,4 @@ To add a node later, write its `local.env` with the current passwords, as descri
 - The Wazuh dashboard shows an error of the Wazuh server API connection: check that `url` is the master node, that there is no `password` under `wazuh_core.hosts` in `opensearch_dashboards.yml`, and that `WAZUH_MANAGER_WUI_PASSWORD` was the one of the master node.
 - The Wazuh indexer nodes do not join the cluster, or log TLS errors: check that every node has the pair from `wazuh-certificates.tar`, and that `plugins.security.nodes_dn` lists every node.
 - A service refuses to start with `UNSAFE <file>`: the file is not owned by `root`, or is writable by its group or others. Give the certificates back to `root` with the group of the service, for example `chown -R root:wazuh-dashboard /etc/wazuh-dashboard/certs`, then `chmod 750` on the directory and `chmod 640` on the files. In `/etc/wazuh-indexer/certs`, the admin pair is `root:root` with mode `0600`.
-- The Wazuh manager master node logs `WARNING: dashboard client pair not generated: /etc/wazuh-manager/ca has no key; provision it externally in /etc/wazuh-manager/export` at each start. This is expected: in this deployment `/etc/wazuh-manager/ca` holds only `root-ca.pem`, and nothing uses that pair yet.
 - The directories you create before installing, such as `/etc/wazuh-manager` as `root:root 0750`, do not need the final owner: each package sets it when it is installed (for example `root:wazuh-manager 0770` for `/etc/wazuh-manager`).
