@@ -82,7 +82,7 @@ The steps below keep the 4.x files in `/root` and the snapshot in `/var/backups/
 
 1. **Back up the 4.x deployment.** See [Before you start](./migration.md#before-you-start).
 
-2. **Take a snapshot of the 4.x indices.** Skip this step if you don't need the 4.x alerts and inventory in 5.0. The Wazuh indexer can only write snapshots to a directory listed in `path.repo`, so add it and restart the Wazuh indexer:
+2. **Take a snapshot of the 4.x indices.** Skip this step if you don't need the 4.x alerts and inventory in 5.0. If the 4.x deployment was first installed with Wazuh 4.3 or earlier, read [Historical data](./migration.md#historical-data) first: the Wazuh indexer 5.0 cannot restore the indices created back then. The Wazuh indexer can only write snapshots to a directory listed in `path.repo`, so add it and restart the Wazuh indexer:
 
     ```bash
     mkdir -p /var/backups/wazuh-4x-snapshots
@@ -97,7 +97,13 @@ The steps below keep the 4.x files in `/root` and the snapshot in `/var/backups/
     tar -axf wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt -O | grep -P "\'admin\'" -A 1
     ```
 
-    Register the directory and take the snapshot, replacing `<ADMIN_PASSWORD>`:
+    Wait until the Wazuh indexer is ready after the restart, replacing `<ADMIN_PASSWORD>`. Before that, it answers `OpenSearch Security not initialized` and the snapshot fails. If the command does not end after a few minutes, check the password:
+
+    ```bash
+    until curl -s --cacert /etc/wazuh-indexer/certs/root-ca.pem -u admin:<ADMIN_PASSWORD> "https://127.0.0.1:9200/_cluster/health" | grep -q '"status"'; do sleep 5; done
+    ```
+
+    Register the directory and take the snapshot:
 
     ```bash
     curl --cacert /etc/wazuh-indexer/certs/root-ca.pem -u admin:<ADMIN_PASSWORD> -X PUT "https://127.0.0.1:9200/_snapshot/wazuh-4x" \

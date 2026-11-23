@@ -26,7 +26,7 @@ The Wazuh manager guide [Migrating a Wazuh manager from 4.x to 5.0](https://gith
 | Configuration of the Wazuh manager (`ossec.conf`, `local_internal_options.conf`, `api.yaml`) | Rewritten by hand. | [Manager configuration migration](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/guide/migration/manager-configuration-migration.md) |
 | Custom rules, decoders and CDB lists | Rewritten by hand. | [Rules](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/guide/migration/rules-4x-to-5x.md), [decoders](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/guide/migration/xml-decoders-migration.md), [CDB lists](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/guide/migration/cdb-to-kvdb-migration.md) |
 | Certificates and passwords of the Wazuh components | Not kept. The 5.0 installation creates new ones. | |
-| Wazuh indexer users and roles you created, and the Wazuh dashboard objects you saved | Not kept. Create them again in 5.0. | |
+| Wazuh indexer users and roles you created, and the Wazuh dashboard objects you saved | Not kept. Create them again in 5.0. On the same hosts, export them before you remove 4.x. | Wazuh indexer [Security migration](https://github.com/wazuh/wazuh-indexer-plugins/blob/v5.0.0/docs/guide/migration/index.md#security-migration), Wazuh dashboard [Export custom saved objects](https://github.com/wazuh/wazuh-dashboard-plugins/blob/v5.0.0/docs/guide/migration/README.md#export-custom-saved-objects) |
 | Alerts and inventory in the Wazuh indexer | Not read by 5.0. Keep the 4.x Wazuh indexer to consult them, or restore a snapshot of them in 5.0. | [Historical data](#historical-data) |
 
 The 5.0 agents rebuild their inventory, file integrity, SCA and vulnerability data in the 5.0 indices once they run 5.0. The 4.x agents keep sending events to the Wazuh manager 5.0 on port `1514`, with the limits listed in the Wazuh manager guide.
@@ -59,7 +59,7 @@ An agent upgraded to 5.0 connects to the Wazuh manager on port `1517`, which the
     curl -fsSLo wazuh-migrate-identity.py https://raw.githubusercontent.com/wazuh/wazuh/v5.0.0/tools/migration/wazuh-migrate-identity.py
     ```
 
-- **Backup.** Back up the 4.x deployment as described in the 4.x [Backup guide](https://documentation.wazuh.com/4.14/migration-guide/creating/wazuh-central-components.html). If the hosts are virtual machines, a snapshot of each one is the simplest rollback.
+- **Backup.** Back up the 4.x deployment as described in the 4.x [Backup guide](https://documentation.wazuh.com/4.14/migration-guide/creating/wazuh-central-components.html). If the hosts are virtual machines, a snapshot of each one is the simplest rollback. On the same hosts, also export the Wazuh indexer users and roles and the Wazuh dashboard objects that you want to create again in 5.0, as linked in [What is kept](#what-is-kept): removing 4.x deletes them.
 
 ## Historical data
 
@@ -67,5 +67,7 @@ The Wazuh indexer 5.0 does not read the 4.x indices, and the Wazuh manager 5.0 w
 
 - On new hosts, they stay in the 4.x Wazuh indexer. Keep the 4.x Wazuh indexer and Wazuh dashboard running for as long as you need to consult them.
 - On the same hosts, removing 4.x removes them. To keep them, take a snapshot before you remove 4.x and restore it in the Wazuh indexer 5.0, as described in [All in one](./all-in-one.md#same-host).
+
+The Wazuh indexer 5.0 can only restore indices created on OpenSearch 2.x, which Wazuh uses since 4.4.0. Wazuh 4.3 and earlier ran on OpenSearch 1.x. If the 4.x deployment was first installed with one of them and upgraded later, it can still hold indices created back then, and the restore fails on them. Leave them out of the snapshot: in its `indices` list, name only the indices created after the upgrade to 4.4.0 or later. The daily alert and archive indices have their date in the name, so a pattern such as `wazuh-alerts-4.x-2024.*` selects them by year. If you still need the older ones, choose the new hosts path, which keeps the 4.x Wazuh indexer.
 
 A restored index keeps the 4.x format. The steps of this guide restore it with the `restored-` prefix, so it does not mix with the 5.0 indices. To see it in the Wazuh dashboard 5.0, create an index pattern for it in **Dashboards Management** > **Index patterns**, for example `restored-wazuh-alerts-4.x-*` with `timestamp` as the time field.

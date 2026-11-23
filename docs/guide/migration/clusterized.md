@@ -25,12 +25,12 @@ The steps use `wazuh-migrate-identity.py` with `--with-rbac`, which also carries
     On the 4.x master node, download the tool and export the agents, first with `--dry-run`:
 
     ```bash
-    curl -fsSLo wazuh-migrate-identity.py https://raw.githubusercontent.com/wazuh/wazuh/v5.0.0/tools/migration/wazuh-migrate-identity.py
-    /var/ossec/framework/python/bin/python3 wazuh-migrate-identity.py export /root/wazuh-4x-bundle --with-rbac --dry-run
-    /var/ossec/framework/python/bin/python3 wazuh-migrate-identity.py export /root/wazuh-4x-bundle --with-rbac
+    curl -fsSLo /root/wazuh-migrate-identity.py https://raw.githubusercontent.com/wazuh/wazuh/v5.0.0/tools/migration/wazuh-migrate-identity.py
+    /var/ossec/framework/python/bin/python3 /root/wazuh-migrate-identity.py export /root/wazuh-4x-bundle --with-rbac --dry-run
+    /var/ossec/framework/python/bin/python3 /root/wazuh-migrate-identity.py export /root/wazuh-4x-bundle --with-rbac
     ```
 
-    Copy `/root/wazuh-4x-bundle` and `wazuh-migrate-identity.py` to `/root` of the 5.0 master node. The bundle holds the agent keys and the password hashes of the Server API users: handle it like a password.
+    Copy `/root/wazuh-4x-bundle` and `/root/wazuh-migrate-identity.py` to `/root` of the 5.0 master node. The bundle holds the agent keys and the password hashes of the Server API users: handle it like a password.
 
 3. **Import the agents** on the 5.0 master node, first with `--dry-run`:
 
@@ -62,7 +62,7 @@ On the same hosts, 4.x is removed from every node before 5.0 is installed. Check
 
 1. **Back up the 4.x deployment.** See [Before you start](./migration.md#before-you-start).
 
-2. **Take a snapshot of the 4.x indices.** Skip this step if you don't need the 4.x alerts and inventory in 5.0. With one Wazuh indexer node, create `/var/backups/wazuh-4x-snapshots` on it as in step 2 of [All in one](./all-in-one.md#same-host). With more than one, every Wazuh indexer node writes its own part of the snapshot, so all of them must reach the same directory at the same path: mount a shared file system, such as NFS, at `/var/backups/wazuh-4x-snapshots` on every Wazuh indexer node, outside the directories that the uninstall removes. Then, on every Wazuh indexer node, add it to `path.repo` and restart the Wazuh indexer, one node at a time:
+2. **Take a snapshot of the 4.x indices.** Skip this step if you don't need the 4.x alerts and inventory in 5.0. With one Wazuh indexer node, create `/var/backups/wazuh-4x-snapshots` on it as in step 2 of [All in one](./all-in-one.md#same-host). With more than one, every Wazuh indexer node writes its own part of the snapshot, so all of them must reach the same directory at the same path: mount a shared file system, such as NFS, at `/var/backups/wazuh-4x-snapshots` on every Wazuh indexer node, outside the directories that the uninstall removes. Then, on every Wazuh indexer node, add it to `path.repo` and restart the Wazuh indexer, one node at a time. Before you restart the next node, wait until the restarted one is ready, with the wait command of step 2 of [All in one](./all-in-one.md#same-host) and the address of the node instead of `127.0.0.1`:
 
     ```bash
     chown wazuh-indexer:wazuh-indexer /var/backups/wazuh-4x-snapshots
@@ -99,7 +99,16 @@ On the same hosts, 4.x is removed from every node before 5.0 is installed. Check
 
     Then, on the master node, set the `wazuh` and `wazuh-internal-client` passwords back and compare it with the bundle, as in step 4 of [New hosts](#new-hosts), without the restart.
 
-8. **Restore the snapshot.** Skip this step if you did not take the snapshot of step 2. The Wazuh indexer 5.0 lists `/var/lib/wazuh-indexer/backup` in `path.repo`. Do not add another `path.repo` line: the Wazuh indexer refuses to start with `Duplicate field 'path.repo'`. With one Wazuh indexer node, move the snapshot to `/var/lib/wazuh-indexer/backup/wazuh-4x` as in step 8 of [All in one](./all-in-one.md#same-host). With more than one, mount the shared file system with the snapshot at `/var/lib/wazuh-indexer/backup/wazuh-4x` on every Wazuh indexer node, readable by the `wazuh-indexer` user. On one Wazuh indexer node, register the directory as read-only and restore the indices as in step 8 of [All in one](./all-in-one.md#same-host), with the address of that node instead of `127.0.0.1`. The `admin` password is the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env`.
+8. **Restore the snapshot.** Skip this step if you did not take the snapshot of step 2. The Wazuh indexer 5.0 lists `/var/lib/wazuh-indexer/backup` in `path.repo`. Do not add another `path.repo` line: the Wazuh indexer refuses to start with `Duplicate field 'path.repo'`. With one Wazuh indexer node, move the snapshot to `/var/lib/wazuh-indexer/backup/wazuh-4x` as in step 8 of [All in one](./all-in-one.md#same-host), and restore it from there.
+
+    With more than one, the shared file system of step 2 is still mounted at `/var/backups/wazuh-4x-snapshots` on every Wazuh indexer node. Keep it there: the Wazuh indexer [backup guide](https://github.com/wazuh/wazuh-indexer-plugins/blob/v5.0.0/docs/ref/backup-restore.md#backing-up-the-data) asks for a shared repository outside the directories of the Wazuh indexer package. Make sure the `wazuh-indexer` user of every node can read it. Then, on every Wazuh indexer node, add it to the existing `path.repo` line and restart the Wazuh indexer, one node at a time, waiting until each one is ready as in step 2, with the 5.0 `admin` password:
+
+    ```bash
+    sed -i 's|^path.repo:.*|path.repo: ["/var/lib/wazuh-indexer/backup", "/var/backups/wazuh-4x-snapshots"]|' /etc/wazuh-indexer/opensearch.yml
+    systemctl restart wazuh-indexer
+    ```
+
+    On one Wazuh indexer node, register the directory as read-only and restore the indices as in step 8 of [All in one](./all-in-one.md#same-host), with `/var/backups/wazuh-4x-snapshots` as `location` and the address of that node instead of `127.0.0.1`. The `admin` password is the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env`.
 
 9. **Migrate the configuration** of every Wazuh manager node, as described in the Wazuh manager guide [Migrating a Wazuh manager from 4.x to 5.0](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/guide/migration/manager-4x-to-5x.md#4-migrate-the-configuration). The 4.x files are in `/root/wazuh-4x-config.tar.gz` of each node. To keep the rootcheck files of the `default` group for the 4.x agents, copy them on the master node as in step 9 of [All in one](./all-in-one.md#same-host).
 
