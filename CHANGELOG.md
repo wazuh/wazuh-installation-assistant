@@ -42,6 +42,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1229](https://github.com/wazuh/wazuh-installation-assistant/issues/1229) | Log the creation of a new root CA as INFO and say that it is expected for a new deployment, and remove the extra dash of the `--- Wazuh dashboard ---` and `--- Dependencies ---` headers |
 | [#1226](https://github.com/wazuh/wazuh-installation-assistant/pull/1226) | Describe the 5.0.0 product in the docs, comments and test docstrings without the pre-release chronology, remove the unused `LAST_STAGE`, align the README and the workflows README with the code, and pin the links to other Wazuh repositories to `v5.0.0` |
 | [#1170](https://github.com/wazuh/wazuh-installation-assistant/issues/1170) | Make the Wazuh server API of an all-in-one install listen only on `127.0.0.1` and `::1`, unless `-ap\|--api-san` is given, and document it, the legacy ports 1514 and 1515, and how to close them |
 | [#1179](https://github.com/wazuh/wazuh-installation-assistant/issues/1179) | wazuh-passwords-tool creates the `local.env` of the package that owns the user when no credential file of the host holds it, so a new password is never lost; clarify the Wazuh dashboard dependencies, the `-as\|-ap` addresses on certificate renewal and the manager certificate order in the docs; explain that `-wi\|-wd\|-wm` take no argument; fix the offline guides: the Wazuh indexer packages load their content snapshots offline, keep `update_on_start` enabled, and list every tool the assistant checks on each host |

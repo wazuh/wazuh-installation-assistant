@@ -388,14 +388,16 @@ class TestCertGenerateRootCA:
         assert f"ca_dir:{tmp_path}/ca" in result.stdout
         assert f"Generating the root certificate in {tmp_path}/ca." in result.stdout
 
-    def test_warns_that_a_new_root_ca_does_not_match_an_existing_deployment(self, tmp_path):
-        # A node added to an existing deployment from a host without its root CA
-        # gets a new, incompatible one.
+    def test_informs_that_a_new_root_ca_does_not_match_an_existing_deployment(self, tmp_path):
+        # Expected on a new deployment, so it is not a warning. A node added to an
+        # existing deployment from a host without its root CA gets a new, incompatible one.
         result = self._run(tmp_path)
         assert_success(result)
-        assert f"LOG:-w There is no root CA in {tmp_path}/ca, so a new one is created." in result.stdout
-        assert "do not chain to the root CA of any existing deployment" in result.stdout
+        assert f"LOG:There is no root CA in {tmp_path}/ca, so a new one is created." in result.stdout
+        assert "This is expected for a new deployment." in result.stdout
+        assert "If you are adding nodes to an existing deployment, stop here" in result.stdout
         assert "WAZUH_CA_DIR" in result.stdout
+        assert "LOG:-w" not in result.stdout
 
     def test_success_reuses_an_existing_root_ca(self, tmp_path):
         (tmp_path / "ca").mkdir()

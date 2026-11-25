@@ -425,7 +425,7 @@ function installCommon_installList(){
             eval "apt-get update -q ${debug}"
         fi
 
-        common_logger "--- Dependencies ----"
+        common_logger "--- Dependencies ---"
         for dep in "${dependencies[@]}"; do
             common_logger "Installing $dep."
             if [ "${sys_type}" = "apt-get" ]; then
@@ -883,7 +883,7 @@ function installCommon_yumRemoveWIADependencies(){
 function installCommon_aptRemoveWIADependencies(){
 
     if [ "${#wia_dependencies_installed[@]}" -gt 0 ]; then
-        common_logger "--- Dependencies ----"
+        common_logger "--- Dependencies ---"
         local wazuh_deps=()
 
         if [ -n "${AIO}" ]; then
