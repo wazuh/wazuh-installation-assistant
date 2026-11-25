@@ -8,6 +8,8 @@ Install and configure the single-node server on a 64-bit (**x86_64/AMD64** or **
 
 > **Note:** You need root user privileges to run all the commands described below. Please make sure that a copy of the `wazuh-offline.tar.gz` file, created during the initial configuration step, is placed in your working directory.
 
+> **Note:** On Red Hat Enterprise Linux hosts registered with `subscription-manager`, or using RHUI on a cloud provider, the `dnf` plugins of those services try to reach the internet on every `yum` call. Without internet access each call waits about two minutes, so the dependency check of `--offline-installation` can take more than 20 minutes. Disable the plugin on the offline host before the installation, for example by setting `enabled=0` in `/etc/dnf/plugins/subscription-manager.conf`.
+
 #### Required dependencies
 
 The following dependencies must be installed on the Wazuh single node:
@@ -99,6 +101,8 @@ Access the Wazuh web interface with your admin user credentials. This is the def
 ## Multi-node offline installation
 
 > **Note:** You need root user privileges to run all the commands described below. Please make sure that a copy of the `wazuh-install-files.tar` and `wazuh-offline.tar.gz` files, created during the initial configuration step, is placed in the working directory of every node.
+
+> **Note:** On Red Hat Enterprise Linux hosts registered with `subscription-manager`, or using RHUI on a cloud provider, the `dnf` plugins of those services try to reach the internet on every `yum` call. Without internet access each call waits about two minutes, so the dependency check of `--offline-installation` can take more than 20 minutes. Disable the plugin on the offline host before the installation, for example by setting `enabled=0` in `/etc/dnf/plugins/subscription-manager.conf`.
 
 ### Installing the Wazuh indexer
 
