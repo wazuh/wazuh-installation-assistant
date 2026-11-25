@@ -133,6 +133,8 @@ You can use `scp` to complete this task.
 - `wazuh-offline.tar.gz`
 - `wazuh-install-files.tar` (only for a distributed deployment)
 
+`-g` runs as root, so `wazuh-install-files.tar` is owned by `root` with mode `0600`: copy it with `sudo`, for example `sudo scp`, or make a copy readable by the user that runs `scp`, and remove that copy afterwards. It holds private keys and passwords.
+
 ---
 
 ## Next steps
