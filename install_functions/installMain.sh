@@ -397,7 +397,7 @@ function main() {
 # -------------- Wazuh dashboard case  ------------------------------
 
     if [ -n "${dashboard}" ]; then
-        common_logger "--- Wazuh dashboard ----"
+        common_logger "--- Wazuh dashboard ---"
         installCommon_placeLocalEnv "${dashboard_config_path}" "${dashboard_credential_keys[@]}"
         dashboard_copyCertificates
         dashboard_install
