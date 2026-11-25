@@ -1,0 +1,120 @@
+{
+ "_comment": "What a 4.14.10 indexer ships unflagged: names from arm E1 (pristine 4.14.10 package, mig_helper.STOCK_4_14), users of the stock mappings, and a sha256 of each stock role and action group as read from the fixture's 4.14.10 indexer before the arm changed anything (canonical JSON of the security-index entry). Flagged objects (reserved, hidden, static) are stock whatever their name.",
+ "digests": {
+  "actiongroups": {},
+  "roles": {
+   "alerting_ack_alerts": "f77d3226ae2213aad20ec19f72bb7ea5c697b13e0f8cdc5fd7ac530d79fb8730",
+   "alerting_full_access": "7fcf5d2ff704107fc6632f3450268455a0335308ff394d654e43e5e5d508c773",
+   "alerting_read_access": "83ce433a9e05572063dafa276eda0afe58163d8f6efa859bc3e3c28907200f94",
+   "anomaly_full_access": "79b946fbccd90bca7931697bf58bba00c80b85ada3d5d90f3f39d8f7bc4725ee",
+   "anomaly_read_access": "3f3dcc60f34b0515ff4a15d719d88d9729cafb887f880eaa37456dc7b29c3412",
+   "asynchronous_search_full_access": "b9f771c208291aaa4a273629ac3e8eedb3bb401568c4910bd018435d00352814",
+   "asynchronous_search_read_access": "62df57fdbce7a73615ca75da11cbbd8b03c9a28b547ba9c155ae2f314dfba83f",
+   "cross_cluster_replication_follower_full_access": "327b24ed29701ce78b8b97856523ea3fe348de3109f0586d1bef656bcd0ce55e",
+   "cross_cluster_replication_leader_full_access": "027b9b3d778291dbb162969dd18f91e9ff77429aecb5846da1316d05130746b1",
+   "cross_cluster_search_remote_full_access": "79d8af990afe16e384fb09ad1daa43a2cc5186380d4f195e8e9a5100c60ea870",
+   "index_management_full_access": "473295d8b828b2e3e57ab402b1ab7994a42fc06033536087c9f2f66d4ef1eac2",
+   "ip2geo_datasource_full_access": "a712e409dfa21e647255093f46047ef6be45cf4780160948e37308f55a4a424c",
+   "ip2geo_datasource_read_access": "2a0171c48f3ce0d8cff2c8bd8add703454cc33603a019cbe0449ba1d3c910e7a",
+   "kibana_read_only": "5cc2d33d17aa44101a8de5247086e57de17a73b08311fae1502c37f29e8bd7cb",
+   "knn_full_access": "d20985f3a27d264a1fb04ad45e65150ca392a4e81455213657f7859c82fd89d2",
+   "knn_read_access": "637c10288f566897bf3e1f40e4ad6a913b2c52c08a40a827bff1306410542542",
+   "manage_wazuh_index": "799786a2f9958cbddc8ac3b3785f11e0936dba3c7e3ef8d3a80f185c5b4502aa",
+   "ml_full_access": "d7c61f0b6fd301aab3be959ffd1cb160cf5ba433423826cddf5d92352805567b",
+   "ml_read_access": "fd31aedd97914ac90acf53e6fa00f2e1ac3afc75baa6ebcb8faad610c70be359",
+   "notebooks_full_access": "e103fd3bcc74727a494e6ae10fbc574a300ddfc76e999a1904b24f1a44ca88b1",
+   "notebooks_read_access": "854453b32cf4046f63755648fe8d5d9bd0dfbc9603a449d3272bea4631955629",
+   "notifications_full_access": "670ff44165a10d5f9ee29e88b8f89531986208d3c46c6d932dfeb954ff9a5dc9",
+   "notifications_read_access": "eef68be2f87bea0b0e7b69453524dece0e55095dc99d407e324833d1185e74e3",
+   "observability_full_access": "4a5f1662ffa286f0cf7943b01e7f80fec2d6bf242ab290ee9377b59ad71f62a2",
+   "observability_read_access": "e5d4bdb905fc72bdb57d3b7002ecccde5308f69ecd468993b0a4b017638d64d7",
+   "point_in_time_full_access": "5e436aeb06f37d4884e533a2b2a26e97a1c9e7c94c6667e5f53a3219d6379607",
+   "ppl_full_access": "41ed8a2e699a8384d922db82c43d18d748f5ef7ed284b92a2960e7b67c1d9a62",
+   "reports_full_access": "5b3025b45192562dc757371c413b26d3fd61c1f5548e76fda329e3f4710aa768",
+   "reports_instances_read_access": "a2ed00abd1fff642a362a4ab3ff372fc065b6ba8a173fd020850ae27c4c53b94",
+   "reports_read_access": "85774b4a2221c987fd42746574e96365c285c6fdeba3d9efcf6d8755d0671b46",
+   "security_analytics_ack_alerts": "e3226f26e5a0f2ecfaa6105b92f7c6ce077cf8b2dbbbe1bf545810f94496ef8c",
+   "security_analytics_full_access": "9d8ec7b92bf939d09d6e1b6e96114292e0d4cfd3581facbebb1137d32027d0b5",
+   "security_analytics_read_access": "e925961cf3c4146917d0f470e0792b247f0b3993fe6795094f96ded3039fa3a4",
+   "security_rest_api_access": "5cc2d33d17aa44101a8de5247086e57de17a73b08311fae1502c37f29e8bd7cb",
+   "security_rest_api_full_access": "a7b7a44479fa5f8763bc4c31d89f8c6fe0b6ce89f2e7eaead2243a36b838bff0",
+   "snapshot_management_full_access": "9c26a19ac8a8073907f13186325f5e0e68b103e87aa4dfa3356435fc51c040cc",
+   "snapshot_management_read_access": "819f414f54f190dc902b37e89a3079b01b0bfad506918020a701dfc7c994ae5f"
+  }
+ },
+ "mapping_users": {
+  "kibana_server": [
+   "kibanaserver"
+  ],
+  "manage_wazuh_index": [
+   "kibanaserver"
+  ],
+  "own_index": [
+   "*"
+  ]
+ },
+ "names": {
+  "actiongroups": [],
+  "internalusers": [
+   "admin",
+   "anomalyadmin",
+   "kibanaro",
+   "kibanaserver",
+   "logstash",
+   "readall",
+   "snapshotrestore"
+  ],
+  "roles": [
+   "alerting_ack_alerts",
+   "alerting_full_access",
+   "alerting_read_access",
+   "anomaly_full_access",
+   "anomaly_read_access",
+   "asynchronous_search_full_access",
+   "asynchronous_search_read_access",
+   "cross_cluster_replication_follower_full_access",
+   "cross_cluster_replication_leader_full_access",
+   "cross_cluster_search_remote_full_access",
+   "index_management_full_access",
+   "ip2geo_datasource_full_access",
+   "ip2geo_datasource_read_access",
+   "kibana_read_only",
+   "knn_full_access",
+   "knn_read_access",
+   "manage_wazuh_index",
+   "ml_full_access",
+   "ml_read_access",
+   "notebooks_full_access",
+   "notebooks_read_access",
+   "notifications_full_access",
+   "notifications_read_access",
+   "observability_full_access",
+   "observability_read_access",
+   "point_in_time_full_access",
+   "ppl_full_access",
+   "reports_full_access",
+   "reports_instances_read_access",
+   "reports_read_access",
+   "security_analytics_ack_alerts",
+   "security_analytics_full_access",
+   "security_analytics_read_access",
+   "security_rest_api_access",
+   "security_rest_api_full_access",
+   "snapshot_management_full_access",
+   "snapshot_management_read_access"
+  ],
+  "rolesmapping": [
+   "all_access",
+   "kibana_server",
+   "kibana_user",
+   "logstash",
+   "manage_snapshots",
+   "manage_wazuh_index",
+   "own_index",
+   "readall"
+  ],
+  "tenants": [
+   "admin_tenant"
+  ]
+ }
+}

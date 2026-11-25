@@ -1,0 +1,19 @@
+{
+  "_comment": "Builds, tool, map and template versions this merged tool's pieces were validated on (design: Supported builds, rule 4). The tool refuses other builds unless FORCE_BUILDS=1. The setup_status words are build vocabulary read by the replace gate.",
+  "tool_version": "merge-1 (2026-11-24)",
+  "source_4x": ["4.14.10"],
+  "source_series": "4.14",
+  "source_min_version": "4.14.10",
+  "source_min_note": "decision of 2026-11-24: only the latest 4.14.x is a source. The manager, indexer and dashboard of every node must be this version or a newer 4.14.x (one published after the tool); older is refused (upgrade to the latest 4.14.x first), 4.15+ and 5.x are not a 4.14 source. Raise it when a newer 4.14.x is published and validated.",
+  "target_5x": ["5.0.0"],
+  "target_5x_note": "5.0.0 release candidate and nightlies of 2026-11-22 to 2026-11-24; the nightly manifest hash changes daily and is recorded, not pinned",
+  "setup_status": {
+    "required_one_of": ["ready"],
+    "accepted": ["ready", "up_to_date"],
+    "evidence": "F6-D8: 53 documents on the 2026-11-24 nightly, one 'ready' and 52 'up_to_date'; F7-D3 and F10 read only 20 of them"
+  },
+  "field_map": {"file": "history-loader-map.json", "sha256": "8cac2e01a8a07342f8bcdec42c6917854e9bd6fd0ee1a5cd4c21a20eed7577a4", "from": "RD2-fieldmap-live/tool/m3"},
+  "fleet_upgrade": "0.8-merge (A5 0.7 + A6 0.6-a6 + MAC1)",
+  "ruleset_engine_helpers": {"alpha": "5.0-rc1", "beta": "5.0-rc1", "rc1": "5.0-rc1", "rc2": "5.0-rc1", "default": "5.0"},
+  "python_min": [3, 8]
+}

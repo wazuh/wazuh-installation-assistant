@@ -1,0 +1,55 @@
+{
+  "counts": {
+    "carried_as_is": 3
+  },
+  "format_version": 1,
+  "input_sha256": {
+    "f1a-linux-servers-agent.conf": "6ceaa91e9f1f27e7a30b464a8e4d38264215d7af72d810406bf77481ae74bc13"
+  },
+  "options": [
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f1a-linux-servers-agent.conf:/agent_config[1]/localfile[1]/log_format[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/localfile[1]/log_format[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f1a-linux-servers-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f1a-linux-servers-agent.conf:/agent_config[1]/localfile[1]/location[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/localfile[1]/location[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f1a-linux-servers-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f1a-linux-servers-agent.conf:/agent_config[1]/sca[1]/policies[1]/policy[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/sca[1]/policies[1]/policy[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f1a-linux-servers-agent.conf",
+      "value": "[masked]"
+    }
+  ],
+  "status": "candidate_requires_lab_validation",
+  "warning": "Candidate files are incomplete while decisions remain. No runtime validation was run."
+}

@@ -1,0 +1,1989 @@
+{
+ "agent.debug": {
+  "min": 0,
+  "max": 2,
+  "default": null,
+  "files": [
+   "src/client-agent/src/main-agent-auth.c",
+   "src/client-agent/src/main.c"
+  ]
+ },
+ "agent.enrollment_retry_delta": {
+  "min": 1,
+  "max": 3600,
+  "default": 5,
+  "files": [
+   "src/client-agent/src/config.c"
+  ]
+ },
+ "agent.enrollment_retry_max": {
+  "min": 1,
+  "max": 86400,
+  "default": 60,
+  "files": [
+   "src/client-agent/src/config.c"
+  ]
+ },
+ "agent.https_backoff_base": {
+  "min": 100,
+  "max": 60000,
+  "default": 1000,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_backoff_cap": {
+  "min": 1000,
+  "max": 3600000,
+  "default": 60000,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_compression_enabled": {
+  "min": 0,
+  "max": 1,
+  "default": 1,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_control_attempts": {
+  "min": 1,
+  "max": 64,
+  "default": 4,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_download_attempts": {
+  "min": 1,
+  "max": 64,
+  "default": 2,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_enroll_timeout": {
+  "min": 1000,
+  "max": 600000,
+  "default": "HC_DEFAULT_ENROLL_TIMEOUT_MS",
+  "files": [
+   "src/client-agent/src/enrollment.c"
+  ]
+ },
+ "agent.https_producer_pause_threshold": {
+  "min": 1,
+  "max": 1000,
+  "default": 2,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_rejected_retry_interval": {
+  "min": 1,
+  "max": 86400,
+  "default": 60,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_request_timeout": {
+  "min": 1000,
+  "max": 600000,
+  "default": 10000,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_stateful_attempts": {
+  "min": 1,
+  "max": 64,
+  "default": 5,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_stateful_timeout": {
+  "min": 1000,
+  "max": 3600000,
+  "default": 90000,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_stateless_attempts": {
+  "min": 1,
+  "max": 64,
+  "default": 5,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_unknown_agent_retry": {
+  "min": 1000,
+  "max": 600000,
+  "default": 30000,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.https_wpk_max_download_bytes": {
+  "min": 1048576,
+  "max": 2147483647,
+  "default": 209715200,
+  "files": [
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.normal_level": {
+  "min": 0,
+  "max": "warn_level - 1",
+  "default": null,
+  "files": [
+   "src/client-agent/src/config.c",
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.remote_conf": {
+  "min": 0,
+  "max": 1,
+  "default": null,
+  "files": [
+   "src/client-agent/src/config.c",
+   "src/config/src/config.c"
+  ]
+ },
+ "agent.state_interval": {
+  "min": 0,
+  "max": 86400,
+  "default": null,
+  "files": [
+   "src/client-agent/src/state.c"
+  ]
+ },
+ "agent.sync_max_blocks_per_cycle": {
+  "min": 1,
+  "max": 1000,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/main.c"
+  ]
+ },
+ "agent.tolerance": {
+  "min": 0,
+  "max": 600,
+  "default": null,
+  "files": [
+   "src/client-agent/src/config.c",
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent.warn_level": {
+  "min": 1,
+  "max": 100,
+  "default": null,
+  "files": [
+   "src/client-agent/src/config.c",
+   "src/client-agent/src/https_client_bridge.c"
+  ]
+ },
+ "agent_info.max_entries": {
+  "min": 1,
+  "max": 1000000,
+  "default": 4096,
+  "files": [
+   "src/wazuh_modules/src/wm_agent_info.c"
+  ]
+ },
+ "agent_info.ttl": {
+  "min": 1,
+  "max": 31536000,
+  "default": 86400,
+  "files": [
+   "src/wazuh_modules/src/wm_agent_info.c"
+  ]
+ },
+ "auth.timeout_microseconds": {
+  "min": 0,
+  "max": 999999,
+  "default": 0,
+  "files": [
+   "src/os_auth/src/config.c"
+  ]
+ },
+ "auth.timeout_seconds": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 1,
+  "files": [
+   "src/os_auth/src/config.c"
+  ]
+ },
+ "authd.debug": {
+  "min": 0,
+  "max": 2,
+  "default": 0,
+  "files": [
+   "src/os_auth/src/main-server.c"
+  ]
+ },
+ "authd.max_agents": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 0,
+  "files": [
+   "src/os_auth/src/config.c"
+  ]
+ },
+ "authd.purge_delay": {
+  "min": 0,
+  "max": 3600,
+  "default": 120,
+  "files": [
+   "src/os_auth/src/config.c"
+  ]
+ },
+ "authd.wdb_timeout": {
+  "min": 1,
+  "max": 300,
+  "default": 10,
+  "files": [
+   "src/os_auth/src/config.c"
+  ]
+ },
+ "execd.request_timeout": {
+  "min": 1,
+  "max": 3600,
+  "default": null,
+  "files": [
+   "src/wazuh_modules/src/agent_upgrade/agent/wm_agent_upgrade_com.c"
+  ]
+ },
+ "fim.file_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "fim.registry_key_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "fim.registry_value_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "monitord.compress": {
+  "min": 0,
+  "max": 1,
+  "default": null,
+  "files": [
+   "src/client-agent/src/rotate_log.c"
+  ]
+ },
+ "monitord.daily_rotations": {
+  "min": 1,
+  "max": 256,
+  "default": null,
+  "files": [
+   "src/client-agent/src/rotate_log.c"
+  ]
+ },
+ "monitord.day_wait": {
+  "min": 0,
+  "max": 600,
+  "default": null,
+  "files": [
+   "src/client-agent/src/rotate_log.c"
+  ]
+ },
+ "monitord.keep_log_days": {
+  "min": 0,
+  "max": 500,
+  "default": null,
+  "files": [
+   "src/client-agent/src/rotate_log.c"
+  ]
+ },
+ "monitord.rotate_log": {
+  "min": 0,
+  "max": 1,
+  "default": null,
+  "files": [
+   "src/client-agent/src/agentd.c"
+  ]
+ },
+ "monitord.size_rotate": {
+  "min": 0,
+  "max": 4096,
+  "default": null,
+  "files": [
+   "src/client-agent/src/rotate_log.c"
+  ]
+ },
+ "remoted.auth_max_body_size": {
+  "min": 1048576,
+  "max": 67108864,
+  "default": 5242880,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.auth_max_decoded_body_size": {
+  "min": 1048576,
+  "max": 1073741824,
+  "default": 33554432,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.authd_connect_timeout": {
+  "min": 1,
+  "max": 60,
+  "default": 2,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.authd_max_queue_size": {
+  "min": 1,
+  "max": 65536,
+  "default": 256,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.authd_response_timeout": {
+  "min": 0,
+  "max": 120,
+  "default": 0,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.authd_worker_threads": {
+  "min": 1,
+  "max": 32,
+  "default": 8,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.batch_events_capacity": {
+  "min": 0,
+  "max": 1048576,
+  "default": 131072,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.batch_events_max_bytes": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 33554432,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.batch_events_per_agent_capacity": {
+  "min": 0,
+  "max": 1048576,
+  "default": 131072,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.buffer_relax": {
+  "min": 0,
+  "max": 2,
+  "default": 1,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.comp_average_printout": {
+  "min": 10,
+  "max": 999999,
+  "default": 19999,
+  "files": [
+   "src/remoted/src/config.c",
+   "src/shared/os_crypto/shared/msgs.c"
+  ]
+ },
+ "remoted.control_groups_refresh_interval": {
+  "min": 1,
+  "max": 3600,
+  "default": 1,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.control_keepalive_throttle": {
+  "min": 1,
+  "max": 3600,
+  "default": 60,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.control_msg_queue_size": {
+  "min": 4096,
+  "max": 1048576,
+  "default": 16384,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.control_tm_concurrency": {
+  "min": 1,
+  "max": 64,
+  "default": 4,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.control_tm_deadline": {
+  "min": 100,
+  "max": 30000,
+  "default": 2000,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.control_tm_max_queue_size": {
+  "min": 100,
+  "max": 1000000,
+  "default": 10000,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.control_wdb_max_queue_size": {
+  "min": 100,
+  "max": 1000000,
+  "default": 10000,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.control_wdb_request_connections": {
+  "min": 1,
+  "max": 64,
+  "default": 4,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.control_wdb_roundtrip_deadline": {
+  "min": 100,
+  "max": 30000,
+  "default": 5000,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.debug": {
+  "min": 0,
+  "max": 2,
+  "default": 0,
+  "files": [
+   "src/remoted/src/main.c"
+  ]
+ },
+ "remoted.disk_storage": {
+  "min": 0,
+  "max": 1,
+  "default": 0,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.downstream_connect_timeout": {
+  "min": 1,
+  "max": 60,
+  "default": 2,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.downstream_io_threads": {
+  "min": 0,
+  "max": 256,
+  "default": 0,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.downstream_max_response_body_size": {
+  "min": 1048576,
+  "max": 67108864,
+  "default": 10485760,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.downstream_post_process_threads": {
+  "min": 0,
+  "max": 256,
+  "default": 0,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.downstream_response_timeout": {
+  "min": 1,
+  "max": 300,
+  "default": 5,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.downstream_stateful_response_timeout": {
+  "min": 1,
+  "max": 3600,
+  "default": 20,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.downstream_stateful_retry_after": {
+  "min": 0,
+  "max": 3600,
+  "default": 20,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.downstream_write_timeout": {
+  "min": 1,
+  "max": 300,
+  "default": 5,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.enrich_cache_expire_time": {
+  "min": 60,
+  "max": 86400,
+  "default": 300,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.enroll_password_refresh_interval": {
+  "min": 1,
+  "max": 3600,
+  "default": 10,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_buffer_size": {
+  "min": 1,
+  "max": 1048576,
+  "default": 8192,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_concurrent_accepts": {
+  "min": 0,
+  "max": 64,
+  "default": 0,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_content_encoding_enabled": {
+  "min": 0,
+  "max": 1,
+  "default": 1,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_io_threads": {
+  "min": 0,
+  "max": 64,
+  "default": 0,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_max_header_count": {
+  "min": 1,
+  "max": 1024,
+  "default": 64,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_max_header_name_size": {
+  "min": 1,
+  "max": 8192,
+  "default": 256,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_max_header_value_size": {
+  "min": 1,
+  "max": 65536,
+  "default": 8192,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_max_pipelined_requests": {
+  "min": 1,
+  "max": 64,
+  "default": 4,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_max_url_size": {
+  "min": 1,
+  "max": 65536,
+  "default": 2048,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_read_timeout": {
+  "min": 1,
+  "max": 300,
+  "default": 10,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_request_timeout": {
+  "min": 1,
+  "max": 600,
+  "default": 30,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_stream_chunk_size": {
+  "min": 4096,
+  "max": 1048576,
+  "default": 65536,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_worker_threads": {
+  "min": 0,
+  "max": 256,
+  "default": 0,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.http_write_timeout": {
+  "min": 1,
+  "max": 300,
+  "default": 10,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.jwt_clock_skew": {
+  "min": 0,
+  "max": 43200,
+  "default": 30,
+  "files": [
+   "src/os_auth/src/config.c",
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.jwt_max_age": {
+  "min": 1,
+  "max": 43200,
+  "default": 60,
+  "files": [
+   "src/os_auth/src/config.c",
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.keyupdate_interval": {
+  "min": 1,
+  "max": 3600,
+  "default": 10,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.legacy_task_polling_interval": {
+  "min": 300,
+  "max": 86400,
+  "default": 900,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.max_attempts": {
+  "min": 1,
+  "max": 16,
+  "default": 4,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.max_deferred_requests": {
+  "min": 1,
+  "max": 65536,
+  "default": 128,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.max_handshakes_per_source": {
+  "min": 0,
+  "max": 65536,
+  "default": 32,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.max_inflight_bytes": {
+  "min": 1048576,
+  "max": 1073741824,
+  "default": 268435456,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.max_inflight_bytes_per_agent": {
+  "min": 0,
+  "max": 1073741824,
+  "default": 0,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.max_parallel_connections": {
+  "min": 1,
+  "max": 65536,
+  "default": 256,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.max_requests_per_agent": {
+  "min": 1,
+  "max": 65536,
+  "default": 6,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.merge_shared": {
+  "min": 0,
+  "max": 1,
+  "default": 1,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.pass_empty_keyfile": {
+  "min": 0,
+  "max": 1,
+  "default": 1,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.queue_max_bytes": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 67108864,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.receive_chunk": {
+  "min": 1024,
+  "max": 16384,
+  "default": 4096,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.recv_counter_flush": {
+  "min": 10,
+  "max": 999999,
+  "default": 128,
+  "files": [
+   "src/remoted/src/config.c",
+   "src/shared/os_crypto/shared/msgs.c"
+  ]
+ },
+ "remoted.recv_timeout": {
+  "min": 1,
+  "max": 60,
+  "default": 1,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.request_pool": {
+  "min": 1,
+  "max": 4096,
+  "default": 1024,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.request_rto_msec": {
+  "min": 0,
+  "max": 999,
+  "default": 0,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.request_rto_sec": {
+  "min": 0,
+  "max": 60,
+  "default": 1,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.request_timeout": {
+  "min": 1,
+  "max": 600,
+  "default": 10,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.response_timeout": {
+  "min": 1,
+  "max": 3600,
+  "default": 60,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.rlimit_nofile": {
+  "min": 1024,
+  "max": 1048576,
+  "default": 65536,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.send_buffer_size": {
+  "min": 65536,
+  "max": 1048576,
+  "default": 131072,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.send_chunk": {
+  "min": 512,
+  "max": 16384,
+  "default": 4096,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.send_timeout_to_retry": {
+  "min": 1,
+  "max": 60,
+  "default": 1,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.sender_pool": {
+  "min": 1,
+  "max": 64,
+  "default": 8,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.shared_reload": {
+  "min": 1,
+  "max": 18000,
+  "default": 10,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.tcp_keepcnt": {
+  "min": 1,
+  "max": 50,
+  "default": 3,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.tcp_keepidle": {
+  "min": 1,
+  "max": 7200,
+  "default": 30,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.tcp_keepintvl": {
+  "min": 1,
+  "max": 100,
+  "default": 10,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.unauthenticated_max": {
+  "min": 64,
+  "max": 1048576,
+  "default": 16384,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.unauthenticated_timeout": {
+  "min": 10,
+  "max": 3600,
+  "default": 60,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "remoted.vd_scan_read_timeout": {
+  "min": 1,
+  "max": 300,
+  "default": 5,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.vd_scan_write_timeout": {
+  "min": 1,
+  "max": 300,
+  "default": 5,
+  "files": [
+   "src/remoted/src/secure.c"
+  ]
+ },
+ "remoted.verify_msg_id": {
+  "min": 0,
+  "max": 1,
+  "default": 0,
+  "files": [
+   "src/remoted/src/config.c",
+   "src/shared/os_crypto/shared/msgs.c"
+  ]
+ },
+ "remoted.worker_pool": {
+  "min": 1,
+  "max": 16,
+  "default": 4,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "sca.checks_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "sca.commands_timeout": {
+  "min": 1,
+  "max": 300,
+  "default": 30,
+  "files": [
+   "src/wazuh_modules/src/wm_sca.c"
+  ]
+ },
+ "sca.remote_commands": {
+  "min": 0,
+  "max": 1,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_sca.c"
+  ]
+ },
+ "syscollector.browser_extensions_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.groups_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.hardware_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.hotfixes_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.network_address_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.network_iface_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.network_protocol_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.os_info_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.packages_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.ports_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.processes_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.services_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "syscollector.users_limit": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 30000,
+  "files": [
+   "src/remoted/src/config.c"
+  ]
+ },
+ "wazuh.thread_stack_size": {
+  "min": 2048,
+  "max": 65536,
+  "default": null,
+  "files": [
+   "src/shared/src/pthreads_op.c"
+  ]
+ },
+ "wazuh_command.remote_commands": {
+  "min": 0,
+  "max": 1,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_command.c"
+  ]
+ },
+ "wazuh_command.split_output": {
+  "min": 0,
+  "max": 1,
+  "default": 1,
+  "files": [
+   "src/wazuh_modules/src/wm_command.c"
+  ]
+ },
+ "wazuh_database.interval": {
+  "min": 0,
+  "max": 86400,
+  "default": null,
+  "files": [
+   "src/wazuh_modules/src/wm_database.c"
+  ]
+ },
+ "wazuh_database.max_queued_events": {
+  "min": 0,
+  "max": 2147483647,
+  "default": null,
+  "files": [
+   "src/wazuh_modules/src/wm_database.c"
+  ]
+ },
+ "wazuh_database.real_time": {
+  "min": 0,
+  "max": 1,
+  "default": null,
+  "files": [
+   "src/wazuh_modules/src/wm_database.c"
+  ]
+ },
+ "wazuh_database.sync_agents": {
+  "min": 0,
+  "max": 1,
+  "default": null,
+  "files": [
+   "src/wazuh_modules/src/wm_database.c"
+  ]
+ },
+ "wazuh_db.check_fragmentation_interval": {
+  "min": 1,
+  "max": 30758400,
+  "default": 7200,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_db.commit_time_max": {
+  "min": 1,
+  "max": 3600,
+  "default": 60,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_db.commit_time_min": {
+  "min": 1,
+  "max": 3600,
+  "default": 10,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_db.debug": {
+  "min": 0,
+  "max": 2,
+  "default": 0,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_db.fragmentation_delta": {
+  "min": 0,
+  "max": 100,
+  "default": 5,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_db.fragmentation_threshold": {
+  "min": 0,
+  "max": 100,
+  "default": 75,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_db.free_pages_percentage": {
+  "min": 0,
+  "max": 99,
+  "default": 0,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_db.max_fragmentation": {
+  "min": 0,
+  "max": 100,
+  "default": 90,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_db.open_db_limit": {
+  "min": 1,
+  "max": 4096,
+  "default": 64,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_db.rlimit_nofile": {
+  "min": 1024,
+  "max": 1048576,
+  "default": 65536,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_db.worker_pool_size": {
+  "min": 1,
+  "max": 32,
+  "default": 8,
+  "files": [
+   "src/wazuh_db/src/main.c"
+  ]
+ },
+ "wazuh_modules.debug": {
+  "min": 0,
+  "max": 2,
+  "default": null,
+  "files": [
+   "src/wazuh_modules/src/main.c"
+  ]
+ },
+ "wazuh_modules.indexer_bulk_size_bytes": {
+  "min": 4096,
+  "max": 104857600,
+  "default": 10485760,
+  "files": [
+   "src/config/src/wmodules-vulnerability-detection.c"
+  ]
+ },
+ "wazuh_modules.indexer_flush_interval": {
+  "min": 1,
+  "max": 3600,
+  "default": 20,
+  "files": [
+   "src/config/src/wmodules-vulnerability-detection.c"
+  ]
+ },
+ "wazuh_modules.indexer_max_retry_attempts": {
+  "min": 0,
+  "max": 1000,
+  "default": 5,
+  "files": [
+   "src/config/src/wmodules-vulnerability-detection.c"
+  ]
+ },
+ "wazuh_modules.indexer_max_retry_duration_seconds": {
+  "min": 0,
+  "max": 3600,
+  "default": 15,
+  "files": [
+   "src/config/src/wmodules-vulnerability-detection.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_body_timeout": {
+  "min": 0,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_buffer_size": {
+  "min": 0,
+  "max": 1048576,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_concurrent_accepts": {
+  "min": 0,
+  "max": 64,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_control_max_body_bytes": {
+  "min": 0,
+  "max": 1048576,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_control_max_sessions": {
+  "min": 0,
+  "max": 1024,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_drain_timeout": {
+  "min": 0,
+  "max": 10,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_header_timeout": {
+  "min": 0,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_async_bulk_max_bytes": {
+  "min": 4096,
+  "max": 104857600,
+  "default": 4194304,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_async_flush_interval_seconds": {
+  "min": 1,
+  "max": 3600,
+  "default": 20,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_async_logger_queue_size": {
+  "min": 1,
+  "max": 65536,
+  "default": 8,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_async_logger_threads": {
+  "min": 1,
+  "max": 64,
+  "default": 1,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes": {
+  "min": 0,
+  "max": 2147483647,
+  "default": 67108864,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_async_max_retry_delay_seconds": {
+  "min": 1,
+  "max": 3600,
+  "default": 15,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_async_request_timeout_seconds": {
+  "min": 1,
+  "max": 3600,
+  "default": 60,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds": {
+  "min": 1,
+  "max": 3600,
+  "default": 10,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size": {
+  "min": 4096,
+  "max": 104857600,
+  "default": 10485760,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds": {
+  "min": 1,
+  "max": 3600,
+  "default": 20,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size": {
+  "min": 4096,
+  "max": 104857600,
+  "default": 10485760,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts": {
+  "min": 0,
+  "max": 1000,
+  "default": 5,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds": {
+  "min": 1,
+  "max": 3600,
+  "default": 15,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds": {
+  "min": 0,
+  "max": 3600,
+  "default": 15,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds": {
+  "min": 1,
+  "max": 3600,
+  "default": 60,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_io_threads": {
+  "min": 0,
+  "max": 128,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_max_body_size": {
+  "min": 0,
+  "max": 536870912,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_max_header_name_size": {
+  "min": 0,
+  "max": 65536,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_max_header_value_size": {
+  "min": 0,
+  "max": 1048576,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_max_inflight_bytes": {
+  "min": 0,
+  "max": 2147483647,
+  "default": -1,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_max_parallel_connections": {
+  "min": 0,
+  "max": 65536,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_max_sessions_per_agent": {
+  "min": 1,
+  "max": 1024,
+  "default": 2,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_max_url_size": {
+  "min": 0,
+  "max": 65536,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_reserved_control_connections": {
+  "min": 0,
+  "max": 256,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_response_timeout": {
+  "min": 0,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_session_query_batch_size": {
+  "min": 0,
+  "max": 10000,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_sync_queue_bytes": {
+  "min": 1048576,
+  "max": 1073741824,
+  "default": 67108864,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_sync_workers": {
+  "min": 0,
+  "max": 64,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds": {
+  "min": 10,
+  "max": 1800,
+  "default": 10,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_vd_scan_queue_slots": {
+  "min": 0,
+  "max": 256,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_vd_workers": {
+  "min": 0,
+  "max": 64,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.inventory_sync_server_write_timeout": {
+  "min": 0,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wm_inventory_sync_server.c"
+  ]
+ },
+ "wazuh_modules.kill_timeout": {
+  "min": 0,
+  "max": 3600,
+  "default": null,
+  "files": [
+   "src/wazuh_modules/src/wmodules.c"
+  ]
+ },
+ "wazuh_modules.manager_task_backoff_base": {
+  "min": 1,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_backoff_cap": {
+  "min": 1,
+  "max": 86400,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_claim_grace": {
+  "min": 1,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_create_timeout": {
+  "min": 1,
+  "max": 60,
+  "default": 2,
+  "files": [
+   "src/config/src/wmodules-vulnerability-detection.c"
+  ]
+ },
+ "wazuh_modules.manager_task_dead_letter_retention_days": {
+  "min": 1,
+  "max": 3650,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_defer_base": {
+  "min": 1,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_delete_old_agents": {
+  "min": 0,
+  "max": 9600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_delete_old_batch": {
+  "min": 1,
+  "max": 100000,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_delete_old_budget": {
+  "min": 1,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_delete_timeout": {
+  "min": 1,
+  "max": 7200,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_disconnect_log_max": {
+  "min": 0,
+  "max": 1000000,
+  "default": null,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_executor_threads": {
+  "min": 1,
+  "max": 64,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_history_per_schedule": {
+  "min": 1,
+  "max": 100000,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_io_threads": {
+  "min": 1,
+  "max": 64,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_log_compress": {
+  "min": 0,
+  "max": 1,
+  "default": 1,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_log_daily_rotations": {
+  "min": 1,
+  "max": 256,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_log_day_wait": {
+  "min": 1,
+  "max": 600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_log_keep_days": {
+  "min": 0,
+  "max": 500,
+  "default": null,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_log_rotate": {
+  "min": 0,
+  "max": 1,
+  "default": 1,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_log_size_rotate": {
+  "min": 0,
+  "max": 4096,
+  "default": null,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_max_attempts": {
+  "min": 1,
+  "max": 1000,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_max_defer": {
+  "min": 1,
+  "max": 10000,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_max_pending_deletes": {
+  "min": 0,
+  "max": 1000000,
+  "default": 20000,
+  "files": [
+   "src/os_auth/src/config.c",
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_max_pending_scans": {
+  "min": 0,
+  "max": 1000000,
+  "default": null,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_max_rows": {
+  "min": 1,
+  "max": 100000000,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_monitor_agents": {
+  "min": 0,
+  "max": 1,
+  "default": 1,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_poll_interval": {
+  "min": 1,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_retention_days": {
+  "min": 1,
+  "max": 3650,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_sweep_interval": {
+  "min": 1,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_vd_scan_timeout": {
+  "min": 1,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.manager_task_wdb_timeout": {
+  "min": 1,
+  "max": 600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.max_eps": {
+  "min": 1,
+  "max": 1000,
+  "default": null,
+  "files": [
+   "src/wazuh_modules/src/wmodules.c"
+  ]
+ },
+ "wazuh_modules.rlimit_nofile": {
+  "min": 8192,
+  "max": 1048576,
+  "default": null,
+  "files": [
+   "src/wazuh_modules/src/main.c"
+  ]
+ },
+ "wazuh_modules.socket_timeout": {
+  "min": 1,
+  "max": 60,
+  "default": 1,
+  "files": [
+   "src/wazuh_modules/src/wmodules.c"
+  ]
+ },
+ "wazuh_modules.task_nice": {
+  "min": -20,
+  "max": 19,
+  "default": null,
+  "files": [
+   "src/wazuh_modules/src/wmodules.c"
+  ]
+ },
+ "wazuh_modules.unmask_credentials": {
+  "min": 0,
+  "max": 1,
+  "default": 0,
+  "files": [
+   "src/wazuh_modules/src/wmodules.c"
+  ]
+ },
+ "wazuh_modules.upgrade_batch_deadline": {
+  "min": 10,
+  "max": 3600,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.upgrade_download_attempts": {
+  "min": 1,
+  "max": 10,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.upgrade_download_timeout": {
+  "min": 1000,
+  "max": 600000,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.upgrade_max_agents": {
+  "min": 1,
+  "max": 100000,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.upgrade_max_concurrent_downloads": {
+  "min": 1,
+  "max": 32,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.upgrade_queue_depth": {
+  "min": 1,
+  "max": 1000,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.upgrade_versions_ttl": {
+  "min": 0,
+  "max": 86400,
+  "default": null,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ },
+ "wazuh_modules.upgrade_workers": {
+  "min": 1,
+  "max": 16,
+  "default": 0,
+  "files": [
+   "src/config/src/wmodules-task-manager.c"
+  ]
+ }
+}

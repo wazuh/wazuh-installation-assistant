@@ -1,0 +1,3 @@
+# C4 test audit policy (rootcheck system_audit format)
+[C4 audit: marker file present] [any] [https://example.invalid/c4]
+f:/etc/c4-audit-marker;
