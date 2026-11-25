@@ -152,6 +152,8 @@ The following dependencies must be installed on the Wazuh indexer nodes, besides
 
     Repeat this step for every Wazuh indexer node in your cluster. Then proceed with initializing your multi-node cluster in the next step.
 
+    To change the index settings or the retention policies of the Wazuh indexer, follow [Custom index settings and retention policies](../installation-assistant-deployments/clusterized.md#custom-index-settings-and-retention-policies) while you install the nodes, adding `--offline-installation` to the assistant commands.
+
 2. Run the Wazuh assisted installation option `--start-cluster` on any Wazuh indexer node to load the new certificates information and start the cluster.
 
     ```bash

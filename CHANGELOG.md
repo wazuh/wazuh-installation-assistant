@@ -4,6 +4,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1233](https://github.com/wazuh/wazuh-installation-assistant/issues/1233) | Document the Wazuh indexer setup files (`/etc/wazuh-indexer/wazuh-indexer-setup/`): back them up, use the same files on every Wazuh indexer node, place them before the cluster forms, and explain that a change takes effect at restart and only for new indices. Remove `opensearch-observability/`, which the 5.0 Wazuh indexer does not have, from the backup and restore commands |
 | [#1169](https://github.com/wazuh/wazuh-installation-assistant/issues/1169) | Test the all-in-one installation on a RHEL host with firewalld enabled, with an agent on another host that enrolls once the documented ports are opened, and remove the integration test step that disabled the host firewall, which had no firewall to disable |
 | [#1177](https://github.com/wazuh/wazuh-installation-assistant/issues/1177) | Add a `Next steps` part to the installation summary that explains how to enroll agents with a token and links to the agent installation guide |
 | [#1116](https://github.com/wazuh/wazuh-installation-assistant/pull/1116) | Check that every Wazuh package is signed with the Wazuh key, whose fingerprint is pinned, before installing it; include the key in the offline bundle, refuse `http://` artifact URLs, and add `--skip-signature-check` for unsigned development packages |
