@@ -252,7 +252,7 @@ The tool must be run as root. An existing root CA is validated and reused, never
 sudo WAZUH_CA_DIR=/path/to/ca bash wazuh-certs-tool-5.0.1.sh -A
 ```
 
-Back up the CA directory in a safe place. When there is no root CA in the CA directory, `-A`, `-ca` and `--generate-config-files` create a new one and log a warning. That is expected for a new deployment, but the nodes of an existing deployment only trust the root CA they were issued from: a certificate issued from a new root CA does not work in it. To issue certificates for an existing deployment, run the tool on the node that holds its root CA, or point `WAZUH_CA_DIR` at a copy of it. See [Add a Wazuh manager node to an existing deployment](#add-a-wazuh-manager-node-to-an-existing-deployment).
+Back up the CA directory in a safe place. When there is no root CA in the CA directory, `-A`, `-ca` and `--generate-config-files` create a new one and log a message that says so. That is expected for a new deployment, but the nodes of an existing deployment only trust the root CA they were issued from: a certificate issued from a new root CA does not work in it. To issue certificates for an existing deployment, run the tool on the node that holds its root CA, or point `WAZUH_CA_DIR` at a copy of it. See [Add a Wazuh manager node to an existing deployment](#add-a-wazuh-manager-node-to-an-existing-deployment).
 
 ### Certificate subjects
 
@@ -575,7 +575,7 @@ Agents trust the root CA of the Wazuh manager. The Wazuh manager can publish the
 
 Every Wazuh manager node of a cluster must serve an agent listener certificate signed by the same root CA. An agent enrollment token pins that root CA, so an agent cannot enroll against a node issued from another one, and an agent that reaches the node through a load balancer fails TLS against it. Issue the certificates of the new node from the root CA of the deployment:
 
-1. Go to the node that holds `root-ca.key`, and set `CA_DIR` to its directory, as in step 1 of [Renew and deploy certificates](#renew-and-deploy-certificates). If you restored the root CA from a backup on another host, place it as described in [Root CA](#root-ca) and set `WAZUH_CA_DIR`. Do not use `-A|--all`, `-ca|--root-ca-certificates` or `--generate-config-files` on a host without the root CA: they create a new one, and log a warning that the certificates do not chain to the root CA of any existing deployment.
+1. Go to the node that holds `root-ca.key`, and set `CA_DIR` to its directory, as in step 1 of [Renew and deploy certificates](#renew-and-deploy-certificates). If you restored the root CA from a backup on another host, place it as described in [Root CA](#root-ca) and set `WAZUH_CA_DIR`. Do not use `-A|--all`, `-ca|--root-ca-certificates` or `--generate-config-files` on a host without the root CA: they create a new one, and log a message that the nodes of an existing deployment do not trust it.
 
 2. Write a `config.yml` with the new node only. With a single Wazuh manager node in the file, leave out `node_type`: the tool only accepts it with more than one Wazuh manager node.
 
