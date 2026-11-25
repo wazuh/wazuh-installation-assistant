@@ -1,0 +1,98 @@
+{
+  "counts": {
+    "carried_as_is": 4,
+    "dropped_without_replacement": 2
+  },
+  "format_version": 1,
+  "input_sha256": {
+    "f2-win-servers-agent.conf": "21f9f74b5fdfa33ce2e0275fcdb84e1514bb228e670a645e32ca5046d63925df"
+  },
+  "options": [
+    {
+      "action": "Remove ignored block; no direct replacement. For labels, review group membership (wazuh.agent.groups) as an alternative event key.",
+      "automatic": true,
+      "classification": "dropped_without_replacement",
+      "emitted": false,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-win-servers-agent.conf:/agent_config[1]/labels[1]/label[1]/@key",
+      "input_option": true,
+      "option": "/agent_config[1]/labels[1]/label[1]/@key",
+      "resolved": true,
+      "rule": "agent.top-remove",
+      "source": "f2-win-servers-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Remove ignored block; no direct replacement. For labels, review group membership (wazuh.agent.groups) as an alternative event key.",
+      "automatic": true,
+      "classification": "dropped_without_replacement",
+      "emitted": false,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-win-servers-agent.conf:/agent_config[1]/labels[1]/label[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/labels[1]/label[1]",
+      "resolved": true,
+      "rule": "agent.top-remove",
+      "source": "f2-win-servers-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-win-servers-agent.conf:/agent_config[1]/localfile[1]/log_format[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/localfile[1]/log_format[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f2-win-servers-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-win-servers-agent.conf:/agent_config[1]/localfile[1]/location[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/localfile[1]/location[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f2-win-servers-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-win-servers-agent.conf:/agent_config[1]/localfile[2]/log_format[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/localfile[2]/log_format[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f2-win-servers-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-win-servers-agent.conf:/agent_config[1]/localfile[2]/location[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/localfile[2]/location[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f2-win-servers-agent.conf",
+      "value": "[masked]"
+    }
+  ],
+  "status": "candidate_requires_lab_validation",
+  "warning": "Candidate files are incomplete while decisions remain. No runtime validation was run."
+}

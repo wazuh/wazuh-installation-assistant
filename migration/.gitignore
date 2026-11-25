@@ -1,0 +1,4 @@
+tests/OUTPUT.txt
+tests/.tmp/
+RULES-TABLE.md
+__pycache__/

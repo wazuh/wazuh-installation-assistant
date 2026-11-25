@@ -1,0 +1,24 @@
+{
+  "fixtures": [
+    {
+      "path": "tests/fixtures/f1a-linux-servers-agent.conf",
+      "sha256": "6ceaa91e9f1f27e7a30b464a8e4d38264215d7af72d810406bf77481ae74bc13"
+    },
+    {
+      "path": "tests/fixtures/f1a-pci-scope-agent.conf",
+      "sha256": "92d66d9a0ec262f200c70087d0a9d0f5adff940466b525b460b6d18160db1a88"
+    },
+    {
+      "path": "tests/fixtures/f2-linux-web-agent.conf",
+      "sha256": "afc2ea419fe731c5d2be9147c3dc4aed605ad8b5599fc1757c8bef2c2dda3174"
+    },
+    {
+      "path": "tests/fixtures/f2-win-servers-agent.conf",
+      "sha256": "21f9f74b5fdfa33ce2e0275fcdb84e1514bb228e670a645e32ca5046d63925df"
+    },
+    {
+      "path": "tests/fixtures/f1a-default-carried-agent.conf",
+      "sha256": "e49072e506f5e2131f9b784214d25b79bc71f4eb5d0f4e3a5803dd72c5945aad"
+    }
+  ]
+}

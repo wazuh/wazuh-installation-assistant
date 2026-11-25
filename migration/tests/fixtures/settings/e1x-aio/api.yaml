@@ -1,0 +1,32 @@
+# 4.x api.yaml of the exercise site: the stock template plus these settings
+https:
+  enabled: yes
+  key: "server.key"
+  cert: "server.crt"
+  use_ca: False
+  ca: "ca.crt"
+  ssl_protocol: "auto"
+  ssl_ciphers: ""
+logs:
+  level: "info"
+  format: "plain"
+access:
+  max_login_attempts: 50
+  block_time: 300
+  max_request_per_minute: 600
+drop_privileges: yes
+experimental_features: no
+upload_configuration:
+  remote_commands:
+    localfile:
+      allow: yes
+  agents:
+    allow_higher_versions:
+      allow: no
+  indexer:
+    allow: no
+  integrations:
+    virustotal:
+      public_key:
+        allow: yes
+        minimum_quota: 240

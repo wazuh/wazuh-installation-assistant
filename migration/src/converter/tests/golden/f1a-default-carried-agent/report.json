@@ -1,0 +1,55 @@
+{
+  "counts": {
+    "dropped_with_replacement": 3
+  },
+  "format_version": 1,
+  "input_sha256": {
+    "f1a-default-carried-agent.conf": "e49072e506f5e2131f9b784214d25b79bc71f4eb5d0f4e3a5803dd72c5945aad"
+  },
+  "options": [
+    {
+      "action": "Remove ignored block; replacement: agent/batch; choose batching settings separately.",
+      "automatic": true,
+      "classification": "dropped_with_replacement",
+      "emitted": false,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f1a-default-carried-agent.conf:/agent_config[1]/client_buffer[1]/disabled[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/client_buffer[1]/disabled[1]",
+      "resolved": true,
+      "rule": "agent.top-remove",
+      "source": "f1a-default-carried-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Remove ignored block; replacement: agent/batch; choose batching settings separately.",
+      "automatic": true,
+      "classification": "dropped_with_replacement",
+      "emitted": false,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f1a-default-carried-agent.conf:/agent_config[1]/client_buffer[1]/queue_size[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/client_buffer[1]/queue_size[1]",
+      "resolved": true,
+      "rule": "agent.top-remove",
+      "source": "f1a-default-carried-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Remove ignored block; replacement: agent/batch; choose batching settings separately.",
+      "automatic": true,
+      "classification": "dropped_with_replacement",
+      "emitted": false,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f1a-default-carried-agent.conf:/agent_config[1]/client_buffer[1]/events_per_second[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/client_buffer[1]/events_per_second[1]",
+      "resolved": true,
+      "rule": "agent.top-remove",
+      "source": "f1a-default-carried-agent.conf",
+      "value": "[masked]"
+    }
+  ],
+  "status": "candidate_requires_lab_validation",
+  "warning": "Candidate files are incomplete while decisions remain. No runtime validation was run."
+}

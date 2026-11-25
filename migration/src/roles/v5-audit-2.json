@@ -1,0 +1,1 @@
+{"description": "H5: role audit, try 2: the roles endpoint of the security REST API", "cluster_permissions": ["cluster:monitor/health", "restapi:admin/roles"], "index_permissions": []}

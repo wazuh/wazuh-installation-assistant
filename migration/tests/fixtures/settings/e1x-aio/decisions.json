@@ -1,0 +1,7 @@
+{
+ "local_internal_options.conf:/line[21]/monitord.day_wait": {"action": "replace", "value": "10", "reason": "0 is out of the 5.0 range 1..600; 10 is the 5.0 default and the 4.x stock value"},
+ "ossec.conf:/ossec_config[3]/syslog_output[1]/server[1]": {"action": "omit", "reason": "syslog output is rebuilt with remote-syslog-output.md"},
+ "ossec.conf:/ossec_config[3]/syslog_output[1]/port[1]": {"action": "omit", "reason": "syslog output is rebuilt with remote-syslog-output.md"},
+ "ossec.conf:/ossec_config[3]/syslog_output[1]/level[1]": {"action": "omit", "reason": "syslog output is rebuilt with remote-syslog-output.md"},
+ "ossec.conf:/ossec_config[3]/syslog_output[1]/format[1]": {"action": "omit", "reason": "syslog output is rebuilt with remote-syslog-output.md"}
+}

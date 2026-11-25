@@ -1,0 +1,140 @@
+{
+  "counts": {
+    "carried_as_is": 7,
+    "dropped_without_replacement": 2
+  },
+  "format_version": 1,
+  "input_sha256": {
+    "f2-linux-web-agent.conf": "afc2ea419fe731c5d2be9147c3dc4aed605ad8b5599fc1757c8bef2c2dda3174"
+  },
+  "options": [
+    {
+      "action": "Remove ignored block; no direct replacement. For labels, review group membership (wazuh.agent.groups) as an alternative event key.",
+      "automatic": true,
+      "classification": "dropped_without_replacement",
+      "emitted": false,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-linux-web-agent.conf:/agent_config[1]/labels[1]/label[1]/@key",
+      "input_option": true,
+      "option": "/agent_config[1]/labels[1]/label[1]/@key",
+      "resolved": true,
+      "rule": "agent.top-remove",
+      "source": "f2-linux-web-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Remove ignored block; no direct replacement. For labels, review group membership (wazuh.agent.groups) as an alternative event key.",
+      "automatic": true,
+      "classification": "dropped_without_replacement",
+      "emitted": false,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-linux-web-agent.conf:/agent_config[1]/labels[1]/label[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/labels[1]/label[1]",
+      "resolved": true,
+      "rule": "agent.top-remove",
+      "source": "f2-linux-web-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-linux-web-agent.conf:/agent_config[1]/localfile[1]/log_format[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/localfile[1]/log_format[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f2-linux-web-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-linux-web-agent.conf:/agent_config[1]/localfile[1]/location[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/localfile[1]/location[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f2-linux-web-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-linux-web-agent.conf:/agent_config[1]/localfile[2]/log_format[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/localfile[2]/log_format[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f2-linux-web-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-linux-web-agent.conf:/agent_config[1]/localfile[2]/location[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/localfile[2]/location[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f2-linux-web-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserved byte for byte; validate selection/attribute on target agents.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-linux-web-agent.conf:/agent_config[1]/syscheck[1]/directories[1]/@check_all",
+      "input_option": true,
+      "option": "/agent_config[1]/syscheck[1]/directories[1]/@check_all",
+      "resolved": true,
+      "rule": "agent.attribute",
+      "source": "f2-linux-web-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserved byte for byte; validate selection/attribute on target agents.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-linux-web-agent.conf:/agent_config[1]/syscheck[1]/directories[1]/@realtime",
+      "input_option": true,
+      "option": "/agent_config[1]/syscheck[1]/directories[1]/@realtime",
+      "resolved": true,
+      "rule": "agent.attribute",
+      "source": "f2-linux-web-agent.conf",
+      "value": "[masked]"
+    },
+    {
+      "action": "Preserve exact bytes; this is an evidenced surviving setting, not a full schema check.",
+      "automatic": true,
+      "classification": "carried_as_is",
+      "emitted": true,
+      "guide": "manager-4x-to-5x.md#groups",
+      "id": "f2-linux-web-agent.conf:/agent_config[1]/syscheck[1]/directories[1]",
+      "input_option": true,
+      "option": "/agent_config[1]/syscheck[1]/directories[1]",
+      "resolved": true,
+      "rule": "agent.keep",
+      "source": "f2-linux-web-agent.conf",
+      "value": "[masked]"
+    }
+  ],
+  "status": "candidate_requires_lab_validation",
+  "warning": "Candidate files are incomplete while decisions remain. No runtime validation was run."
+}
