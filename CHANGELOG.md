@@ -4,6 +4,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1232](https://github.com/wazuh/wazuh-installation-assistant/issues/1232) | Document the migration of a 4.x deployment installed with the installation assistant to 5.0, on new hosts or on the same hosts, with `wazuh-migrate-identity.py` and a snapshot of the 4.x indices, and link it from the upgrade guides, which only said that the upgrade from 4.x is not supported |
 | [#1053](https://github.com/wazuh/wazuh-installation-assistant/issues/1053) | Document how to renew the root CA and rename a Wazuh indexer node, start a new Wazuh indexer node only after the existing ones trust it, document a one-node-at-a-time Wazuh indexer upgrade, and fix the upgrade and offline guides found while testing the remaining install-time credentials scenarios |
 | [#1169](https://github.com/wazuh/wazuh-installation-assistant/issues/1169) | Test the all-in-one installation on a RHEL host with firewalld enabled, with an agent on another host that enrolls once the documented ports are opened, and remove the integration test step that disabled the host firewall, which had no firewall to disable |
 | [#1177](https://github.com/wazuh/wazuh-installation-assistant/issues/1177) | Add a `Next steps` part to the installation summary that explains how to enroll agents with a token and links to the agent installation guide |
