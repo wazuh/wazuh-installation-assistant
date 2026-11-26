@@ -2,6 +2,8 @@
 
 Upgrade all Wazuh central components (Wazuh Indexer, Wazuh Manager, and Wazuh Dashboard) on a single host following step-by-step instructions.
 
+These steps upgrade a 5.x deployment to a later 5.x version. A 4.x deployment cannot be upgraded to 5.x, neither the Wazuh manager nor the Wazuh indexer and the Wazuh dashboard. Migrate it instead: install 5.0 and carry the agents, the configuration and the data across, as described in [Migration from 4.x](../migration/all-in-one.md).
+
 > [!NOTE]
 > You need root user privileges to run all the commands described below.
 
@@ -13,7 +15,7 @@ Upgrade all Wazuh central components (Wazuh Indexer, Wazuh Manager, and Wazuh Da
 
 ### Preparing the upgrade
 
-Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_INDEXER_IP_ADDRESS`, `$USERNAME`, and `$PASSWORD` as in [Preparing the upgrade](#preparing-the-upgrade). `$USERNAME` is `admin`, and `$PASSWORD` is the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env`:
+Perform the following steps on any of the Wazuh indexer nodes replacing `$WAZUH_INDEXER_IP_ADDRESS`, `$USERNAME`, and `$PASSWORD`. `$USERNAME` is `admin`, and `$PASSWORD` is the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env`:
 
 ```bash
 sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-
@@ -90,13 +92,20 @@ The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/cer
     **rpm**
 
     ```bash
-    yum install wazuh-indexer-<VERSION>.rpm
+    yum install -y ./wazuh-indexer-<VERSION>.rpm
     ```
 
     **dpkg**
 
     ```bash
-    apt install ./wazuh-indexer-<VERSION>.deb
+    apt install -y ./wazuh-indexer-<VERSION>.deb
+    ```
+
+    Keep your `/etc/wazuh-indexer/opensearch.yml`. The installation changed it, so on Debian-based systems `apt` asks about the file: keep the installed version. The new one is saved as `/etc/wazuh-indexer/opensearch.yml.dpkg-dist`. Without a terminal, `apt` cannot ask and the package is left half-configured; pass `-o Dpkg::Options::=--force-confold` to keep your file without the question. On RPM-based systems there is no question: the package keeps your file and, when the packaged file changed, installs the new one as `opensearch.yml.rpmnew`. Settings added to the packaged file, such as new plugin settings, do not reach an upgraded node until you bring them over. Compare the new file with yours, for example:
+
+    ```bash
+    diff /etc/wazuh-indexer/opensearch.yml /etc/wazuh-indexer/opensearch.yml.dpkg-dist   # Debian-based
+    diff /etc/wazuh-indexer/opensearch.yml /etc/wazuh-indexer/opensearch.yml.rpmnew      # RPM-based
     ```
 
 3. Restart the Wazuh indexer service.
@@ -182,7 +191,7 @@ The commands check the Wazuh indexer certificate against `/etc/wazuh-indexer/cer
 
 ## Wazuh Manager
 
-**Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. For manager major version upgrades, a fresh installation is required. However, Wazuh **agents** support upgrades from 4.x to 5.x and can connect to a 5.x manager.
+A 4.x Wazuh manager cannot be upgraded to 5.x: see [Migration from 4.x](../migration/all-in-one.md). The 4.x agents connect to the Wazuh manager 5.x, and can be upgraded to 5.x later.
 
 Follow the upgrade procedure of the Wazuh manager package: [Upgrade](https://github.com/wazuh/wazuh/blob/v5.0.0/docs/ref/upgrade.md) in the `wazuh/wazuh` repository. It covers the backup to take first (including the Server API database `rbac.db` and the keystore), the upgrade itself, the files the package preserves, and the checks afterwards. The package restarts the Wazuh manager after the upgrade only if it was running before.
 
@@ -228,7 +237,7 @@ Before upgrading, ensure you:
 3. Keep your `/etc/wazuh-dashboard/opensearch_dashboards.yml`.
 
     - On Debian-based systems, when `apt` asks about the file, keep the installed version. The new one is saved as `/etc/wazuh-dashboard/opensearch_dashboards.yml.dpkg-dist`.
-    - On RPM-based systems there is no question: the package keeps your file and installs the new one as `/etc/wazuh-dashboard/opensearch_dashboards.yml.rpmnew`.
+    - On RPM-based systems there is no question: the package keeps your file and, when the packaged file changed between the two versions, installs the new one as `/etc/wazuh-dashboard/opensearch_dashboards.yml.rpmnew`. When it did not change, there is no `.rpmnew` file and nothing to compare.
 
     The packaged file points `opensearch.hosts` and `wazuh_core.hosts.default.url` to `localhost`, and has the default `opensearch.ssl.certificateAuthorities`, `username` and `ca` settings. If you take it, copy back from `opensearch_dashboards.yml.old` every setting of your deployment, not only `server.ssl.key` and `server.ssl.certificate`, or a distributed Wazuh dashboard loses its connection to the Wazuh indexer and to the Server API. Compare the new file with yours to bring over new settings, for example:
 
