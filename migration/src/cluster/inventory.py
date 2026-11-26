@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""inventory.py - the cluster inventory migrate-cluster.sh reads (CL1). Python 3.8+, standard library only.
+"""inventory.py - the cluster inventory migrate-cluster.sh reads. Python 3.8+, standard library only.
 
 The inventory is a JSON file the user writes once; nothing in it is a secret (the SSH key is named by its path):
 
@@ -17,7 +17,7 @@ The inventory is a JSON file the user writes once; nothing in it is a secret (th
       "v5_artifact_urls": "",                       a development build's artifact_urls.yaml; empty for a release
       "v5_config": "/root/config.yml",              the 5.0 assistant's config.yml (every node, names and addresses)
       "identity_tool": "/root/wazuh-migrate-identity.py",
-      "ruleset_tool": "/root/ruleset-migration"     a directory
+      "ruleset_tool": "/root/ruleset-migration"     a directory: rmig at 7976ef5422 or later (builds.json)
     },
     "nodes": [
       {"name": "node-1", "role": "indexer", "address": "10.0.0.11", "setup": true},
@@ -144,6 +144,17 @@ def problems(inv, inv_path):
     if ins.get("ruleset_tool") and not re.match(r"^https?://", ins["ruleset_tool"]) and os.path.exists(ins["ruleset_tool"]) \
             and not os.path.isdir(ins["ruleset_tool"]):
         p.append("inputs.ruleset_tool must be a directory (wazuh/intelligence-data tools/ruleset-migration)")
+    elif ins.get("ruleset_tool") and os.path.isdir(ins["ruleset_tool"]):
+        # the rmig this tool was tested with (manifest/builds.json ruleset_tool, rmig commit 7976ef5422cdf677b702bf774645b0f6f4be9218):
+        # an older one refuses --findings and never stops for the mandatory review
+        for rel, token in (("rmig/reasons.py", "RM-P-REVIEW-PENDING"), ("rmig/cli.py", "--findings"), ("rmig/api/commands.py", "--engine-limit")):
+            try:
+                ok_ = token in open(os.path.join(ins["ruleset_tool"], rel), errors="replace").read()
+            except OSError:
+                ok_ = False
+            if not ok_:
+                p.append("inputs.ruleset_tool %s is older than the ruleset tool this tool was tested with (rmig 7976ef5422): it "
+                         "lacks %s (%s)" % (ins["ruleset_tool"], token, rel))
     for k in (inv.get("settings") or {}):
         if not SETTING.match(k):
             p.append("settings.%s is not a setting name (migrate.sh's names, upper case)" % k)

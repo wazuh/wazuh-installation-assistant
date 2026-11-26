@@ -265,7 +265,7 @@ def load_maps(a):
     spec = rjson(a.history_map) if a.history_map else None
     hist = dict((spec or {}).get("map", {}))
     if spec and spec.get("rules"):
-        # Merged (H1 tool gap 2, S5-D1): the field-hiding map is generated from the loader's own table, never hand-made.
+        # the field-hiding map is generated from the loader's own table, never hand-made.
         # Union of the map builder's dependency index (`map`, what S5 proved: a restricted user read 0 hidden values)
         # and the fields convert() fills from each source (loader_map.field_hiding_map): FLS and masking hide every
         # 5.0 field that holds or is derived from a hidden 4.x field.
@@ -755,7 +755,7 @@ def main():
     ap.add_argument("--local", default="", help="prefix to run local commands on the 4.x indexer host (lab: 'docker exec CONTAINER')")
     ap.add_argument("--conf-dir", default="/etc/wazuh-indexer")
     ap.add_argument("--home", default="/usr/share/wazuh-indexer")
-    ap.add_argument("--field-map", default="", help="M1 field map (C23); merged default: none, the corrected loader map's rules are used")
+    ap.add_argument("--field-map", default="", help="M1 field map; merged default: none, the corrected loader map's rules are used")
     ap.add_argument("--history-map", default=os.path.join(HERE, "history-loader-map.json"))
     ap.add_argument("--local5", default="", help="prefix to run local commands on a 5.0 indexer node (securityadmin fallback)")
     ap.add_argument("--certs-dir5", default="/etc/wazuh-indexer/certs", help="admin certificate directory on the 5.0 node")

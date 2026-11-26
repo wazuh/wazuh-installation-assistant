@@ -1,9 +1,11 @@
-# common.sh - sourced by every node step of the cluster flow. Run as root on the node. CL1: the paths come from the
+# common.sh - sourced by every node step of the cluster flow. Run as root on the node. the paths come from the
 # node's work directory (MIG_HOME, the inventory's work_dir, which migrate-cluster.sh passes), never from a lab account;
 # deb and rpm nodes (the package family is chosen as migrate.sh chooses it).
 set -Eeuo pipefail
+# a node step that errexit ends names the command and the line that failed, in the step's log
+trap 'rc_=$?; [ "${BASH_SUBSHELL:-0}" != 0 ] || echo "STEP STOPPED: the command \"$BASH_COMMAND\" exited $rc_ (line $LINENO of ${BASH_SOURCE[0]##*/}${FUNCNAME[0]:+, in ${FUNCNAME[0]}})" >&2' ERR
 BUNDLE_DIR="${BUNDLE_DIR:-/root/wazuh-migration-bundle}"      # outside every directory an installer deletes
-MIG_HOME="${MIG_HOME:-/root/wazuh-migration}"                 # CL1: the inventory's work_dir on this node (migrate-cluster.sh stages it)
+MIG_HOME="${MIG_HOME:-/root/wazuh-migration}"                 # the inventory's work_dir on this node (migrate-cluster.sh stages it)
 V4_TAR="${V4_TAR:-$MIG_HOME/v4/wazuh-install-files.tar}"     # 4.x wazuh-install-files.tar on this node
 V4_ASSISTANT_FILE="${V4_ASSISTANT_FILE:-$MIG_HOME/v4/wazuh-install.sh}"   # the 4.x installation assistant (removal, reinstall)
 V5_DIR="${V5_DIR:-$MIG_HOME/v5}"                              # the 5.0 assistant, artifact_urls.yaml (development builds only), config.yml (setup node)
@@ -13,7 +15,7 @@ IDENTITY_TOOL="${IDENTITY_TOOL:-$MIG_HOME/tools/wazuh-migrate-identity.py}"
 RMIG_DIR="${RMIG_DIR:-$MIG_HOME/tools/ruleset-migration}"
 WORK_DIR="${WORK_DIR:-$MIG_HOME/scratch}"                     # the assistants run here; the finish searches it for secrets
 F3="${F3:-$MIG_HOME}"                                         # the lab-only steps' old name for the tools directory (k5.sh)
-: "${WPK_REPO=}"                                              # CL1: never a development-build address by default (migrate.sh's default is not taken)
+: "${WPK_REPO=}"                                              # never a development-build address by default (migrate.sh's default is not taken)
 export MIG_HOME SRC IDENTITY_TOOL RMIG_DIR WORK_DIR WPK_REPO
 STATE="$BUNDLE_DIR/state"; LOGS="$BUNDLE_DIR/logs"; mkdir -p "$STATE" "$LOGS"; chmod 700 "$BUNDLE_DIR"
 ts()  { date -u +%Y-%m-%dT%H:%M:%SZ; }
@@ -21,17 +23,17 @@ log() { printf '[%s %s] %s\n' "$(ts)" "$(hostname -s)" "$*"; }
 die() { log "FATAL: $*"; exit 1; }
 mark() { sync; local t="$STATE/.$1.tmp"; ts > "$t"; sync "$t" 2>/dev/null || sync; mv -f "$t" "$STATE/$1"; sync "$STATE" 2>/dev/null || sync; }   # E2-rpm fix 03 (after the step's writes) and E3 fold (E3-rpm 2: whole or absent)
 pw4() { tar -axf "$V4_TAR" wazuh-install-files/wazuh-passwords.txt -O 2>/dev/null | grep -P "'$1'" -A1 | sed -n "2s/.*password: '\(.*\)'/\1/p"; }
-# CL1: deb and rpm, chosen as migrate.sh chooses (apt-get and dpkg-query present: deb). The installed version, empty when
+# deb and rpm, chosen as migrate.sh chooses (apt-get and dpkg-query present: deb). The installed version, empty when
 # not installed; on deb only a package in state "installed" counts (half-configured is not installed).
 if [ -z "${PKGFAM:-}" ]; then if command -v apt-get >/dev/null 2>&1 && command -v dpkg-query >/dev/null 2>&1; then PKGFAM=deb; else PKGFAM=rpm; fi; fi
 pkgver() { if [ "$PKGFAM" = deb ]; then { dpkg-query -W -f='${db:Status-Status} ${Version}' "$1" 2>/dev/null || true; } | awk '$1=="installed"{print $2}'
            else rpm -q --qf '%{VERSION}-%{RELEASE}\n' "$1" 2>/dev/null | grep -v 'not installed' | head -n1 || true; fi; }
 pkg_installed() { if [ "$PKGFAM" = deb ]; then [ -n "$(pkgver "$1")" ]; else rpm -q "$1" >/dev/null 2>&1; fi; }
-pkgs() { # E5 fold (E5-cluster-deb gap 7): on deb only the packages installed (dpkg also lists removed ones it knows of)
+pkgs() { # on deb only the packages installed (dpkg also lists removed ones it knows of)
          if [ "$PKGFAM" = deb ]; then { dpkg-query -W -f='${db:Status-Status} ${Package} ${Version}\n' 'wazuh-*' filebeat 2>/dev/null || true; } | awk '$1=="installed"{print $2" "$3}' | sort
          else rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n' 'wazuh-*' filebeat 2>/dev/null | sort; fi; }
-nodelabel() { # E3 fold (E3-cluster gap 6): the cluster node's own name (the manager's <node_name>, the indexer's node.name)
-  # with the host, so a refusal says "wazuh-2 (ip-198-51-100-10)" and not only the host
+nodelabel() { # the cluster node's own name (the manager's <node_name>, the indexer's node.name)
+  # with the host, so a refusal says "wazuh-2 (ip-198-51-100-11)" and not only the host
   local n; n=$(sed -n 's#.*<node_name>[[:space:]]*\([^<[:space:]]*\)[[:space:]]*</node_name>.*#\1#p' /var/ossec/etc/ossec.conf 2>/dev/null | head -n1)
   [ -n "$n" ] || n=$(sed -n "s/^node\.name:[[:space:]]*['\"]\{0,1\}\([^'\"]*\)['\"]\{0,1\}[[:space:]]*$/\1/p" /etc/wazuh-indexer/opensearch.yml 2>/dev/null | head -n1)
   if [ -n "$n" ]; then echo "$n ($(hostname -s))"; else hostname -s; fi; }
@@ -40,7 +42,15 @@ source_version_gate() { # OF1 item 12 (decision of 2026-11-24): this node's 4.x 
   python3 "$SRC/mig_helper.py" source-version "$(nodelabel)" wazuh-manager "$(pkgver wazuh-manager)" \
     wazuh-indexer "$(pkgver wazuh-indexer)" wazuh-dashboard "$(pkgver wazuh-dashboard)" || die "this node's 4.x is not the latest 4.14.x: nothing changed"
 }
-bundle_verify() { # E5 fold (E5-cluster-deb 06): this node's bundle against its MANIFEST.sha256, without decisions.json:
+v4_assistant_check() { # the staged 4.x assistant must install this node's own 4.x version (it removes 4.x and reinstalls
+  # it when going back; https://packages.wazuh.com/4.14/wazuh-install.sh serves only the latest 4.14.x). The version is
+  # recorded the first time 4.x is seen installed here (the pre-copy) and read from that record once 4.x is removed
+  local p sv=""
+  if [ -s "$STATE/v4-source-version" ]; then sv=$(cat "$STATE/v4-source-version")
+  else for p in wazuh-manager wazuh-indexer wazuh-dashboard; do sv=$(pkgver "$p"); [[ "$sv" == 4.* ]] && break; sv=""; done
+       [ -z "$sv" ] || echo "$sv" > "$STATE/v4-source-version"; fi
+  python3 "$SRC/mig_helper.py" v4-assistant-check "$V4_ASSISTANT_FILE" "$sv" "inputs.v4_assistant in the inventory (the next run stages it on the nodes again)"; }
+bundle_verify() { # this node's bundle against its MANIFEST.sha256, without decisions.json:
   # that file is the node's copy of the user's answers, which migrate-cluster.sh replaces before and after every step
   # that can ask, so a manifest written at the export no longer matched once a later step asked (the master's installed
   # plan, the ruleset decision) and the whole-cluster way back refused the master. A bundle exported before this fold
@@ -50,7 +60,7 @@ myip() { hostname -I | awk '{print $1}'; }
 idxhost() { # the address this node's indexer listens on (migrate.sh idxhost: R2, network.host from opensearch.yml)
   local h; h=$(sed -n "s/^network.host:[[:space:]]*['\"]\{0,1\}\([^'\"]*\)['\"]\{0,1\}[[:space:]]*$/\1/p" /etc/wazuh-indexer/opensearch.yml 2>/dev/null | head -n1)
   case "$h" in ""|0.0.0.0|127.0.0.1|localhost|_local_*|"["*) echo 127.0.0.1;; *) echo "$h";; esac; }
-mask_passwords() { # E2-deb G11; E5 fold (E5-cluster-deb gap 8): the value only (a token, or a quoted string), not the rest
+mask_passwords() { # the value only (a token, or a quoted string), not the rest
   # of the line: the secret sweep's "kept (...)" line was blanked whole. Every value on the line is masked (g)
   sed -u -E 's/([Pp]assword|PASSWORD|[Tt]oken)([^:=]{0,40}[:=][[:space:]]*)("[^"]*"?|'"'"'[^'"'"']*'"'"'?|[^[:space:]]+)/\1\2MASKED/g'; }
 v5cred() { # v5cred KEY : from the 5.0 wazuh-install-files.tar on this node. E5 fold (E5-cluster-deb 01 = E5-cluster-rpm
@@ -75,7 +85,7 @@ leftovers() {
 }
 ca4() { # the 4.x root CA from the original 4.x install files (for talking to a reinstalled 4.x indexer before Filebeat exists)
   local p="$STATE/root-ca-4x.pem"; tar -axf "$V4_TAR" wazuh-install-files/root-ca.pem -O > "$p" 2>/dev/null; echo "$p"; }
-aio_lib() { # CL1: the all-in-one's functions (migrate.sh up to its dispatcher), for the node steps that run its stages on
+aio_lib() { # the all-in-one's functions (migrate.sh up to its dispatcher), for the node steps that run its stages on
   # a cluster node, so one implementation serves both flows: settings (pc_settings, collect_base, settings_plan,
   # im_settings, im_groups_pre, fi_groups_post), ruleset (rmig, ruleset_build, im_ruleset), the unclassified-events
   # decision (op_decision, op_in_force), the listeners and the firewall (op_listeners, fw_*), the agents (ag_*, fu,

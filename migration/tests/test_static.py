@@ -10,7 +10,7 @@ import helpers
 
 PY = ["mig_helper.py", "history_load.py", "apply_map.py", "loader_map.py", "identity_stage.py", "indexer_stage.py",
       "snap_consolidate.py", "snapshot_repo.py", "fleet-upgrade.py", "fleet-facts-4x.py", "dump.py", "load_unchanged.py",
-      "history_migrate.py", "cluster/node/node-state.py", "bundle_secrets.py", "settings_stage.py",
+      "cluster/node/node-state.py", "bundle_secrets.py", "settings_stage.py",
       "cluster/alertsjson-fold.py"]
 
 

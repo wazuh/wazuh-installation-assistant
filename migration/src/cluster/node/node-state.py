@@ -22,7 +22,7 @@ def sh(cmd, timeout=30):
         return "ERROR %s" % e
 
 
-DEB = os.path.exists("/usr/bin/dpkg-query") and os.path.exists("/usr/bin/apt-get")   # merged: deb nodes too (F3 ran deb)
+DEB = os.path.exists("/usr/bin/dpkg-query") and os.path.exists("/usr/bin/apt-get")   # deb nodes too (F3 ran deb)
 
 
 def rpmver(name):
@@ -57,7 +57,7 @@ st["service_enabled"] = sh("systemctl is-enabled wazuh-manager")
 st["filebeat"] = sh("systemctl is-active filebeat")
 listen = sh("ss -ltnH").splitlines()
 st["listen"] = sorted({l.split()[3] for l in listen if re.search(r":(1514|1515|1516|1517|55000)$", l.split()[3])})
-# merged: the shared guard uses its own chains (MIGGUARD = agent, MIGGUARD_CLUSTER = cluster) or nft table migguard;
+# the shared guard uses its own chains (MIGGUARD = agent, MIGGUARD_CLUSTER = cluster) or nft table migguard;
 # K5's and F4's comment-tagged INPUT rules are still recognised on a node set up by the arms
 _ipt = sh("iptables -S INPUT; iptables -L INPUT -n")
 st["guards"] = sorted(set(re.findall(r"/\* (k5-[a-z0-9-]+|f4-agent-guard) \*/", _ipt))

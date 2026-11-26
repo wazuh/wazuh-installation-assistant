@@ -355,7 +355,7 @@ class UnclassifiedDefaultDecision3(unittest.TestCase):
         self.assertEqual(applied, ["verified-none", "raw"])
         self.assertIn("helper policy-unclassified on", calls)
         self.assertFalse([c for c in calls if c.startswith("rmig activate")], calls)
-        self.assertIn("the default answer applies, verified+raw", out)
+        self.assertIn("the default applies, verified+raw", out)   # F7 wording
 
 
     def test_no_failure_but_rules_without_sample_are_activated_without_force(self):
@@ -482,7 +482,7 @@ class ArchivesOptInDecision5a(unittest.TestCase):
 
     def test_assess_reports_their_size_and_the_setting_by_default(self):
         rc, out = self.assess(MIGRATE)
-        self.assertIn("archives: 200 archived events in 2 daily indices (3 MB) are NOT carried (decision 5a", out)
+        self.assertIn("archives: 200 archived events in 2 daily indices (3 MB) are NOT carried (alerts always, archives only on request", out)   # F7: no design code
         self.assertIn("HISTORY_ARCHIVES=1 is the setting that asks for them", out)
         self.assertIn("FAILS=0 WARNS=1", out)
 
@@ -582,7 +582,7 @@ class _LoaderBundle(unittest.TestCase):
         a = mock.Mock(cluster_name="wazuh", agent_ids="carried", agent_registry=None, bulk_docs=2, bulk_bytes=1 << 20, **kw)
         b = mod.Bundle(self.t)
         rej = {"lock": __import__("threading").Lock(), "f": io.StringIO()}
-        p = [mock.patch.object(mod.hm, "Api", lambda a_: fake), mock.patch.object(mod.time, "sleep", clock.sleep),
+        p = [mock.patch.object(getattr(mod, "hm", mod), "Api", lambda a_: fake), mock.patch.object(mod.time, "sleep", clock.sleep),
              mock.patch.object(mod, "load_registry", lambda a_: {})]
         if hasattr(mod, "SLEEP"):
             p += [mock.patch.object(mod, "SLEEP", clock.sleep), mock.patch.object(mod, "CLOCK", clock.now)]
@@ -680,9 +680,9 @@ class SnapshotThroughThePythonLoaderDecision9(_LoaderBundle):
         fake_f = ScrollingIndexer([], clock)
         with mock.patch.object(HL, "SLEEP", clock.sleep), mock.patch.object(HL, "CLOCK", clock.now), \
                 mock.patch.object(HL, "load_registry", lambda a_: {}), contextlib.redirect_stdout(io.StringIO()):
-            with mock.patch.object(HL.hm, "Api", lambda a_: fake_i):
+            with mock.patch.object(HL, "Api", lambda a_: fake_i):
                 src, st = HL.load_index(a, b, self.f["index"], rej)
-            with mock.patch.object(HL.hm, "Api", lambda a_: fake_f):
+            with mock.patch.object(HL, "Api", lambda a_: fake_f):
                 HL.load_file(a, b, self.f, HL._NoState(), rej)
         self.assertEqual(st["created"], 5)
         self.assertEqual(fake_i.bodies, fake_f.bodies)          # the same ids, targets and shaped documents
@@ -694,7 +694,7 @@ class SnapshotThroughThePythonLoaderDecision9(_LoaderBundle):
         a = mock.Mock(cluster_name="wazuh", agent_ids="carried", agent_registry=None, bulk_docs=2, bulk_bytes=1 << 20,
                       breaker_max=0, breaker_wait_max=1800)
         fake = ScrollingIndexer(self.docs()[:4], clock)
-        with mock.patch.object(HL.hm, "Api", lambda a_: fake), mock.patch.object(HL, "load_registry", lambda a_: {}), \
+        with mock.patch.object(HL, "Api", lambda a_: fake), mock.patch.object(HL, "load_registry", lambda a_: {}), \
                 self.assertRaises(RuntimeError) as e:
             HL.load_index(a, HL.Bundle(self.t), self.f["index"], {"lock": __import__("threading").Lock(), "f": io.StringIO()})
         self.assertIn("4 documents read from the restored copy, the 4.x source had 5", str(e.exception))
@@ -730,7 +730,7 @@ class SnapshotThroughThePythonLoaderDecision9(_LoaderBundle):
                      allow_unshaped=False, batch=1000, slices="auto", bulk_docs=2, bulk_bytes=1 << 20)
         p = [mock.patch.object(mod.hl, "build_template", lambda *x, **k: ({}, 0, {})), mock.patch.object(mod.hl, "load_registry", lambda a_: {}),
              mock.patch.object(mod.hl, "count", lambda *x: 5), mock.patch.object(mod, "per_source_counts", counts),
-             mock.patch.object(mod.hm, "policy_body", lambda a_: {"policy": {}}),
+             mock.patch.object(getattr(mod, "hm", mod.hl), "policy_body", lambda a_: {"policy": {}}),
              mock.patch.object(sys, "path", [os.path.dirname(mod.__file__)] + sys.path)]   # snap_consolidate imports snapshot_repo beside it
         if hasattr(mod.hl, "load_index"):
             p.append(mock.patch.object(mod.hl, "load_index", load_index))
@@ -765,18 +765,18 @@ class SourceIsTheLatest414Item12(unittest.TestCase):
         return H.source_versions_check(rows, series, minimum)
 
     def test_the_manifest_holds_the_minimum_as_data(self):
-        self.assertEqual(H.source_policy(), ("4.14", "4.14.10"))
+        self.assertEqual(H.source_policy(), ("4.14", "4.14.11"))   # F6 fold: 4.14.11 published 2026-11-25
 
     def test_an_older_414_is_refused_naming_the_version_and_what_to_do(self):
-        bad, good = self.check([("aio", "wazuh-manager", "4.14.10-1"), ("aio", "wazuh-indexer", "4.14.9-1"), ("aio", "wazuh-dashboard", "4.14.10-1")])
+        bad, good = self.check([("aio", "wazuh-manager", "4.14.11-1"), ("aio", "wazuh-indexer", "4.14.10-1"), ("aio", "wazuh-dashboard", "4.14.11-1")])
         self.assertEqual(len(bad), 1, bad)
-        self.assertIn("wazuh-indexer 4.14.9-1 on aio is older than 4.14.10", bad[0])
+        self.assertIn("wazuh-indexer 4.14.10-1 on aio is older than 4.14.11", bad[0])
         self.assertIn("upgrade every node to the latest 4.14.x first", bad[0])
 
     def test_the_minimum_and_a_newer_414_are_accepted(self):
-        bad, good = self.check([("aio", c, v) for c in H.SOURCE_COMPONENTS for v in ("4.14.10-1", "4.14.11-1")])
+        bad, good = self.check([("aio", c, v) for c in H.SOURCE_COMPONENTS for v in ("4.14.11-1", "4.14.12-1")])
         self.assertEqual(bad, [])
-        self.assertIn("wazuh-manager 4.14.11-1 on aio (a 4.14.x newer than 4.14.10: accepted)", good)
+        self.assertIn("wazuh-manager 4.14.12-1 on aio (WARNING: a 4.14.x newer than 4.14.11, the latest this tool was validated on: accepted)", good)
 
     def test_another_series_is_not_a_414_source(self):
         bad, _ = self.check([("aio", "wazuh-manager", "4.15.0-1"), ("aio", "wazuh-indexer", "5.0.0-1"), ("aio", "wazuh-dashboard", "4.13.2-1")])
@@ -789,12 +789,12 @@ class SourceIsTheLatest414Item12(unittest.TestCase):
                 pass
 
             def get(self, path):
-                return [{"name": "wazuh-1", "type": "master", "version": "4.14.10"}, {"name": "wazuh-2", "type": "worker", "version": "4.14.9"}]
+                return [{"name": "wazuh-1", "type": "master", "version": "4.14.11"}, {"name": "wazuh-2", "type": "worker", "version": "4.14.10"}]
         with mock.patch.object(H, "Api", FakeApi), mock.patch.dict(os.environ, {"V4_API_PASSWORD": "x"}):
             rc, out = quiet(H.source_version_cluster)
         self.assertEqual(rc, 1)
-        self.assertIn("SOURCE VERSION REFUSED: wazuh-manager 4.14.9 on wazuh-2 is older than 4.14.10", out)
-        self.assertIn("source version: wazuh-manager 4.14.10 on wazuh-1", out)
+        self.assertIn("SOURCE VERSION REFUSED: wazuh-manager 4.14.10 on wazuh-2 is older than 4.14.11", out)
+        self.assertIn("source version: wazuh-manager 4.14.11 on wazuh-1", out)
 
     def shell(self, script, versions):
         sh = helpers.Shell(script)
@@ -811,7 +811,7 @@ class SourceIsTheLatest414Item12(unittest.TestCase):
             sh.close()
         self.assertNotEqual(rc, 0, out)
         self.assertNotIn("STEP", out)
-        self.assertIn("is older than 4.14.10", out)
+        self.assertIn("is older than 4.14.11", out)
 
 
     def test_a_41411_source_goes_on(self):

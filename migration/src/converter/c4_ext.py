@@ -1,15 +1,15 @@
-"""C4 additions to the C1 converter: the installed 5.0 base, the 5.0 schema, the stock 4.x files and the 5.0
+"""Additions to the settings converter: the installed 5.0 base, the 5.0 schema, the stock 4.x files and the 5.0
 internal-option range table. Python 3.9+, standard library only.
 
-Why each exists (evidence in ../../DECISIONS.md):
+Why each exists:
 - base: the 5.0 install owns the cluster key, the cluster topology, the listener sections and the certificate
-  paths. Carrying the 4.x values cut a worker off (F3), opened 1516 on 0.0.0.0 and carried NODE_IP (E1), and a
-  candidate without <remote><https> reset the listeners to defaults (F3).
+  paths. Carrying the 4.x values cut a worker off, opened 1516 on 0.0.0.0 and carried NODE_IP, and a
+  candidate without <remote><https> reset the listeners to defaults.
 - schema: 5.0 ships /etc/wazuh-manager/wazuh-manager.schema.json; a path it lists is a 5.0 option and its
   type and range can be checked before the file is staged.
 - stock: a value equal to the stock 4.x file is not a customization; 5.0 compiles its own defaults (F3 asked
   128 questions about two unmodified stock files).
-- ranges: an out-of-range internal option stops the daemon that reads it, and with it the manager (F6 G4).
+- ranges: an out-of-range internal option stops the daemon that reads it, and with it the manager.
 """
 import ipaddress
 import json

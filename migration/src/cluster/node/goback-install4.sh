@@ -3,7 +3,7 @@
 # ORIGINAL 4.x wazuh-install-files.tar (same certificates, cluster key and passwords as before the migration).
 . "$(dirname "$(readlink -f "$0")")/common.sh"
 flag=$1; shift
-# E5 fold (E5-cluster-rpm 06, with install5.sh's success-only rule): from the node's real state. A way back cut inside
+# E5 fold (with install5.sh's success-only rule): from the node's real state. A way back cut inside
 # the 4.x reinstall (a reboot during the assistant's Filebeat step) left the packages installed, and the assistant
 # refuses "already installed ... use -o" on every rerun, so the way back could never go on.
 #   - this bundle's success marker (written on exit 0 only) and the packages there: done, not run again;
@@ -30,13 +30,14 @@ if [ -n "$need" ]; then
   fi
   if [ -n "$have" ]; then over=(-o); log "part-installed by an earlier attempt that did not finish ($have ): reinstalled with -o (overwrite; nothing on this node is kept at this point of the way back)"; fi
 fi
+v4_assistant_check || die "not reinstalling 4.x with an assistant of another version"
 rm -f "$STATE/$ok4"
 d="$WORK_DIR/v4-reinstall"; mkdir -p "$d"; cp -f "$V4_ASSISTANT_FILE" "$d/wazuh-install.sh"; cp -f "$V4_TAR" "$d/wazuh-install-files.tar"
 args=("$flag" "$@" ${over[@]+"${over[@]}"}); [ "$flag" = --wazuh-dashboard ] && args+=(-i)
 log "bash wazuh-install.sh ${args[*]}"; rc=0
-( cd "$d" && bash ./wazuh-install.sh "${args[@]}" ) 2>&1 | mask_passwords > "$LOGS/goback-install-4x$flag.log" || rc=${PIPESTATUS[0]}   # E2-deb G11: the summary prints the admin password
+( cd "$d" && bash ./wazuh-install.sh "${args[@]}" ) 2>&1 | mask_passwords > "$LOGS/goback-install-4x$flag.log" || rc=${PIPESTATUS[0]}   # the summary prints the admin password
 grep -E 'INFO|WARNING|ERROR' "$LOGS/goback-install-4x$flag.log" | sed -E 's/(Password|password): .*/\1: MASKED/' | tail -n 5
-# E3-cluster fix 01: the working copy of the 4.x install files (every 4.x password and the cluster key) is needed only
+# the working copy of the 4.x install files (every 4.x password and the cluster key) is needed only
 # while the assistant runs; left here it fails the finish's secret sweep of the work directory (the all-in-one's back.secrets)
 shred -u "$d/wazuh-install-files.tar" 2>/dev/null || rm -f "$d/wazuh-install-files.tar"
 [ "$rc" != 0 ] || mark "$ok4"   # the success-only marker

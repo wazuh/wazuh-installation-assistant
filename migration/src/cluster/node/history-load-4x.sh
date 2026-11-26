@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # history-load-4x.sh <4.x-indexer-url> : going back. Loads the history bundle into the reinstalled 4.x indexer cluster, daily layout as it was.
-# F4: the shipped src/load_unchanged.py (the all-in-one's back reload; it replaced the lab's own loader),
+# the shipped src/load_unchanged.py (the all-in-one's back reload; it replaced the lab's own loader),
 # which creates each index with the creation date dump.py recorded, so the 4.x ISM policies retention-4x.sh restore4 puts
 # back count each index's age from its first creation, not from this load.
 . "$(dirname "$(readlink -f "$0")")/common.sh"

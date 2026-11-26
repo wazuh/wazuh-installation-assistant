@@ -1,23 +1,26 @@
 #!/usr/bin/env bash
-# migrate.sh - the Wazuh 4.14.x -> 5.0 migration tool, merged canonical version: one entry point
-# for the same-host flow on an all-in-one (deb or rpm, amd64 or arm64), the whole contract of the design as one
-# re-runnable command. Built from P1 (from E1) with R2, F5, F6, F7, F10 and S5 folded in, and the stages beside it:
-# identity_stage.py (G5+F7), history_load.py (H5+S5 over RD2's M3), indexer_stage.py (C23), fleet-upgrade.py (A5+A6),
-# guard.sh (R2/F5+K5). Bash + Python 3.8+ standard library only.
+# migrate.sh - the Wazuh 4.14.x -> 5.0 migration tool: one re-runnable command for an all-in-one (deb or rpm, amd64 or
+# arm64) and, run on the 4.x master, for a cluster. Bash and the Python 3.8+ standard library only.
 #
-#   sudo ./migrate.sh run [--from PHASE] [--only PHASE] [--through PHASE]   phases 1-8 (and the history), then stops
-#   sudo ./migrate.sh confirm-no-return      phase 9: the explicit confirmation
-#   sudo ./migrate.sh agents                 phase 10: upgrade the agents (needs phase 9)
-#   sudo ./migrate.sh finish                 phase 11: close the legacy ports, delete the history data and the secrets
-#   sudo ./migrate.sh back                   go back to 4.14.x from the bundle (offered from phase 5 to phase 9)
-#   sudo ./migrate.sh status | guard | dashboards-rollback (rule 20: reset only what the dashboard step changed)
-#   sudo ./migrate.sh discard                delete the secrets of a bundle abandoned before 4.x was removed (or after going back)
+#   sudo ./migrate.sh            runs to the next point that needs you and stops there with exit 3, printing one question
+#                                and the decisions file to answer it in; run the same command again to go on. It ends with
+#                                "MIGRATION FINISHED". Exit codes: 0 finished, 3 a question is open, 4 waiting for 4.x
+#                                agents (run it again later), 10 the 5.0 install is left to your deployment tool,
+#                                anything else a failure (fix the cause; the same command continues from the failed step)
+#   sudo ./migrate.sh back       go back to 4.14.x from the bundle (offered until the point of no return is confirmed); on
+#                                the master of a cluster, the whole cluster
+#   sudo ./migrate.sh back master   on the master of a cluster: the master alone back to 4.14.x while every worker still
+#                                serves on 4.x (before any worker is frozen)
+#   sudo ./migrate.sh status     what is done; --version: the tool's fingerprint and the ruleset tool commit it pins
+#
+#   Advanced, for recovery and tests: next [--inventory FILE] (the same as no command; a cluster from its inventory),
+#   run [--from PHASE] [--only PHASE] [--through PHASE], confirm-no-return, agents, finish, discard, guard,
+#   dashboards-rollback, cluster --inventory FILE <command> (a cluster from an inventory of your own).
 #   phases: assess precopy freeze verify_bundle replace import open verify history
-#   HISTORY_LOAD=after-open (default): the outage ends at "open"; "history" loads, proves and switches it on afterwards.
-#   ./migrate.sh cluster --inventory FILE <command>   a cluster, from a control host (migrate-cluster.sh, CL1)
 #
 set -Eeuo pipefail
-if [ "${1:-}" = cluster ]; then shift; exec bash "$(dirname "$(readlink -f "$0")")/migrate-cluster.sh" "$@"; fi   # CL1
+declare -A NX_GIVEN=(); for _v in V4_INSTALL_FILES_TAR IDENTITY_TOOL RMIG_DIR; do [ -z "${!_v:-}" ] || NX_GIVEN[$_v]=1; done   # set by the person, not defaults
+if [ "${1:-}" = cluster ]; then shift; exec bash "$(dirname "$(readlink -f "$0")")/migrate-cluster.sh" "$@"; fi
 
 ############ Values the user supplies ##########################################################
 # 1. Where the export bundle lives. Must survive the removal of 4.x, a failed 5.0 install and a reboot.
@@ -31,9 +34,20 @@ V5_ASSISTANT="${V5_ASSISTANT:-https://packages-staging.xdrsiem.wazuh.info/nightl
 # 5. The 5.0 artifact manifest (file or URL). Only for development builds; empty for a published release.
 V5_ARTIFACT_URLS="${V5_ARTIFACT_URLS-https://packages-staging.xdrsiem.wazuh.info/nightly/5.0.0/artifact-urls/artifact_urls_5.0.0-latest.yaml}"
 # 6. wazuh-migrate-identity.py (wazuh/wazuh 5.0.0, tools/migration).
-IDENTITY_TOOL="${IDENTITY_TOOL:-/root/mig-tools/wazuh-migrate-identity.py}"
-# 7. The ruleset migration tool directory (wazuh/intelligence-data, tools/ruleset-migration).
-RMIG_DIR="${RMIG_DIR:-/root/mig-tools/ruleset-migration}"
+IDENTITY_TOOL="${IDENTITY_TOOL:-${WM_IDENTITY_TOOL:-/root/mig-tools/wazuh-migrate-identity.py}}"   # WM_IDENTITY_TOOL: the copy the one-file tool embeds
+# 7. The ruleset migration tool directory (wazuh/intelligence-data, tools/ruleset-migration) at the commit this tool was
+#    tested with, rmig commit 7976ef5422cdf677b702bf774645b0f6f4be9218 (manifest/builds.json, ruleset_tool); assess refuses an older rmig.
+RMIG_DIR="${RMIG_DIR:-/root/ruleset-migration}"   # where the guide puts it; also found in the current directory
+# 7b. rmig's --findings criterion for migrate, plan and build. "all" (default, as rmig): every 4.x rule becomes a
+#     detection rule. "mitre": only rules with MITRE techniques do; the others become telemetry, tagged by their decoder
+#     with the 4.x rule.id, rule.description and rule.level (the level as the 5.x word), and a rule without MITRE that
+#     looks like a security finding (level 10 or more, or a security group) waits in the "findings" part of the
+#     ruleset decisions (add techniques with "mitre", or "action": "finding" or "telemetry").
+RMIG_FINDINGS="${RMIG_FINDINGS:-all}"
+# 7c. limits of the 5.0 indexer raised by the user, passed to rmig as --engine-limit (space separated NAME=N), e.g.
+#     "max_detectors=20" after plugins.security_analytics.max_detectors was raised: apply and activate stop
+#     (RM-P-ENGINE-LIMIT, nothing changed) when the user detectors plus the tool's would pass the cap (default 10).
+RMIG_ENGINE_LIMITS="${RMIG_ENGINE_LIMITS:-}"
 # 8. decisions.json for the ruleset tool, when the first plan leaves questions open. Optional.
 RMIG_DECISIONS="${RMIG_DECISIONS:-}"
 # 9. Addresses agents dial that the host cannot discover (NAT, load balancer, published name). Optional.
@@ -52,55 +66,55 @@ WPK_REPO="${WPK_REPO-packages-staging.xdrsiem.wazuh.info/nightly/5.0.0/wpk/}"
 #     (decision 5b, 2026-11-24): the retention the 4.x deployment had, read in pre-copy from the ISM policies that
 #     cover its alert indices (their delete age); 365d when none deletes them. A value set here wins.
 HISTORY_RETENTION="${HISTORY_RETENTION:-}"
-# 12b. OF1 (decision 5a, 2026-11-24): the 4.x archives (wazuh-archives-4.x-*) are carried only on request; assess
-#     reports their size. 1 asks for them: refused by this version, which loads alerts only (MERGE-LOG, OF1 item 9 says
-#     what the loader and the bundle check still lack).
+# 12b. The 4.x archives (wazuh-archives-4.x-*) are carried only on request; assess reports their size. 1 asks for
+#     them: refused by this version, which loads alerts only (the loader and the bundle check do not handle archives yet).
 HISTORY_ARCHIVES="${HISTORY_ARCHIVES:-0}"
 # 13. Roles that name finding streams exactly lose every module when the history is switched on: 1 accepts that.
 ACCEPT_ROLE_LOSS="${ACCEPT_ROLE_LOSS:-0}"
-# 15. F6: what phase 11 does about agents that are registered but never connected (no version on record). keep (default):
+# 15. what phase 11 does about agents that are registered but never connected (no version on record). keep (default):
 #     the legacy ports stay open for them and the finish says so; close: close the legacy ports anyway (such a key can then
 #     only be used by a 5.0 agent, on 1517); remove: delete them from the registry, then close.
+NC_GIVEN="${NEVER_CONNECTED_AT_FINISH:+1}"   # set in the environment; else the decisions file's "never-connected" entry, else keep
 NEVER_CONNECTED_AT_FINISH="${NEVER_CONNECTED_AT_FINISH:-keep}"
-# 14. P1: helper names of the target engine for the ruleset tool (5.0, or 5.0-rc1 for builds before the engine renamed its helpers).
+# 14. helper names of the target engine for the ruleset tool (5.0, or 5.0-rc1 for builds before the engine renamed its helpers).
 #     Empty: from the 5.0 build (the staged assistant's stage in phase 2, the installed manager's revision in phase 6).
 RMIG_ENGINE_HELPERS="${RMIG_ENGINE_HELPERS:-}"
-# 15. R2: who installs 5.0 in phase 5 and reinstalls 4.x when going back. "assistant" (packages, as P1); "external" for a
+# 15. who installs 5.0 in phase 5 and reinstalls 4.x when going back. "assistant" (packages); "external" for a
 #     deployment owned by something else (an Ansible playbook): the step stops with exit 10 and says what to run, and the
 #     next run of this command goes on from there. The recipe on the control node runs the playbook in between.
 V5_INSTALLER="${V5_INSTALLER:-assistant}"
 V4_REINSTALLER="${V4_REINSTALLER:-$V5_INSTALLER}"
-# 16. R2: 1 when this host is a NEW host for 5.0 (an image launched beside the 4.x one): the 4.x phases 1-4 ran on the
+# 16. 1 when this host is a NEW host for 5.0 (an image launched beside the 4.x one): the 4.x phases 1-4 ran on the
 #     4.x host into the same BUNDLE_DIR, which was then copied here; phase 5 removes nothing on this host.
 #     V5_INSTALLER=image: 5.0 came installed and running in the image (AMI, OVA): phase 5 removes the image's own
 #     pre-enrolled agent from the registry (it holds id 001, which the 4.x fleet holds too) and closes the listeners.
 NEW_HOST="${NEW_HOST:-0}"
-# 17. F7: 1 keeps the 4.x packages in the bundle (the 4.x assistant's own offline set, downloaded in phase 2 while 4.x
+# 17. 1 keeps the 4.x packages in the bundle (the 4.x assistant's own offline set, downloaded in phase 2 while 4.x
 #     is live) and going back reinstalls from them; 0 downloads them again when going back. Recommended (design: it costs
 #     about 1.8 GB and 84 s before the outage, saves about 68 s of the way back and removes the internet from it).
 V4_PACKAGES_CACHE="${V4_PACKAGES_CACHE:-0}"
-# 19. G5: the Server API's request limit during the identity import. "raise" (default): saved, raised for the import and
+# 19. the Server API's request limit during the identity import. "raise" (default): saved, raised for the import and
 #     restored before the stage ends (4 min 2 s for 12,000 agents); "stock": the shipped limit (50 min 25 s), for sites
 #     that forbid touching api.yaml.
 IDENTITY_LIMIT_MODE="${IDENTITY_LIMIT_MODE:-raise}"
 # 21. The flow's decisions file: every question the flow asks a person and cannot answer itself is written here as an
 #     entry with "action": null, the run stops, and the next run reads the answers. Sections: "settings" and
-#     "groups-pre-upgrade" / "groups-post-upgrade" (the settings converter, C4), "ruleset" (rmig's decisions.json,
+#     "groups-pre-upgrade" / "groups-post-upgrade" (the settings converter), "ruleset" (rmig's decisions.json,
 #     unless RMIG_DECISIONS names a file of its own). Default: inside the bundle.
 MIGRATION_DECISIONS="${MIGRATION_DECISIONS:-$BUNDLE_DIR/decisions.json}"
-# 22. C4: 1 converts the 4.x manager settings and merges them into the installed 5.0 files in phase 6 (rules 21, 22),
+# 22. 1 converts the 4.x manager settings and merges them into the installed 5.0 files in phase 6 (rules 21, 22),
 #     and cleans the group files in two passes (phase 6, phase 11). 0 leaves the installed 5.0 settings and the group
 #     files as the identity import wrote them.
 CARRY_SETTINGS="${CARRY_SETTINGS:-1}"
-# 23. Clusters only: directories holding the other nodes' candidate wazuh-manager.conf, for the cross-node check (C4)
+# 23. Clusters only: directories holding the other nodes' candidate wazuh-manager.conf, for the cross-node check
 #     before anything is staged on this node. Space separated. Empty on an all-in-one.
 CLUSTER_CANDIDATES="${CLUSTER_CANDIDATES:-}"
-# 20. H5: worker processes for the history's Python shaping (the corrected map runs in Python; threads cap at one core:
+# 20. worker processes for the history's Python shaping (the corrected map runs in Python; threads cap at one core:
 #     about 1,000 alerts a second, 8 processes about 5,000). Default half the CPUs, at most 8: after the opening the
-#     load shares the host with live traffic (F10). 0 uses threads.
+#     load shares the host with live traffic. 0 uses threads.
 _np=$(nproc 2>/dev/null || echo 2); _hp=$(( _np / 2 )); [ "$_hp" -ge 1 ] || _hp=1; [ "$_hp" -le 8 ] || _hp=8
 HISTORY_PROCS="${HISTORY_PROCS:-$_hp}"
-# 18. F10: when the 4.x alert history is loaded. "after-open" (F10's proposed contract order): phase 6 imports identity,
+# 18. when the 4.x alert history is loaded. "after-open" (F10's proposed contract order): phase 6 imports identity,
 #     ruleset and security, phase 7 opens the listeners, phase 8 verifies everything but the history, and a new phase,
 #     history, loads, proves and only then switches the aliases on while the agents are already served.
 #     "before-open" (the contract as it was): the load, the proof and the aliases are part of phase 6, inside the outage.
@@ -119,27 +133,20 @@ FORCE_BUILDS="${FORCE_BUILDS:-0}"                # 1: go on with a build this sc
 AGENT_WAIT_SECS="${AGENT_WAIT_SECS:-900}"
 WORK_DIR="${WORK_DIR:-/root/mig-work}"           # scratch: the assistants run here, never inside the bundle
 RMIG_SAMPLES="${RMIG_SAMPLES:-}"
-RMIG_ACTIVATE_ARGS="${RMIG_ACTIVATE_ARGS:-}"     # P1 lab repair only (P-D6): e.g. --include-foreign-changes
-# Lab switches for the break tests. Never set in a real run.
-TEST_KILL_AT="${TEST_KILL_AT:-}"                 # step marker: SIGKILL this script right after that step ends (before its marker)
-TEST_KILL_BEFORE="${TEST_KILL_BEFORE:-}"         # step marker: SIGKILL this script right before that step starts
-TEST_HISTORY_STOP_AFTER="${TEST_HISTORY_STOP_AFTER:-}"   # N: the history load exits hard after N files
-LAB_HOOK="${LAB_HOOK:-}"                         # script called as "$LAB_HOOK <point>" at freeze and after the load (lab proof only)
-LAB_BACK_GUARD="${LAB_BACK_GUARD:-1}"            # F7: 0 goes back WITHOUT the agent guard (to reproduce the lockout)
-TEST_V5_START_FAIL="${TEST_V5_START_FAIL:-}"     # F7: 1 makes the 5.0 manager's first start fail (ExecStartPre=/bin/false drop-in, as F4)
 
 # Rule 4 / Supported builds: the validated builds come from the build manifest shipped with the tool, not from this code.
 _manifest_list() { python3 -c 'import json,sys; print(" ".join(json.load(open(sys.argv[1])).get(sys.argv[2], [])))' "$(dirname "$(readlink -f "$0")")/manifest/builds.json" "$1" 2>/dev/null || true; }   # missing manifest: the defaults below
-VALIDATED_4X="$(_manifest_list source_4x)"; VALIDATED_4X="${VALIDATED_4X:-4.14.10}"   # source builds this tool was run on
+VALIDATED_4X="$(_manifest_list source_4x)"; VALIDATED_4X="${VALIDATED_4X:-4.14.11}"   # source builds this tool was run on
 VALIDATED_5X="$(_manifest_list target_5x)"; VALIDATED_5X="${VALIDATED_5X:-5.0.0}"     # target version; the nightly's manifest hash changes daily and is recorded, not pinned
-PHASES=(assess precopy freeze verify_bundle replace import open verify history)   # F10: history (a no-op with HISTORY_LOAD=before-open)
+PHASES=(assess precopy freeze verify_bundle replace import open verify history)   # history (a no-op with HISTORY_LOAD=before-open)
 SELF="$(readlink -f "$0")"
+ME="${WM_SELF:-$0}"   # how the person runs this tool (the one-file tool passes its own name)
 HERE="$(dirname "$SELF")"
 # Each step body runs in a fresh bash process (see step): everything it reads from the caller has to be in the environment.
-export BUNDLE_DIR V4_INSTALL_FILES_TAR V4_ASSISTANT V5_ASSISTANT V5_ARTIFACT_URLS IDENTITY_TOOL RMIG_DIR RMIG_DECISIONS AGENT_ADDRESSES \
+export BUNDLE_DIR V4_INSTALL_FILES_TAR V4_ASSISTANT V5_ASSISTANT V5_ARTIFACT_URLS IDENTITY_TOOL RMIG_DIR RMIG_DECISIONS RMIG_FINDINGS RMIG_ENGINE_LIMITS AGENT_ADDRESSES \
        UNCLASSIFIED_DECISION WPK_REPO HISTORY_RETENTION HISTORY_ARCHIVES ACCEPT_ROLE_LOSS CARRY_INDEXER_SECURITY CARRY_SAVED_OBJECTS ALLOW_OLD_AGENTS \
-       FORCE_BUILDS AGENT_WAIT_SECS WORK_DIR RMIG_SAMPLES RMIG_ENGINE_HELPERS RMIG_ACTIVATE_ARGS TEST_KILL_AT TEST_KILL_BEFORE TEST_HISTORY_STOP_AFTER LAB_HOOK \
-       V5_INSTALLER V4_REINSTALLER NEW_HOST V4_PACKAGES_CACHE LAB_BACK_GUARD TEST_V5_START_FAIL HISTORY_LOAD NEVER_CONNECTED_AT_FINISH IDENTITY_LIMIT_MODE HISTORY_PROCS MIGRATION_DECISIONS CARRY_SETTINGS CLUSTER_CANDIDATES
+       FORCE_BUILDS AGENT_WAIT_SECS WORK_DIR RMIG_SAMPLES RMIG_ENGINE_HELPERS \
+       V5_INSTALLER V4_REINSTALLER NEW_HOST V4_PACKAGES_CACHE HISTORY_LOAD NEVER_CONNECTED_AT_FINISH IDENTITY_LIMIT_MODE HISTORY_PROCS MIGRATION_DECISIONS CARRY_SETTINGS CLUSTER_CANDIDATES
 HELPER="$HERE/mig_helper.py"
 STATE="$BUNDLE_DIR/state"; LOGS="$BUNDLE_DIR/logs"; RESULTS="$BUNDLE_DIR/results"; JOURNAL="$BUNDLE_DIR/journal.ndjson"
 HIST="$BUNDLE_DIR/history"
@@ -150,11 +157,23 @@ UNSAFE_PATHS=(/var/ossec /var/lib/wazuh-indexer /etc/wazuh-indexer /usr/share/wa
               /etc/filebeat /var/lib/filebeat /usr/share/filebeat /var/log/filebeat
               /var/wazuh-manager /etc/wazuh-manager /tmp /var/tmp /run /dev/shm "$WORK_DIR")
 
-CMD="${1:-}"; [ $# -gt 0 ] && shift
-FROM=""; ONLY=""; THROUGH=""
+usage() { local u; u=$(sed -n '2,/^set -Eeuo/p' "$SELF" | sed '$d' | sed 's/^# \{0,1\}//'); echo "${u//.\/migrate.sh/$ME}"; }   # as the person runs it
+# The tool's fingerprint: every file of this tree as "src/<path>" with its sha256, in C-locale order, hashed (the form
+# migrate-cluster.sh checks on every node); the ruleset tool commit comes from the build manifest.
+tool_fingerprint() { ( cd "$HERE" && find . -type f ! -path "*/__pycache__/*" -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sed "s#  \./#  src/#" | sha256sum | cut -c1-16 ); }
+version() {
+  echo "wazuh-migrate $(tool_fingerprint) (tool fingerprint, LC_ALL=C form)"
+  python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); r=m.get("ruleset_tool",{}); i=m.get("identity_tool",{}); print("ruleset tool (rmig) commit %s; identity tool %s at %s" % (r.get("commit","?"), i.get("path","tools/migration/wazuh-migrate-identity.py"), i.get("commit","not pinned")))' "$HERE/manifest/builds.json"
+}
+# No command (or options only) is the one command, "next".
+case "${1:-}" in ""|-*) CMD=next;; *) CMD="$1"; shift;; esac
+FROM=""; ONLY=""; THROUGH=""; NEXT_INVENTORY="${NEXT_INVENTORY:-}"
 [ "$CMD" = __step ] || while [ $# -gt 0 ]; do case "$1" in
   --from) FROM="$2"; shift;; --only) ONLY="$2"; shift;; --through) THROUGH="$2"; shift;;
-  -h|--help) sed -n '2,16p' "$0"; exit 0;; *) echo "unknown option $1" >&2; exit 2;; esac; shift; done
+  --inventory) NEXT_INVENTORY="$2"; shift;; --inventory=*) NEXT_INVENTORY="${1#*=}";;
+  master) [ "$CMD" = back ] || { echo "unknown option $1" >&2; exit 2; }; BACK_ARG=master;;
+  --version) version; exit 0;;
+  -h|--help) usage; exit 0;; *) echo "unknown option $1" >&2; exit 2;; esac; shift; done
 
 ts()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
 log()  { printf '[%s] %s\n' "$(ts)" "$*"; }
@@ -163,8 +182,8 @@ die()  { log "FATAL: $*"; exit 1; }
 # (sysrq b) 0.25 s after import.identity was marked left the marker and emptied authd.pass, client.keys, api.yaml and the
 # identity stage's saved original and state (XFS keeps renamed files' data in memory up to 30 s): the rerun skipped the
 # import and the manager could not start.
-mark() { sync; stamp "$1"; }   # E2-rpm fix 03: what the step wrote is on disk before its marker exists
-stamp() { # E3 fold (E3-rpm 2 and 6): a marker or a recorded time is whole or absent after a power cut. The sync came before
+mark() { sync; stamp "$1"; }   # what the step wrote is on disk before its marker exists
+stamp() { # a marker or a recorded time is whole or absent after a power cut. The sync came before
   # the write only, so replace.gate, phase.replace, open.decision and T_import_begin were 0-byte files after a cut (the
   # times lost, and T_import_begin never written again). Written beside, synced, renamed, the directory synced.
   local f="$STATE/$1" t="$STATE/.$1.tmp"
@@ -183,11 +202,14 @@ p, step, rc, t0, d = sys.argv[1:6]
 tail = ""
 try: tail = open(p[:-5] + ".log", errors="replace").read()[-1500:]
 except OSError: pass
-json.dump({"step": step, "description": d, "exit": int(rc), "result": "ok" if rc == "0" else "failed", "started_epoch": int(t0),
+json.dump({"step": step, "description": d, "exit": int(rc), "result": "ok" if rc == "0" else ("question" if rc == "3" else "failed"), "started_epoch": int(t0),
            "ended": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "seconds": int(time.time()) - int(t0), "output_tail": tail},
           open(p, "w"), indent=1)
 EOF
 }
+# A step body that errexit ends names the command and the line that failed, in the step's log (what "fix the cause" needs);
+# printed in the step's own shell only (a failing command inside $(...) that the caller tolerates is not a stop)
+STEP_ERR_TRAP='rc_=$?; [ "${BASH_SUBSHELL:-0}" != 0 ] || echo "STEP STOPPED: the command \"$BASH_COMMAND\" exited $rc_ (line $LINENO of ${BASH_SOURCE[0]##*/}${FUNCNAME[0]:+, in ${FUNCNAME[0]}})" >&2'
 step() { # step <marker> <description> <function>: run once, skip when the marker exists; result file and journal either way
   # The body runs in a fresh bash process with errexit. A subshell "( set -e; f )" is not enough: bash ignores errexit
   # in everything a function runs when the function was reached from an if or while test, a "!" or a non-final
@@ -196,18 +218,33 @@ step() { # step <marker> <description> <function>: run once, skip when the marke
   # instead of returning a status a caller in such a context would drop.
   local m=$1 d=$2 f=$3 rc t0
   if done_ "$m"; then log "  skip  $d (done $(cat "$STATE/$m"))"; jr "$m" skip; return 0; fi
-  if [ "$TEST_KILL_BEFORE" = "$m" ]; then log "  LAB SWITCH: SIGKILL before step $m"; jr "$m" lab-kill-before; kill -9 $$; fi
   log "  step  $d"
+  # a step whose last journal line is its own "begin" was cut (the controller killed, the host rebooted): the cluster's
+  # node steps then report a node step that finished meanwhile instead of starting it again (run-step.sh)
+  local cut=0; { grep -F "\"step\": \"$m\"," "$JOURNAL" 2>/dev/null | tail -n1 | grep -q '"event": "begin"'; } && cut=1
   jr "$m" begin "$d"; t0=$(date +%s)
   # "|| rc=" and not "set +e": the ERR trap of main is not switched off by set +e, so before this a failed step ended
   # in the trap ("ERROR: line 112") and its result file, FAIL line and journal entry were never written.
-  rc=0; bash "$SELF" __step "$f" 2>&1 | tee "$RESULTS/$m.log" || rc=${PIPESTATUS[0]}
+  rc=0; STEP_INTERRUPTED=$cut bash "$SELF" __step "$f" 2>&1 | tee "$RESULTS/$m.log" || rc=${PIPESTATUS[0]}
   result "$m" "$rc" "$t0" "$d"
-  if [ "$rc" != 0 ]; then jr "$m" fail "exit $rc"; log "  FAIL  $d (exit $rc); see $RESULTS/$m.log"; trap - ERR; exit "$rc"; fi
-  if [ "$TEST_KILL_AT" = "$m" ]; then log "  LAB SWITCH: SIGKILL after step $m, before its marker"; jr "$m" lab-kill-after; kill -9 $$; fi
+  # exit 3 is a step that asked: its questions are in the decisions file, which is not a failure (no FAIL line before the QUESTION)
+  if [ "$rc" = 3 ]; then jr "$m" question "exit 3"; log "  stop  $d: a question is open (in the decisions file)"; trap - ERR; exit 3; fi
+  if [ "$rc" != 0 ]; then jr "$m" fail "exit $rc"; log "  FAIL  $d (exit $rc); see $RESULTS/$m.log"
+    grep -h '^STEP STOPPED: \|\] STEP STOPPED: ' "$RESULTS/$m.log" 2>/dev/null | tail -n1 | sed 's/^.*STEP STOPPED: /        stopped at: /' || true
+    trap - ERR; exit "$rc"; fi
   mark "$m"; jr "$m" end "$(( $(date +%s) - t0 )) s"; log "  done  $d ($(( $(date +%s) - t0 )) s)"
 }
-# P1: the package family decides the package queries, the manifest keys and the repository file (DECISIONS P-D3)
+QSTEP_OPEN=""
+qstep() { # qstep <marker> <description> <function>: a step that may ask (exit 3). Its questions are noted and the steps
+  # after it still run, so every question before the outage reaches the decisions file in one round (the ruleset review
+  # and the settings together); qstep_end then stops the phase with exit 3. Any other failure ends the run as step() does.
+  local rc=0; ( step "$@" ) || rc=$?
+  [ "$rc" = 0 ] && return 0
+  if [ "$rc" = 3 ]; then QSTEP_OPEN="${QSTEP_OPEN:+$QSTEP_OPEN; }$2"; return 0; fi
+  trap - ERR; exit "$rc"; }
+qstep_end() { [ -z "$QSTEP_OPEN" ] && return 0
+  log "  stop  questions are open ($QSTEP_OPEN): every one is in the decisions file; nothing of 4.x was stopped"; trap - ERR; exit 3; }
+# the package family decides the package queries, the manifest keys and the repository file
 if command -v apt-get >/dev/null 2>&1 && command -v dpkg-query >/dev/null 2>&1; then PKGFAM=deb; else PKGFAM=rpm; fi
 pkgver() { if [ "$PKGFAM" = deb ]; then { dpkg-query -W -f='${db:Status-Status} ${Version}' "$1" 2>/dev/null || true; } | awk '$1=="installed"{print $2}'
            else rpm -q --qf '%{VERSION}-%{RELEASE}\n' "$1" 2>/dev/null | grep -v 'not installed' | head -n1 || true; fi; }
@@ -215,17 +252,17 @@ pkgarch() { if [ "$PKGFAM" = deb ]; then dpkg --print-architecture; else uname -
 pkglist() { local p; for p in wazuh-manager wazuh-indexer wazuh-dashboard filebeat; do echo "$p $(pkgver $p)"; done; }
 pkgall() { if [ "$PKGFAM" = deb ]; then dpkg-query -W -f='${Package} ${db:Status-Abbrev} ${Version}\n' 'wazuh-*' filebeat 2>/dev/null || true
            else rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE}\n' 'wazuh-*' 'filebeat*' 2>/dev/null || true; fi; }
-REPO_FILES=(/etc/apt/sources.list.d/wazuh.list /etc/apt/sources.list.d/wazuh.sources /usr/share/keyrings/wazuh.gpg /usr/share/keyrings/wazuh.gpg~ /etc/yum.repos.d/wazuh.repo)   # R2: wazuh.sources is what the 4.x Ansible roles write; E5 fold: wazuh.gpg~ is the keyring's backup copy (E5-cluster-deb)
+REPO_FILES=(/etc/apt/sources.list.d/wazuh.list /etc/apt/sources.list.d/wazuh.sources /usr/share/keyrings/wazuh.gpg /usr/share/keyrings/wazuh.gpg~ /etc/yum.repos.d/wazuh.repo)   # wazuh.sources is what the 4.x Ansible roles write; wazuh.gpg~ is the keyring's backup copy
 v4pw()  { tar -axf "$1" wazuh-install-files/wazuh-passwords.txt -O 2>/dev/null | grep -P "'$2'" -A1 | sed -n "2s/.*password: '\(.*\)'/\1/p"; }
 v5env() { sed -n "s/^$2=//p" "$1" | head -n1 | sed "s/^'\(.*\)'$/\1/"; }
-# E2-deb G11: an assistant's output is masked as it is written: the 4.x assistant prints the reinstall's admin password in
+# an assistant's output is masked as it is written: the 4.x assistant prints the reinstall's admin password in
 # its summary ("    Password: ..."), and back-install-4x.log kept it in clear in every bundle that went back
-mask_passwords() { # E2-deb G11; E5 fold (E5-cluster-deb gap 8): the value only (a token, or a quoted string), not the rest
+mask_passwords() { # the value only (a token, or a quoted string), not the rest
   # of the line: the secret sweep's "kept (...)" line was blanked whole. Every value on the line is masked (g)
   sed -u -E 's/([Pp]assword|PASSWORD|[Tt]oken)([^:=]{0,40}[:=][[:space:]]*)("[^"]*"?|'"'"'[^'"'"']*'"'"'?|[^[:space:]]+)/\1\2MASKED/g'; }
 fetch() { if [[ "$1" =~ ^https?:// ]]; then curl -fsSL --retry 3 -o "$2" "$1"; else cp -f "$1" "$2"; fi; }
 host_state() { local m; m=$(pkgver wazuh-manager); case "$m" in 4.*) echo v4;; 5.*) echo v5;; "") echo none;; *) echo "unknown:$m";; esac; }
-# R2: the indexer address. The assistant's all-in-one listens on loopback; the 5.0 Ansible role sets network.host to
+# the indexer address. The assistant's all-in-one listens on loopback; the 5.0 Ansible role sets network.host to
 # the host's private address only, so 127.0.0.1:9200 is refused there. Read it from the indexer's own configuration.
 idxhost() { local h; h=$(sed -n "s/^network.host:[[:space:]]*['\"]\{0,1\}\([^'\"]*\)['\"]\{0,1\}[[:space:]]*$/\1/p" /etc/wazuh-indexer/opensearch.yml 2>/dev/null | head -n1)
             case "$h" in ""|0.0.0.0|127.0.0.1|localhost|_local_*|"["*) echo 127.0.0.1;; *) echo "$h";; esac; }
@@ -234,7 +271,7 @@ idx5pw() { v5env /etc/wazuh-indexer/export/credentials.env WAZUH_INDEXER_ADMIN_P
 idx5() { local m=$1 p=$2; shift 2; curl -sS --cacert /etc/wazuh-indexer/certs/root-ca.pem -u "admin:$(idx5pw)" -X "$m" "https://$(idxhost):9200$p" -H 'Content-Type: application/json' "$@"; }
 wait_indexer() { local i; for i in $(seq 1 60); do "$1" GET /_cluster/health 2>/dev/null | grep -q '"status"' && return 0; sleep 5; done; return 1; }
 wait_api5() { local i; for i in $(seq 1 "${1:-60}"); do curl -sk -o /dev/null -m 5 https://localhost:55000/ && return 0; sleep 3; done; return 1; }
-wait_clusterd() { # rule 4 (G5): after a manager restart "ready" also means the cluster daemon answers. At 12,000 agents
+wait_clusterd() { # rule 4: after a manager restart "ready" also means the cluster daemon answers. At 12,000 agents
   # 5.0's cluster daemon blocked about 5 minutes in every 15 and cluster_control and the cluster API timed out meanwhile.
   local i out
   [ -x $V5/bin/cluster_control ] || return 0
@@ -249,7 +286,7 @@ manager5_up() { # the 5.0 unit is Type=forking with RemainAfterExit=yes: after a
                 # daemon dead, and waiting for the API then only times out. Look at the daemons, restart when they died.
   local st; st=$($V5/bin/wazuh-manager-control status 2>/dev/null || true)   # not "status | grep -q": SIGPIPE under pipefail inverts it
   if ! grep -q "not running" <<<"$st"; then
-    # E3 fold (E3-rpm 4): every daemon running but the API silent (seen once after a hard reboot: apid up, nothing on
+    # every daemon running but the API silent (seen once after a hard reboot: apid up, nothing on
     # 55000 until a restart). Before, this waited about 3 min, then blamed dead daemons with an empty list. A shorter
     # wait (API5_WAIT_TRIES, 20 tries of 3 s and up to 5 s each) when the daemons run, then say what was seen.
     wait_api5 "${API5_WAIT_TRIES:-20}" && { wait_clusterd; return; }
@@ -262,8 +299,8 @@ manager5_up() { # the 5.0 unit is Type=forking with RemainAfterExit=yes: after a
   wait_api5 || { echo "the Server API does not answer after the restart"; return 1; }
   wait_clusterd
 }
-# P1: firewalld. Neither assistant opens or closes a port (the 5.0 one only warns when firewalld runs); the agent ports
-# are the migration's to manage when it is active (DECISIONS P-D9). CL1: ufw too (the design says assess reports both;
+# firewalld. Neither assistant opens or closes a port (the 5.0 one only warns when firewalld runs); the agent ports
+# are the migration's to manage when it is active. ufw too (the design says assess reports both;
 # deb nodes of a cluster commonly run ufw): the first active one of firewalld and ufw is the one managed, none otherwise.
 fw_kind() { if command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then echo firewalld
             elif command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q '^Status: active'; then echo ufw
@@ -274,7 +311,7 @@ fw_zone() { [ "$(fw_kind)" = ufw ] && { echo "(ufw)"; return 0; }
             z=$( [ -n "$i" ] && firewall-cmd --get-zone-of-interface="$i" 2>/dev/null || true ); echo "${z:-$(firewall-cmd --get-default-zone)}"; }
 fw_how() { # fw_how <port>: "port", "service:<name>" or "" (not allowed) for <port>/tcp in the zone agents arrive in
   local z p=$1 sv
-  if [ "$(fw_kind)" = ufw ]; then   # CL1: "1517/tcp ALLOW Anywhere" or "1517 ALLOW ..." (ufw allow 1517)
+  if [ "$(fw_kind)" = ufw ]; then   # "1517/tcp ALLOW Anywhere" or "1517 ALLOW ..." (ufw allow 1517)
     ufw status 2>/dev/null | grep -qE "^$p(/tcp)?[[:space:]]+ALLOW" && echo port || echo ""; return 0; fi
   z=$(fw_zone)
   firewall-cmd --zone="$z" --query-port="$p/tcp" >/dev/null 2>&1 && { echo port; return 0; }
@@ -284,17 +321,17 @@ fw_how() { # fw_how <port>: "port", "service:<name>" or "" (not allowed) for <po
 fw_port() { # fw_port add|remove <port>: runtime and permanent, in the zone agents arrive in (ufw: its rules persist)
   if [ "$(fw_kind)" = ufw ]; then if [ "$1" = add ]; then ufw allow "$2/tcp" >/dev/null; else ufw delete allow "$2/tcp" >/dev/null; fi; return; fi
   local z; z=$(fw_zone); firewall-cmd --zone="$z" --"$1"-port="$2/tcp" >/dev/null && firewall-cmd --permanent --zone="$z" --"$1"-port="$2/tcp" >/dev/null; }
-# R2: the agent guard. A host firewall rule that refuses the agent ports (1514, 1515, 1517) to everything but loopback,
+# the agent guard. A host firewall rule that refuses the agent ports (1514, 1515, 1517) to everything but loopback,
 # whatever the manager's configuration says. Needed wherever something other than this command may rewrite the
 # listeners while the registry is not yet imported or restored: the 5.0 Ansible role sets every <bind_addr> to 0.0.0.0
 # on each run, an image starts its manager on first boot, and a fresh 4.x manager hands out keys with no password.
-guard() { # guard on|off|status [agent|cluster]. Merged: one implementation, src/guard.sh (R2/F5 + K5), shared with the
+guard() { # guard on|off|status [agent|cluster]. one implementation, src/guard.sh, shared with the
   # cluster node steps. The guard is node state: recorded in $STATE/guard.required.<name> and re-applied by a wazuh-manager
-  # drop-in before any manager starts, so a reboot cannot open the ports (K5, rule 11).
+  # drop-in before any manager starts, so a reboot cannot open the ports (rule 11).
   local rc=0 name=${2:-agent}
   bash "$HERE/guard.sh" "$1" "$name" "$STATE" || rc=$?
   if [ "$1" = on ] && [ "$rc" = 3 ]; then
-    # R2: Amazon Linux 2023 images ship neither iptables nor nft. Where 5.0 comes from the assistant (listeners closed by
+    # Amazon Linux 2023 images ship neither iptables nor nft. Where 5.0 comes from the assistant (listeners closed by
     # its installation variables) the configuration holds the listeners closed; where a playbook may rewrite them
     # (V5_INSTALLER=external) a guard is required.
     if [ "$V5_INSTALLER" = external ]; then echo "no iptables or nft on this host: the agent guard is required with V5_INSTALLER=external (install nftables, or hold 1514, 1515 and 1517 closed in the cloud security group)"; return 1; fi
@@ -304,7 +341,7 @@ guard() { # guard on|off|status [agent|cluster]. Merged: one implementation, src
   if [ "$1" = off ] && [ "$name" = agent ]; then rm -f "$STATE/guard.on"; fi
   return $rc
 }
-# F5: the guard lives in the kernel's firewall tables, which a reboot empties, while its marker lives in the bundle.
+# the guard lives in the kernel's firewall tables, which a reboot empties, while its marker lives in the bundle.
 # Every command that resumes a run puts it back when the marker says it should be on (a reboot during phases 5 to 7,
 # or during going back before the restored 4.x manager runs, would otherwise resume with the agents unguarded).
 guard_resume() {
@@ -317,7 +354,7 @@ guard_resume() {
   done
   return 0
 }
-# F5: the package database after a crash. A reboot during a deb maintainer script leaves the package half-configured
+# the package database after a crash. A reboot during a deb maintainer script leaves the package half-configured
 # and dpkg's journal pending ("dpkg was interrupted"); every apt-get call then fails, and the 5.0 assistant's -o and -u
 # report the failed removal as a warning, delete the package's directories anyway, and stop (the indexer it could not
 # remove keeps running from deleted files and holds 9200). A crash during an rpm unpack leaves files under rpm's
@@ -354,7 +391,7 @@ pkg_repair() { # pkg_repair <context>
   p=$(pkgdb_problems); [ -z "$p" ] || { echo "the package database is still not clean:"; sed 's/^/  /' <<<"$p"; return 1; }
   echo "package database: clean after the repair: $(pkgall | tr '\n' ';')"
 }
-# R2: a listener state that only this command sets. The Ansible role sets every <bind_addr> back to 0.0.0.0 on each run
+# a listener state that only this command sets. The Ansible role sets every <bind_addr> back to 0.0.0.0 on each run
 # and starts the manager; until the import is verified the agent listener is closed again here, and the guard holds.
 close_listeners5() {
   local c=$V5ETC/wazuh-manager.conf
@@ -374,7 +411,7 @@ under_unsafe() { local p u; p=$(readlink -m "$1"); for u in "${UNSAFE_PATHS[@]}"
 manifest_write() { ( cd "$BUNDLE_DIR" && find . -type f ! -path './state/*' ! -path './logs/*' ! -path './results/*' ! -path './history/load-state/*' ! -path './fleet/*' ! -path './work/*' ! -path './settings/*' ! -path ./decisions.json \
                      ! -name journal.ndjson ! -name MANIFEST.sha256 ! -name '*.tmp' -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256 ); }
 manifest_check() { ( cd "$BUNDLE_DIR" && sha256sum --quiet -c MANIFEST.sha256 ); }
-# OF1 (E2-deb G4): the per-agent databases (queue/db/NNN.db, with any -wal/-shm beside them): package and OS inventory,
+# the per-agent databases (queue/db/NNN.db, with any -wal/-shm beside them): package and OS inventory,
 # FIM baselines and SCA state. Going back without them left an agent with no package inventory for minutes.
 agent_dbs() { find "$1/queue/db" -maxdepth 1 -type f -regextype posix-extended -regex '.*/[0-9]+\.db(-wal|-shm)?' -printf '%f %s\n' 2>/dev/null | sort || true; }
 agent_dbs_check() { # agent_dbs_check <archive> <list>: every listed per-agent database is in the archive with its size
@@ -391,13 +428,24 @@ print("per-agent databases in the rollback archive: %d of %d at their recorded s
 sys.exit(1 if bad else 0)
 PY
 }
-usable_keys() { awk '!/^[[:space:]]*(#|$)/ && $2 !~ /^!/ && NF >= 4' "$1" 2>/dev/null | wc -l; }   # F6: agents a client.keys holds
-noagents() { [ -e "$BUNDLE_DIR/identity-noagents/MANIFEST" ]; }                                    # F6: the source had no agent (U017)
+usable_keys() { awk '!/^[[:space:]]*(#|$)/ && $2 !~ /^!/ && NF >= 4' "$1" 2>/dev/null | wc -l; }   # agents a client.keys holds
+noagents() { [ -e "$BUNDLE_DIR/identity-noagents/MANIFEST" ]; }                                    # the source had no agent (U017)
 py4() { if [ -x $V4/framework/python/bin/python3 ]; then echo $V4/framework/python/bin/python3; else echo python3; fi; }
 
 ########################################################################## 1. ASSESS (read-only on 4.x)
 FAILS=0; WARNS=0
-ok()   { log "  PASS  $*"; }
+ok()   { if [ -n "${ASSESS_AGAIN:-}" ]; then AGAIN_OK=$((AGAIN_OK + 1)); printf '[%s]   PASS  %s\n' "$(ts)" "$*" >> "$ASSESS_AGAIN"; else log "  PASS  $*"; fi; }
+# A later command assesses again (the source may have changed since), but the person read every check the first time:
+# then only blockers and warnings are printed, with one count line; every check and fact goes to $LOGS/assess-again.log
+ainfo() { if [ -n "${ASSESS_AGAIN:-}" ]; then printf '[%s]   info  %s\n' "$(ts)" "$*" >> "$ASSESS_AGAIN"; else log "  info  $*"; fi; }
+aout() { if [ -n "${ASSESS_AGAIN:-}" ]; then cat >> "$ASSESS_AGAIN"; else cat; fi; }
+assess_again_on() { ASSESS_AGAIN=""; AGAIN_OK=0
+  done_ phase.assess && [ "${ONLY:-}" != assess ] || return 0
+  mkdir -p "$LOGS"; ASSESS_AGAIN="$LOGS/assess-again.log"; printf '### %s assess again\n' "$(ts)" >> "$ASSESS_AGAIN"
+  log "  assess again (it passed at $(cat "$STATE/phase.assess")): blockers and warnings only; every check is in $ASSESS_AGAIN"; }
+assess_summary() {
+  if [ -n "${ASSESS_AGAIN:-}" ]; then log "  assess: $AGAIN_OK check(s) passed as before, $FAILS blocker(s), $WARNS warning(s)"; ASSESS_AGAIN=""
+  else log "  assess: $FAILS blocker(s), $WARNS warning(s)"; fi; }
 bad()  { log "  FAIL  $*"; FAILS=$((FAILS + 1)); }
 warn() { log "  WARN  $*"; WARNS=$((WARNS + 1)); }
 
@@ -415,12 +463,50 @@ bundle_path_check() { # before ANYTHING is created: the bundle location
 assess_tools() { # what the run needs whatever state the host is in
   local tok p
   [ -f "$IDENTITY_TOOL" ] && ok "identity tool: $(python3 "$IDENTITY_TOOL" --version 2>&1 | head -n1)" || bad "identity tool not found at $IDENTITY_TOOL"
-  [ -d "$RMIG_DIR/rmig" ] && ok "ruleset tool found at $RMIG_DIR" || bad "ruleset tool not found at $RMIG_DIR"
-  for p in dump.py history_load.py history_migrate.py apply_map.py loader_map.py history-loader-map.json load_unchanged.py fleet-facts-4x.py fleet-upgrade.py mig_helper.py identity_stage.py indexer_stage.py stock-4.14.10.json guard.sh settings_stage.py converter/convert_manager_conf.py converter/clean_agent_conf.py converter/cluster_check.py converter/ranges-5.0.0.json converter/refs/base-5.0.0-aio/wazuh-manager.conf manifest/builds.json; do [ -f "$HERE/$p" ] || bad "missing $HERE/$p"; done
+  if [ -d "$RMIG_DIR/rmig" ]; then local rc_; rc_=$(python3 "$HELPER" rmig-check "$RMIG_DIR" 2>&1) && ok "$rc_" || bad "$rc_ (this tool passes --findings and reads the mandatory review)"
+  else bad "ruleset tool not found at $RMIG_DIR"; fi
+  case "$RMIG_FINDINGS" in all|mitre) ok "ruleset findings criterion: $RMIG_FINDINGS$( [ "$RMIG_FINDINGS" = mitre ] && echo " (rules without MITRE become telemetry tagged in their decoder)")";;
+    *) bad "RMIG_FINDINGS: unknown value '$RMIG_FINDINGS' (all or mitre)";; esac
+  for tok in $RMIG_ENGINE_LIMITS; do [[ "$tok" =~ ^[a-z_]+=[0-9]+$ ]] || bad "RMIG_ENGINE_LIMITS: '$tok' is not NAME=N (for example max_detectors=20)"; done
+  for p in dump.py history_load.py apply_map.py loader_map.py history-loader-map.json load_unchanged.py fleet-facts-4x.py fleet-upgrade.py mig_helper.py identity_stage.py indexer_stage.py stock-4.14.10.json guard.sh settings_stage.py converter/convert_manager_conf.py converter/clean_agent_conf.py converter/cluster_check.py converter/ranges-5.0.0.json converter/refs/base-5.0.0-aio/wazuh-manager.conf manifest/builds.json; do [ -f "$HERE/$p" ] || bad "missing $HERE/$p"; done
   python3 -c 'import sys; sys.exit(sys.version_info < (3, 8))' && ok "python3 $(python3 -V | cut -d' ' -f2)" || bad "python3 3.8 or later is needed"   # design: 3.8+ (runs compared on 3.9 and 3.12)
   for tok in $(tr '+' ' ' <<<"$UNCLASSIFIED_DECISION"); do case "$tok" in verified|activate-force|raw|accept|ask) ;; *) bad "UNCLASSIFIED_DECISION: unknown answer '$tok' (verified, activate-force, raw, accept, ask, joined with +)";; esac; done
   if [ -n "$UNCLASSIFIED_DECISION" ]; then ok "decision on unclassified events if the migrated rules do not verify cleanly: $UNCLASSIFIED_DECISION"
-  else ok "decision on unclassified events: the default, $UNCLASSIFIED_DEFAULT (decision 3): the migrated rules are activated when their verification has no failure, and raw event indexing is on until the finish; the finish switches it off only once the migrated rules are active or you answer for it (decision 3); UNCLASSIFIED_DECISION=ask stops before opening instead"; fi
+  else ok "decision on unclassified events: the default, $UNCLASSIFIED_DEFAULT: the migrated rules are activated when their verification has no failure, and raw event indexing is on until the finish; the finish switches it off only once the migrated rules are active or you answer for it (the point-of-no-return stop asks)"; fi
+}
+heap5_plan() { # heap5_plan aio|node: R1 extra item 10, before 5.0 is installed: the heap the 5.0 assistant will give the
+  # indexer on this host. The assistant (indexer_configure, read in the nightly of 2026-11-24) writes -Xms/-Xmx in
+  # jvm.options as a quarter of the RAM "free -m" reports on an all-in-one (-a) and half of it on an indexer node of a
+  # distributed install (-wi), 1024 MB when that is 0. Prints "OK <text>" or "WARN <text>".
+  local mb div=4 h; mb=$(free -m 2>/dev/null | awk 'FNR == 2 {print $2}'); [ "$1" = node ] && div=2
+  [[ "$mb" =~ ^[0-9]+$ ]] || { echo "OK 5.0 indexer heap: the RAM could not be read (free -m); the heap is checked after the install"; return 0; }
+  h=$(( mb / div )); [ "$h" -gt 0 ] || h=1024
+  # 4 GB as the assistant gives it on a 16 GB host: free -m reads less than nominal (mig_helper HEAP_MIN_MB)
+  if [ "$h" -ge 3800 ]; then echo "OK 5.0 indexer heap: about $h MB (the 5.0 assistant sets 1/$div of the $mb MB of RAM)"
+  else echo "WARN 5.0 indexer heap: the 5.0 assistant will set about $h MB (1/$div of the $mb MB of RAM), below 4 GB. At 1.85 GB the 5.0 indexer tripped its circuit breaker with no history load at all, and even with the loader's guard a 5 M-alert history took 2 h 7 min with 524 breaker trips and 142 HTTP 429 answers to the manager's own modules. Give this host at least $(( 4 * div )) GB of RAM (the assistant then sets 4 GB), or after the install raise -Xms/-Xmx in /etc/wazuh-indexer/jvm.options to 4g or more and restart wazuh-indexer before the history phase. A warning, not a blocker"; fi
+}
+assess_heap5() { # R1 extra item 10 (all-in-one): known before the install only when the 5.0 assistant installs on this host
+  local l
+  if [ "$NEW_HOST" = 1 ] || [ "$V5_INSTALLER" != assistant ]; then
+    ok "5.0 indexer heap: not known before the install (NEW_HOST=$NEW_HOST, V5_INSTALLER=$V5_INSTALLER): the replace gate (phase 5) reads it from the running indexer and warns below 4 GB"; return 0; fi
+  l=$(heap5_plan aio); case "$l" in WARN*) warn "${l#WARN }";; *) ok "${l#OK }";; esac
+}
+assess_ruleset() { # R1 (items 2, 3, 5): rmig's own review before anything is copied, read only: rmig migrate on the live
+  # 4.x content into a scratch directory, offline. The pre-copy builds the content again and asks for the review.
+  local w="$WORK_DIR/assess-ruleset" rc=0
+  [ -d "$RMIG_DIR/rmig" ] && [ -d "$V4/etc/rules" ] || return 0
+  rm -rf "$w"; mkdir -p "$WORK_DIR"
+  ( cd "$RMIG_DIR" && python3 -m rmig migrate --source "$V4/etc" --stock-dir "$V4/ruleset" --workdir "$w" --findings "$RMIG_FINDINGS" $(rmig_limits) ) > "$w.log" 2>&1 || rc=$?
+  if [ "$rc" -gt 1 ]; then warn "ruleset: rmig could not plan the custom content (exit $rc; see $w.log): the pre-copy runs it again"; return 0; fi
+  # the answers already given (a rerun of assess) are planned in, so the block says what the build will do: a covered
+  # rule answered "migrate" is no longer listed as covered
+  local own="" with=""
+  if [ -n "$RMIG_DECISIONS" ] && [ -f "$RMIG_DECISIONS" ]; then cp -f "$RMIG_DECISIONS" "$w/decisions.json"; own=$RMIG_DECISIONS
+  elif python3 "$HELPER" decisions-section get "$MIGRATION_DECISIONS" ruleset "$w/decisions.answered.json" 2>/dev/null; then mv -f "$w/decisions.answered.json" "$w/decisions.json"; own="$MIGRATION_DECISIONS, section \"ruleset\""; fi
+  if [ -n "$own" ]; then rc=0; ( cd "$RMIG_DIR" && python3 -m rmig plan --workdir "$w" --findings "$RMIG_FINDINGS" $(rmig_limits) ) >> "$w.log" 2>&1 || rc=$?; with=" with your answers in $own"
+    [ "$rc" -le 1 ] || { warn "ruleset: rmig could not plan your answers in $own (exit $rc; see $w.log): the pre-copy says which"; return 0; }; fi
+  ok "ruleset: rmig planned the custom content$with (exit $rc$( [ "$rc" = 1 ] && echo ": questions to answer at the pre-copy")); the review it requires before activate:"
+  python3 "$HELPER" ruleset-review show "$w" | while IFS= read -r l; do log "        $l"; done | aout
 }
 assess_archives() { # OF1 (decision 5a): archives only on request; their size is said, with the setting that would carry them
   local n d b
@@ -429,19 +515,25 @@ assess_archives() { # OF1 (decision 5a): archives only on request; their size is
   if [ "$HISTORY_ARCHIVES" = 1 ]; then
     bad "archives: HISTORY_ARCHIVES=1 asks to carry $d archived events ($n daily indices, $((b / 1048576)) MB), but this version loads alerts only: the history loader skips every index that is not an alert index and the bundle check compares alert indices only. Run with HISTORY_ARCHIVES=0 (the archives stay on 4.x until it is removed) or keep a snapshot of them"
   else
-    warn "archives: $d archived events in $n daily indices ($((b / 1048576)) MB) are NOT carried (decision 5a: alerts always, archives only on request; carrying them would add about $((b * 2 / 1048576)) MB of disk and the time of a second load). HISTORY_ARCHIVES=1 is the setting that asks for them; this version refuses it (it loads alerts only). Export them yourself before phase 5 if you need them"
+    warn "archives: $d archived events in $n daily indices ($((b / 1048576)) MB) are NOT carried (alerts always, archives only on request; carrying them would add about $((b * 2 / 1048576)) MB of disk and the time of a second load). HISTORY_ARCHIVES=1 is the setting that asks for them; this version refuses it (it loads alerts only). Export them yourself before phase 5 if you need them"
   fi
 }
-source_min() { python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("source_min_version") or d["source_4x"][-1])' "$HERE/manifest/builds.json" 2>/dev/null || echo 4.14.10; }
-source_version_gate() { # OF1 item 12: this host's manager, indexer and dashboard against the manifest's latest 4.14.x
+source_min() { python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("source_min_version") or d["source_4x"][-1])' "$HERE/manifest/builds.json" 2>/dev/null || echo 4.14.11; }
+source_version_gate() { # this host's manager, indexer and dashboard against the manifest's latest 4.14.x
   python3 "$HELPER" source-version "$(hostname -s 2>/dev/null || hostname)" wazuh-manager "$(pkgver wazuh-manager)" \
     wazuh-indexer "$(pkgver wazuh-indexer)" wazuh-dashboard "$(pkgver wazuh-dashboard)"
 }
+validated_note() { # validated_note <4.x version>: said only for a build newer than every one this tool was run on; an
+  # older one is refused by the source version check above, and said once there (no second, contradictory line)
+  local v=$1 newest; newest=$(tr ' ,' '\n\n' <<<"$VALIDATED_4X" | grep . | sort -V | tail -n1 || true)
+  if grep -qw "$v" <<<"$VALIDATED_4X"; then ok "source build $v is one this script was validated on ($VALIDATED_4X)"
+  elif [ -n "$newest" ] && [ "$(printf '%s\n%s\n' "$v" "$newest" | sort -V | tail -n1)" = "$v" ]; then
+    warn "source build $v is newer than the builds this script was validated on ($VALIDATED_4X): accepted as the latest 4.14.x"; fi; }
 source_version_or_die() { # every command that starts a migration (pre-copy and freeze on a 4.x host; assess reports it)
   local sv; sv=$(source_version_gate) || { echo "$sv" | grep REFUSED >&2; die "the 4.x source is not the latest 4.14.x: nothing was changed by this step"; }
 }
 phase_assess() {
-  local st; st=$(host_state)
+  local st; st=$(host_state); assess_again_on
   [ "$(id -u)" = 0 ] && ok "running as root" || bad "must run as root"
   . /etc/os-release; ok "operating system: $PRETTY_NAME $(pkgarch) ($PKGFAM packages)"
   ok "bundle directory $BUNDLE_DIR is outside every directory this flow deletes (checked before it was created)"
@@ -452,11 +544,11 @@ phase_assess() {
     # state it needs before it acts; assess only checks what the run needs from here.
     ok "this bundle's run is past the freeze (4.x manager stopped by this tool at $(cat "$STATE/T_manager4_stop_begin"); host state now $st): the 4.x source is not assessed again, the journal says where to resume"
     assess_tools
-    log "  assess: $FAILS blocker(s), $WARNS warning(s)"; [ "$FAILS" = 0 ] || die "assess failed: the run was not resumed; the host is as the interrupted run left it"; return 0
+    assess_summary; [ "$FAILS" = 0 ] || die "assess failed: the run was not resumed; the host is as the interrupted run left it"; return 0
   fi
   if [ "$st" != v4 ]; then
     bad "no 4.x Wazuh manager package on this host (state: $st) and no run of this bundle past the freeze"
-    log "  assess: $FAILS blocker(s), $WARNS warning(s)"; die "assess failed: nothing was changed on this host"
+    assess_summary; die "assess failed: nothing was changed on this host"
   fi
   local p v l sv
   for p in wazuh-manager wazuh-indexer wazuh-dashboard filebeat; do
@@ -469,8 +561,7 @@ phase_assess() {
   if sv=$(source_version_gate); then ok "source version: every central component is $(source_min) or a newer 4.14.x"
   else while read -r l; do case "$l" in "SOURCE VERSION REFUSED: "*) bad "${l#SOURCE VERSION REFUSED: }";; esac; done <<<"$sv"; fi
   v=$(pkgver wazuh-manager); v=${v%%-*}
-  if grep -qw "$v" <<<"$VALIDATED_4X"; then ok "source build $v is one this script was validated on ($VALIDATED_4X)"
-  else warn "source build $v is newer than the builds this script was validated on ($VALIDATED_4X): accepted as the latest 4.14.x (decision of 2026-11-24)"; fi
+  validated_note "$v"
   for p in wazuh-manager wazuh-indexer wazuh-dashboard; do
     systemctl is-active -q $p && ok "service $p is active" || bad "service $p is not active"
   done
@@ -480,7 +571,7 @@ phase_assess() {
   load_v4_passwords
   if [ -z "$V4_INDEXER_ADMIN_PASSWORD" ] || [ -z "$V4_API_PASSWORD" ]; then
     bad "cannot read the admin and wazuh passwords from $V4_INSTALL_FILES_TAR (set V4_INDEXER_ADMIN_PASSWORD and V4_API_PASSWORD)"
-    log "  assess: $FAILS blocker(s), $WARNS warning(s)"; die "assess failed: nothing was changed on this host"
+    assess_summary; die "assess failed: nothing was changed on this host"
   fi
   idx4 GET /_cluster/health | grep -q '"status"' && ok "indexer login as admin works" || bad "indexer login as admin failed"
   local nodes; nodes=$(idx4 GET '/_cat/nodes?h=name' | wc -l)
@@ -492,12 +583,14 @@ phase_assess() {
   local bytes docs nidx free need shards have
   read -r nidx docs bytes shards < <(idx4 GET "/_cat/indices/wazuh-alerts-4.x-*?h=docs.count,store.size,pri&bytes=b" | awk '{n++; d+=$1; s+=$2; p+=$3} END{print n+0, d+0, s+0, p+0}')
   free=$(df --output=avail -B1 "$(readlink -m "$BUNDLE_DIR" | sed 's|/[^/]*$||')" 2>/dev/null | tail -n1 || echo 0)
-  local adb; adb=$(agent_dbs $V4 | awk '{s+=$2} END{print s+0}')   # OF1 (E2-deb G4): the per-agent databases go into the rollback archive
+  local adb; adb=$(agent_dbs $V4 | awk '{s+=$2} END{print s+0}')   # the per-agent databases go into the rollback archive
   need=$((bytes * 2 + adb + 6 * 1024 * 1024 * 1024))   # dump files (about 0.3x), the 5.0 copy (about 1x), per-agent databases, packages and work space
   have=$(du -sb "$BUNDLE_DIR" 2>/dev/null | cut -f1); need=$((need - ${have:-0})); [ "$need" -gt 0 ] || need=0   # a rerun: what the bundle already holds is used already
   ok "history: $docs alerts in $nidx daily indices ($shards shards, $((bytes / 1048576)) MB); on 5.0 it becomes one or two indices per month"
   ok "per-agent databases (inventory, FIM baselines, SCA state, kept for going back): $(agent_dbs $V4 | grep -c . || true) file(s), $((adb / 1048576)) MB"
   assess_archives
+  assess_heap5
+  assess_ruleset
   [ "${free:-0}" -ge "$need" ] && ok "disk: need about $((need / 1048576)) MB for the dump, the 5.0 copy and the packages; free $((free / 1048576)) MB" \
     || bad "disk: need about $((need / 1048576)) MB; free $((free / 1048576)) MB"
   local old; old=$(idx4 GET "/wazuh-alerts-4.x-*/_settings/index.version.created?flat_settings=true" \
@@ -512,11 +605,11 @@ phase_assess() {
       [ "$n" -ge 16 ] && ok "enrollment password is $n bytes (5.0 needs 16 or more)" \
         || bad "enrollment password is $n bytes: 5.0 refuses fewer than 16. Change it on 4.x and on every agent that still enrolls, or do not carry it"
     else warn "use_password is yes but etc/authd.pass is missing: 5.0 will generate a new password"; fi
-  else local en; en=$(enrollment_off_note "$CARRY_SETTINGS"); warn "$(head -n1 <<<"$en")"; tail -n +2 <<<"$en" | while IFS= read -r l; do log "        $l"; done; fi
+  else local en; en=$(enrollment_off_note "$CARRY_SETTINGS"); warn "$(head -n1 <<<"$en")"; tail -n +2 <<<"$en" | while IFS= read -r l; do log "        $l"; done | aout; fi
 
   # fleet facts: versions, protocol, the address each agent dials (only a 4.x manager can answer this)
   local ff; ff=$(mktemp -d /root/.mig-assess.XXXXXX)
-  WAZUH_API_PASSWORD="$V4_API_PASSWORD" python3 "$HERE/fleet-facts-4x.py" --insecure --out "$ff/fleet-facts.json" | sed "s/^/[$(ts)]   info  /"
+  WAZUH_API_PASSWORD="$V4_API_PASSWORD" python3 "$HERE/fleet-facts-4x.py" --insecure --out "$ff/fleet-facts.json" | sed "s/^/[$(ts)]   info  /" | aout
   python3 - "$ff/fleet-facts.json" "$ALLOW_OLD_AGENTS" > "$ff/summary.txt" <<'EOF'
 import json, re, sys
 f = json.load(open(sys.argv[1]))["agents"]
@@ -537,7 +630,7 @@ EOF
   old_=$(sed -n 's/^old=//p' "$ff/summary.txt"); udp=$(sed -n 's/^udp=//p' "$ff/summary.txt"); unknown=$(sed -n 's/^unknown=//p' "$ff/summary.txt")
   noossl=$(sed -n 's/^noossl=//p' "$ff/summary.txt"); dial=$(sed -n 's/^dial=//p' "$ff/summary.txt"); count=$(sed -n 's/^count=//p' "$ff/summary.txt")
   ok "fleet: $count agent(s) on record"
-  # F6 (DECISIONS F6-D7): a source with no agent is valid; the identity tool refuses it, so the freeze carries the
+  # a source with no agent is valid; the identity tool refuses it, so the freeze carries the
   # enrollment password and the API users itself. Said here, before the outage, instead of failing in the freeze.
   [ "$(usable_keys $V4/etc/client.keys)" != 0 ] || warn "no agent in client.keys: the identity tool is not used; the freeze carries the enrollment password and the API users and roles (rbac.db) as files"
   if [ -z "$old_" ]; then ok "every agent that reported a version is at 4.14.0 or later"
@@ -551,8 +644,8 @@ EOF
   san=$( { hostname -I | tr ' ' '\n' | { grep -v -E '^(127\.|169\.254\.|fe[89ab]|::1|$)' || true; }; hostname -f; hostname; } | sort -u)
   dial=$( { tr ' ' '\n' <<<"$dial"; tr ' ,' '\n\n' <<<"$AGENT_ADDRESSES"; } | { grep -v '^$' || true; } | sort -u)
   for d in $dial; do grep -qxF "$d" <<<"$san" || missing="$missing $d"; done
-  log "  info  the 5.0 listener certificate names by itself: $(echo $san)"
-  log "  info  addresses the agents dial: $(echo $dial)"
+  ainfo "the 5.0 listener certificate names by itself: $(echo $san)"
+  ainfo "addresses the agents dial: $(echo $dial)"
   [ -z "$missing" ] && ok "every dialled address is one the 5.0 certificate names by itself" \
     || warn "dialled addresses the 5.0 certificate would not name:$missing (the install passes each with -as, and a handshake proves each before the listeners open)"
   rm -rf "$ff"   # assess writes nothing into the bundle: the facts the later phases use are taken by the pre-copy (precopy.fleet)
@@ -566,16 +659,16 @@ for n, r in sorted(d.items()):
     for ip in r.get("index_permissions", []):
         if any(p.startswith("wazuh-alerts") for p in ip.get("index_patterns", [])):
             print("custom role %s reads %s%s%s" % (n, ip["index_patterns"], " with document-level security " + ip["dls"] if ip.get("dls") else "", " with field-level security " + str(ip["fls"]) if ip.get("fls") else ""))' \
-    | sed "s/^/[$(ts)]   info  /"
+    | sed "s/^/[$(ts)]   info  /" | aout
 
   # the tools and the decision
   assess_tools
   ss -ltnH 'sport = :1517' | grep -q . && bad "port 1517 (5.0 agents) is already in use" || ok "port 1517 is free"
   if fw_active; then
-    local fp fh; for fp in 1514 1515 1517 443; do fh=$(fw_how $fp); if [ -n "$fh" ]; then fh="allowed ($fh)"; else fh="NOT allowed"; fi; log "  info  $(fw_kind) zone $(fw_zone): $fp/tcp $fh"; done
+    local fp fh; for fp in 1514 1515 1517 443; do fh=$(fw_how $fp); if [ -n "$fh" ]; then fh="allowed ($fh)"; else fh="NOT allowed"; fi; ainfo "$(fw_kind) zone $(fw_zone): $fp/tcp $fh"; done
     [ -n "$(fw_how 1517)" ] || warn "$(fw_kind) is active and does not allow 1517/tcp (5.0 agents): the open phase adds it; phase 11 removes 1514 and 1515 where they were opened as ports"
   else ok "no host firewall is active (firewalld or ufw): no port to open or close"; fi
-  log "  assess: $FAILS blocker(s), $WARNS warning(s)"
+  assess_summary
   [ "$FAILS" = 0 ] || die "assess failed: nothing was changed on this host"
 }
 
@@ -596,9 +689,15 @@ pc_stage() {
   fi
   fetch "$V4_ASSISTANT" "$BUNDLE_DIR/v4/wazuh-install.sh"; echo "4.x assistant staged (removal, and the reinstall when going back): sha256 $(sha256sum "$BUNDLE_DIR/v4/wazuh-install.sh" | cut -d' ' -f1)"
   pkglist > "$BUNDLE_DIR/v4/packages.txt"; cat "$BUNDLE_DIR/v4/packages.txt"
+  v4_assistant_ok "V4_ASSISTANT=<path to that file>" || { rm -f "$BUNDLE_DIR/v4/wazuh-install.sh"; return 1; }
   if [ "$V4_PACKAGES_CACHE" = 1 ]; then v4_cache_packages; fi
 }
-v4_cache_packages() { # F7: the 4.x assistant's offline set (-dw), plus the OS packages its offline mode requires installed
+v4_assistant_ok() { # v4_assistant_ok <how to give another file>: the bundle's 4.x assistant installs the source's own
+  # 4.x version (it removes 4.x and reinstalls it when going back; the default URL serves only the latest 4.14.x)
+  local sv; sv=$(sed -n 's/^wazuh-manager \(4\.[^ ]*\)$/\1/p' "$BUNDLE_DIR/v4/packages.txt" 2>/dev/null | head -n1)
+  python3 "$HELPER" v4-assistant-check "$BUNDLE_DIR/v4/wazuh-install.sh" "$sv" "$1"; }
+v4_fix_later() { echo "$BUNDLE_DIR/v4/wazuh-install.sh in the bundle (staged at the pre-copy: put the right file there and its sha256 in the ./v4/wazuh-install.sh line of $BUNDLE_DIR/MANIFEST.sha256)"; }
+v4_cache_packages() { # the 4.x assistant's offline set (-dw), plus the OS packages its offline mode requires installed
   local d="$BUNDLE_DIR/v4/offline" t0=$SECONDS
   if [ -s "$d/wazuh-offline.tar.gz" ] && [ -s "$d/wazuh-offline.tar.gz.sha256" ] && ( cd "$d" && sha256sum --quiet -c wazuh-offline.tar.gz.sha256 ); then
     echo "4.x offline package set already in the bundle"; return 0; fi
@@ -627,7 +726,7 @@ history_retention() { # OF1 (decision 5b): the retention the history is loaded w
   elif n=$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); n=d.get("retention_days"); print(n) if n is not None else sys.exit(1)' "$f" 2>/dev/null); then
     v="${n}d"; why="the 4.x deployment's own retention: $(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("; ".join("ISM policy %s deletes alert indices after %s days" % (p["policy_id"], p["delete_after_days"]) for p in d["policies"] if p["delete_after_days"] is not None))' "$f")"
   elif [ -s "$f" ]; then v=365d; why="no ISM policy deleted the 4.x alert indices (read at pre-copy): the default, 365 days"
-  else v=365d; why="the 4.x retention was not read (this bundle's pre-copy predates OF1): the default, 365 days"; fi
+  else v=365d; why="the 4.x retention was not read (this bundle's pre-copy was made by an older version of this tool): the default, 365 days"; fi
   echo "history retention: $v: $why" > "$STATE/history.retention.tmp" && mv -f "$STATE/history.retention.tmp" "$STATE/history.retention"
   echo "$v"
 }
@@ -637,8 +736,11 @@ pc_ruleset_src() { # what the ruleset tool reads: the custom content and the sto
   ( cd "$d" && find etc/rules etc/decoders etc/lists -type f -print0 | sort -z | xargs -0 sha256sum ) > "$d/custom-content.sha256"
   echo "custom content: $(wc -l < "$d/custom-content.sha256") file(s)"
 }
-rmig() { ( cd "$RMIG_DIR" && WAZUH_INDEXER_URL=https://$(idxhost):9200 WAZUH_INDEXER_USER=admin WAZUH_INDEXER_PASSWORD="$(idx5pw 2>/dev/null || true)" python3 -m rmig "$@" ); }
-# P1 (DECISIONS P-D6): the engine's helper names changed between 5.0.0-rc2 and the rc3 nightly: a
+rmig_limits() { local t; for t in $RMIG_ENGINE_LIMITS; do printf -- '--engine-limit %s ' "$t"; done; }   # R1
+rmig() { # the command line goes first in the step's log and in rmig-commands.log (no secret is on it: the password is in the environment)
+  echo "# rmig $*"; printf '[%s] rmig %s\n' "$(ts)" "$*" >> "$LOGS/rmig-commands.log" 2>/dev/null || true
+  ( cd "$RMIG_DIR" && WAZUH_INDEXER_URL=https://$(idxhost):9200 WAZUH_INDEXER_USER=admin WAZUH_INDEXER_PASSWORD="$(idx5pw 2>/dev/null || true)" python3 -m rmig "$@" ); }
+# the engine's helper names changed between 5.0.0-rc2 and the rc3 nightly: a
 # ruleset built for one is refused by the other ("Operation builder 'in_cidr' not found" on rc2).
 dialect_for_stage() { # the build manifest's table (rule 4 / Supported builds); the case is its fallback
   local d; d=$(python3 -c 'import json,re,sys; t=json.load(open(sys.argv[1])).get("ruleset_engine_helpers",{}); s=sys.argv[2]
@@ -652,29 +754,54 @@ rmig_dialect_installed() { [ -n "$RMIG_ENGINE_HELPERS" ] && { echo "$RMIG_ENGINE
 pc_ruleset_build() { # offline: scan, plan, build. The check against a 5.0 engine can only run after the install (phase 6).
   ruleset_build "$BUNDLE_DIR/ruleset-migration" "$(rmig_dialect_planned)"; }
 ruleset_build() { # ruleset_build <workdir> <engine helper dialect>
-  local w="$1" s="$BUNDLE_DIR/ruleset-src" rc=0 dl="$2"
+  # rmig at the merged commit. Exit codes as rmig defines them: 0 done, 1 done with questions open in decisions.json,
+  # 2 stopped with nothing written. The answers (the flow's "ruleset" section, or RMIG_DECISIONS) are carried into rmig
+  # whatever migrate's exit: a rule stock 5.0 covers is built only when its "covered" entry says "migrate", and the
+  # mandatory review travels the same way. The run stops before the freeze while a question or the review is open.
+  local w="$1" s="$BUNDLE_DIR/ruleset-src" rc=0 dl="$2" answered=0 fd
+  fd="--findings ${RMIG_FINDINGS:-all} $(rmig_limits)"
   rm -rf "$w"
-  echo "engine helper names: $dl"
-  rmig migrate --source "$s/etc" --stock-dir "$s/ruleset" --workdir "$w" --engine-helpers "$dl" > "$LOGS/rmig-1-migrate.log" 2>&1 || rc=$?
-  tail -n 4 "$LOGS/rmig-1-migrate.log"; echo "rmig migrate exit $rc (1 = questions open in decisions.json)"
+  echo "engine helper names: $dl; findings criterion: ${RMIG_FINDINGS:-all}"
+  rmig migrate --source "$s/etc" --stock-dir "$s/ruleset" --workdir "$w" --engine-helpers "$dl" $fd > "$LOGS/rmig-1-migrate.log" 2>&1 || rc=$?
+  tail -n 4 "$LOGS/rmig-1-migrate.log"; echo "rmig migrate exit $rc (0 done, 1 questions open in decisions.json, 2 stopped: nothing written)"
   [ "$rc" -le 1 ] || return 1
-  if [ "$rc" = 1 ]; then
-    if [ -n "$RMIG_DECISIONS" ] && [ -f "$RMIG_DECISIONS" ]; then cp -f "$RMIG_DECISIONS" "$w/decisions.json"
-    elif python3 "$HELPER" decisions-section get "$MIGRATION_DECISIONS" ruleset "$w/decisions.answered.json" && \
-         python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d != json.load(open(sys.argv[2])) else 1)' "$w/decisions.answered.json" "$w/decisions.json"; then
-      mv -f "$w/decisions.answered.json" "$w/decisions.json"   # merged: the ruleset's questions live in the flow's decisions file
-    else
-      rm -f "$w/decisions.answered.json"; python3 "$HELPER" decisions-section put "$MIGRATION_DECISIONS" ruleset "$w/decisions.json"
-      echo "decisions are open: answer the \"ruleset\" section of $MIGRATION_DECISIONS (rmig's decisions.json) and run again (RMIG_DECISIONS still names a file of its own)"; return 1
-    fi
+  if [ -n "$RMIG_DECISIONS" ] && [ -f "$RMIG_DECISIONS" ]; then cp -f "$RMIG_DECISIONS" "$w/decisions.json"; answered=1
+  elif python3 "$HELPER" decisions-section get "$MIGRATION_DECISIONS" ruleset "$w/decisions.answered.json" && \
+       python3 "$HELPER" ruleset-answers-differ "$w/decisions.answered.json" "$w/decisions.json"; then
+    mv -f "$w/decisions.answered.json" "$w/decisions.json"; answered=1   # the ruleset's questions live in the flow's decisions file
+  else rm -f "$w/decisions.answered.json"; fi
+  if [ "$rc" = 1 ] && [ "$answered" = 0 ]; then
+    python3 "$HELPER" decisions-section put "$MIGRATION_DECISIONS" ruleset "$w/decisions.json"
+    python3 "$HELPER" ruleset-hints "$MIGRATION_DECISIONS" "$BUNDLE_DIR/ruleset-src" "$RMIG_DIR" || true   # candidates for the stock questions
+    python3 "$HELPER" ruleset-review show "$w"; python3 "$HELPER" ruleset-review ask "$MIGRATION_DECISIONS" "$w" > /dev/null || true
+    echo "ruleset questions are open: answer them in ${DECISIONS_SHOWN:-$MIGRATION_DECISIONS}, section \"ruleset\" (each one is listed under QUESTION at the end of this run; the review is one of them), and run ${WM_SELF:-./wazuh-migrate.sh} again"; return 3
+  fi
+  if [ "$answered" = 1 ]; then
     rc=0
-    rmig plan --workdir "$w" > "$LOGS/rmig-2-plan.log" 2>&1 || rc=$?; tail -n 2 "$LOGS/rmig-2-plan.log"; [ "$rc" -le 1 ] || return 1; rc=0
-    rmig build --workdir "$w" --source "$s/etc" --stock-dir "$s/ruleset" --engine-helpers "$dl" > "$LOGS/rmig-3-build.log" 2>&1 || rc=$?; tail -n 2 "$LOGS/rmig-3-build.log"
+    rmig plan --workdir "$w" $fd > "$LOGS/rmig-2-plan.log" 2>&1 || rc=$?; tail -n 2 "$LOGS/rmig-2-plan.log"; [ "$rc" -le 1 ] || return 1
+    # exit 1: items still wait for an answer. rmig opens some questions only once others are answered (a field once a
+    # covered rule is answered "migrate"); they go where the user answers and the step stays open, never a rule left out
+    [ "$rc" = 0 ] || { ruleset_still_open "$w"; return 3; }
+    rmig build --workdir "$w" --source "$s/etc" --stock-dir "$s/ruleset" --engine-helpers "$dl" $fd > "$LOGS/rmig-3-build.log" 2>&1 || rc=$?; tail -n 2 "$LOGS/rmig-3-build.log"
     echo "rmig build exit $rc"; [ "$rc" -le 1 ] || return 1
+    [ "$rc" = 0 ] || { ruleset_still_open "$w"; return 3; }
   fi
   echo "$dl" > "$w/ENGINE_HELPERS"
+  python3 "$HELPER" ruleset-review show "$w"
+  python3 "$HELPER" ruleset-review ask "$MIGRATION_DECISIONS" "$w" "$( [ -n "$RMIG_DECISIONS" ] && [ -f "$RMIG_DECISIONS" ] && echo "$RMIG_DECISIONS")" || return 3
   ls "$w" | tr '\n' ' '; echo
 }
+ruleset_still_open() { # ruleset_still_open <rmig workdir>: rmig, run on the user's answers, still waits for some
+  local w=$1 own=""; [ -n "$RMIG_DECISIONS" ] && [ -f "$RMIG_DECISIONS" ] && own=$RMIG_DECISIONS
+  if [ -n "$own" ]; then python3 "$HELPER" ruleset-merge own "$own" "$w/decisions.json"
+  else python3 "$HELPER" ruleset-merge flow "$MIGRATION_DECISIONS" "$w/decisions.json"
+       python3 "$HELPER" ruleset-hints "$MIGRATION_DECISIONS" "$BUNDLE_DIR/ruleset-src" "$RMIG_DIR" || true; fi
+  echo "RULESET QUESTIONS OPEN: your answers opened new ruleset questions (some are asked only once others are answered,"
+  echo "such as the field a covered rule needs once it is answered \"migrate\"):"
+  python3 "$HELPER" ruleset-open "$w" || true
+  echo "Answer them in ${own:-${DECISIONS_SHOWN:-$MIGRATION_DECISIONS}, section \"ruleset\"} (each one is listed under QUESTION at the"
+  echo "end of this run; the ruleset report says what each needs: $w/report.md) and run ${WM_SELF:-./wazuh-migrate.sh} again. The"
+  echo "ruleset step stays open until every one is answered: no rule is left out without your answer."; }
 pc_saved_objects() { mkdir -p "$BUNDLE_DIR/dashboard"; python3 "$HELPER" export-saved-objects "$BUNDLE_DIR/dashboard/saved-objects.ndjson"; }
 pc_indexer_security() {
   local d="$BUNDLE_DIR/indexer-security"
@@ -687,7 +814,7 @@ pc_indexer_security() {
   cp -f "$tmpd"/*.yml "$d/backup/"; rm -rf "$tmpd"; chown -R root:root "$d"; chmod -R go= "$d"
   ls "$d/backup" | tr '\n' ' '; echo
   [ -s "$d/backup/internal_users.yml" ] && [ -s "$d/backup/roles.yml" ] || return 1
-  # Merged: C23's indexer stage reads the live security configuration (hashes, authentication backends, settings,
+  # C23's indexer stage reads the live security configuration (hashes, authentication backends, settings,
   # keystore entry names, notification channels) with the admin certificate and classifies it against stock 4.14.10.
   # The REST export and the securityadmin backup above stay: going back restores from the backup.
   python3 "$HERE/indexer_stage.py" export --bundle "$BUNDLE_DIR" --url "https://$(idxhost):9200" $(idx_cert_args) > "$LOGS/indexer-stage-export.log" 2>&1 \
@@ -701,14 +828,14 @@ pc_settings() { # the files the settings converter reads, unmodified
   cp -f $V4/etc/ossec.conf $V4/etc/local_internal_options.conf $V4/api/configuration/api.yaml "$d/"
   local g; for g in $V4/etc/shared/*/; do g=$(basename "$g"); mkdir -p "$d/shared/$g"; cp -f "$V4/etc/shared/$g/agent.conf" "$d/shared/$g/" 2>/dev/null || true; done
   cp -f /etc/filebeat/filebeat.yml "$d/" 2>/dev/null || true
-  # CL1 (E4-cluster gap 2a): a manager-only node of a cluster has no indexer or dashboard files; a plain cp stopped the step
+  # a manager-only node of a cluster has no indexer or dashboard files; a plain cp stopped the step
   # there under errexit. They are copied where they exist (the converter itself reads none of them), and said otherwise.
   local f2 miss=""; for f2 in /etc/wazuh-indexer/opensearch.yml:opensearch.yml /etc/wazuh-indexer/jvm.options:indexer-jvm.options \
       /etc/wazuh-dashboard/opensearch_dashboards.yml:opensearch_dashboards.yml; do
     if [ -f "${f2%%:*}" ]; then cp -f "${f2%%:*}" "$d/${f2#*:}"; else miss="$miss ${f2%%:*}"; fi; done
   [ -z "$miss" ] || echo "not on this node (a manager-only node of a cluster):$miss"
   cp -f /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml "$d/dashboard-wazuh.yml" 2>/dev/null || true
-  # merged (C4, rules 21 and 22): the rest of what the converter reads, the group folders whole (the files an agent.conf
+  # merged (rules 21 and 22): the rest of what the converter reads, the group folders whole (the files an agent.conf
   # names are carried by the pre-upgrade pass) and the 4.x stock reference
   cp -f $V4/etc/internal_options.conf "$d/" 2>/dev/null || true
   local cj; cj=$(cd /tmp && $(py4) -c 'import os, wazuh.core.cluster.utils as u; print(os.path.join(os.path.dirname(u.__file__), "cluster.json"))' 2>/dev/null || true)
@@ -721,17 +848,17 @@ pc_settings() { # the files the settings converter reads, unmodified
   find "$d" -type f | sed "s|$d/||" | sort | tr '\n' ' '; echo
   echo "group folders for the two group passes: $(ls "$BUNDLE_DIR/groups4" | tr '\n' ' ')"
 }
-settings_stock() { # settings_stock <dir>: what the 4.x package itself would write, so that only the site's changes are carried (C4 D3)
+settings_stock() { # settings_stock <dir>: what the 4.x package itself would write, so that only the site's changes are carried
   local o=$1 gen=$V4/packages_files/manager_installation_scripts/gen_ossec.sh ref
   . "${MIG_OS_RELEASE:-/etc/os-release}"   # MIG_OS_RELEASE: tests only
-  # OF1 (E2-deb G5): the shipped reference made for this distribution and release when the tool has one, else the
+  # the shipped reference made for this distribution and release when the tool has one, else the
   # Ubuntu 24 one (the reference C4 validated), and the choice is said in SOURCE, which the settings report repeats
   ref="$HERE/converter/refs/stock-4.14.10-${ID:-unknown}${VERSION_ID%%.*}"
   [ -d "$ref" ] || ref="$HERE/converter/refs/stock-4.14.10-ubuntu24"
   rm -rf "$o"; mkdir -p "$o"; cp -f "$ref/"* "$o/"
   local which="the shipped reference $(basename "$ref") ($( [ "$(basename "$ref")" = "stock-4.14.10-${ID:-unknown}${VERSION_ID%%.*}" ] && echo "made for this distribution and release" || echo "made for another distribution: none ships for ${ID:-unknown} ${VERSION_ID:-}"), generated in a container)"
   if [ "$PKGFAM" = deb ]; then
-    # OF1 (E2-deb G5): on deb the 4.x package's postinst deletes /var/ossec/packages_files (its WAZUH_GLOBAL_TMP_DIR), so the
+    # on deb the 4.x package's postinst deletes /var/ossec/packages_files (its WAZUH_GLOBAL_TMP_DIR), so the
     # generator is never there: the shipped reference is the deb path by design, not a fallback
     echo "stock reference: deb host: $which, used on purpose: the 4.x deb package deletes its own generator (packages_files) after installing. Host-dependent blocks (the resolver white_list entries, journald or file localfile entries) that differ from a container's are carried as customisations unless they equal the reference: check them in the settings report" | tee "$o/SOURCE"
     return 0
@@ -747,11 +874,11 @@ settings_plan() { # settings_plan <base-dir> <work-dir>: every question of the c
   python3 "$HERE/settings_stage.py" plan --v4 "$BUNDLE_DIR/v4/config" --stock "$BUNDLE_DIR/v4/config/stock" --base "$1" \
     --decisions "$MIGRATION_DECISIONS" --work "$2" --groups "$BUNDLE_DIR/groups4"
 }
-pc_settings_plan() { # merged (C4): asked while 4.x still serves, against the 5.0 files this build installs (a shipped copy)
+pc_settings_plan() { # asked while 4.x still serves, against the 5.0 files this build installs (a shipped copy)
   [ "$CARRY_SETTINGS" = 1 ] || { echo "CARRY_SETTINGS=0: the 5.0 settings stay as installed"; return 0; }
-  # E5 fold: a cluster node passes its own base (PRECOPY_BASE: the shipped one with the node's <cluster>, settings-node.sh)
+  # a cluster node passes its own base (PRECOPY_BASE: the shipped one with the node's <cluster>, settings-node.sh)
   local rc=0; settings_plan "${PRECOPY_BASE:-$HERE/converter/refs/base-5.0.0-aio}" "$BUNDLE_DIR/settings/plan-precopy" || rc=$?
-  [ "$rc" = 0 ] || echo "the run stops here, before the freeze: answer the open entries in $MIGRATION_DECISIONS and run again"
+  [ "$rc" = 0 ] || echo "the run stops here, before the freeze: answer the open entries in ${DECISIONS_SHOWN:-$MIGRATION_DECISIONS} and run again"
   return $rc
 }
 pc_fleet() {
@@ -771,14 +898,15 @@ phase_precopy() {
   load_v4_passwords
   step precopy.truth            "record the 4.x state while it is live (truth)"          pc_truth
   step precopy.stage            "stage both assistants; check the 5.0 packages answer"   pc_stage
-  step precopy.retention        "history: the 4.x retention (ISM delete policies on the alert indices; decision 5b)" pc_retention
+  step precopy.retention        "history: the 4.x retention (ISM delete policies on the alert indices)" pc_retention
   step precopy.history          "history: dump the alerts while 4.x is live"             pc_history
   step precopy.ruleset_src      "ruleset: copy the custom and stock content"             pc_ruleset_src
-  step precopy.ruleset_build    "ruleset: scan, plan and build offline"                  pc_ruleset_build
+  qstep precopy.ruleset_build   "ruleset: scan, plan and build offline"                  pc_ruleset_build
   step precopy.indexer_security "indexer security configuration (REST and backup)"      pc_indexer_security
   step precopy.saved_objects    "dashboard saved objects"                                pc_saved_objects
   step precopy.settings         "settings files"                                         pc_settings
-  step precopy.settings_plan    "settings: plan the conversion; every open question into the decisions file (C4)" pc_settings_plan
+  qstep precopy.settings_plan   "settings: plan the conversion; every open question into the decisions file" pc_settings_plan
+  qstep_end
   step precopy.fleet            "fleet facts and the certificate plan"                   pc_fleet
   step precopy.gate             "gate: checksum every bundle file"                       pc_manifest
 }
@@ -793,7 +921,7 @@ fz_stop_manager() {
 fz_filebeat_drain() {
   local f=$V4/logs/alerts/alerts.json size off i
   for i in $(seq 1 60); do
-    size=$(stat -c %s "$f"); off=$(grep -F "\"source\":\"$f\"" /var/lib/filebeat/registry/filebeat/log.json 2>/dev/null | tail -n1 | grep -o '"offset":[0-9]*' | cut -d: -f2)
+    size=$(stat -c %s "$f"); off=$(grep -F "\"source\":\"$f\"" /var/lib/filebeat/registry/filebeat/log.json 2>/dev/null | tail -n1 | grep -o '"offset":[0-9]*' | cut -d: -f2 || true)   # no entry yet: 0, never an errexit stop
     [ "${off:-0}" -ge "$size" ] && break; sleep 2
   done
   echo "Filebeat offset ${off:-?} of $size bytes of alerts.json"
@@ -813,7 +941,7 @@ fz_guard() { # a marker can lie: the service is what counts
 fz_history_delta() { history_dump; }
 fz_identity() {
   systemctl is-active -q wazuh-manager && { echo "the 4.x manager is running"; return 1; }
-  if [ "$(usable_keys $V4/etc/client.keys)" = 0 ]; then   # F6 (DECISIONS F6-D7)
+  if [ "$(usable_keys $V4/etc/client.keys)" = 0 ]; then   # F6
     local d="$BUNDLE_DIR/identity-noagents"; rm -rf "${d:?}"; mkdir -p "$d"; chmod 700 "$d"
     [ -s $V4/etc/authd.pass ] && cp -p $V4/etc/authd.pass "$d/authd.pass"
     cp -p $V4/api/configuration/security/rbac.db "$d/rbac.db"
@@ -838,7 +966,7 @@ fz_raw_copy() {
   mkdir -p "$d/alerts" "$d/rollback"
   find $V4/logs/alerts -name '*.json' -o -name '*.json.gz' | while read -r f; do cp -f "$f" "$d/alerts/$(echo "${f#$V4/logs/alerts/}" | tr / _)"; done
   # enough to put 4.14 back on this host: reinstall the packages, then these
-  # OF1 (E2-deb G4): the per-agent databases go too (inventory, FIM baselines, SCA state), listed with their sizes
+  # the per-agent databases go too (inventory, FIM baselines, SCA state), listed with their sizes
   agent_dbs $V4 > "$d/rollback/agent-dbs.txt"
   local o=${V4#/}
   tar -czf "$d/rollback/var-ossec.tar.gz" -C / $o/etc $o/api/configuration $o/queue/db/global.db $o/queue/agent-groups \
@@ -852,15 +980,15 @@ fz_raw_copy() {
   # the custom content the ruleset was built from must still be what is on disk
   if ! ( cd "$d" && sha256sum --quiet -c "$BUNDLE_DIR/ruleset-src/custom-content.sha256" ); then
     echo "the custom rules, decoders or lists changed since the pre-copy: rebuilding the ruleset from the frozen copy"
-    pc_ruleset_src; pc_ruleset_build
+    pc_ruleset_src; pc_ruleset_build || { echo "the ruleset rebuilt from the changed custom content waits for answers (above): answer them and run again"; return 1; }
   else echo "custom rules, decoders and lists are unchanged since the pre-copy"; fi
 }
-fz_fingerprint() { python3 "$HELPER" fingerprint "$BUNDLE_DIR/fingerprint"; [ -z "$LAB_HOOK" ] || "$LAB_HOOK" freeze; }
+fz_fingerprint() { python3 "$HELPER" fingerprint "$BUNDLE_DIR/fingerprint"; }
 fz_gate() { [ -s "$BUNDLE_DIR/fingerprint/FINGERPRINT" ] || return 1; manifest_write; echo "gate: fingerprint $(cut -c1-16 "$BUNDLE_DIR/fingerprint/FINGERPRINT")… recorded; bundle manifest rewritten: $(wc -l < "$BUNDLE_DIR/MANIFEST.sha256") file(s), $(du -sh "$BUNDLE_DIR" | cut -f1)"; }
 phase_freeze() {
   done_ precopy.gate || die "the pre-copy is not complete"
   [ "$(host_state)" = v4 ] || { done_ freeze.gate && { log "  freeze already complete and 4.x is gone"; return 0; } || die "4.x is not installed and the freeze is not complete"; }
-  done_ freeze.stop_manager || source_version_or_die   # OF1 item 12: before the outage starts
+  done_ freeze.stop_manager || source_version_or_die   # before the outage starts
   load_v4_passwords
   step freeze.stop_manager   "stop the 4.x manager (THE OUTAGE STARTS)"                fz_stop_manager
   step freeze.filebeat_drain "let Filebeat ship the last alerts, then stop it"         fz_filebeat_drain
@@ -891,12 +1019,12 @@ vb_parts() {
   [ -s "$BUNDLE_DIR/v5/wazuh-install.sh" ] && echo "5.0 assistant staged" || { echo "5.0 assistant missing"; return 1; }
   [ -s "$BUNDLE_DIR/v4/wazuh-install.sh" ] && [ -s "$BUNDLE_DIR/v4/rollback/var-ossec.tar.gz" ] && [ -s "$BUNDLE_DIR/v4/rollback/wazuh-install-files.tar" ] \
     && echo "what going back needs is in the bundle (4.x assistant, registry and configuration, passwords file)" || { echo "going-back files missing"; return 1; }
-  if [ ! -f "$BUNDLE_DIR/v4/rollback/agent-dbs.txt" ]; then echo "note: this bundle was frozen before OF1 and holds no per-agent databases: going back rebuilds inventory, FIM baselines and SCA state from the agents"
-  else agent_dbs_check "$BUNDLE_DIR/v4/rollback/var-ossec.tar.gz" "$BUNDLE_DIR/v4/rollback/agent-dbs.txt" || { echo "the per-agent databases are not all in the rollback archive (OF1, E2-deb G4)"; return 1; }; fi
+  if [ ! -f "$BUNDLE_DIR/v4/rollback/agent-dbs.txt" ]; then echo "note: this bundle was frozen by an older version of this tool and holds no per-agent databases: going back rebuilds inventory, FIM baselines and SCA state from the agents"
+  else agent_dbs_check "$BUNDLE_DIR/v4/rollback/var-ossec.tar.gz" "$BUNDLE_DIR/v4/rollback/agent-dbs.txt" || { echo "the per-agent databases are not all in the rollback archive"; return 1; }; fi
   [ -s "$BUNDLE_DIR/preflight/fleet-facts.json" ] && echo "fleet facts present" || { echo "fleet facts missing"; return 1; }
   [ -d "$BUNDLE_DIR/ruleset-migration" ] && echo "ruleset build present" || { echo "ruleset build missing"; return 1; }
 }
-vb_source() { # F6 (DECISIONS F6-D2): the source must still be the one this bundle froze. A rerun skips the freeze by its
+vb_source() { # the source must still be the one this bundle froze. A rerun skips the freeze by its
   # markers, so a 4.x that served again after the freeze (started by the user, by a reboot, after going back) would
   # otherwise be removed with a stale export: every alert, agent and keepalive since then lost.
   local since t m fs rc=0 d
@@ -934,7 +1062,7 @@ print("the source reads the same as at the freeze: registry, keys, groups, API s
 PYEOF
   rm -rf "$d"
   if [ "$rc" != 0 ]; then
-    echo "This bundle is stale: 4.x is NOT removed. Take the freeze again into a new bundle (a new BUNDLE_DIR), or, to reuse this"
+    echo "This bundle is stale: 4.x is NOT removed. Take the freeze again into a new bundle (discard this one and run the tool again), or, to reuse this"
     echo "pre-copy, delete $STATE/freeze.* $STATE/phase.freeze $STATE/phase.verify_bundle and run again (the freeze then takes a new delta, identity export and fingerprint)."
     return 1
   fi
@@ -967,8 +1095,8 @@ leftovers() { # what of 4.x is still on the host
 rp_remove4x() {
   done_ verify_bundle.gate || { echo "the bundle is not verified: not removing 4.x"; return 1; }
   manifest_check || { echo "the bundle does not match its manifest: not removing 4.x"; return 1; }
-  guard on   # R2: from here until the listeners are opened in phase 7, whatever installs 5.0
-  if [ "$NEW_HOST" = 1 ]; then # R2: never run the 4.x removal here: on an image it would remove the 5.0 packages
+  guard on   # from here until the listeners are opened in phase 7, whatever installs 5.0
+  if [ "$NEW_HOST" = 1 ]; then # never run the 4.x removal here: on an image it would remove the 5.0 packages
     [ "$(host_state)" != v4 ] || { echo "NEW_HOST=1 but this host runs a 4.x manager package"; return 1; }   # an image may hold a 5.0 agent in /var/ossec
     echo "new host: no 4.x on this host, nothing to remove; the 4.x host keeps its 4.x (stopped by the freeze) for going back"
     return 0
@@ -977,6 +1105,7 @@ rp_remove4x() {
   # assistant's removal meets the same interrupted database after a reboot during it (merged: extended here)
   pkg_repair "before the 4.x removal" || return 1
   if [ "$(host_state)" = v4 ] || [ -n "$(pkgver wazuh-indexer)$(pkgver wazuh-dashboard)$(pkgver filebeat)" ]; then
+    v4_assistant_ok "$(v4_fix_later)" || return 1
     mkdir -p "$WORK_DIR/v4-uninstall"; cp -f "$BUNDLE_DIR/v4/wazuh-install.sh" "$WORK_DIR/v4-uninstall/"
     ts > "$STATE/T_remove4x_begin"
     ( cd "$WORK_DIR/v4-uninstall" && bash ./wazuh-install.sh -u ) > "$LOGS/remove-4x.$(date -u +%H%M%S).log" 2>&1 || { tail -n 20 "$(ls -t "$LOGS"/remove-4x.*.log | head -n1)"; return 1; }
@@ -992,6 +1121,20 @@ rp_remove4x() {
   manifest_check || { echo "the bundle changed during the 4.x removal"; return 1; }
   echo "bundle intact after the removal"
 }
+assistant_running() { # assistant_running <dir>: the pids of a 5.0 assistant running in <dir> (its working directory)
+  local p; for p in $(pgrep -f 'wazuh-install\.sh' 2>/dev/null || true); do
+    [ "$p" != "$$" ] && [ "$(readlink -f "/proc/$p/cwd" 2>/dev/null)" = "$(readlink -f "$1")" ] && echo "$p"; done; return 0; }
+assistant_wait() { # assistant_wait <dir>: a run killed with kill -9 leaves its 5.0 assistant running (the signal does not
+  # reach it). A second assistant beside it fails and can break the first: wait for it, never kill it, and say so
+  local p i=0 poll=${MIG_POLL_SECS:-10} max=${INSTALL5_WAIT_MAX:-3600}   # MIG_POLL_SECS: tests only
+  p=$(assistant_running "$1" | tr '\n' ' '); [ -n "$p" ] || return 0
+  echo "a 5.0 installation assistant an earlier run started is still running (pid ${p% }): waiting for it to end; no second one is started"
+  while [ -n "$(assistant_running "$1")" ]; do
+    sleep "$poll"; i=$((i + poll))
+    [ $((i % 60)) -ge "$poll" ] || echo "  still running after $i s (pid ${p% }; its progress: /var/log/wazuh-install.log)"
+    [ "$i" -lt "$max" ] || { echo "the earlier assistant still runs after $max s: let it end (or stop it: kill ${p% }) and run again"; return 1; }
+  done
+  echo "the earlier assistant ended after about $i s"; }
 rp_install5() {
   if [ "$V5_INSTALLER" = external ]; then rp_install5_external; return; fi
   if [ "$V5_INSTALLER" = image ]; then image_prepare; ts > "$STATE/T_install5_end"; return; fi
@@ -1001,28 +1144,30 @@ rp_install5() {
   while read -r a; do [ -n "$a" ] && args+=(-as "$a"); done < "$BUNDLE_DIR/preflight/agent-san-extra.txt"
   [ "$(host_state)" != v4 ] || { echo "4.x is still installed: not running the 5.0 assistant"; return 1; }
   [ ! -e /var/ossec ] || { echo "/var/ossec exists: not installing 5.0 over 4.x leftovers"; return 1; }
-  pkg_repair "before the 5.0 assistant" || return 1   # F5
+  assistant_wait "$d" || return 1
+  # the earlier run's assistant ended on its own: when it finished the installation, it is not done again
+  if [ -s "$STATE/T_install5_begin" ] && [ /var/log/wazuh-install.log -nt "$STATE/T_install5_begin" ] && \
+     tail -n 20 /var/log/wazuh-install.log 2>/dev/null | grep -q 'Installation finished' && [ "$(host_state)" = v5 ]; then
+    echo "the earlier run's 5.0 assistant finished the installation (/var/log/wazuh-install.log): not installing again"
+    ts > "$STATE/T_install5_end"; return 0
+  fi
+  pkg_repair "before the 5.0 assistant" || return 1
   # An interrupted or failed 5.0 install leaves packages or directories, and the assistant then answers "already
   # installed" until it is given -o. Safe here and only here: 4.x is gone and the bundle is outside what -o deletes.
   local p partial=""
   for p in /var/lib/wazuh-indexer /etc/wazuh-indexer /usr/share/wazuh-indexer /var/wazuh-manager /etc/wazuh-dashboard /usr/share/wazuh-dashboard /var/lib/wazuh-dashboard; do if [ -e "$p" ]; then partial="$partial $p"; fi; done
   partial="$partial$(pkgver wazuh-indexer)$(pkgver wazuh-manager)$(pkgver wazuh-dashboard)"
   if [ -n "$partial" ]; then args+=(-o); echo "a partial 5.0 installation is on the host ($partial): adding -o"; fi
-  if [ "$TEST_V5_START_FAIL" = 1 ]; then # F7 lab switch: the manager's first start fails (as F4 did on the master)
-    mkdir -p /etc/systemd/system/wazuh-manager.service.d
-    printf '[Service]\nExecStartPre=/bin/false\n' > /etc/systemd/system/wazuh-manager.service.d/f7-lab-start-fail.conf
-    systemctl daemon-reload; echo "LAB SWITCH TEST_V5_START_FAIL=1: drop-in ExecStartPre=/bin/false on wazuh-manager.service"
-  fi
   local envs=(WAZUH_REMOTE_HTTPS_BIND_ADDR=127.0.0.1 WAZUH_REMOTE_LEGACY_ENABLED=no)
   echo "env ${envs[*]} bash wazuh-install.sh ${args[*]}"
   ts > "$STATE/T_install5_begin"
   ( cd "$d" && env "${envs[@]}" bash ./wazuh-install.sh "${args[@]}" ) > "$LOGS/install-5.0.$(date -u +%H%M%S).log" 2>&1 || rc=$?
-  local l; l=$(ls -t "$LOGS"/install-5.0.*.log | head -n1)
+  local l; l=$(ls -t "$LOGS"/install-5.0.*.log 2>/dev/null | head -n1 || true)
   grep -E 'INFO|WARNING|ERROR' "$l" | sed -E 's/(Password|password|token)[:=].*/\1: MASKED/I' | tail -n 25
   [ "$rc" = 0 ] || { echo "the 5.0 assistant exited $rc; host state now: $(host_state); see $l and /var/log/wazuh-install.log"; return 1; }
   ts > "$STATE/T_install5_end"
 }
-rp_install5_external() { # R2: 5.0 is installed by the deployment's own tool (the 5.0 playbook); this step waits for it
+rp_install5_external() { # 5.0 is installed by the deployment's own tool (the 5.0 playbook); this step waits for it
   [ ! -e /var/ossec ] || { echo "/var/ossec exists: 5.0 must not be installed over 4.x leftovers"; return 1; }
   [ "$(guard status)" = on ] || guard on
   if [ "$(host_state)" != v5 ] || [ -z "$(pkgver wazuh-indexer)" ] || [ -z "$(pkgver wazuh-dashboard)" ]; then
@@ -1036,7 +1181,7 @@ rp_install5_external() { # R2: 5.0 is installed by the deployment's own tool (th
   ts > "$STATE/T_install5_end"
   close_listeners5
 }
-image_prepare() { # R2: a 5.0 image (AMI, OVA) as the target: installed and running, with its own agent enrolled
+image_prepare() { # a 5.0 image (AMI, OVA) as the target: installed and running, with its own agent enrolled
   [ "$(guard status)" = on ] || guard on
   [ "$(host_state)" = v5 ] && [ -n "$(pkgver wazuh-indexer)" ] && [ -n "$(pkgver wazuh-dashboard)" ] || { echo "this host is not a 5.0 image (manager $(pkgver wazuh-manager), indexer $(pkgver wazuh-indexer))"; return 1; }
   manager5_up || return 1
@@ -1061,7 +1206,7 @@ image_prepare() { # R2: a 5.0 image (AMI, OVA) as the target: installed and runn
   image_cert_plan
   close_listeners5
 }
-image_agent_back() { # R2: after the listeners opened, the image's own agent (removed in phase 5) enrolls again, with a new id
+image_agent_back() { # after the listeners opened, the image's own agent (removed in phase 5) enrolls again, with a new id
   [ -s "$STATE/image.local_agents" ] || { echo "the image had no agent of its own"; return 0; }
   [ -x /var/ossec/bin/wazuh-agent-auth ] || { echo "no 5.0 agent on this host"; return 0; }
   local t; t=$(mktemp /root/.r2-token.XXXXXX)
@@ -1071,7 +1216,7 @@ image_agent_back() { # R2: after the listeners opened, the image's own agent (re
   systemctl enable wazuh-agent >/dev/null 2>&1 || true; systemctl start wazuh-agent
   echo "the image's own agent: $(cut -d' ' -f1,2 /var/ossec/etc/client.keys) (was $(tr '\n' ' ' < "$STATE/image.local_agents"))"
 }
-image_cert_plan() { # R2: an image issues its listener certificate at first boot for its own names; nothing passes -as.
+image_cert_plan() { # an image issues its listener certificate at first boot for its own names; nothing passes -as.
   # Every address the fleet dials (fleet facts in the bundle, AGENT_ADDRESSES) must be on it: add the missing names to
   # WAZUH_MANAGER_REMOTED_CERT_SANS in local.env and let the manager's own resolver issue a new pair from the image's CA
   # (--install issues what is missing; --prestart does not). Passwords, registry and rbac.db are left as they are.
@@ -1100,6 +1245,7 @@ rp_gate() { # "installed" means ready and synchronised, closed, and one handshak
   $V5/bin/wazuh-manager-control info 2>/dev/null | tr '\n' ' ' || true; echo
   for i in $(seq 1 60); do python3 "$HELPER" setup-status > "$LOGS/setup-status.txt" 2>&1 && break; sleep 5; done
   cat "$LOGS/setup-status.txt"; grep -q 'setup-status: READY' "$LOGS/setup-status.txt" || { echo "the 5.0 setup did not become ready in 300 s"; return 1; }
+  python3 "$HELPER" heap5 || true   # the first point the heap is known for an image, an external installer or a new host
   ss -ltnH | awk '{print $4}' | grep -E ':(1514|1515|1516|1517|55000|9200|443)$' | sort | tr '\n' ' '; echo
   ss -ltnH | awk '{print $4}' | grep -E ':(1514|1515)$' && { echo "legacy agent ports are open before the import"; return 1; } || true
   ss -ltnH | awk '{print $4}' | grep -E ':1517$' | grep -v -E '^(127\.0\.0\.1|\[::1\]):' && { echo "port 1517 is open to the network before the import"; return 1; } || true
@@ -1121,7 +1267,7 @@ settings_targets() { # candidate file -> the installed file the 5.0 daemons read
     wazuh-manager.conf "$V5ETC/wazuh-manager.conf" wazuh-manager-internal-options.conf "$V5ETC/wazuh-manager-internal-options.conf" \
     api.yaml "$V5/api/configuration/api.yaml" cluster.json "${cj:+$cj/cluster.json}"
 }
-collect_base() { # E3-rpm fix 01: the installed base, collected once and complete or not at all. A hard reboot 0.2 s
+collect_base() { # the installed base, collected once and complete or not at all. A hard reboot 0.2 s
   # into the collection left base-installed/ with wazuh-manager.conf and api.yaml but no targets.json; the old guard
   # (wazuh-manager.conf present) then skipped the collection on the rerun, the step was marked, and import.settings
   # stopped on "the installed base was not collected". Now it is gathered in a .partial directory, synced, renamed.
@@ -1147,15 +1293,15 @@ rp_settings_plan() { # C4 collect-base.sh, then the plan with the real base: a q
 }
 
 ########################################################################## 6. IMPORT
-idw() { [ "$IDENTITY_LIMIT_MODE" = raise ] && echo 4 || echo 1; }   # G5: 4 insert workers with the limit raised (run R), 1 at the shipped limit
-# E2 fold (E2-rpm fix 06, E2-deb fix 1, reconciled): once the pre-upgrade group pass has run, the identity stage's verify
+idw() { [ "$IDENTITY_LIMIT_MODE" = raise ] && echo 4 || echo 1; }   # 4 insert workers with the limit raised (run R), 1 at the shipped limit
+# E2 fold (reconciled): once the pre-upgrade group pass has run, the identity stage's verify
 # and repair take the agent.conf files it uploaded as the expected content (its record, settings_stage.py record_upload).
 # Without this phase 8 failed for every group the pass cleaned, and a repair would upload the refused option again.
 expected_conf() { EXP=(); local f="$BUNDLE_DIR/settings/groups-pre/uploaded.json"; [ ! -s "$f" ] || EXP=(--expected-conf "$f"); }   # sets EXP
 im_identity() {
   local py=$V5/framework/python/bin/python3 n
   manager5_up || return 1
-  if noagents; then   # F6 (DECISIONS F6-D7): what the identity tool does for its two secret files, without its agent import
+  if noagents; then   # what the identity tool does for its two secret files, without its agent import
     local d="$BUNDLE_DIR/identity-noagents" n
     if [ -s "$d/authd.pass" ]; then
       n=$(tr -d '\n' < "$d/authd.pass" | wc -c); [ "$n" -ge 16 ] || { echo "the enrollment password is $n bytes: 5.0 refuses fewer than 16"; return 1; }
@@ -1166,29 +1312,29 @@ im_identity() {
     echo "rbac.db carried and staged (user_version 0: the API rebuilds its 5.0 defaults and keeps the users, roles and policies)"
     return 0
   fi
-  # Merged: the identity stage (G5, with G1's repair and F7's key check) replaces the identity tool's import. It pages
-  # every list, renews its token, waits on a refusal, raises the API limit for the import and restores it (default, G5),
-  # and refuses (exit 3) when the registry already holds agents that are not this bundle's by id, name and key (F7):
+  # the identity stage (with G1's repair and F7's key check) replaces the identity tool's import. It pages
+  # every list, renews its token, waits on a refusal, raises the API limit for the import and restores it (default),
+  # and refuses (exit 3) when the registry already holds agents that are not this bundle's by id, name and key:
   # a cut import is resumed, a self-enrolled agent stops the run. Never a second import with --force.
-  [ -s "$STATE/T_import_begin" ] || stamp T_import_begin   # E3 fold (E3-rpm 6): a 0-byte one left by a cut is written again
+  [ -s "$STATE/T_import_begin" ] || stamp T_import_begin   # a 0-byte one left by a cut is written again
   $py "$HERE/identity_stage.py" run "$BUNDLE_DIR/identity" --state "$BUNDLE_DIR/identity-stage" --limit-mode "$IDENTITY_LIMIT_MODE" \
       --workers "$(idw)" $(pwflag) --with-rbac > "$LOGS/identity-stage-run.log" 2>&1 || { tail -n 30 "$LOGS/identity-stage-run.log"; return 1; }
   grep -E 'GATE|REFUSE|cut import|preflight:|limit' "$LOGS/identity-stage-run.log" | cut -c1-400 | tail -n 8
 }
-# E4-breaker fix 02: a 4.x source enrolling without a password (the 4.x assistant's default) has no authd.pass in the
+# a 4.x source enrolling without a password (the 4.x assistant's default) has no authd.pass in the
 # identity bundle; the stage's --with-password then blocks the import ("the bundle has no authd.pass"), although assess
 # said "5.0 enables use_password and generates one" (E5 fold: it keeps it off, enrollment_off_note). Carry the password
 # only when the source had one.
 pwflag() { [ -s "$BUNDLE_DIR/identity/authd.pass" ] && echo --with-password || true; }
-enrollment_off_note() { # E5 fold (E5-aio gap 4): what 5.0 does when 4.x enrolled without a password. The settings stage
+enrollment_off_note() { # what 5.0 does when 4.x enrolled without a password. The settings stage
   # carries the 4.x <use_password>no</use_password>, so 5.0 keeps enrolling without one (observed: a password-less
   # enrollment accepted on 1515 after the finish), with the unused password the 5.0 install generated beside it. Assess
   # and phase 8 said "5.0 enables use_password and generates one", which is true only without the settings stage.
   if [ "${1:-1}" = 1 ]; then
     echo "enrollment without a password on 4.x: 5.0 keeps it off (the settings stage carries use_password no), so agents keep enrolling without one, as on 4.x"
-    echo "  to require a password after the migration: set <use_password>yes</use_password> in the <auth> section of /etc/wazuh-manager/wazuh-manager.conf, keep the password the 5.0 install generated in /etc/wazuh-manager/authd.pass (or put your own of 16 or more characters there), restart wazuh-manager, and give it to every agent that enrolls from then on"
+    echo "  to require a password after the migration: set <use_password>yes</use_password> in the <auth> section of /etc/wazuh-manager/wazuh-manager.conf, keep the password the 5.0 install generated in /etc/wazuh-manager/authd.pass (or put your own of 16 or more characters there), and restart wazuh-manager. 5.0 agents enroll with enrollment tokens: from then on mint them with a credential (wazuh-manager-authd --create-enrollment-token, without --no-credential); tokens made with --no-credential stop working. A 4.x agent that enrolls on 1515 while the legacy ports are open needs the password itself"
   else
-    echo "enrollment without a password on 4.x and CARRY_SETTINGS=0: 5.0 keeps its installed use_password yes and the password it generated (/etc/wazuh-manager/authd.pass): agents that enroll from now on need it"
+    echo "enrollment without a password on 4.x and CARRY_SETTINGS=0: 5.0 keeps its installed use_password yes and the password it generated (/etc/wazuh-manager/authd.pass): 5.0 agents that enroll from now on need an enrollment token minted with a credential (wazuh-manager-authd --create-enrollment-token, without --no-credential), 4.x agents on 1515 the password"
   fi; }
 cluster_nodes5() { # the cluster this node's installed file describes: "single" or "cluster <n> nodes"
   python3 - "$V5ETC/wazuh-manager.conf" <<'PY'
@@ -1209,7 +1355,7 @@ im_settings() { # rules 21 and 22, in C4's order (tool/node/live.sh): convert ag
   [ "$CARRY_SETTINGS" = 1 ] || { echo "CARRY_SETTINGS=0: the installed 5.0 settings are kept"; return 0; }
   local S="$BUNDLE_DIR/settings" c="$BUNDLE_DIR/settings/candidate" topo
   if ! { [ -s "$S/targets.json" ] && [ -s "$S/base-installed/wazuh-manager.conf" ] && [ -s "$S/base-installed/api.yaml" ]; }; then
-    # E3-rpm fix 01: a bundle whose collection was cut before this fix: complete it now, only while nothing is staged
+    # a bundle whose collection was cut before this fix: complete it now, only while nothing is staged
     # (the live files still equal what was collected: no candidate was ever installed over them)
     if [ ! -e "$S/saved" ] && [ -s "$S/base-installed/wazuh-manager.conf" ] && cmp -s "$S/base-installed/wazuh-manager.conf" $V5ETC/wazuh-manager.conf; then
       echo "the installed base was incomplete (a cut during replace.settings_plan): collected again, nothing was staged yet"; collect_base
@@ -1242,7 +1388,7 @@ im_groups_pre() { # C4 D5: the pre-upgrade pass while 4.x agents remain: only wh
   python3 "$HERE/settings_stage.py" groups --phase pre-upgrade --groups "$BUNDLE_DIR/groups4" --decisions "$MIGRATION_DECISIONS" \
     --work "$BUNDLE_DIR/settings/groups-pre" --shared "$V5ETC/shared"
 }
-im_groups_noagents() { # F6 (DECISIONS F6-D7): a source with no agent can still have groups; the identity tool would carry
+im_groups_noagents() { # a source with no agent can still have groups; the identity tool would carry
   # them (group, agent.conf, the SCA policies it loads) if it did not refuse the source, so this does the same through the API
   noagents || { echo "the source had agents: the identity tool carried the groups"; return 0; }
   manager5_up || return 1
@@ -1309,7 +1455,7 @@ im_reconcile() { # compare the real registry with the fingerprint; repair throug
   manager5_up
   curl -sk -u "wazuh:$(v5env $V5ETC/export/credentials.env WAZUH_MANAGER_API_PASSWORD)" -X POST "https://localhost:55000/security/user/authenticate?raw=true" | grep -q '^ey' \
     || { echo "the Server API refuses the published password: resetting the two passwords again"; im_passwords; }
-  if noagents; then   # F6: nothing to compare; what was carried is checked through the API
+  if noagents; then   # nothing to compare; what was carried is checked through the API
     local tok; tok=$(curl -sk -u "wazuh:$(v5env $V5ETC/export/credentials.env WAZUH_MANAGER_API_PASSWORD)" -X POST "https://localhost:55000/security/user/authenticate?raw=true")
     python3 - "$BUNDLE_DIR/truth4/api_security.json" "$tok" <<'PY'
 import json, ssl, sys, urllib.request
@@ -1324,9 +1470,9 @@ sys.exit(1 if bad else 0)
 PY
     return $?
   fi
-  # Merged: the comparison is against both 4.x records of the freeze. The identity stage compares with the identity
+  # the comparison is against both 4.x records of the freeze. The identity stage compares with the identity
   # bundle (paged, keys included) and repairs in bulk rounds; mig_helper compares with the fingerprint, read only, keys
-  # included (F7). The identity tool's own `check` is not used: it reads at most 10,000 agents and 500 groups (G1).
+  # included. The identity tool's own `check` is not used: it reads at most 10,000 agents and 500 groups.
   local py=$V5/framework/python/bin/python3; expected_conf
   if ! $py "$HERE/identity_stage.py" verify "$BUNDLE_DIR/identity" --state "$BUNDLE_DIR/identity-stage" "${EXP[@]}" > "$LOGS/identity-verify-1.json" 2>&1; then
     echo "differences from the identity bundle after the restart: running the identity stage again (it resumes and repairs in bulk)"
@@ -1349,21 +1495,36 @@ im_ruleset() {
     echo "the ruleset was built for engine helpers '$have'; the installed 5.0 ($($V5/bin/wazuh-manager-control info 2>/dev/null | tr '\n' ' ')) needs '$want': rebuilding from the frozen copy"
     # rmig keeps its record in work/state.json (first version looked for state.json and never rolled back). Even so, a
     # rollback keeps wazuh4-base while its root is the policy root, so the rebuilt content meets the old root and
-    # activate then stops on RM-P-FOREIGN-POLICY-CHANGE (DECISIONS P-D6): the dialect must be right at the first apply.
+    # activate then stops on RM-P-FOREIGN-POLICY-CHANGE: the dialect must be right at the first apply.
     if [ -s "$w/work/state.json" ]; then rmig rollback --workdir "$w" --ca $ca > "$LOGS/rmig-4b-rollback-before-rebuild.log" 2>&1 || true; tail -n 3 "$LOGS/rmig-4b-rollback-before-rebuild.log"; fi
     rm -rf "$w.$have"; mv "$w" "$w.$have"
     ruleset_build "$w" "$want" || return 1
   fi
-  rmig apply --workdir "$w" --ca $ca --dry-run > "$LOGS/rmig-4-apply-dry-run.log" 2>&1 || true
-  rmig apply --workdir "$w" --ca $ca > "$LOGS/rmig-5-apply.log" 2>&1 || rc=$?; tail -n 3 "$LOGS/rmig-5-apply.log"; echo "rmig apply exit $rc"
-  [ "$rc" = 0 ] || return 1
-  alerts=$(ls "$BUNDLE_DIR"/v4/alerts/* 2>/dev/null | tr '\n' ' ')
+  rmig apply --workdir "$w" --ca $ca --dry-run $(rmig_limits) > "$LOGS/rmig-4-apply-dry-run.log" 2>&1 || true
+  rmig apply --workdir "$w" --ca $ca $(rmig_limits) > "$LOGS/rmig-5-apply.log" 2>&1 || rc=$?; tail -n 3 "$LOGS/rmig-5-apply.log"; echo "rmig apply exit $rc"
+  # R1 (items 4, 6): 1 is "done with items waiting" (an integration set aside: its rules stay out of test and verify says
+  # so), unless rmig says it stopped; 2 is a stop with nothing changed (RM-P-ENGINE-LIMIT: the detector cap)
+  if [ "$rc" != 0 ]; then local orc=0; python3 "$HELPER" rmig-outcome apply "$LOGS/rmig-5-apply.log" "$rc" || orc=$?
+    { [ "$rc" = 1 ] && [ "$orc" = 0 ]; } || return 1; fi
+  # a new attempt after going back starts from a reinstalled 4.x whose alerts files are nearly empty: the earlier
+  # attempts' copies (kept beside this bundle as <bundle>.attempt-<n>) are 4.x alerts of the same rules too
+  # (a loop, never ls: on a first attempt the attempt-* pattern matches nothing, ls exits 2, and under pipefail and
+  # errexit that ended the step with exit 2 and no message, E9-aio fix 01)
+  local f earlier=""; alerts=""
+  # (an earlier attempt that went back keeps them as v4/alerts-sample: its way back deleted every other carried part)
+  for f in "$BUNDLE_DIR"/v4/alerts/* "$BUNDLE_DIR".attempt-*/v4/alerts/* "$BUNDLE_DIR".attempt-*/v4/alerts-sample/*; do if [ -f "$f" ]; then alerts+="$f "; fi; done
+  for f in "$BUNDLE_DIR".attempt-*; do if [ -d "$f/v4/alerts" ] || [ -d "$f/v4/alerts-sample" ]; then earlier+="$f "; fi; done
+  if [ -n "$earlier" ]; then echo "verification samples: this attempt's 4.x alerts and the earlier attempts' ($earlier)"; fi
   rc=0; rmig verify --workdir "$w" --ca $ca --alerts $alerts ${RMIG_SAMPLES:+--samples "$RMIG_SAMPLES"} > "$LOGS/rmig-6-verify.log" 2>&1 || rc=$?
   tail -n 4 "$LOGS/rmig-6-verify.log"; echo "rmig verify exit $rc (0 = every rule reproduced, 1 = at least one was not)"
   echo "$rc" > "$STATE/ruleset.verify_rc"
   grep -E '^verify: REPRODUCED' "$LOGS/rmig-6-verify.log" | tail -n1 > "$STATE/ruleset.verify_summary" || true
   [ "$rc" -le 1 ] || return 1
 }
+mostly_no_sample() { # the verification checked fewer rules than it had no sample for: "not disproven" is not evidence
+  python3 -c 'import re,sys; s=open(sys.argv[1]).read() if __import__("os").path.exists(sys.argv[1]) else ""
+r=re.search(r"(?<![A-Z_])REPRODUCED (\d+)", s); n=re.search(r"NO_SAMPLE (\d+)", s)
+sys.exit(0 if n and int(n.group(1)) > (int(r.group(1)) if r else 0) else 1)' "$STATE/ruleset.verify_summary"; }
 ruleset_clean() { # exit 0 of the verification is not enough: with no sample for a rule nothing was checked (NO_SAMPLE)
   local s; s=$(cat "$STATE/ruleset.verify_summary" 2>/dev/null || true)
   [ "$(cat "$STATE/ruleset.verify_rc" 2>/dev/null || echo 9)" = 0 ] || return 1
@@ -1371,7 +1532,7 @@ ruleset_clean() { # exit 0 of the verification is not enough: with no sample for
 }
 cluster_name5() { sed -n '/<cluster>/,/<\/cluster>/s/.*<name>\(.*\)<\/name>.*/\1/p' $V5ETC/wazuh-manager.conf | head -n1; }
 # Merged history stage: H5's loader (RD2's corrected map, journal, fail-closed reads, --procs) with S5's `on`. The group
-# stamp needs the 4.x registry (H1, C23); without the identity stage the ids are not the same agents (not-carried).
+# stamp needs the 4.x registry; without the identity stage the ids are not the same agents (not-carried).
 hload() { local c ids=carried reg=(); c=$(cluster_name5)
           if noagents || [ "${CARRY_AGENT_IDS:-1}" = 0 ]; then ids=not-carried; fi
           [ -s "$BUNDLE_DIR/history-registry.json" ] && reg=(--agent-registry "$BUNDLE_DIR/history-registry.json")
@@ -1380,9 +1541,9 @@ hload() { local c ids=carried reg=(); c=$(cluster_name5)
 im_history_load() { wait_indexer idx5
   history_retention > /dev/null; cat "$STATE/history.retention"   # OF1 (decision 5b): which retention applies, and why
   [ -s "$BUNDLE_DIR/history-registry.json" ] || noagents || python3 "$HELPER" agent-registry "$BUNDLE_DIR" "$BUNDLE_DIR/history-registry.json"
-  hload apply --procs "$HISTORY_PROCS" ${TEST_HISTORY_STOP_AFTER:+--stop-after-files "$TEST_HISTORY_STOP_AFTER"}; }
-im_history_prove() { hload prove; [ -z "$LAB_HOOK" ] || "$LAB_HOOK" history-loaded; }
-im_indexer_security() { # Merged: C23's indexer stage (users with their 4.x hashes, two-branch DLS, FLS and masking over every
+  hload apply --procs "$HISTORY_PROCS"; }
+im_history_prove() { hload prove; }
+im_indexer_security() { # C23's indexer stage (users with their 4.x hashes, two-branch DLS, FLS and masking over every
   # field the history loader fills, generated from its own map; refuses to change a 5.0 object it did not create)
   python3 "$HERE/indexer_stage.py" import --bundle "$BUNDLE_DIR" --url "https://$(idxhost):9200" $(idx_cert_args) > "$LOGS/indexer-stage-import.log" 2>&1 \
     || { tail -n 30 "$LOGS/indexer-stage-import.log"; return 1; }
@@ -1391,24 +1552,31 @@ im_indexer_security() { # Merged: C23's indexer stage (users with their 4.x hash
     || { tail -n 20 "$LOGS/indexer-stage-verify.log"; return 1; }
   tail -n 1 "$LOGS/indexer-stage-verify.log"
 }
+# rule 9: the roles that would lose every module are fixed, or the loss is accepted: ACCEPT_ROLE_LOSS=1, or the answer
+# "accept" to the question "role-loss" (section "history-roles") of the decisions file
+role_loss_args() { if [ "$ACCEPT_ROLE_LOSS" = 1 ] || [ "$(python3 "$HERE/next_flow.py" answer "$1" history-roles role-loss 2>/dev/null)" = accept ]; then echo --accept-role-loss; fi; }
+role_loss_stop() { # role_loss_stop <decisions file> <audit json>: the question, then exit 3 (the run stops on it)
+  python3 "$HERE/next_flow.py" role-loss "$1" "$2"
+  echo "stopped: fix the roles listed above, or answer \"accept\" in $1 (section \"history-roles\"; ACCEPT_ROLE_LOSS=1 does the same), and run again"
+  return 3; }
 im_history_on() { # rule 9: only after the proof, and only after the roles that lose access are listed and fixed or accepted
-  local acc=(); [ "$ACCEPT_ROLE_LOSS" = 1 ] && acc=(--accept-role-loss)
-  hload audit-roles --json "$BUNDLE_DIR/indexer-security/role-audit.json" "${acc[@]}" || { echo "stopped: decide on the listed roles (ACCEPT_ROLE_LOSS=1 accepts)"; return 1; }
+  local acc; acc=$(role_loss_args "$MIGRATION_DECISIONS")
+  hload audit-roles --json "$BUNDLE_DIR/indexer-security/role-audit.json" $acc || { local rc=$?; [ "$rc" != 3 ] || role_loss_stop "$MIGRATION_DECISIONS" "$BUNDLE_DIR/indexer-security/role-audit.json"; return "$rc"; }
   hload on
 }
 im_history_roles() { # F10, after-open: the role decision of rule 9 is asked now, before the outage ends, not hours later
-  local acc=(); [ "$ACCEPT_ROLE_LOSS" = 1 ] && acc=(--accept-role-loss)
-  hload audit-roles --json "$BUNDLE_DIR/indexer-security/role-audit.json" "${acc[@]}" || { echo "stopped: decide on the listed roles (ACCEPT_ROLE_LOSS=1 accepts)"; return 1; }
-  echo "role audit done before opening; the history itself is loaded after the opening (HISTORY_LOAD=after-open)"
+  local acc; acc=$(role_loss_args "$MIGRATION_DECISIONS")
+  hload audit-roles --json "$BUNDLE_DIR/indexer-security/role-audit.json" $acc || { local rc=$?; [ "$rc" != 3 ] || role_loss_stop "$MIGRATION_DECISIONS" "$BUNDLE_DIR/indexer-security/role-audit.json"; return "$rc"; }
+  echo "role audit done before opening; the history itself is loaded after the opening"
 }
 im_saved_objects() { python3 "$HELPER" import-saved-objects "$BUNDLE_DIR/dashboard/saved-objects.ndjson"; }
 im_gate() {
   local rc=0
-  if ! noagents; then python3 "$HELPER" reconcile-membership "$BUNDLE_DIR" || rc=1; fi   # F6: a source with no agent has nothing to reconcile
-  # rule 15 (G5): a setting changed for the tool's own work (the API limit) must be back before any later gate passes
+  if ! noagents; then python3 "$HELPER" reconcile-membership "$BUNDLE_DIR" || rc=1; fi   # a source with no agent has nothing to reconcile
+  # rule 15: a setting changed for the tool's own work (the API limit) must be back before any later gate passes
   python3 - "$BUNDLE_DIR/identity-stage/state.json" "$BUNDLE_DIR/identity-stage/api.yaml.orig" "$V5/api/configuration/api.yaml" <<'PY' || rc=1
 import json, os, sys
-# E2 fold: the saved original against the live file, byte for byte, as well as the state: a power cut can empty the
+# the saved original against the live file, byte for byte, as well as the state: a power cut can empty the
 # state file, and an unreadable state must not read as "nothing was changed" while a saved original exists
 saved, live = sys.argv[2], sys.argv[3]
 if os.path.isfile(saved):
@@ -1441,11 +1609,11 @@ phase_import() {
   done_ replace.gate || die "the 5.0 installation has not passed its gate"
   step import.identity   "identity import (--with-password --with-rbac)"                  im_identity
   step import.groups_noagents "no agents: groups, their agent.conf and SCA policies through the API" im_groups_noagents
-  step import.settings   "settings: convert, validate, cross-node check, stage, wazuh-manager-control check (rules 21, 22)" im_settings
+  step import.settings   "settings: convert, validate, cross-node check, stage, wazuh-manager-control check" im_settings
   step import.restart    "stop the manager cleanly and start it (group membership, converted settings)" im_restart
   step import.passwords  "set wazuh and wazuh-internal-client back to the 5.0 passwords"  im_passwords
   step import.reconcile  "compare agents and memberships with the fingerprint, repair, identity check" im_reconcile
-  step import.groups_pre "group files: the pre-upgrade pass (C4), carried files installed"  im_groups_pre
+  step import.groups_pre "group files: the pre-upgrade pass, carried files installed"  im_groups_pre
   step import.ruleset    "ruleset: apply to the test space and verify with the 4.x alerts" im_ruleset
   if [ "$HISTORY_LOAD" = before-open ]; then
     step import.history_load  "history: load the dump through the shaping pipeline"         im_history_load
@@ -1465,6 +1633,19 @@ phase_import() {
 }
 
 ########################################################################## 7. OPEN (the outage ends)
+rmig_activate() { # rmig_activate <workdir> <ca> [--force ...]: R1 (items 2, 4, 6) rmig activate with the user's engine
+  # limits. Exit 0: activated (an exit 1 that is "done with items waiting", a detector left out, is said and counts as
+  # activated); 3: rmig stopped on something the user answers (the review, RM-P-REVIEW-PENDING, which --force does not
+  # skip) or raises (the detector cap, RM-P-ENGINE-LIMIT), nothing changed; 1: any other stop.
+  local w=$1 ca=$2 rc=0 orc=0; shift 2
+  rmig activate --workdir "$w" --ca $ca --yes $(rmig_limits) "$@" > "$LOGS/rmig-7-activate.log" 2>&1 || rc=$?
+  tail -n 4 "$LOGS/rmig-7-activate.log"
+  [ "$rc" = 0 ] && return 0
+  python3 "$HELPER" rmig-outcome activate "$LOGS/rmig-7-activate.log" || orc=$?
+  [ "$rc" = 1 ] && [ "$orc" = 0 ] && { echo "WARNING: rmig activated the rules with items waiting (exit 1): see $w/report.md"; return 0; }
+  [ "$orc" = 3 ] && echo "the migrated rules are NOT activated (rmig changed nothing); the agent listeners stay CLOSED until this is answered and the run is started again"
+  [ "$orc" = 0 ] && return 1; return "$orc"
+}
 op_decision() { # rule 8: before opening, what happens to events 5.0 cannot classify
   local w ca=${IDX5_CA:-/etc/wazuh-indexer/certs/root-ca.pem} vrc tok dec="$UNCLASSIFIED_DECISION"
   w=$(RWORK)
@@ -1472,11 +1653,11 @@ op_decision() { # rule 8: before opening, what happens to events 5.0 cannot clas
   vrc=$(cat "$STATE/ruleset.verify_rc" 2>/dev/null || echo 9)
   echo "ruleset verification: exit $vrc; $(cat "$STATE/ruleset.verify_summary" 2>/dev/null || echo 'no summary')"
   # OF1 (decision 3, 2026-11-24): with no answer given the default applies; the run no longer stops to ask
-  if [ -z "$dec" ]; then dec=$UNCLASSIFIED_DEFAULT; echo "UNCLASSIFIED_DECISION not set: the default answer applies, $dec (decision 3): activate the rules that verified, raw event indexing on until the finish"; fi
+  if [ -z "$dec" ]; then dec=$UNCLASSIFIED_DEFAULT; echo "the default applies, $dec: the rules that verified are activated, and raw event indexing stays on until the finish"; fi
   if ruleset_clean; then
-    rmig activate --workdir "$w" --ca $ca --yes > "$LOGS/rmig-7-activate.log" 2>&1 || { tail -n 20 "$LOGS/rmig-7-activate.log"; return 1; }
-    tail -n 3 "$LOGS/rmig-7-activate.log"; echo "the migrated rules verified cleanly and are activated"; echo "activate" > "$STATE/unclassified.applied"
-    # F6 (DECISIONS F6-D1): raw indexing answers a different question (4.x agents whose events 5.0 drops before any rule
+    rmig_activate "$w" "$ca" || return $?
+    echo "the migrated rules verified cleanly and are activated"; echo "activate" > "$STATE/unclassified.applied"
+    # raw indexing answers a different question (4.x agents whose events 5.0 drops before any rule
     # runs, such as the Windows event log), so clean rules do not make it unnecessary
     if grep -qw raw <<<"$(tr '+' ' ' <<<"$dec")"; then
       python3 "$HELPER" policy-unclassified on || return 1; echo raw >> "$STATE/unclassified.applied"
@@ -1484,33 +1665,49 @@ op_decision() { # rule 8: before opening, what happens to events 5.0 cannot clas
     fi
     return 0
   fi
+  # ask: the question is in the decisions file (section "unclassified-decision"); its answer, once given, is the decision
+  local given=""
+  if grep -qw ask <<<"$(tr '+' ' ' <<<"$dec")"; then given=$(python3 "$HERE/next_flow.py" answer "$MIGRATION_DECISIONS" unclassified-decision unclassified-decision 2>/dev/null || true); fi
+  if [ -n "$given" ]; then
+    case "+$given+" in *+ask+*) echo "the answer in $MIGRATION_DECISIONS (unclassified-decision) cannot be ask"; return 1;; esac
+    for tok in $(tr '+' ' ' <<<"$given"); do case "$tok" in verified|activate-force|raw|accept) ;; *) echo "the answer \"$given\" in $MIGRATION_DECISIONS (unclassified-decision) has an unknown part \"$tok\" (verified, activate-force, raw, accept, joined with +)"; return 1;; esac; done
+    echo "UNCLASSIFIED_DECISION=ask answered in $MIGRATION_DECISIONS: $given"; dec=$given
+  fi
   if grep -qw ask <<<"$(tr '+' ' ' <<<"$dec")"; then
+    python3 "$HERE/next_flow.py" ask "$MIGRATION_DECISIONS" unclassified-decision unclassified-decision "$(python3 -c 'import json,sys; print(json.dumps({"action": None, "choices": ["verified", "activate-force", "raw", "accept", "verified+raw", "activate-force+raw"], "question": "The migrated rules did not verify cleanly (see %s/verification.md). Until something is decided, 5.0 drops every event it cannot classify, including every event only your custom decoders understood; the agent listeners stay CLOSED. Answer one or more of verified, activate-force, raw, accept, joined with +." % sys.argv[1], "answer": "set \"action\" to verified, activate-force, raw or accept (joined with +, for example verified+raw)"}))' "$w")" || true
     echo "DECISION NEEDED (UNCLASSIFIED_DECISION=ask): the migrated rules did not verify cleanly (rules not reproduced, or rules with no 4.x alert to check them against; see $w/verification.md)."
     echo "Until something is decided, 5.0 drops every event it cannot classify, including every event only your custom decoders understood."
     echo "The agent listeners stay CLOSED. Run again with UNCLASSIFIED_DECISION set to one or more of (joined with +):"
     echo "  verified         activate the migrated rules if their verification has no failure (rmig activates all or none)"
-    echo "  activate-force   activate the migrated rules anyway (rmig activate --yes --force, recorded)"
+    echo "  activate-force   activate the migrated rules anyway (rmig activate --yes --force, recorded; the ruleset review must still be accepted)"
     echo "  raw              index events no integration classified, in wazuh-events-v5-unclassified (costs disk; the finish switches it off)"
     echo "  accept           open the listeners and accept losing those events until the rules are activated"
+    echo "Or answer it in $MIGRATION_DECISIONS, section \"unclassified-decision\" (the same words in \"action\"), and run again."
     return 3
   fi
   : > "$STATE/unclassified.applied.tmp"
   for tok in $(tr '+' ' ' <<<"$dec"); do
     case "$tok" in
       verified)
-        if [ "$vrc" = 0 ]; then   # no NOT_REPRODUCED and no NOT_SILENCED: rmig's own bar for activate without --force
-          rmig activate --workdir "$w" --ca $ca --yes > "$LOGS/rmig-7-activate.log" 2>&1 || { tail -n 20 "$LOGS/rmig-7-activate.log"; return 1; }
-          tail -n 3 "$LOGS/rmig-7-activate.log"; echo "decision applied: the migrated rules have no failed verification (rules without a 4.x sample are not disproven) and are activated"
+        if [ "$vrc" = 0 ] && mostly_no_sample; then
+          # most rules had no 4.x alert to check them against: not disproven is not verified, so nothing is activated
+          # without an answer; raw indexing keeps their events, and the question comes with the point of no return
+          echo "decision applied: the migrated rules are NOT activated: most of them have no 4.x alert to check them against ($(cat "$STATE/ruleset.verify_summary" 2>/dev/null))."
+          echo "  Raw event indexing keeps their events meanwhile; the point-of-no-return stop asks whether to activate them anyway."
+          tok=verified-none
+        elif [ "$vrc" = 0 ]; then   # no NOT_REPRODUCED and no NOT_SILENCED: rmig's own bar for activate without --force
+          rmig_activate "$w" "$ca" || return $?
+          echo "decision applied: the migrated rules have no failed verification (rules without a 4.x sample are not disproven) and are activated"
           tok=activate
         else
           echo "decision applied: the migrated rules are NOT activated: their verification has failures (exit $vrc; $(cat "$STATE/ruleset.verify_summary" 2>/dev/null || echo 'no summary'))."
           echo "  rmig activates all of the tool's content or none, so the rules that did verify cannot be activated alone. Fix the failing rules"
-          echo "  (see $w/verification.md) and run 'rmig activate', or answer UNCLASSIFIED_DECISION=activate-force+raw to activate them anyway."
+          echo "  (see $w/verification.md); raw event indexing keeps their events meanwhile, and the point-of-no-return stop asks whether to activate them anyway."
           tok=verified-none
         fi;;
       activate-force)
-        rmig activate --workdir "$w" --ca $ca --yes --force ${RMIG_ACTIVATE_ARGS:-} > "$LOGS/rmig-7-activate.log" 2>&1 || { tail -n 20 "$LOGS/rmig-7-activate.log"; return 1; }
-        tail -n 4 "$LOGS/rmig-7-activate.log"; echo "decision applied: migrated rules activated with --force (the failed verification is recorded in $w)";;
+        rmig_activate "$w" "$ca" --force || return $?
+        echo "decision applied: migrated rules activated with --force (the failed verification is recorded in $w)";;
       raw)
         python3 "$HELPER" policy-unclassified on || return 1
         echo "decision applied: unclassified events are indexed in wazuh-events-v5-unclassified until phase 11 switches it off";;
@@ -1537,12 +1734,12 @@ op_listeners() {
   $V5/bin/wazuh-manager-conf validate
   if fw_active; then
     local fp; for fp in 1514 1515; do [ -n "$(fw_how $fp)" ] || echo "WARNING: $(fw_kind) does not allow $fp/tcp: 4.x agents cannot reach this manager (they could not reach 4.x either)"; done
-    # E3 fold (item 17): recorded before it is added, so a cut between the two still lets going back remove it
+    # recorded before it is added, so a cut between the two still lets going back remove it
     if [ -z "$(fw_how 1517)" ]; then echo 1517 >> "$STATE/fw.added"; sync "$STATE/fw.added" 2>/dev/null || sync; fw_port add 1517; echo "$(fw_kind): 1517/tcp added to zone $(fw_zone) (runtime and permanent) for 5.0 agents"
     else echo "$(fw_kind): 1517/tcp already allowed ($(fw_how 1517))"; fi
   fi
   systemctl enable wazuh-manager >/dev/null 2>&1 || true
-  guard off   # R2
+  guard off
   local t0=$SECONDS; systemctl restart wazuh-manager; ts > "$STATE/T_listeners_open"
   echo "manager restarted in $((SECONDS - t0)) s; listeners open at $(cat "$STATE/T_listeners_open")"
   sleep 5; ss -ltnH | awk '{print $4}' | grep -E ':(1514|1515|1517)$' | sort | tr '\n' ' '; echo
@@ -1552,7 +1749,7 @@ phase_open() {
   [ "$(host_state)" = v5 ] || die "5.0 is not installed"
   done_ import.gate || die "the import has not passed its gate: opening the listeners now would let agents meet an unverified registry"
   step open.decision    "apply the decision on unclassified events"                          op_decision
-  step open.in_force    "wait until the engine has the decision in force (rule 8, F6-D3)"     op_in_force
+  step open.in_force    "wait until the engine has the decision in force"     op_in_force
   step open.listeners   "open the agent listeners and restart the manager"                   op_listeners
   step open.gate        "gate: a keepalive newer than the opening from every agent (THE OUTAGE ENDS)" op_wait_agents
 }
@@ -1562,11 +1759,11 @@ settings_carried() { [ "$CARRY_SETTINGS" = 1 ] && done_ import.settings && echo 
 vf_compare() {
   local rc=0 crc=0
   if noagents; then echo "no agents: identity check not applicable" > "$LOGS/identity-check-final.log"; else expected_conf
-  $V5/framework/python/bin/python3 "$HERE/identity_stage.py" verify "$BUNDLE_DIR/identity" --state "$BUNDLE_DIR/identity-stage" "${EXP[@]}" > "$LOGS/identity-check-final.log" 2>&1 || rc=$?; fi   # merged: G5's paged verify, not the tool's check (G1); E2 fold: the pass's output expected
+  $V5/framework/python/bin/python3 "$HERE/identity_stage.py" verify "$BUNDLE_DIR/identity" --state "$BUNDLE_DIR/identity-stage" "${EXP[@]}" > "$LOGS/identity-check-final.log" 2>&1 || rc=$?; fi   # G5's paged verify, not the tool's check; the pass's output expected
   echo "identity check exit $rc: $(tail -n 1 "$LOGS/identity-check-final.log")"
   noagents || python3 "$HELPER" settle-agents "$BUNDLE_DIR/truth4" "${VERIFY_SETTLE_SECS:-120}" || true   # E4-rpm gap 3
   python3 "$HELPER" truth5 "$BUNDLE_DIR/truth5"
-  # F10: with the history loaded after the opening, its two lines read PENDING until the history phase has switched it on
+  # with the history loaded after the opening, its two lines read PENDING until the history phase has switched it on
   local hp=0; if [ "$HISTORY_LOAD" = after-open ] && ! done_ history.on; then hp=1; fi
   HISTORY_PENDING=$hp SETTINGS_CARRIED=$(settings_carried) python3 "$HELPER" compare "$BUNDLE_DIR/truth4" "$BUNDLE_DIR/fingerprint" "$BUNDLE_DIR/truth5" | tee "${VERIFY_REPORT:-$BUNDLE_DIR/REPORT-verify.txt}" || crc=${PIPESTATUS[0]}
   echo "ruleset: rmig verify exit $(cat "$STATE/ruleset.verify_rc" 2>/dev/null || echo not-run); decision applied: $(tr '\n' ' ' < "$STATE/unclassified.applied" 2>/dev/null || echo none)"
@@ -1576,11 +1773,14 @@ vf_compare() {
 }
 phase_verify() {
   [ "$(host_state)" = v5 ] || die "5.0 is not installed"
-  if done_ phase.verify && done_ confirm.no_return; then vf_report_only; return 0; fi   # E3 fold (E3-deb N3)
+  if done_ phase.verify && done_ confirm.no_return; then vf_report_only; return 0; fi   # E3 fold
+  # a verification that passed before (the run that asked the point of no return) is a check again: an agent stopped
+  # since is named, not LOST, and the settle wait is short
+  if done_ phase.verify; then export VERIFY_AGAIN=1 VERIFY_SETTLE_SECS=${VERIFY_SETTLE_SECS:-30}; fi
   rm -f "$STATE/verify.compare"
   step verify.compare "compare 5.0 with the fingerprint; report to the user" vf_compare
 }
-vf_report_only() { # E3 fold (E3-deb N3): with the history after the opening, `run` came back through phase 8 to reach the
+vf_report_only() { # with the history after the opening, `run` came back through phase 8 to reach the
   # history, and phase 8 failed while an agent restarted for its upgrade (phase 10), so the history never started.
   # Phase 8 stays strict until it has passed and the point of no return is confirmed (its purpose: deciding whether to go
   # back); after that a rerun reports into REPORT-verify-rerun.txt and the history goes on. Its pass's report is kept.
@@ -1593,7 +1793,7 @@ vf_report_only() { # E3 fold (E3-deb N3): with the history after the opening, `r
   else log "  WARNING phase 8 rerun: exit $rc (an agent upgrading or down reads as not active): see $BUNDLE_DIR/REPORT-verify-rerun.txt; the history goes on"; fi
 }
 
-########################################################################## F10: HISTORY AFTER THE OPENING
+########################################################################## HISTORY AFTER THE OPENING
 hi_load() {
   [ -s "$STATE/T_history_load_begin" ] || ts > "$STATE/T_history_load_begin"
   echo "history load starts $(ts); the agent listeners opened at $(cat "$STATE/T_listeners_open" 2>/dev/null || echo '?'): the agents are served meanwhile"
@@ -1612,33 +1812,33 @@ hi_report() { # the final comparison, history included (the verify phase reporte
 phase_history() {
   [ "$(host_state)" = v5 ] || die "5.0 is not installed"
   if [ "$HISTORY_LOAD" != after-open ]; then
-    done_ import.history_on || die "HISTORY_LOAD=$HISTORY_LOAD but the history was not switched on in phase 6"
-    log "  info  the history was loaded, proven and switched on in phase 6, before the opening (HISTORY_LOAD=$HISTORY_LOAD)"; return 0
+    done_ import.history_on || die "the history was to be loaded before the opening, but it was not switched on in phase 6"
+    log "  info  the history was loaded, proven and switched on in phase 6, before the opening"; return 0
   fi
-  done_ open.gate || die "the listeners are not open: with HISTORY_LOAD=after-open the history is loaded after the opening"
+  done_ open.gate || die "the listeners are not open: the history is loaded after the opening"
   step history.load   "history: load the dump through the shaping pipeline (the agents are already served)" hi_load
   step history.prove  "history: proof per source index"                                im_history_prove
-  step history.on     "history: role audit again, then the two aliases on (rule 9)"    im_history_on
+  step history.on     "history: role audit again, then the two aliases on"    im_history_on
   if [ "$CARRY_SAVED_OBJECTS" = 1 ]; then step history.saved_objects "custom dashboards as a view of the history (after the aliases are on)" im_saved_objects; fi
   step history.report "history: compare 5.0 with the fingerprint again, history included" hi_report
 }
 
 ########################################################################## 9. POINT OF NO RETURN
 history_pending() { [ "$HISTORY_LOAD" = after-open ] && ! done_ history.on; }
-history_pending_note() { # OF1 (E2-deb G7, decisions 10 and 11): what the history's state means for phases 9 to 11
+history_pending_note() { # OF1 (decisions 10 and 11): what the history's state means for phases 9 to 11
   local where="it has not started"
   if done_ history.load; then where="loaded, not yet proven and switched on"
   elif [ -s "$STATE/T_history_load_begin" ]; then where="its load started at $(cat "$STATE/T_history_load_begin") and has not finished"; fi
-  log "    THE 4.x HISTORY IS STILL PENDING ($where): it loads after the opening (decision 10) and is not visible on 5.0 until"
-  log "    it is proven and switched on. '$0 run' completes it. Confirming now is allowed; 'finish' waits for the history,"
+  log "    THE 4.x HISTORY IS STILL PENDING ($where): it loads after the opening and is not visible on 5.0 until"
+  log "    it is proven and switched on. '$ME run' completes it. Confirming now is allowed; 'finish' waits for the history,"
   log "    and the bundle, the only copy of the 4.x alerts once 4.x is gone, is kept until the history is proven."
 }
 banner_phase9() {
   log "=== PHASE 9: POINT OF NO RETURN. Stopped here on purpose."
-  log "    5.0 is serving the agents as 4.x agents. Until you confirm, '$0 back' returns this host to 4.14.x from the bundle;"
-  log "    after the confirmation going back is refused (decision 11): problems are fixed forward on 5.0."
+  log "    5.0 is serving the agents as 4.x agents. Until you confirm, '$ME back' returns this host to 4.14.x from the bundle;"
+  log "    after the confirmation going back is refused: problems are fixed forward on 5.0."
   if history_pending; then history_pending_note; fi
-  log "    To go on: '$0 confirm-no-return', then '$0 agents' and '$0 finish'."
+  [ "${MIG_NEXT:-0}" = 1 ] || log "    To go on: '$ME confirm-no-return', then '$ME agents' and '$ME finish'."
 }
 cmd_confirm() {
   done_ phase.verify || die "phases 1 to 8 are not complete: nothing to confirm"
@@ -1669,7 +1869,7 @@ ag_gate() { # a verdict from evidence for every agent: fleet-upgrade.py's own st
   python3 - "$BUNDLE_DIR/fleet/upgrade-state.json" "$BUNDLE_DIR/fleet/trust-audit.txt" "$BUNDLE_DIR/preflight/fleet-facts.json" <<'EOF'
 import json, re, sys
 st = json.load(open(sys.argv[1])); ags = st.get("agents", {})
-# E5 fold (E5-cluster-rpm gap 6): an agent the run's selection left out (FLEET_ARGS --agents or --groups) never reaches
+# an agent the run's selection left out (FLEET_ARGS --agents or --groups) never reaches
 # the orchestrator's state, so the gate said "0 left on 4.x on purpose" with one on 4.x. Every agent of the 4.x fleet
 # (the pre-copy's fleet facts) that the state does not hold is named, as left on 4.x by the selection.
 try:
@@ -1694,11 +1894,12 @@ for i, a in sorted(ags.items()):
         else: bad[i] = "upgraded, but trust is not proven: " + (t.split(None, 4)[-1] if t else "no line in the trust audit")
     elif s in ("upgraded-trust-unconfirmed", "upgraded-not-verifying"): bad[i] = s + ": " + a.get("reason", "")
     elif s in ("skipped", "held", "planned"): left[i] = "%s, still on 4.x: %s" % (s, a.get("reason", "not requested"))
+    elif s == "waiting-for-agent": left[i] = "not connected, still on 4.x: its upgrade is requested and waits for it to connect (run again once it is back)"
     else: bad[i] = "%s: %s" % (s, a.get("reason", ""))
 for i in sorted(ags):
     print("agent %s %-12s %s" % (i, ags[i].get("name", ""), upgraded.get(i) or left.get(i) or bad.get(i)))
-# E3 fold (E3-deb N5): the agents left only because they were not active (pending or disconnected) are named together
-late = [i for i, a in sorted(ags.items()) if i in left and re.search(r"agent is (pending|disconnected)", a.get("reason", ""))]
+# the agents left only because they were not active (pending or disconnected) are named together
+late = [i for i, a in sorted(ags.items()) if i in left and (a.get("state") == "waiting-for-agent" or re.search(r"agent is (pending|disconnected)", a.get("reason", "")))]
 if late:
     print("not active at the preflight, still on 4.x: %s: run '%s agents' again once they are active" % (" ".join(late), "migrate.sh"))
 if outside:
@@ -1717,25 +1918,25 @@ feed_wait() { # rule 14: wait for the feed's initial load, or with FEED_WAIT_MAX
 }
 ag_feed() { feed_wait; }
 cmd_agents() {
-  done_ confirm.no_return || die "the point of no return is not confirmed: run '$0 confirm-no-return' first"
+  done_ confirm.no_return || die "the point of no return is not confirmed: run '$ME confirm-no-return' first"
   CUR=agents; log "=== PHASE 10 agents BEGIN"; local t0=$SECONDS
-  # E2-deb fix 4: the gate leaves agents "skipped, still on 4.x ... re-run when it is back", so every call runs the steps
+  # the gate leaves agents "skipped, still on 4.x ... re-run when it is back", so every call runs the steps
   # again, as cmd_finish does for its own. fleet-upgrade.py's state file keeps finished agents finished and the request
   # guard holds, so only the late agents are asked. Before this a rerun skipped every step by its marker and upgraded nobody.
   rm -f "$STATE/agents.preflight" "$STATE/agents.run" "$STATE/agents.trust" "$STATE/agents.feed" "$STATE/agents.gate"
-  if noagents; then mark phase.agents; log "=== PHASE 10 agents END: the source had no agent, nothing to upgrade (F6)"; return 0; fi
+  if noagents; then mark phase.agents; log "=== PHASE 10 agents END: the source had no agent, nothing to upgrade"; return 0; fi
   step agents.preflight "agents: preflight (read-only)"                       ag_preflight
   step agents.run       "agents: upgrade in waves, verdicts from evidence"    ag_run
   step agents.trust     "agents: trust audit from the indexer"                ag_trust
-  step agents.feed      "agents: wait for the vulnerability feed's initial load (rule 14; FEED_WAIT_MAX)" ag_feed
+  step agents.feed      "agents: wait for the vulnerability feed's initial load" ag_feed
   step agents.gate      "gate: a verdict from evidence for every agent"       ag_gate
   mark phase.agents; log "=== PHASE 10 agents END ($((SECONDS - t0)) s)"
 }
 
 ########################################################################## 11. FINISH
-fi_legacy() { # F6 (DECISIONS F6-D4): closing is a decision when the only agents below 5.0 are never-connected ones, and
+fi_legacy() { # closing is a decision when the only agents below 5.0 are never-connected ones, and
   # keeping the ports open is a result, not a failure: the steps after this one (raw off, secrets) must still run
-  # E5 fold (E5-cluster-rpm gap 5, E5-cluster-deb gap 10): once the legacy ports are closed, a later finish (after the
+  # once the legacy ports are closed, a later finish (after the
   # raw-at-finish answer, say) does not close them again: that was one more manager restart for nothing
   if [ -s "$STATE/legacy.closed" ]; then rm -f "$STATE/legacy.open"; echo "the legacy ports were closed at $(cat "$STATE/legacy.closed") (state/legacy.closed): not closed again"; return 0; fi
   fu legacy-status | tee "$LOGS/legacy-status.txt"
@@ -1751,21 +1952,23 @@ fi_legacy() { # F6 (DECISIONS F6-D4): closing is a decision when the only agents
       echo "keep legacy: $(echo $others $sess)" > "$STATE/legacy.open"; return 0
     fi
     echo "the only agents below 5.0 on record never connected: $nc(no version, no address; a host may still install an agent with one of these keys)"
-    case "$NEVER_CONNECTED_AT_FINISH" in
-      keep) echo "LEGACY PORTS KEPT OPEN for them (NEVER_CONNECTED_AT_FINISH=keep). To close: NEVER_CONNECTED_AT_FINISH=close (their keys then work only for a 5.0 agent, on 1517) or =remove (delete them), and run finish again"
+    local ncd=$NEVER_CONNECTED_AT_FINISH a
+    if [ -z "$NC_GIVEN" ] && a=$(python3 "$HERE/next_flow.py" answer "$MIGRATION_DECISIONS" never-connected at-finish 2>/dev/null); then ncd=$a; fi
+    case "$ncd" in
+      keep) echo "LEGACY PORTS KEPT OPEN for them. To close them: set \"action\" to \"close\" (their keys then work only for a 5.0 agent, on 1517) or \"remove\" (delete them) in $MIGRATION_DECISIONS, section \"never-connected\", entry \"at-finish\", and run again"
             echo "keep never-connected: $nc" > "$STATE/legacy.open"; return 0;;
       remove) local tok; tok=$(curl -sk -u "wazuh:$(v5env $V5ETC/export/credentials.env WAZUH_MANAGER_API_PASSWORD)" -X POST "https://localhost:55000/security/user/authenticate?raw=true")
               curl -sk -X DELETE "https://localhost:55000/agents?agents_list=$(echo $nc | tr ' ' ',')&status=all&older_than=0s" -H "Authorization: Bearer $tok"; echo
               echo "removed from the registry by the user's decision: $nc";;
       close) echo "closing the legacy ports by the user's decision; still registered: $nc";;
-      *) echo "NEVER_CONNECTED_AT_FINISH: unknown answer '$NEVER_CONNECTED_AT_FINISH' (keep, close, remove)"; return 1;;
+      *) echo "never-connected agents at the finish: unknown answer '$ncd' (keep, close, remove)"; return 1;;
     esac
   fi
-  # rule 14 (MAC1-G6): the restart below would throw away a feed load in progress, so wait for it before touching
+  # rule 14: the restart below would throw away a feed load in progress, so wait for it before touching
   # the configuration (a timeout then leaves the legacy listener as it was)
   feed_wait || return 1
   local c=$V5ETC/wazuh-manager.conf
-  # F5: a rerun after a kill in this step finds the configuration already edited; copying it again would replace the
+  # a rerun after a kill in this step finds the configuration already edited; copying it again would replace the
   # only copy with the legacy listener on (observed: cut 4a). Keep the first copy, as op_listeners does for its own.
   [ -e "$c.before-legacy-off" ] || cp -p "$c" "$c.before-legacy-off"
   sed -i '/<legacy>/,/<\/legacy>/ s#<enabled>yes</enabled>#<enabled>no</enabled>#' "$c"
@@ -1792,24 +1995,36 @@ fw_close_legacy() { # the legacy ports leave the host firewall where they were o
 fi_agents_after() { [ -e "$STATE/legacy.open" ] && { echo "legacy ports kept open ($(cat "$STATE/legacy.open")): no listener changed, nothing to wait for"; return 0; }
   wait_api5; python3 "$HELPER" wait-agents "$BUNDLE_DIR/truth4" 300 "$(cat "$STATE/T_legacy_closed")"; }
 synced_after() { awk -v a="$1" '$0 ~ /Successfully synchronized space .standard./ && ($1" "$2) > a {print $1" "$2}' $V5/logs/wazuh-manager.log | tail -n1; }
-fi_raw_off() { # F6 (DECISIONS F6-D5): raw indexing was for 4.x agents; switch it off when none that reported a version is left
+raw_ask() { # at the point-of-no-return stop: what the finish will do about raw indexing, asked in the same round when the
+  # migrated rules are not active (before, the finish stopped once more on it). Exit 3: the question is open.
+  grep -qw raw "$STATE/unclassified.applied" 2>/dev/null || return 0
+  local rd=0; python3 "$HELPER" raw-decision "$MIGRATION_DECISIONS" "$STATE" "$(RWORK)" "$BUNDLE_DIR/ruleset-src" > /dev/null || rd=$?
+  [ "$rd" = 3 ] && return 3; return 0; }
+fi_raw_off() { # raw indexing was for 4.x agents; switch it off when none that reported a version is left
   grep -qw raw "$STATE/unclassified.applied" 2>/dev/null || { echo "raw indexing was not part of the decision: nothing to switch off"; return 0; }
-  # E5 fold (E5-aio gap 7, E5-cluster-rpm gap 4): the rules and custom decoders a refusal names go on record now, before
+  # the rules and custom decoders a refusal names go on record now, before
   # this finish's secret sweep deletes ruleset-src (a later finish then still names the decoders)
   python3 "$HELPER" raw-facts "$STATE" "$(RWORK)" "$BUNDLE_DIR/ruleset-src" || true
   if grep -q '^keep legacy' "$STATE/legacy.open" 2>/dev/null; then echo "RAW INDEXING KEPT ON: 4.x agents remain ($(cat "$STATE/legacy.open")); run finish again after their upgrade"; return 0; fi
   # design decision 3 follow-up (2026-11-25): only with every migrated rule active, or on an explicit answer
   local rd=0; python3 "$HELPER" raw-decision "$MIGRATION_DECISIONS" "$STATE" "$(RWORK)" "$BUNDLE_DIR/ruleset-src" || rd=$?
-  case "$rd" in 0) ;; 4) echo "RAW INDEXING KEPT ON by your answer (keep-raw): switch it off yourself later (mig_helper.py policy-unclassified off)"; return 0;; *) return "$rd";; esac
+  case "$rd" in 0) ;;
+    4) # keep-raw keeps raw indexing ON: the policy is read back (and switched on again when something switched it off)
+       python3 "$HELPER" policy-unclassified keep || { echo "RAW INDEXING: your answer is keep-raw, but the policy could not be read or set (above)"; return 1; }
+       echo "RAW INDEXING KEPT ON by your answer (keep-raw), read back from the standard policy. To switch it off later: answer \"accept-loss\" in the same entry (\"raw-at-finish\") of ${DECISIONS_SHOWN:-$MIGRATION_DECISIONS} and run '$ME finish'"; return 0;;
+    5) # activate-force: the tool activates the migrated rules anyway (recorded), then raw indexing goes off
+       rmig_activate "$(RWORK)" "${IDX5_CA:-/etc/wazuh-indexer/certs/root-ca.pem}" --force || return $?
+       echo "activate-force" >> "$STATE/unclassified.applied"; echo "the migrated rules are activated by your answer (activate-force; the verification is recorded in $(RWORK))";;
+    *) return "$rd";; esac
   local m i t; m=$(date -u +"%Y/%m/%d %H:%M:%S")
   python3 "$HELPER" policy-unclassified off || return 1
   # a policy change acts only once the engine has synchronised the space (about 85 s here): report it switched off then
   for i in $(seq 1 60); do t=$(synced_after "$m"); [ -n "$t" ] && { echo "the engine loaded the standard policy without raw indexing at $t"; return 0; }; sleep 5; done
   echo "the engine did not report the standard space synchronised within 300 s"; return 1
 }
-fi_secrets() { # F6 (DECISIONS F6-D6): the bundle's secrets, found by their values, not by a list of directories.
-  # E2 fold: one implementation, bundle_secrets.py, shared with going back (back.secrets), discard and the cluster finish;
-  # it also opens archives (E2-rpm gap 5) and no longer names the identity stage's state as another bundle (E2-deb G7)
+fi_secrets() { # the bundle's secrets, found by their values, not by a list of directories.
+  # one implementation, bundle_secrets.py, shared with going back (back.secrets), discard and the cluster finish;
+  # it also opens archives and no longer names the identity stage's state as another bundle
   python3 "$HERE/bundle_secrets.py" sweep --bundle "$BUNDLE_DIR" --search "$WORK_DIR" \
     --outside "$V4_INSTALL_FILES_TAR" --outside "$V5ETC/authd.pass.pre-migration" || return 1
   du -sh "$BUNDLE_DIR"
@@ -1820,21 +2035,21 @@ fi_groups_post() { # C4 D5: per group, once every agent of the group runs 5.0; a
   python3 "$HERE/settings_stage.py" groups --phase post-upgrade --groups "$BUNDLE_DIR/groups4" --decisions "$MIGRATION_DECISIONS" \
     --work "$BUNDLE_DIR/settings/groups-post" --shared "$V5ETC/shared" --versions "$v"
 }
-fi_history_data() { # H5: after a passing proof, the alert content leaves the bundle; what proves the history stays
+fi_history_data() { # after a passing proof, the alert content leaves the bundle; what proves the history stays
   [ -d "$HIST" ] || { echo "no history in this bundle"; return 0; }
   wait_indexer idx5; hload remove-bundle
 }
 cmd_finish() {
   done_ phase.agents || die "the agents phase is not complete"
-  # F10: finish deletes history/data from the bundle, the only copy of the 4.x alerts once 4.x is gone
-  done_ import.history_on || done_ history.on || die "the history is not loaded, proven and switched on yet: finish would delete its only copy (history/data). Run '$0 run' to complete the history phase first"
+  # finish deletes history/data from the bundle, the only copy of the 4.x alerts once 4.x is gone
+  done_ import.history_on || done_ history.on || die "the history is not loaded, proven and switched on yet: finish would delete its only copy (history/data). Run '$ME run' to complete the history phase first"
   CUR=finish; log "=== PHASE 11 finish BEGIN"; local t0=$SECONDS
-  rm -f "$STATE/finish.legacy" "$STATE/finish.agents" "$STATE/finish.raw_off" "$STATE/finish.groups_post"   # F6: rerun after the user's decision or later upgrades
+  rm -f "$STATE/finish.legacy" "$STATE/finish.agents" "$STATE/finish.raw_off" "$STATE/finish.groups_post"   # rerun after the user's decision or later upgrades
   step finish.legacy  "close the legacy ports (only when no agent below 5.0 remains, or as decided)"  fi_legacy
   step finish.agents  "every agent sends a keepalive after the legacy ports closed"    fi_agents_after
   step finish.raw_off "switch raw event indexing off once no 4.x agent remains"        fi_raw_off
-  step finish.groups_post "group files: the post-upgrade pass for every group whose agents all run 5.0 (C4)" fi_groups_post
-  step finish.history_data "history: delete the alert files once proven, keep manifest and journal (H5)" fi_history_data
+  step finish.groups_post "group files: the post-upgrade pass for every group whose agents all run 5.0" fi_groups_post
+  step finish.history_data "history: delete the alert files once proven, keep manifest and journal" fi_history_data
   step finish.secrets "delete the bundle's secrets, then search for their values"     fi_secrets
   if [ -e "$STATE/legacy.open" ]; then log "=== PHASE 11 finish END ($((SECONDS - t0)) s): secrets deleted; LEGACY PORTS STILL OPEN ($(cat "$STATE/legacy.open")); run finish again when that changes"
   else mark phase.finish; log "=== PHASE 11 finish END ($((SECONDS - t0)) s)"; fi
@@ -1842,7 +2057,7 @@ cmd_finish() {
 
 
 ########################################################################## GOING BACK (phase 5 to phase 9)
-bk_stop_history() { # F10: with the history loaded after the opening, a load may still be running when the user goes back
+bk_stop_history() { # with the history loaded after the opening, a load may still be running when the user goes back
   local p
   p=$(pgrep -f 'migrate\.sh run' | tr '\n' ' ' || true)
   if [ -n "$p" ]; then echo "a 'migrate.sh run' is still running (pid $p): stopping it, so it does not go on to its next step"; pkill -TERM -f 'migrate\.sh run' || true; fi
@@ -1859,18 +2074,17 @@ bk_stop_history() { # F10: with the history loaded after the opening, a load may
 }
 bk_stop5() {
   ts > "$STATE/T_back_begin"
-  # R2/F7: the guard goes on before the 5.0 manager stops and comes off only once the restored 4.x manager runs (bk_verify):
+  # the guard goes on before the 5.0 manager stops and comes off only once the restored 4.x manager runs (bk_verify):
   # until the 4.x registry is restored, a fresh 4.x manager hands out keys with no password (F7: an agent re-keyed under
   # another agent's id 7 s after 1515 opened)
-  if [ "$LAB_BACK_GUARD" = 0 ]; then guard off; echo "LAB SWITCH LAB_BACK_GUARD=0: going back WITHOUT the agent guard"
-  else guard on; fi
-  bk_stop_history   # F10: a history load running after the opening is stopped before 5.0 is removed
+  guard on
+  bk_stop_history   # a history load running after the opening is stopped before 5.0 is removed
   systemctl stop wazuh-manager wazuh-dashboard 2>/dev/null || true
   echo "5.0 manager stopped at $(ts): the agents are without a manager from here"
   if [ -s "$STATE/fw.added" ] && fw_active; then local fp; for fp in $(sort -u "$STATE/fw.added"); do fw_port remove "$fp" || true; echo "$(fw_kind): $fp/tcp removed again (the migration had added it)"; done; fi
 }
 bk_remove5() {
-  pkg_repair "before the 5.0 removal" || return 1   # F5
+  pkg_repair "before the 5.0 removal" || return 1
   if [ -n "$(pkgver wazuh-manager)$(pkgver wazuh-indexer)$(pkgver wazuh-dashboard)" ] && [ "$(host_state)" != v4 ]; then
     mkdir -p "$WORK_DIR/v5-uninstall"; cp -f "$BUNDLE_DIR/v5/wazuh-install.sh" "$WORK_DIR/v5-uninstall/"
     ( cd "$WORK_DIR/v5-uninstall" && bash ./wazuh-install.sh -u ) > "$LOGS/back-remove-5.0.log" 2>&1 || { tail -n 20 "$LOGS/back-remove-5.0.log"; return 1; }
@@ -1883,7 +2097,7 @@ bk_remove5() {
   echo "5.0 removed; bundle intact"
 }
 bk_install4() {
-  if [ "$V4_REINSTALLER" = external ]; then # R2: the deployment's own 4.x tool (the user's v4.14.x playbook) reinstalls 4.x
+  if [ "$V4_REINSTALLER" = external ]; then # the deployment's own 4.x tool (the user's v4.14.x playbook) reinstalls 4.x
     [ "$(guard status)" = on ] || guard on
     if [ "$(host_state)" != v4 ] || [ -z "$(pkgver wazuh-indexer)" ] || [ -z "$(pkgver wazuh-dashboard)" ] || [ -z "$(pkgver filebeat)" ]; then
       echo "WAITING FOR THE EXTERNAL INSTALLER: 5.0 is removed and the agent guard is on. Run the 4.x deployment (the user's"
@@ -1896,21 +2110,16 @@ bk_install4() {
   fi
   if [ "$(host_state)" = v4 ] && [ -n "$(pkgver wazuh-indexer)" ] && [ -n "$(pkgver wazuh-dashboard)" ] && [ -n "$(pkgver filebeat)" ]; then echo "4.x packages are installed already"; return 0; fi
   local d="$WORK_DIR/v4-install" args=(-a) rc=0
+  v4_assistant_ok "$(v4_fix_later)" || return 1
   rm -rf "$d"; mkdir -p "$d"; cp -f "$BUNDLE_DIR/v4/wazuh-install.sh" "$d/"
   [ -z "$(pkgver wazuh-manager)$(pkgver wazuh-indexer)$(pkgver wazuh-dashboard)$(pkgver filebeat)" ] || args+=(-o)
   local off="$BUNDLE_DIR/v4/offline"
-  if [ "$V4_PACKAGES_CACHE" = 1 ] && [ -s "$off/wazuh-offline.tar.gz" ]; then # F7: reinstall from the packages kept in the bundle
+  if [ "$V4_PACKAGES_CACHE" = 1 ] && [ -s "$off/wazuh-offline.tar.gz" ]; then # reinstall from the packages kept in the bundle
     ( cd "$off" && sha256sum --quiet -c wazuh-offline.tar.gz.sha256 ) || { echo "the 4.x package set in the bundle does not match its checksum"; return 1; }
     cp -f "$off/wazuh-offline.tar.gz" "$d/"
     if [ "$PKGFAM" = rpm ]; then rpm -q lsof >/dev/null 2>&1 || { rpm -Uvh --replacepkgs "$off"/os-deps/*.rpm && echo "lsof installed from the bundle (the offline mode requires it)"; }
     else dpkg -s lsof >/dev/null 2>&1 || { dpkg -i "$off"/os-deps/lsof_*.deb && echo "lsof installed from the bundle (the offline mode requires it)"; }; fi
     args+=(-of); echo "reinstalling 4.x from the package set kept in the bundle (offline mode, nothing downloaded)"
-    if [ "${LAB_GNUPG_SHIM:-0}" = 1 ] && [ "$PKGFAM" = rpm ]; then
-      # F7 lab shim, recorded in DECISIONS: the 4.14 assistant's offline mode checks "yum list installed" for a package
-      # named gnupg, which RHEL calls gnupg2; the shim adds that one line to the listing and changes nothing else.
-      yum() { if [ "${1:-}" = list ] && [ "${2:-}" = installed ]; then command yum "$@"; rpm -q gnupg2 >/dev/null 2>&1 && echo "gnupg.x86_64 shim-for-gnupg2 @f7"; else command yum "$@"; fi; }
-      export -f yum; echo "LAB SHIM: yum list installed reports gnupg2 also as gnupg"
-    fi
   else echo "reinstalling 4.x with the 4.x assistant from the internet"; fi
   ts > "$STATE/T_install4_begin"
   ( cd "$d" && bash ./wazuh-install.sh "${args[@]}" ) 2>&1 | mask_passwords > "$LOGS/back-install-4x.log" || rc=${PIPESTATUS[0]}   # E2-deb G11
@@ -1953,12 +2162,12 @@ bk_restore() {
   for i in $(seq 1 60); do curl -sk -u "wazuh:$V4_API_PASSWORD" -X POST "https://localhost:55000/security/user/authenticate?raw=true" | grep -q '^ey' && break; sleep 3; done; sleep 10
   echo "6. the custom dashboard (the .kibana index is not in the bundle): import the exported saved objects"
   local code; for i in $(seq 1 40); do
-    code=$(curl -sk -o "$WORK_DIR/back-so.out" -w '%{http_code}' -u "admin:$V4_INDEXER_ADMIN_PASSWORD" -X POST "https://127.0.0.1:443/api/saved_objects/_import?overwrite=true" -H 'osd-xsrf: true' --form file=@"$BUNDLE_DIR/dashboard/saved-objects.ndjson;filename=v4.ndjson" || true)   # R2: refused while the 4.x dashboard starts (curl exit 7 ended the step on the AMI)
+    code=$(curl -sk -o "$WORK_DIR/back-so.out" -w '%{http_code}' -u "admin:$V4_INDEXER_ADMIN_PASSWORD" -X POST "https://127.0.0.1:443/api/saved_objects/_import?overwrite=true" -H 'osd-xsrf: true' --form file=@"$BUNDLE_DIR/dashboard/saved-objects.ndjson;filename=v4.ndjson" || true)   # refused while the 4.x dashboard starts (curl exit 7 ended the step on the AMI)
     [ "$code" = 200 ] && break; sleep 5
   done
   echo "saved objects import: HTTP $code $(cut -c1-160 "$WORK_DIR/back-so.out")"
 }
-bk_agent_dbs_prepare() { # OF1 (E2-deb G4): a -wal or -shm the reinstall left beside a database the archive replaces would be
+bk_agent_dbs_prepare() { # a -wal or -shm the reinstall left beside a database the archive replaces would be
   # replayed into the restored file by SQLite; the manager is stopped here, so they are only leftovers
   local f n
   for f in "$V4/queue/db/global.db" $(sed "s|^\([^ ]*\) .*|$V4/queue/db/\1|" "$1/agent-dbs.txt" 2>/dev/null | grep '\.db$' || true); do
@@ -1967,7 +2176,7 @@ bk_agent_dbs_prepare() { # OF1 (E2-deb G4): a -wal or -shm the reinstall left be
 }
 bk_agent_dbs_check() {
   if [ ! -f "$1/agent-dbs.txt" ]; then
-    echo "   this bundle holds no per-agent databases (taken before OF1): inventory, FIM baselines and SCA state are rebuilt from the agents' next scans"; return 0; fi
+    echo "   this bundle holds no per-agent databases (taken by an older version of this tool): inventory, FIM baselines and SCA state are rebuilt from the agents' next scans"; return 0; fi
   local n bad=""; while read -r n s; do [ -n "$n" ] || continue
     [ "$(stat -c %s "$V4/queue/db/$n" 2>/dev/null || echo -1)" = "$s" ] || bad="$bad $n"; done < "$1/agent-dbs.txt"
   [ -z "$bad" ] || { echo "per-agent databases not restored at their frozen size:$bad"; return 1; }
@@ -1975,10 +2184,10 @@ bk_agent_dbs_check() {
 }
 bk_verify() {
   local R="$BUNDLE_DIR/v4/rollback"
-  if [ "$(guard status)" = on ]; then # F7: what the guard refused while it was on (the counters are reset by "off")
+  if [ "$(guard status)" = on ]; then # what the guard refused while it was on (the counters are reset by "off")
     if command -v iptables >/dev/null 2>&1; then iptables -L MIGGUARD -n -v -x 2>/dev/null | sed "s/^/  guard: /"; else nft list table inet migguard 2>/dev/null | sed "s/^/  guard: /"; fi
   fi
-  guard off   # R2: the 4.x registry is restored
+  guard off   # the 4.x registry is restored
   export V4_INDEXER_ADMIN_PASSWORD; V4_INDEXER_ADMIN_PASSWORD=$(v4pw "$R/wazuh-install-files.tar" admin); export V4_API_PASSWORD; V4_API_PASSWORD=$(v4pw "$R/wazuh-install-files.tar" wazuh)
   python3 - "$BUNDLE_DIR/truth4" "$(cat "$STATE/T_back_manager4_started")" "$AGENT_WAIT_SECS" <<'EOF'
 import base64, json, os, ssl, sys, time, urllib.request
@@ -2075,39 +2284,39 @@ back_manifest() { # everything the return reads must equal the frozen bundle; dr
   if [ -n "$bad" ]; then echo "$bad" | head -n 10; return 1; fi
   echo "note: bundle files changed since the freeze in parts the return does not read: $(grep -c FAILED <<<"$out") ($(grep FAILED <<<"$out" | head -n 3 | tr '\n' ' '))"
 }
-abandoned_secrets() { # E2-deb G11 / E2-rpm gap 5: a bundle that will not be used again keeps no secret. Going back is over
+abandoned_secrets() { # a bundle that will not be used again keeps no secret. Going back is over
   # (the 4.x manager runs from the restored files) or the bundle was abandoned before 4.x was removed. First what the
   # 4.x reinstall left in the work directory (its wazuh-install-files.tar: the reinstall's CA and admin private keys and
   # passwords, gzip inside a .tar name, unseen by the search; and the copy of the offline package set, 1.7 GB the
   # finish's search then read for 395 s), then the bundle's carried secrets by value. The 4.x install files the user
   # keeps are not named: 4.x is in use again.
   if [ -d "$WORK_DIR/v4-install" ]; then
-    # E4-rpm gap 4: only the files that hold credentials are overwritten (the install files, their unpacked passwords
+    # only the files that hold credentials are overwritten (the install files, their unpacked passwords
     # and keys); the public package set beside them (about 1.7 GB, 237 s of shredding) is a plain delete
     find "$WORK_DIR/v4-install" -type f \( -name 'wazuh-install-files*' -o -name '*.tar' -o -name '*passwords*' -o -name '*.pem' \
          -o -name '*.key' -o -name 'credentials*' -o -name '*.env' \) ! -name '*.rpm' ! -name '*.deb' -exec shred -u {} + 2>/dev/null || true
     rm -rf "${WORK_DIR:?}/v4-install"
     echo "deleted $WORK_DIR/v4-install (the 4.x reinstall's credential files shredded, its copy of the package set deleted)"
   fi
-  # E3 fold (E3-rpm 7): the 4.x package set kept for an offline way back (1.7 GB on RHEL 9) has no use once the host is
+  # the 4.x package set kept for an offline way back (1.7 GB on RHEL 9) has no use once the host is
   # back on 4.x or the bundle is abandoned; it holds no secret, and leaving it made every later sweep read it (283 s)
   if [ -d "$BUNDLE_DIR/v4/offline" ]; then
     echo "deleted $BUNDLE_DIR/v4/offline (the 4.x package set kept for an offline way back, $(du -sh "$BUNDLE_DIR/v4/offline" | cut -f1); no secret in it)"
     rm -rf "${BUNDLE_DIR:?}/v4/offline"
   fi
-  python3 "$HERE/bundle_secrets.py" sweep --bundle "$BUNDLE_DIR" --search "$WORK_DIR"
+  python3 "$HERE/bundle_secrets.py" sweep --bundle "$BUNDLE_DIR" --search "$WORK_DIR" ${SWEEP_KEEP_SAMPLE:+--keep-sample}
 }
-bk_retention() { # E3 fold (E3-deb N4): the reinstalled 4.x indexer has no ISM policy and the alerts came back as new
+bk_retention() { # the reinstalled 4.x indexer has no ISM policy and the alerts came back as new
   # indices, so the site lost its retention and the next bundle's pre-copy read "none" and loaded 365 days. The policies
   # and each alert index's attachment, recorded at the pre-copy (ism-4x.json), are put back; a policy already there is kept
   export V4_INDEXER_ADMIN_PASSWORD; V4_INDEXER_ADMIN_PASSWORD=$(v4pw "$BUNDLE_DIR/v4/rollback/wazuh-install-files.tar" admin)
   python3 "$HELPER" ism-restore4 "$BUNDLE_DIR/ism-4x.json"
 }
-bk_secrets() { abandoned_secrets; echo "this bundle records a finished return and its secrets are deleted: to migrate again, use a new BUNDLE_DIR"; }
-cmd_discard() { # E2-deb G11: the secret cleanup for a bundle that never reaches the finish and did not go back
+bk_secrets() { SWEEP_KEEP_SAMPLE=1 abandoned_secrets; echo "this bundle records a finished return and its secrets are deleted: to migrate again, run ${WM_SELF:-./wazuh-migrate.sh}: it starts a new attempt by itself and keeps this one's files beside it"; }
+cmd_discard() { # the secret cleanup for a bundle that never reaches the finish and did not go back
   [ -d "$STATE" ] || die "no migration is recorded in $BUNDLE_DIR"
   if done_ replace.remove4x && ! done_ back.done && ! done_ phase.finish; then
-    die "4.x was removed by this run and the host has not gone back: this bundle is the way back and the only copy of the 4.x data. Run '$0 back' (or finish the migration) instead"
+    die "4.x was removed by this run and the host has not gone back: this bundle is the way back and the only copy of the 4.x data. Run '$ME back' (or finish the migration) instead"
   fi
   local p; p=$(pgrep -f 'migrate\.sh (run|back|agents|finish)' | tr '\n' ' ' || true)
   [ -z "$p" ] || die "a migrate.sh command is running (pid $p): stop it first"
@@ -2117,7 +2326,7 @@ cmd_discard() { # E2-deb G11: the secret cleanup for a bundle that never reaches
   if [ "$(host_state)" = v4 ] && ! systemctl is-active -q wazuh-manager 2>/dev/null; then
     log "    note: the 4.x manager is not running (the freeze stops it): 'systemctl enable --now wazuh-manager filebeat' if you are not migrating now"
   fi
-  log "=== DISCARD END: $BUNDLE_DIR holds no secret any more and cannot be used to migrate; use a new BUNDLE_DIR"
+  log "=== DISCARD END: $BUNDLE_DIR holds no secret any more and cannot be used to migrate; to migrate, run ${WM_SELF:-./wazuh-migrate.sh}: it starts a new attempt by itself and keeps this one's files beside it"
 }
 cmd_back() {
   [ -d "$STATE" ] || die "no migration is recorded in $BUNDLE_DIR"
@@ -2133,20 +2342,185 @@ cmd_back() {
   step back.install4 "reinstall 4.14.x with the 4.x assistant"                        bk_install4
   step back.restore  "restore configuration, registry, security, alerts, dashboards"  bk_restore
   step back.verify   "agents reconnect with ids, keys and groups; compare with the truth" bk_verify
-  step back.retention "the 4.x ISM policies and the alert indices' attachments put back (E3-deb N4)" bk_retention
-  step back.secrets  "delete the bundle's secrets and the reinstall's credentials (E2-deb G11)" bk_secrets
+  step back.retention "the 4.x ISM policies and the alert indices' attachments put back" bk_retention
+  step back.secrets  "delete the bundle's secrets and the reinstall's credentials" bk_secrets
   mark back.done; jr back end "$((SECONDS - t0)) s"
   log "=== GOING BACK END ($((SECONDS - t0)) s): this host runs 4.x again. Agent outage: $(cat "$STATE/T_back_begin") to $(cat "$STATE/T_back_agents")"
-  log "    to migrate again, use a new BUNDLE_DIR (this one records a finished return; its secrets are deleted)."
+  log "    to migrate again, run ${WM_SELF:-./wazuh-migrate.sh}: it starts a new attempt by itself and keeps this one's files beside it (this one records a finished return; its secrets are deleted)."
 }
+
+########################################################################## THE ONE COMMAND (next)
+# `migrate.sh` with no command, or `migrate.sh next`, runs from wherever the migration is to the next point that needs
+# the person and stops there with exit 3, one question and the decisions file it is answered in. Running the same command
+# again continues. Its only stops: an input it cannot find, an open decision before the outage (the ruleset review
+# included), the roles that would lose access when the old alerts are switched on, the point of no return (an answer in
+# the decisions file stands for confirm-no-return), and the raw-at-finish question when it applies. After the point of no
+# return it runs agents and finish by itself. Each part runs as the advanced command of the same name in a child
+# process, so a failed step ends that child only; the failure is reported and the same command continues from it.
+# Exit codes: 0 finished, 3 a question is open, 4 waiting for 4.x agents (run again later), 10 the 5.0 install is left to
+# the deployment tool (V5_INSTALLER=external), anything else a failure.
+NX_INV=""; NX_DEC=()   # the cluster inventory (empty on an all-in-one); every decisions file a question can be in
+CLUSTER_HOME="${CLUSTER_HOME:-/root/wazuh-migration-cluster}"   # on the 4.x master: the inventory the tool writes, and its state
+nx_log() { log "$*"; [ ! -d "$LOGS" ] || printf '[%s] %s\n' "$(ts)" "$*" >> "$LOGS/${NX_LOGNAME:-migrate.log}" 2>/dev/null || true; }
+nx_child() { # nx_child <command> [args]: the advanced command in a child process
+  local rc=0
+  if [ -n "$NX_INV" ]; then MIG_NEXT=1 WM_SELF="$ME" bash "$HERE/migrate-cluster.sh" --inventory "$NX_INV" "$@" || rc=$?
+  else MIG_NEXT=1 WM_SELF="$ME" bash "$SELF" "$@" || rc=$?; fi
+  return "$rc"; }
+nx_question() { # the first open question of the decisions files; exit 3
+  python3 "$HERE/next_flow.py" question "${NX_DEC[@]}" || return 1
+  nx_log "=== PAUSED for the question above. Answer it in that file, then run '$ME' again: it goes on from here."
+  exit 3; }
+nx_stopped() { # nx_stopped <rc>: a child stopped; a question, a wait for the deployment tool, or a failure
+  local rc=$1 what
+  if [ "$rc" = 10 ]; then nx_log "=== WAITING for your deployment tool to install 5.0 (V5_INSTALLER=external, see above); then run '$ME' again"; exit 10; fi
+  nx_question || true
+  what=$(python3 "$HERE/next_flow.py" last-failure "$RESULTS" 2>/dev/null || true)
+  if [ -n "$what" ]; then nx_log "=== FAILED: ${what%%$'\t'*}. Its output: ${what#*$'\t'}"
+  else nx_log "=== FAILED (exit $rc): see the output above and $LOGS"; fi
+  nx_log "    Fix the cause and run '$ME' again: it continues from the failed step (what is done is not done again)."
+  [ "$rc" != 3 ] && [ "$rc" != 0 ] || rc=1   # 3 means a question; a failure never exits 3
+  exit "$rc"; }
+nx_inputs() { # the inputs the run cannot do without: the environment's, found, or answered; else a question
+  local out rc=0 a=() n
+  for n in V4_INSTALL_FILES_TAR IDENTITY_TOOL RMIG_DIR; do
+    if [ -n "${NX_GIVEN[$n]:-}" ]; then a+=("$n!=${!n}"); else a+=("$n=${!n}"); fi
+  done
+  out=$(python3 "$HERE/next_flow.py" inputs "${NX_DEC[0]}" "${a[@]}") || rc=$?
+  while IFS= read -r kv; do [ -n "$kv" ] && eval "export $kv"; done <<<"$out"
+  [ "$rc" = 0 ] || nx_question || die "an input is missing and no question could be written to ${NX_DEC[0]}"; }
+nx_cluster_setup() { # on the 4.x master of a cluster: the inventory (written once), SSH access from the decisions file
+  local inv="$CLUSTER_HOME/inventory.json" ins
+  NX_DEC=("$CLUSTER_HOME/decisions.json")
+  mkdir -p "$CLUSTER_HOME"; chmod 700 "$CLUSTER_HOME"
+  if [ ! -s "$inv" ]; then
+    nx_inputs
+    # the inventory names files that later runs read again: a stable copy of the identity tool (the one-file tool's own
+    # copy lives in a directory removed at exit)
+    install -m 600 "$IDENTITY_TOOL" "$CLUSTER_HOME/wazuh-migrate-identity.py"; IDENTITY_TOOL="$CLUSTER_HOME/wazuh-migrate-identity.py"
+    ins=$(python3 -c 'import json,sys; print(json.dumps(dict(zip(["v4_install_files","v4_assistant","v5_assistant","v5_artifact_urls","identity_tool","ruleset_tool"], sys.argv[1:]))))' \
+      "$V4_INSTALL_FILES_TAR" "$V4_ASSISTANT" "$V5_ASSISTANT" "$V5_ARTIFACT_URLS" "$IDENTITY_TOOL" "$RMIG_DIR")
+    python3 "$HERE/next_flow.py" cluster-inventory "$inv" --install-files "$V4_INSTALL_FILES_TAR" --inputs "$ins" || die "the cluster inventory could not be built (see above)"
+  fi
+  python3 "$HERE/next_flow.py" ssh "$inv" "${NX_DEC[0]}" || nx_question || die "no SSH question could be written"
+  NX_INV="$inv"; }
+nx_where() { # all-in-one | cluster <inventory>: what this host runs
+  local role
+  if [ -n "$NEXT_INVENTORY" ]; then echo "cluster $(readlink -m "$NEXT_INVENTORY")"; return; fi
+  if [ -s "$CLUSTER_HOME/inventory.json" ]; then echo "cluster-home"; return; fi      # a cluster run started here
+  if [ -d "$STATE" ]; then echo all-in-one; return; fi                                  # an all-in-one run started here
+  role=$(python3 "$HERE/next_flow.py" cluster-role "$V4/etc/ossec.conf")
+  case "$role" in master) echo cluster-home;; worker*) echo "$role";; *) echo all-in-one;; esac; }
+nx_new_attempt() { # nx_new_attempt <state dir>: the last attempt went back to 4.x (or its bundle was discarded). A new
+  # attempt starts by itself: the earlier one's directories are kept beside it as <dir>.attempt-<n> (their 4.x alerts
+  # serve the verification again), the answers given then are carried, and the paths stay the defaults (no BUNDLE_DIR)
+  local st=$1 n=1 why
+  why=$([ -e "$st/state/back.done" ] && echo "went back to 4.x at $(cat "$st/state/back.done")" || echo "was discarded at $(cat "$st/state/discarded" 2>/dev/null)")
+  while [ -e "$st.attempt-$n" ]; do n=$((n + 1)); done
+  if [ -n "$NX_INV" ]; then
+    nx_child new-attempt "$n" || die "the earlier attempt's bundles could not be set aside on every node (above): nothing else was changed"
+    mv "$st" "$st.attempt-$n"; mkdir -p "$st/decisions"; chmod 700 "$st" "$st/decisions"
+    local f; for f in "$st.attempt-$n"/decisions/*.json; do [ -e "$f" ] && python3 "$HERE/next_flow.py" carry-answers "$f" "$st/decisions/$(basename "$f")" > /dev/null; done
+    python3 - "${NX_DEC[0]}" <<'EOF2'
+import json, sys
+p = sys.argv[1]
+try:
+    d = json.load(open(p))
+except (OSError, ValueError):
+    sys.exit(0)
+for k in ("point-of-no-return", "unclassified-finish", "unclassified-decision"):
+    d.pop(k, None)
+    for n in (d.get("nodes") or {}).values():
+        if isinstance(n, dict):
+            n.pop(k, None)
+json.dump(d, open(p, "w"), indent=1, sort_keys=True)
+EOF2
+  else
+    mv "$st" "$st.attempt-$n"; mkdir -p "$st"; chmod 700 "$st"
+    [ "$(readlink -m "$MIGRATION_DECISIONS")" = "$(readlink -m "$st/decisions.json")" ] && \
+      python3 "$HERE/next_flow.py" carry-answers "$st.attempt-$n/decisions.json" "$MIGRATION_DECISIONS" > /dev/null
+  fi
+  nx_log "=== NEW ATTEMPT: the last attempt $why. Its files are kept in $st.attempt-$n; a new attempt starts in $st,"
+  nx_log "    with the answers you gave then (only the point of no return is asked again)."; }
+nx_state() { # the state directory of the run (the controller's for a cluster)
+  if [ -n "$NX_INV" ]; then python3 "$HERE/cluster/inventory.py" get "$NX_INV" state_dir; else echo "$BUNDLE_DIR"; fi; }
+cmd_next() {
+  local where st
+  where=$(nx_where)
+  case "$where" in
+    worker*) die "this host is a worker of a 4.x cluster (its master: ${where#worker }): run the tool on the master";;
+    cluster-home) nx_cluster_setup;;
+    cluster\ *) NX_INV="${where#cluster }"; NX_DEC=("$(dirname "$NX_INV")/decisions.json");;
+    *) NX_DEC=("$MIGRATION_DECISIONS"); mkdir -p "$BUNDLE_DIR"; chmod 700 "$BUNDLE_DIR"
+       [ -e "$BUNDLE_DIR/state/confirm.no_return" ] || nx_inputs;;
+  esac
+  st=$(nx_state); STATE="$st/state"; LOGS="$st/logs"; RESULTS="$st/results"
+  [ -z "$NX_INV" ] || NX_LOGNAME=migrate-cluster.log   # every node's questions are carried into the controller's one file
+  nx_log "migrate.sh: the one command on $([ -n "$NX_INV" ] && echo "the cluster of $NX_INV" || echo "this all-in-one host") (state $st)"
+  if [ -e "$STATE/back.done" ] || [ -e "$STATE/discarded" ]; then
+    nx_new_attempt "$st"
+    [ -n "$NX_INV" ] || { mkdir -p "$BUNDLE_DIR"; chmod 700 "$BUNDLE_DIR"; nx_inputs; }
+  fi
+  if ! done_ confirm.no_return; then
+    # the point of no return and the finish's raw question belong to one attempt's outage: before this attempt froze
+    # 4.x, every such answer in the file is an earlier attempt's (a "confirm" there would skip this attempt's stop)
+    if ! ls "$STATE"/freeze.* > /dev/null 2>&1 && ! done_ phase.freeze; then
+      python3 "$HERE/next_flow.py" attempt-answers "${NX_DEC[0]}" - | while IFS= read -r l; do nx_log "$l"; done \
+        || die "the earlier attempt's point-of-no-return answers could not be set aside in ${NX_DEC[0]}: nothing was started"; fi
+    # nothing of the outage starts while a question is open: the pre-copy (which asks every question it can before the
+    # outage) must pass, and no question may be open in any decisions file
+    # the outage run that follows a pre-copy in the same command does not assess again (it printed twice)
+    if ! done_ phase.precopy; then nx_child run --through precopy || nx_stopped $?; export MIG_ASSESSED=1; fi
+    if ! ls "$STATE"/freeze.* > /dev/null 2>&1 && ! done_ phase.freeze; then nx_question || true; fi
+    nx_child run || nx_stopped $?
+    { done_ phase.verify && { [ -z "$NX_INV" ] || done_ phase.history; }; } || nx_stopped 1
+    # this attempt's mark: written once, when its point of no return is first reached; a new attempt (or another
+    # state directory) has another, so an answer written for one attempt is never read by another
+    [ -s "$STATE/attempt.id" ] || echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $$ $RANDOM" > "$STATE/attempt.id"
+    local ponr; ponr="$st $(cat "$STATE/attempt.id")"
+    python3 "$HERE/next_flow.py" attempt-answers "${NX_DEC[0]}" "$ponr" | while IFS= read -r l; do nx_log "$l"; done \
+      || die "an earlier attempt's point-of-no-return answer could not be set aside in ${NX_DEC[0]}: nothing was confirmed"
+    if [ "$(python3 "$HERE/next_flow.py" answer "${NX_DEC[0]}" point-of-no-return confirm-no-return 2>/dev/null)" != confirm ]; then
+      # what the finish will ask about raw indexing (when the migrated rules are not active) is asked now, in this round
+      if [ -n "$NX_INV" ]; then nx_child raw-ask > /dev/null 2>&1 || true; else raw_ask || true; fi
+      python3 "$HERE/next_flow.py" no-return "${NX_DEC[0]}" "$ME" "$([ -n "$NX_INV" ] && echo cluster || echo all-in-one)" "$ponr"
+      nx_question
+    fi
+    nx_child confirm-no-return || nx_stopped $?
+  fi
+  # agents again while 4.x agents keep the legacy ports open: each call upgrades the late ones
+  if ! done_ phase.agents || { [ -e "$STATE/legacy.open" ] && ! grep -q '^keep never-connected' "$STATE/legacy.open"; }; then
+    nx_child agents || nx_stopped $?
+  fi
+  if ! done_ phase.finish; then nx_child finish || nx_stopped $?; fi
+  if done_ phase.finish; then nx_log "=== MIGRATION FINISHED: 5.0 serves every agent, the legacy ports are closed and the bundle's secrets are deleted."; exit 0; fi
+  if grep -q '^keep never-connected' "$STATE/legacy.open" 2>/dev/null; then
+    nx_log "=== MIGRATION FINISHED, with the legacy ports kept open for agents that never connected ($(cat "$STATE/legacy.open"))."
+    python3 "$HERE/next_flow.py" ask "${NX_DEC[0]}" never-connected at-finish '{"action": "keep", "choices": ["keep", "close", "remove"], "question": "Agents that never connected keep the legacy ports open. keep: leave them open; close: close them (the agents keep their keys, which then work only for a 5.0 agent); remove: delete those agents from the registry and close the ports."}' > /dev/null 2>&1 || true
+    nx_log "    To close them later: in ${NX_DEC[0]}, section \"never-connected\", entry \"at-finish\", set \"action\" to \"close\" (their keys then work only for a 5.0 agent) or \"remove\", and run '$ME' again."
+    exit 0
+  fi
+  nx_log "=== WAITING: agents still on 4.x ($(sed 's/^keep legacy: //' "$STATE/legacy.open" 2>/dev/null || echo "see the finish above")): the legacy ports stay open for them."
+  nx_log "    An agent that is not connected is upgraded once it connects again. Run '$ME' again later: it upgrades the agents that came back and finishes."
+  exit 4; }
 
 ########################################################################## main
 if [ "$CMD" = __step ]; then   # internal: one step body, called by step() in a fresh process (errexit cannot be switched off by the caller)
   declare -F "${1:-}" >/dev/null || { echo "__step: no such step function '${1:-}'" >&2; exit 2; }
-  trap - ERR; set -Eeuo pipefail; "$1"; exit 0
+  trap - ERR; set -Eeuo pipefail; trap "$STEP_ERR_TRAP" ERR; "$1"; exit 0
 fi
-case "$CMD" in run|status|confirm-no-return|agents|finish|back|discard|image-prepare|image-agent-back|guard|dashboards-rollback) ;; *) sed -n '2,16p' "$0"; exit 2;; esac
+case "$CMD" in next|run|status|confirm-no-return|agents|finish|back|discard|image-prepare|image-agent-back|guard|dashboards-rollback) ;; *) usage; exit 2;; esac
+if [ "$CMD" = back ] || [ "$CMD" = status ] || [ "$CMD" = finish ] || [ "$CMD" = agents ]; then
+  # on the master of a cluster the one command runs the cluster: 'back' (and 'status') go to the cluster too, and
+  # 'back master' is the master's own way back while the workers still serve on 4.x
+  case "$(nx_where)" in
+    cluster-home) exec bash "$HERE/migrate-cluster.sh" --inventory "$CLUSTER_HOME/inventory.json" "$CMD" ${BACK_ARG:-};;
+    cluster\ *) exec bash "$HERE/migrate-cluster.sh" --inventory "${NEXT_INVENTORY}" "$CMD" ${BACK_ARG:-};;
+  esac
+  [ -z "${BACK_ARG:-}" ] || { echo "'back master' is for the master of a cluster; this host runs an all-in-one migration: use 'back'" >&2; exit 2; }
+fi
 bundle_path_check
+if [ "$CMD" = next ]; then cmd_next; fi
 if [ "$CMD" = status ]; then
   echo "host state: $(host_state)"; [ -d "$STATE" ] || { echo "no run recorded in $BUNDLE_DIR"; exit 0; }
   for f in "$STATE"/*; do [ -e "$f" ] && echo "$(basename "$f") $(cat "$f")"; done; exit 0
@@ -2157,11 +2531,11 @@ trap 'rc=$?; log "ERROR: line $LINENO exited $rc during ${CUR:-startup}; markers
 RUN_T0=$SECONDS
 log "migrate.sh $CMD: host state $(host_state), bundle $BUNDLE_DIR, from=${FROM:-} only=${ONLY:-} through=${THROUGH:-}"
 jr "command.$CMD" begin "host state $(host_state)"
-[ "$CMD" = guard ] || guard_resume   # F5
+[ "$CMD" = guard ] || guard_resume
 case "$CMD" in
   confirm-no-return) cmd_confirm;;
   image-prepare) image_prepare;;
-  image-agent-back) image_agent_back;;     # R2: after phase 7 on an image: its own agent enrolls again (new id)           # R2: on a new 5.0 image, before the 4.x freeze: the image's agent out, listeners closed
+  image-agent-back) image_agent_back;;     # after phase 7 on an image: its own agent enrolls again (new id)           # R2: on a new 5.0 image, before the 4.x freeze: the image's agent out, listeners closed
   guard) guard "${GUARD_ARG:-status}";;
   dashboards-rollback) # rule 20: reset only the attributes the dashboard step changed, where nobody changed them since
     python3 "$HELPER" rollback-saved-objects "$BUNDLE_DIR/dashboard/saved-objects-ledger.json";;
@@ -2170,8 +2544,8 @@ case "$CMD" in
   back) cmd_back;;
   discard) cmd_discard;;
   run)
-    [ ! -e "$STATE/back.done" ] || die "this bundle records a finished return to 4.x: use a new BUNDLE_DIR to migrate again"
-    [ ! -e "$STATE/discarded" ] || die "this bundle was discarded (its secrets are deleted): use a new BUNDLE_DIR to migrate again"
+    [ ! -e "$STATE/back.done" ] || die "this bundle records a finished return to 4.x: to migrate again, run ${WM_SELF:-./wazuh-migrate.sh}: it starts a new attempt by itself and keeps this one's files beside it"
+    [ ! -e "$STATE/discarded" ] || die "this bundle was discarded (its secrets are deleted): to migrate again, run ${WM_SELF:-./wazuh-migrate.sh}: it starts a new attempt by itself and keeps this one's files beside it"
     started=0; [ -z "$FROM" ] && started=1
     n=0
     for CUR in "${PHASES[@]}"; do
@@ -2179,14 +2553,15 @@ case "$CMD" in
       [ "$CUR" = "$FROM" ] && started=1
       [ "$started" = 1 ] || continue
       if [ -n "$ONLY" ] && [ "$ONLY" != "$CUR" ]; then continue; fi
-      # F6: verify_bundle too: it must run again right before the removal, and its own early return covers "already removed"
+      if [ "$CUR" = assess ] && [ "${MIG_ASSESSED:-0}" = 1 ] && done_ phase.assess; then log "=== PHASE $n assess: passed earlier in this command, not repeated"; continue; fi
+      # verify_bundle too: it must run again right before the removal, and its own early return covers "already removed"
       if done_ "phase.$CUR" && [ "$CUR" != assess ] && [ "$CUR" != verify ] && [ "$CUR" != verify_bundle ] && [ -z "$ONLY" ] && [ -z "$FROM" ]; then
         log "=== PHASE $n $CUR: already complete ($(cat "$STATE/phase.$CUR")), skipped"
       else
         log "=== PHASE $n $CUR BEGIN"; jr "phase.$CUR" begin
         t0=$SECONDS
         "phase_$CUR"
-        if [ "$CUR" = verify ] && [ "${VERIFY_REPORT_ONLY:-0}" = 1 ]; then jr "phase.$CUR" report "$((SECONDS - t0)) s"   # E3 fold (N3): the pass's mark stays
+        if [ "$CUR" = verify ] && [ "${VERIFY_REPORT_ONLY:-0}" = 1 ]; then jr "phase.$CUR" report "$((SECONDS - t0)) s"   # the pass's mark stays
         else mark "phase.$CUR"; jr "phase.$CUR" end "$((SECONDS - t0)) s"; fi
         log "=== PHASE $n $CUR END ($((SECONDS - t0)) s)"
       fi

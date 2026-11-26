@@ -346,7 +346,7 @@ def main():
                 prev.update(pr["baseline"])
         plan = {"run": run, "started": time.time(), "baseline": {n: cps[n] for n in names if n in cps},
                 "prev_baseline": {} if a.full else {n: prev[n] for n in names if n in prev},
-                "count_start": {n: int(c.request("GET", "/%s/_count" % q(n))[1]["count"]) for n in names}}  # RD3: not docs.count
+                "count_start": {n: int(c.request("GET", "/%s/_count" % q(n))[1]["count"]) for n in names}}  # not docs.count
         write_json(os.path.join(out, "runs", "run-%03d.json" % run), plan)
     run = plan["run"]
 
@@ -400,7 +400,7 @@ def main():
     for n in names:
         c.request("POST", "/%s/_refresh" % q(n), ok=(200,))
     end_cps = shard_checkpoints(c, pats)
-    # RD3: _cat/indices docs.count also counts nested sub-documents (the 4.x template maps data.ms-graph.evidence,
+    # _cat/indices docs.count also counts nested sub-documents (the 4.x template maps data.ms-graph.evidence,
     # resources, managedDevices, ... as nested), so it is not the number of alerts; _count is.
     counts = {}
     for n in names:

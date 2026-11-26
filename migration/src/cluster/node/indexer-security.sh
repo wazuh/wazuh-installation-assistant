@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # indexer-security.sh <export|import|restore4|verify4> : on indexer NODE-1 (the node the assistants run -s / securityadmin
-# on). E2 fold, E2-cluster gap 4: the cluster bundle had no indexer security, so going back lost the site's indexer users,
+# on). the cluster bundle had no indexer security, so going back lost the site's indexer users,
 # roles and mappings (acme-reader, acme_alerts_ro) and nothing carried them to 5.0. The all-in-one's steps, per node:
 #   export   (pre-copy, 4.x live)  migrate.sh pc_indexer_security: the REST export and the securityadmin backup (what going
 #            back restores) into indexer-security/, and C23's indexer stage export (users with their hashes, roles,

@@ -5,6 +5,9 @@
   dispatcher into a temporary library, sourced with BUNDLE_DIR and the product paths pointed at temporary directories,
   and every system command it would call (systemctl, iptables, dpkg-query, curl...) is a stub on PATH that records its
   arguments and answers what the test tells it to.
+* The ruleset cases run the real ruleset migration tool (rmig) on the 4.14.10 stock ruleset. MIG_TEST_RMIG_DIR names the
+  rmig checkout and MIG_TEST_STOCK_RULESET a 4.14.10 /var/ossec/ruleset (rules/, decoders/); a case that needs one that is
+  not found is skipped and says which variable to set (needs()).
 """
 import importlib.util
 import json
@@ -14,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import unittest
 
 sys.dont_write_bytecode = True
 TOOL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,6 +38,38 @@ def load(path, name=None, extra_path=None):
         return mod
     finally:
         sys.path[:] = saved
+
+
+def runs(tree, name):
+    """A lab driver (cluster/runs/<name>): in the tree when it has one (an arm's copy), else in tool/lab/, where the
+    merged tool keeps its lab drivers outside src/."""
+    p = os.path.join(tree, "cluster", "runs", name)
+    return p if os.path.exists(p) else os.path.join(TOOL, "lab", "cluster", "runs", name)
+
+
+RMIG_SKIP = "needs the ruleset migration tool: set MIG_TEST_RMIG_DIR"
+STOCK_SKIP = "needs the 4.14.10 stock ruleset: set MIG_TEST_STOCK_RULESET"
+
+
+def env_dir(name):
+    """The directory the environment variable `name` names, or None when it is not set. A value that is not a
+    directory stops the run: a typo must not turn into skipped cases."""
+    d = os.environ.get(name)
+    if not d:
+        return None
+    if not os.path.isdir(d):
+        raise SystemExit("%s=%s is not a directory" % (name, d))
+    return os.path.abspath(d)
+
+
+def needs(rmig="", stock=""):
+    """A decorator that skips a case (or every case of a class) when what it needs was not found: pass the rmig
+    directory and/or the stock ruleset directory it uses, None when not found; an argument left out is not needed."""
+    if rmig is None:
+        return unittest.skip(RMIG_SKIP)
+    if stock is None:
+        return unittest.skip(STOCK_SKIP)
+    return lambda case: case
 
 
 class Shell:

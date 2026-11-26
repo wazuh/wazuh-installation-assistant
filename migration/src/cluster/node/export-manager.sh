@@ -11,7 +11,7 @@ grep -v '^$' "$LOGS/identity-export.log" | head -n 14
 d="${BUNDLE_DIR:?}/v4"; mkdir -p "$d/rollback" "$d/alerts" "$d/etc" "$d/ruleset"
 cp -a $V4/etc/. "$d/etc/"; cp -a $V4/ruleset/. "$d/ruleset/"
 find $V4/logs/alerts -name '*.json' -o -name '*.json.gz' | while read -r f; do cp -f "$f" "$d/alerts/$(echo "${f#$V4/logs/alerts/}" | tr / _)"; done
-# OF1 (E2-deb G4): this node's per-agent databases (inventory, FIM baselines, SCA state) too, listed with their sizes
+# this node's per-agent databases (inventory, FIM baselines, SCA state) too, listed with their sizes
 find $V4/queue/db -maxdepth 1 -type f -regextype posix-extended -regex '.*/[0-9]+\.db(-wal|-shm)?' -printf '%f %s\n' 2>/dev/null | sort > "$d/rollback/agent-dbs.txt" || true
 tar -czf "$d/rollback/var-ossec.tar.gz" -C / var/ossec/etc var/ossec/api/configuration var/ossec/queue/db/global.db var/ossec/queue/agent-groups var/ossec/queue/rids \
     $(sed 's|^\([^ ]*\) .*|var/ossec/queue/db/\1|' "$d/rollback/agent-dbs.txt") 2>/dev/null || true
@@ -23,11 +23,11 @@ tar -czf "$d/rollback/etc-filebeat.tar.gz" -C / etc/filebeat 2>/dev/null || true
 [ -s /var/lib/filebeat/filebeat.keystore ] && tar -czf "$d/rollback/filebeat-keystore.tar.gz" -C / var/lib/filebeat/filebeat.keystore
 [ -d /usr/share/filebeat/module/wazuh ] && tar -czf "$d/rollback/filebeat-module-wazuh.tar.gz" -C / usr/share/filebeat/module/wazuh
 cp -f "$V4_TAR" "$d/rollback/wazuh-install-files.tar"
-# CL1 (E4-cluster gap 2b): this attempt's own settings collection, from the stopped 4.x node, into this attempt's v4/:
+# this attempt's own settings collection, from the stopped 4.x node, into this attempt's v4/:
 # a second forward attempt (the first one's v4/ kept as v4.gen1) still has v4/config for its settings plan
 if [ "${CARRY_SETTINGS:-1}" = 1 ]; then bash "$(dirname "$(readlink -f "$0")")/settings-node.sh" collect4 | tail -n 3 || die "the 4.x settings could not be collected"; fi
 pkgs > "$d/rollback/packages.txt"
 echo "$ROLE" > "$d/rollback/role"
-# E5 fold (E5-cluster-deb 06): decisions.json is the user's answers, rewritten by later steps: not part of the manifest
+# decisions.json is the user's answers, rewritten by later steps: not part of the manifest
 ( cd "$BUNDLE_DIR" && find . -type f ! -path './state/*' ! -path './logs/*' ! -path './identity.old.*' ! -name MANIFEST.sha256 ! -path ./decisions.json -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256 )
 mark export.done; log "bundle on this node: $(wc -l < "$BUNDLE_DIR/MANIFEST.sha256") file(s), $(du -sh "$BUNDLE_DIR" | cut -f1)"

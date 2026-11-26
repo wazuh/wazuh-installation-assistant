@@ -141,10 +141,10 @@ _H5_OFF = re.compile(r'([+-]\d{2})(\d{2})$')
 
 
 def date_norm(v):
-    """The date as it is written to the indexer, or None when it is not a date (merged from H5 and S5).
+    """The date as it is written to the indexer, or None when it is not a date.
     Python before 3.11 refuses in datetime.fromisoformat an offset written +0000 (every 4.x `timestamp`, and
     `@timestamp` of the 4.x sample alerts) and fractions of other than 3 or 6 digits (cloud logs carry 7 and 9), so on
-    RHEL 9's python3.9 those dates were dropped while 3.12 kept them (H5; S5: 57,706 of 100,006 alerts). The check
+    RHEL 9's python3.9 those dates were dropped while 3.12 kept them (S5: 57,706 of 100,006 alerts). The check
     normalises both before parsing (H5: offset and fraction; S5 had the offset only) and returns the ORIGINAL value, as
     3.12 always did and as H5 loaded it on 3.9 (S5 rewrote +0000 to +00:00; the indexer accepted both)."""
     if not isinstance(v, str):
@@ -272,6 +272,8 @@ class Mapper:
         p,v = present[0]
         if op in ('copy','cast','array'):
             out = values(v) if op == 'array' else (v if v is None or isinstance(v, (str, int, float, bool)) else copy.deepcopy(v))
+            if r.get('trim'):  # 4.x group lists keep the blank after a comma ("windows, WEF" gives " WEF")
+                out = [x.strip() if isinstance(x, str) else x for x in out] if isinstance(out, list) else (out.strip() if isinstance(out, str) else out)
         elif op == 'lookup':
             table = self.spec['lookups'][r['table']]['rows']
             def key(x):
@@ -295,11 +297,11 @@ class Mapper:
                 out = out[0] if out else None
         elif op == 'last_segment':
             s = str(v)
-            if r.get('unquote'):  # RD2: GCP logName ends in 'cloudaudit.googleapis.com%2Factivity'
+            if r.get('unquote'):  # GCP logName ends in 'cloudaudit.googleapis.com%2Factivity'
                 import urllib.parse
                 s = urllib.parse.unquote(s)
             out = s.rsplit('/', 1)[-1]
-        elif op == 'strip_prefix':  # RD2: 4.x 'Package less than X' -> native 'Fixed in X'; docker 'sha256:'
+        elif op == 'strip_prefix':  # 4.x 'Package less than X' -> native 'Fixed in X'; docker 'sha256:'
             s = str(v)
             out = r.get('replacement', '') + s[len(r['prefix']):] if s.startswith(r['prefix']) else s
         elif op == 'basename':

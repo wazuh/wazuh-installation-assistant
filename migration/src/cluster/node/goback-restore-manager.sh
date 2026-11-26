@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # goback-restore-manager.sh <master|worker> : on a freshly reinstalled 4.x manager node. Puts back etc/, the API configuration
 # (rbac.db), the agent registry (global.db), the group membership files and the message counters from this node's bundle.
-# K5: NO_FILEBEAT=1 (the master's way back alone while the indexers are already 5.0): Filebeat is stopped and disabled
+# NO_FILEBEAT=1 (the master's way back alone while the indexers are already 5.0): Filebeat is stopped and disabled
 # and stays so; this node's alerts then exist only in alerts.json, as on the 4.x workers after order C's step 2.
 . "$(dirname "$(readlink -f "$0")")/common.sh"
 ROLE=$1; R="$BUNDLE_DIR/v4/rollback"
@@ -19,7 +19,7 @@ else
   systemctl start wazuh-manager; bash "$(dirname "$(readlink -f "$0")")/filebeat-repair.sh" || true; fb="Filebeat $(systemctl is-active filebeat)"  # fix 06
 fi
 for i in $(seq 1 60); do curl -sk -o /dev/null -u "wazuh:$(pw4 wazuh)" -X POST "https://localhost:55000/security/user/authenticate?raw=true" && break; sleep 3; done
-# CL1: the host firewall as it was: the ports the opening added (open-node.sh records them in fw.added, as the
+# the host firewall as it was: the ports the opening added (open-node.sh records them in fw.added, as the
 # all-in-one's op_listeners does) are removed again, as migrate.sh's way back does
 if [ -s "$STATE/fw.added" ]; then ( aio_lib; for fp in $(sort -u "$STATE/fw.added"); do fw_port remove "$fp" || true; echo "$(fw_kind): $fp/tcp removed again (the migration had added it)"; done ) || true; rm -f "$STATE/fw.added"; fi
 sleep 5; ts > "$STATE/T_goback_manager_started"; mark goback.restore.done

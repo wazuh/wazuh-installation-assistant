@@ -13,7 +13,7 @@
 aio_lib
 rmig_dialect_planned() { [ -n "$RMIG_ENGINE_HELPERS" ] && { echo "$RMIG_ENGINE_HELPERS"; return; }   # the assistant staged in work_dir
   dialect_for_stage "$(sed -n 's/^staging_url_stage="\(.*\)"/\1/p' "$V5_DIR/wazuh-install.sh" 2>/dev/null | head -n1)"; }
-[ -d "$RMIG_DIR" ] || die "the ruleset tool is not at $RMIG_DIR (inputs.ruleset_tool)"
+[ -d "$RMIG_DIR" ] || die "the ruleset tool is not at $RMIG_DIR on this node (the inventory's inputs.ruleset_tool is copied there)"
 rc=0
 case "${1:-}" in
 precopy) [ -d /var/ossec/etc ] || die "no 4.x manager on this node"; pc_ruleset_src && pc_ruleset_build || rc=$?

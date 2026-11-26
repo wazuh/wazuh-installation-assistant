@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # dashboard-objects.sh <export|import5|import4> <dashboard-url> [5.0 indexer address] : on the MASTER (the node whose bundle
-# the cluster flow goes back from). E2 fold, E2-cluster gap 4: the cluster bundle held no saved objects, so the whole-
+# the cluster flow goes back from). the cluster bundle held no saved objects, so the whole-
 # cluster go-back lost every custom dashboard ("ACME payments overview") and nothing carried them to 5.0. The
 # all-in-one's steps, with the dashboard and the indexer on other hosts (mig_helper.py's MIG_DASH*_URL, MIG_IDX5_* inputs):
 #   export  (pre-copy, 4.x live)  migrate.sh pc_saved_objects: the custom dashboards, visualizations and searches into

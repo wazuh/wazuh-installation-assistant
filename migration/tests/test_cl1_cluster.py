@@ -100,7 +100,7 @@ class NoEnrollmentPasswordOnTheSourceE4Breaker02And03(unittest.TestCase):
               "#!%s\nimport json, sys\njson.dump(sys.argv[1:], open(%r, 'w'))\nprint('GATE PASS (fake stage)')\n" % (sys.executable, argv), 0o755)
         if with_file:
             write(os.path.join(n.bundle, "identity", "authd.pass"), "x" * 20 + "\n")
-        rc, out = n.run("identity-stage-master.sh", env={"STOP_AFTER": "preflight"})
+        rc, out = n.run("identity-stage-master.sh", env={"MIG_TEST_STOP_AFTER_STAGE": "1", "STOP_AFTER": "preflight"})   # STOP_AFTER: the name in the pre-fix copy
         self.assertEqual(rc, 0, out)
         return json.load(open(argv))
 
@@ -161,6 +161,7 @@ case "$cmd" in
   *"find . -type f"*) echo "$FP";;
   *"cat "*decisions.json*) [ -n "${DECISIONS:-}" ] && echo "$DECISIONS";;
   *"cat "*wazuh-install-files.tar*) echo "TAR-CONTENT";;
+  *cluster_control*) printf '%b' "${CLUSTER_CONTROL:-NAME TYPE VERSION ADDRESS\nwazuh-1 master 4.14.11 10.0.0.11\nwazuh-2 worker 4.14.11 10.0.0.12\n}";;   # F6 fold: the back-master gate
   *run-step.sh*) echo "step ok";;
 esac
 exit 0
@@ -176,6 +177,20 @@ def src_fp(tree):
     return out
 
 
+def v5_config_for(nodes):
+    """A 5.0 config.yml naming the inventory's nodes with their addresses (the assistant's shape)."""
+    out = ["nodes:"]
+    for sec, roles in (("indexer", ("indexer",)), ("manager", ("master", "worker")), ("dashboard", ("dashboard",))):
+        ns = [n for n in nodes if n.get("role") in roles]
+        if ns:
+            out.append("  %s:" % sec)
+            for n in ns:
+                out += ["    - name: %s" % n["name"], '      ip: "%s"' % n.get("address", "")]
+                if sec == "manager":
+                    out.append("      node_type: %s" % n["role"])
+    return "\n".join(out) + "\n"
+
+
 class Cluster:
     """A controller sandbox: inventory, key, inputs and a fake SSH; runs src/migrate-cluster.sh."""
     NODES = [{"name": "node-1", "role": "indexer", "address": "10.0.0.1"}, {"name": "node-2", "role": "indexer", "address": "10.0.0.2"},
@@ -189,6 +204,9 @@ class Cluster:
         for f in ("v4tar", "v4.sh", "v5.sh", "config.yml", "idtool.py"):
             write(p("in", f), "x\n")
         os.makedirs(p("in", "rmig"))
+        # R1: the inventory check reads the ruleset tool for what this tool passes it (a stand-in naming the three)
+        for rel, token in (("reasons.py", "RM-P-REVIEW-PENDING"), ("cli.py", "--findings"), (os.path.join("api", "commands.py"), "--engine-limit")):
+            write(p("in", "rmig", "rmig", rel), "# %s\n" % token)
         write(p("key"), "k\n", 0o600)
         write(p("fakessh"), FAKE_SSH, 0o755)
         self.calls = p("calls")
@@ -198,6 +216,9 @@ class Cluster:
                                "v5_config": p("in", "config.yml"), "identity_tool": p("in", "idtool.py"), "ruleset_tool": p("in", "rmig")},
                     "nodes": [dict(n) for n in self.NODES], "settings": {}}
         self.inv.update(over)
+        # F6 fold: assess checks the 5.0 config.yml against the inventory (a placeholder no longer passes)
+        if open(p("in", "config.yml")).read() == "x\n":
+            write(p("in", "config.yml"), v5_config_for(self.inv["nodes"]))
         self.save()
         self.env = dict(os.environ, CALLS=self.calls, FP=src_fp(tree), MIG_SSH=p("fakessh"), REGISTRY_WAIT="0", REGISTRY_TRIES="2")
 
@@ -258,7 +279,7 @@ class OneCommandItem1(_C):
         # every fold into the history bundle before the history loads; the aliases after the proof
         self.assertLess(self.index(st, M, "fold-alertsjson.sh --merge"), self.index(st, M, "history5-master.sh https://10.0.0.1:9200 apply"))
         self.assertLess(self.index(st, M, "history5-master.sh https://10.0.0.1:9200 prove"), self.index(st, M, "history5-master.sh https://10.0.0.1:9200 on"))
-        self.assertIn("PHASE 9: POINT OF NO RETURN", out)
+        self.assertIn("=== POINT OF NO RETURN", out)          # F7: the cluster numbers its phases in order
         for f in ("journal.ndjson", "state/phase.history", "results/precopy.history.json"):
             self.assertTrue(os.path.exists(os.path.join(c.t, "st", f)), f)
         # the cluster's facts reach every node step: the inventory's manager names and one indexer
@@ -294,7 +315,7 @@ class OneCommandItem1(_C):
         q = '{"settings": [{"id": "x", "action": null}]}'
         rc, out, calls = c.run("run", FAIL_PAT="plan-precopy", FAIL_RC="3", DECISIONS=q)
         self.assertEqual(rc, 3, out[-2000:])
-        self.assertIn('answer the open entries ("action": null) in %s/st/decisions/wazuh-1.json (node wazuh-1)' % c.t, out)
+        self.assertIn('answer the questions listed under QUESTION at the end of this run, in %s (node wazuh-1\'s under "nodes", "wazuh-1"' % os.path.join(c.t, "decisions.json"), out)   # F7: one file; F8: no "action": null
         self.assertEqual(json.load(open(os.path.join(c.t, "st", "decisions", "wazuh-1.json"))), json.loads(q))
         self.assertEqual(os.stat(os.path.join(c.t, "st", "decisions", "wazuh-1.json")).st_mode & 0o077, 0)
         # the answered file goes back to the node before the next attempt
@@ -399,7 +420,7 @@ class TheCommandsAroundTheRunItem1And4(_C):
                         ("10.0.0.11", "finish-node.sh groups-post"), ("10.0.0.11", "finish-node.sh history-data"),
                         ("10.0.0.11", "finish-node.sh secrets"), ("10.0.0.12", "finish-node.sh secrets"), ("10.0.0.1", "finish-node.sh secrets")):
             self.index(st, node, s)
-        self.assertIn("PHASE 11 finish END", out)
+        self.assertIn("PHASE 13 finish END", out)          # F7: numbered after the cluster's 11 phases
 
     def test_raw_off_refused_stops_the_finish_with_the_masters_decisions_file(self):
         c = self.ran()
@@ -407,7 +428,7 @@ class TheCommandsAroundTheRunItem1And4(_C):
         c.run("agents")
         rc, out, calls = c.run("finish", FAIL_PAT="finish-node.sh raw-off", FAIL_RC="3")
         self.assertEqual(rc, 3)
-        self.assertIn("decisions/wazuh-1.json (node wazuh-1)", out)
+        self.assertIn('decisions.json (node wazuh-1\'s under "nodes", "wazuh-1"', out)   # F7: the controller's one file
         self.assertFalse([s for s in Cluster.steps(calls) if "secrets" in s[1]])
 
     def test_the_whole_cluster_goes_back_in_order(self):
@@ -714,7 +735,9 @@ class TheGuidesOtherPointsItem5(unittest.TestCase):
         for who in ("ma", "wk"):
             self.assertLess(mc.index('step %s.guard' % ("master" if who == "ma" else '"workers.$w')), mc.index('step %s.remove4x' % ("master" if who == "ma" else '"workers.$w')))
         self.assertIn("op_listeners", open(os.path.join(SRC, "cluster", "node", "open-node.sh")).read())
-        self.assertIn("guard off   # R2", open(os.path.join(SRC, "migrate.sh")).read())
+        aio = open(os.path.join(SRC, "migrate.sh")).read()
+        body = aio[aio.index("\nop_listeners() {"):]
+        self.assertIn("\n  guard off\n", body[:body.index("\n}\n")])   # the opening takes the guard off
 
     def test_c_the_way_back_reloads_with_the_shipped_loader_only(self):
         self.assertFalse(os.path.exists(os.path.join(SRC, "cluster", "node", "history-load.sh")))
@@ -839,7 +862,7 @@ class OneDeadlineForTheWholeLoadNF2(unittest.TestCase):
             raise RuntimeError("the indexer did not answer for 60 s (x): the load stops here and resumes with the same command")
         buf = io.StringIO()
         with mock.patch.object(sys, "argv", ["history_load.py", "apply", "--bundle", t]), mock.patch.object(HL, "cmd_apply", boom), \
-                mock.patch.object(HL.hm, "Api", lambda a: None), contextlib.redirect_stdout(buf):
+                mock.patch.object(HL, "Api", lambda a: None), contextlib.redirect_stdout(buf):
             with self.assertRaises(SystemExit) as e:
                 HL.main()
         self.assertEqual(e.exception.code, 1)
@@ -982,7 +1005,7 @@ class RawStaysOnUntilTheRulesAreActiveOrAnswered(unittest.TestCase):
         self.assertIn("rule not active: 100202 | acmeshop payment refused | NOT_REPRODUCED", out)
         self.assertIn("events of these custom decoders would be dropped with raw off: acmeshop", out)
         q = json.load(open(self.dec))["unclassified-finish"][0]
-        self.assertEqual((q["id"], q["action"], q["choices"]), ("raw-at-finish", None, ["activated", "keep-raw", "accept-loss"]))
+        self.assertEqual((q["id"], q["action"], q["choices"]), ("raw-at-finish", None, ["activate-force", "keep-raw", "accept-loss", "activated"]))   # F7: activate-force
 
     def test_each_answer_is_followed_and_recorded(self):
         self.decide()
@@ -1037,7 +1060,7 @@ class Perf1SnapshotShapesInProcesses(unittest.TestCase):
                 sent[_m].extend(pairs)
                 stats["created"] += len(pairs)
             with mock.patch.object(HL, "_docs_of_index", lambda api, s, page: iter(docs)), mock.patch.object(HL, "bulk", bulk), \
-                    mock.patch.object(HL.hm, "Api", lambda a: None), mock.patch.object(HL, "load_registry", lambda a: {}):
+                    mock.patch.object(HL, "Api", lambda a: None), mock.patch.object(HL, "load_registry", lambda a: {}):
                 if mode == "threads":
                     HL.load_index(a, b, src, {"lock": None, "f": io.StringIO()})
                 else:

@@ -20,7 +20,7 @@ case "$cmd" in
 read)
   MIG_IDX_CAFILE=/etc/filebeat/certs/root-ca.pem; [ -s "$MIG_IDX_CAFILE" ] || MIG_IDX_CAFILE=$(ca4)
   rc=0; python3 "$SRC/mig_helper.py" retention-4x "$BUNDLE_DIR/retention-4x.json" 2>&1 | tee "$LOGS/retention-4x.log" || rc=$?
-  [ "$rc" = 0 ] || die "the 4.x retention could not be read (rule 19): nothing written"
+  [ "$rc" = 0 ] || die "the 4.x retention could not be read: nothing written"
   chmod 600 "$BUNDLE_DIR/retention-4x.json" "$BUNDLE_DIR/ism-4x.json"
   mark retention.read;;
 restore4)

@@ -471,6 +471,7 @@ class GobackFoldBeforeAny4xManagerA7(_Node):
 
 ASSISTANT4 = r"""#!/usr/bin/env bash
 # a stand-in for the 4.x assistant: refuses an installed component unless -o, as the real one does
+readonly wazuh_version="4.14.10"   # F6 fold: the version line the tool checks (it installs 4.14.10-1 below)
 echo "assistant4 $*" >> "$FAKE/assistant.calls"
 case "$1" in --wazuh-server) pk="wazuh-manager filebeat";; --wazuh-indexer) pk=wazuh-indexer;; --wazuh-dashboard) pk=wazuh-dashboard;; *) exit 0;; esac
 over=0; for a in "$@"; do [ "$a" = -o ] && over=1; done
@@ -618,7 +619,7 @@ class TheNodeCheckBeforeGoingBackB9(_Node):
 
     def ready(self, n, role="master"):
         write(os.path.join(n.env["MIG_HOME"], "v5", "wazuh-install.sh"), "#!/bin/bash\nexit 0\n", 0o755)
-        write(os.path.join(n.env["MIG_HOME"], "v4", "wazuh-install.sh"), "#!/bin/bash\nexit 0\n", 0o755)
+        write(os.path.join(n.env["MIG_HOME"], "v4", "wazuh-install.sh"), "#!/bin/bash\nreadonly wazuh_version=\"4.14.11\"\nexit 0\n", 0o755)
         write(n.env["V4_TAR"], "4.x install files (fake)\n")
         write(os.path.join(n.bundle, "history", "manifest.json"), "{}\n")
         write(os.path.join(n.bundle, "v4", "etc", "client.keys"), "001 a any k\n")
@@ -838,7 +839,7 @@ class ASecondFinishDoesNotCloseLegacyAgainB13(_C):
         self.assertEqual(rc, 0, out[-2000:])
         self.assertIn("the legacy ports were closed on every manager at", out)
         self.assertFalse([s for s in Cluster.steps(calls) if s[1].startswith("finish-node.sh legacy")])
-        self.assertIn("PHASE 11 finish END", out)
+        self.assertIn("PHASE 13 finish END", out)          # F7: numbered after the cluster's 11 phases
 
 
 
@@ -953,7 +954,7 @@ class PrecopyPlansAgainstAClusterBaseB15(_Node):
         self.assertIn("the pre-copy plan uses a cluster base: wazuh-1 (master), master 10.0.0.11", out)
         self.assertNotIn(TOPOLOGY, asked)
         self.assertFalse([i for i in asked if "/cluster[" in i], asked)
-        self.assertEqual(len(asked), 5)                                         # the fixture's own five questions
+        self.assertEqual(len(asked), 2)                                         # the fixture's five questions: F7 asks the four of the removed syslog_output section as one
 
     def test_a_worker_too(self):
         rc, out, asked = self.plan(SRC, "wazuh-2", "worker")
@@ -1010,7 +1011,7 @@ class EnrollmentWithoutAPasswordIsSaidB18(unittest.TestCase):
         out = self.note(1)
         self.assertIn("5.0 keeps it off (the settings stage carries use_password no)", out)
         self.assertIn("set <use_password>yes</use_password> in the <auth> section of /etc/wazuh-manager/wazuh-manager.conf", out)
-        self.assertIn("restart wazuh-manager, and give it to every agent that enrolls", out)
+        self.assertIn("restart wazuh-manager. 5.0 agents enroll with enrollment tokens", out)   # F6 fold: tokens, not the password (E6-aio R10)
 
     def test_without_the_settings_stage_5x_keeps_its_own_password(self):
         self.assertIn("5.0 keeps its installed use_password yes", self.note(0))

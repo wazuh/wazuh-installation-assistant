@@ -2,11 +2,11 @@
 # goback-fold-4x.sh <4.x-indexer-url> : going back, on EACH reinstalled 4.x manager node. Loads the part of this node's
 # final 4.x alerts.json that Filebeat never shipped (the same fold that went to 5.0) into the 4.x indexer, in the daily
 # index the 4.x Filebeat would have used. Together with the history bundle this gives 4.x back every 4.x alert.
-# CL1: every generation of this node's bundle (v4.gen*/, v4/); the bulk file is built from the recorded offset when the
+# every generation of this node's bundle (v4.gen*/, v4/); the bulk file is built from the recorded offset when the
 # fold never ran on 5.0 (the hold, after the master's way back alone). A fold the history reload already put back
 # (merged into the master's history bundle) has the same ids: its documents come back "already there", never twice.
 . "$(dirname "$(readlink -f "$0")")/common.sh"
-# E5 fold (E5-cluster-deb 07): the whole-cluster way back runs this step before any 4.x manager exists, so ossec.conf is
+# the whole-cluster way back runs this step before any 4.x manager exists, so ossec.conf is
 # absent; under errexit and pipefail the failed sed killed the step with an empty transcript. The name is only needed to
 # build a bulk file the forward fold never wrote; the node's host name stands in for it
 URL=$1; NODE=$( { sed -n 's#.*<node_name>[[:space:]]*\([^<[:space:]]*\)[[:space:]]*</node_name>.*#\1#p' /var/ossec/etc/ossec.conf 2>/dev/null || true; } | head -n1)

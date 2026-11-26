@@ -12,8 +12,10 @@ echo "facts: installed: $(pkgs | tr '\n' ';')"
 case "$role" in master|worker)
   k=$(fw_kind)
   if [ "$k" = none ]; then echo "facts: host firewall: none active (firewalld, ufw): no port to open or close"
-  else for p in 1514 1515 1516 1517 55000; do h=$(fw_how $p); echo "facts: host firewall $k $(fw_zone): $p/tcp $( [ -n "$h" ] && echo "allowed ($h)" || echo "NOT allowed")"; done   # E5 fold: was "allowed (port)port"
+  else for p in 1514 1515 1516 1517 55000; do h=$(fw_how $p); echo "facts: host firewall $k $(fw_zone): $p/tcp $( [ -n "$h" ] && echo "allowed ($h)" || echo "NOT allowed")"; done   # was "allowed (port)port"
        [ -n "$(fw_how 1516)" ] || echo "WARN $k does not allow 1516/tcp: the 5.0 workers cannot reach this node's cluster port"
        [ -n "$(fw_how 1517)" ] || echo "facts: $k does not allow 1517/tcp yet: the opening adds it (and going back removes it)"; fi;;
 esac
+# an indexer node's 5.0 heap, as the 5.0 assistant (-wi) will set it: half of the node's RAM
+[ "$role" = indexer ] && { l=$(heap5_plan node); case "$l" in WARN*) echo "WARN node $(nodelabel): ${l#WARN }";; *) echo "facts: ${l#OK }";; esac; }
 python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)' 2>/dev/null || die "BLOCKER: python3 3.8 or later is needed on every node (found $py)"

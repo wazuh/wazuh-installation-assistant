@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# guard.sh <on|off|show|reapply|persist|unpersist> <agent|cluster> : on a manager node (K5's node step, merged).
+# guard.sh <on|off|show|reapply|persist|unpersist> <agent|cluster> : on a manager node (K5's node step).
 # The rules, their record and the wazuh-manager drop-in that re-applies them before any manager starts are the shared
 # implementation in ../../guard.sh (also used by migrate.sh): agent = 1514, 1515, 1517; cluster = 1516; refused to
 # everything but loopback. `on` records and persists at once (K5 needed a separate `persist`: kept as a no-op alias).

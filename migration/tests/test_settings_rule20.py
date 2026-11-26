@@ -55,7 +55,10 @@ class PlanAndDecisions(_Tmp):
         rc, out = self.plan()
         self.assertEqual(rc, 3, out)
         d = json.load(open(self.dec))
-        self.assertEqual(sorted(d["settings"]), sorted(self.answers))           # C4's 5 exercise questions
+        # C4's 5 exercise questions; the four options of the removed syslog_output section are one question (F7)
+        sec = "ossec.conf:/ossec_config[3]/syslog_output[1]"
+        self.assertEqual(sorted(d["settings"]), sorted([i for i in self.answers if not i.startswith(sec + "/")] + [sec]))
+        self.assertEqual(sorted(d["settings"][sec]["covers"]), sorted(i for i in self.answers if i.startswith(sec + "/")))
         self.assertTrue(all(e["action"] is None for e in d["settings"].values()))
         self.assertIn("DECISIONS NEEDED", out)
 
@@ -191,7 +194,7 @@ class FlowWiring(unittest.TestCase):
 
     def test_steps_and_their_order(self):
         txt = open(os.path.join(SRC, "migrate.sh")).read()
-        steps = re.findall(r"\bstep +([a-z_.]+) ", txt)
+        steps = re.findall(r"\bq?step +([a-z_.]+) ", txt)
         for s in ("precopy.settings_plan", "replace.settings_plan", "import.settings", "import.groups_pre", "finish.groups_post"):
             self.assertIn(s, steps)
         self.assertLess(steps.index("precopy.settings"), steps.index("precopy.settings_plan"))

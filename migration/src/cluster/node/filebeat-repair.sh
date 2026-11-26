@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# filebeat-repair.sh : on a 4.x manager node that is going back to shipping alerts (E2-cluster fix 06). The rollback archive
+# filebeat-repair.sh : on a 4.x manager node that is going back to shipping alerts. The rollback archive
 # carries /etc/filebeat only; the Filebeat keystore (/var/lib/filebeat/filebeat.keystore: the indexer user and password the
 # configuration reads as ${username}/${password}) and the wazuh module (/usr/share/filebeat/module/wazuh) live elsewhere.
 # When the 4.x reinstall was cut before the assistant's Filebeat step (a reboot), both are missing and Filebeat refuses to
@@ -14,8 +14,8 @@ if [ ! -s /var/lib/filebeat/filebeat.keystore ]; then
        pw4 admin | filebeat keystore add password --force --stdin >/dev/null; how="rebuilt (admin, password from the 4.x install files)"; fi
   log "Filebeat keystore was missing: $how"
 fi
-# E3 fold (E3-cluster gap 2): a reboot during the reinstall left /etc/filebeat/filebeat.yml at 0 bytes and the module
-# directory with 10 zero-byte files; presence is not enough. CL1 (E4-cluster gap 1): neither is size: a cut earlier in
+# a reboot during the reinstall left /etc/filebeat/filebeat.yml at 0 bytes and the module
+# directory with 10 zero-byte files; presence is not enough. neither is size: a cut earlier in
 # the Filebeat step left the PACKAGE's own default filebeat.yml (9,982 bytes, no certs/), which passed the size check,
 # and Filebeat failed. /etc/filebeat is compared file by file with the bundle's etc-filebeat.tar.gz (what this node had
 # at its export); any file missing or different puts the bundle's copy back. Without the archive, the size check stays.
@@ -65,7 +65,7 @@ if [ ! -d /usr/share/filebeat/module/wazuh ]; then
   [ -z "$(empty "$m")" ] || log "WARN the wazuh module still has empty files after the repair (empty in its source too?): $(empty "$m")"
 fi
 systemctl enable filebeat >/dev/null 2>&1 || true; systemctl restart filebeat; sleep 5
-# E5 fold (E5-cluster-rpm gap 7): the output test's result is said whether it passes or not (it printed nothing when the
+# the output test's result is said whether it passes or not (it printed nothing when the
 # test failed: x509 against 5.0 indexers on the master's way back alone)
 to=$(filebeat test output 2>&1) && tr=ok || tr=failed
 log "filebeat $(systemctl is-active filebeat); filebeat test output $tr: $( { grep -E 'talk to server|version' <<<"$to" || grep -iE 'error|fail|x509|refused' <<<"$to" | tail -n 2 || echo "no output"; } | sed 's/^[[:space:]]*//' | tr -s ' ' | tr '\n' ' ')"

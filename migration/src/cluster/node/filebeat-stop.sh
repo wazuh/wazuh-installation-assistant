@@ -6,7 +6,7 @@
 . "$(dirname "$(readlink -f "$0")")/common.sh"
 V4=/var/ossec; f=$V4/logs/alerts/alerts.json
 for i in $(seq 1 60); do
-  size=$(stat -c %s "$f"); off=$(grep -F "\"source\":\"$f\"" /var/lib/filebeat/registry/filebeat/log.json 2>/dev/null | tail -n1 | grep -o '"offset":[0-9]*' | cut -d: -f2)
+  size=$(stat -c %s "$f"); off=$(grep -F "\"source\":\"$f\"" /var/lib/filebeat/registry/filebeat/log.json 2>/dev/null | tail -n1 | grep -o '"offset":[0-9]*' | cut -d: -f2 || true)   # no entry yet: 0, never an errexit stop
   [ "${off:-0}" -ge "$size" ] && break; sleep 2
 done
 systemctl stop filebeat; systemctl disable filebeat >/dev/null 2>&1 || true

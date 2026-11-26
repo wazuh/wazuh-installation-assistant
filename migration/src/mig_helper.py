@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Helper for migrate.sh (arm E1). Built on arm F1/f1a's mig_helper.py. Python standard library only.
+"""Helper for migrate.sh. Built on arm F1/f1a's mig_helper.py. Python standard library only.
 
 4.x side
   truth4 <outdir>               state of the RUNNING 4.x all-in-one, through its API (taken in pre-copy)
@@ -8,12 +8,12 @@
   export-saved-objects <out>    saved objects of the 4.x dashboard as ndjson
   export-security-rest <dir>    4.x indexer users, roles and mappings through the REST API, plus the shipped YAML
   bundle-ids <history-bundle>   count distinct document ids per 4.x index in the dump files against the manifest
-  source-version <node> <component> <version> ...   (OF1 item 12) only the latest 4.14.x is a source; exit 1 otherwise
+  source-version <node> <component> <version> ...   only the latest 4.14.x is a source; exit 1 otherwise
   source-version-cluster [NODE,...]   the same for every manager node of the 4.x cluster, from /cluster/nodes; a node the
                                  inventory (CLUSTER_NODES) or the agent registry names that is not connected is refused
-  retention-4x <out.json>       (OF1, decision 5b) ISM policies covering the alert indices and their delete age; every
-                                 policy's body and each alert index's policy into ism-4x.json beside it (E3 fold, N4)
-  ism-restore4 <ism-4x.json>    (E3 fold, N4) going back: the 4.x ISM policies and their attachments put back
+  retention-4x <out.json>       ISM policies covering the alert indices and their delete age; every
+                                 policy's body and each alert index's policy into ism-4x.json beside it
+  ism-restore4 <ism-4x.json>    going back: the 4.x ISM policies and their attachments put back
 5.0 side
   setup-status                  the indexer setup status and the manager's content synchronisation
   handshake <addresses-file> <port>   one TLS handshake per dialled address against the agent listener certificate
@@ -29,7 +29,7 @@
 Credentials come from the environment, never from the command line:
   V4_API_PASSWORD, V4_INDEXER_ADMIN_PASSWORD (4.x);  the 5.0 ones are read from the export/credentials.env files.
 """
-import base64, glob, gzip, hashlib, json, os, re, socket, sqlite3, ssl, sys, time, urllib.error, urllib.parse, urllib.request
+import base64, glob, gzip, hashlib, json, os, re, socket, sqlite3, ssl, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 
 CTX = ssl.create_default_context()
 CTX.check_hostname = False
@@ -195,7 +195,7 @@ SHIPPED_FILES = {"internalusers": "internal_users.yml", "roles": "roles.yml", "r
 
 # Names of the security objects a 4.14.x package ships that the API does NOT flag reserved, static or hidden, and the
 # users its stock mappings hold (read from the pristine YAML of a fresh 4.14.10 install). A fixed list, because the YAML
-# on a host is not a reference: a site may manage users by editing it, and a return to 4.x rewrites it (DECISIONS D12).
+# on a host is not a reference: a site may manage users by editing it, and a return to 4.x rewrites it.
 STOCK_4_14 = {
  "internalusers": [
   "admin",
@@ -333,7 +333,7 @@ def indices(pw, pattern):
     if code != 200:
         return {"_error": code}
     out = {i["index"]: int(i["docs.count"] or 0) for i in d}
-    # E5 fold (E5-aio 01, RD3's nested count in its second place): _cat docs.count also counts nested sub-documents (the
+    # E5 fold (RD3's nested count in its second place): _cat docs.count also counts nested sub-documents (the
     # 4.x template maps data.ms-graph.evidence as nested), while dump.py counts with _count since the RD3 fold, so phase 4
     # refused every source holding Microsoft Graph alerts with evidence ("551790 alerts at the freeze; the dump manifest
     # has ... 551770") and the history compare would have read LOST. The 4.x alert indices, the only ones compared with
@@ -347,7 +347,7 @@ def indices(pw, pattern):
 
 
 def write(outdir, name, obj):
-    # E3 fold (item 17): the decisions file is read back by every rerun (load() takes an unreadable file as empty, so a
+    # the decisions file is read back by every rerun (load() takes an unreadable file as empty, so a
     # file cut in half would lose the user's answers): written whole or not at all
     durable_json(os.path.join(outdir, name), obj)
 
@@ -628,7 +628,7 @@ def reconcile_membership(bundle, apply=""):
         wg, hg = a.get("group") or ["default"], have[i].get("group") or []
         if wg != hg:
             problems.append(f"agent {i} {a['name']} is in {hg}, the bundle says {wg}")
-            if do and not (i in on5 and i in keys and on5[i] != keys[i][3]):   # F7: never an impostor
+            if do and not (i in on5 and i in keys and on5[i] != keys[i][3]):   # never an impostor
                 c, d = api.call("PUT", f"/agents/{i}/group/{wg[0]}?force_single_group=true")
                 codes = [c]
                 for g in wg[1:]:
@@ -772,10 +772,10 @@ def import_security(bundle):
     return 1 if failed else 0
 
 
-# S5 fix: the custom 4.x dashboards read the history through its two aliases, with ONE wildcard. The former title named
+# the custom 4.x dashboards read the history through its two aliases, with ONE wildcard. The former title named
 # both index families ("wazuh-legacy-4x-alerts-*,wazuh-legacy-4x-cloud-*"); when a migration has no cloud alerts (or
 # retention later deletes the last cloud month) the cloud element matches nothing, the dashboard's field list request
-# answers 404 "No indices match pattern" and every panel fails (F6). A single wildcard resolves while either family
+# answers 404 "No indices match pattern" and every panel fails. A single wildcard resolves while either family
 # exists, and through the aliases it follows the history's on/off switch like the stock modules do.
 HISTORY_PATTERN = "wazuh-findings-v5*-legacy-4x"
 
@@ -785,14 +785,14 @@ def import_saved_objects(ndjson):
     pattern points at the history indices and every field is read under legacy.alert.* (the preserved alert)."""
     pw = idx_password5()
     dash = os.environ.get("MIG_DASH5_URL", "https://127.0.0.1:443")
-    # S5: refuse before writing when the title would resolve to nothing (history not switched on yet, or no history)
+    # refuse before writing when the title would resolve to nothing (history not switched on yet, or no history)
     code, al = idx("GET", "/_cat/aliases/" + HISTORY_PATTERN + "?format=json&h=alias,index", pw)
     if code != 200 or not al:
         print(f"import-saved-objects: no history alias matches {HISTORY_PATTERN} (HTTP {code}): switch the history on first; nothing imported")
         return 1
     out = []
     stock = {o["id"] for o in (saved_objects(os.environ.get("MIG_DASH5_URL", "https://127.0.0.1:443"), "admin", pw) or []) if isinstance(o, dict)}
-    # Rule 20 (S5, evidence/70-u093-stale-save): the tool records, per object it writes, each attribute it changed with the
+    # Rule 20: the tool records, per object it writes, each attribute it changed with the
     # value before and the value written; a rollback resets only those, and only where nobody changed them since. It never
     # overwrites an object that exists on 5.0 (the import runs without overwrite), so no admin edit is replaced wholesale.
     ledger_p = os.path.join(os.path.dirname(os.path.abspath(ndjson)), "saved-objects-ledger.json")
@@ -803,7 +803,7 @@ def import_saved_objects(ndjson):
 
     def fix_query(s):
         # kuery / lucene: prefix every `field:` token
-        # S5: also KQL range expressions (`rule.level >= 10`); the field:value form alone left them on 4.x names (0 hits)
+        # also KQL range expressions (`rule.level >= 10`); the field:value form alone left them on 4.x names (0 hits)
         return re.sub(r"(?<![\w.])([A-Za-z_@][\w.@]*)(\s*)(:|>=|<=|>|<)", lambda m: (m.group(1) if m.group(1) in ("http", "https") else pre(m.group(1))) + m.group(2) + m.group(3), s)
 
     def fix_search_source(js):
@@ -851,7 +851,7 @@ def import_saved_objects(ndjson):
                 ksm["searchSourceJSON"] = fix_search_source(ksm["searchSourceJSON"])
             if o["type"] == "search" and "columns" in at:
                 at["columns"] = [pre(c) if c != "_source" else c for c in at["columns"]]
-            if o["type"] == "search" and at.get("sort"):  # S5: the sort field too (4.x `timestamp`)
+            if o["type"] == "search" and at.get("sort"):  # the sort field too (4.x `timestamp`)
                 at["sort"] = [[pre(x[0])] + list(x[1:]) if isinstance(x, list) and x else x for x in at["sort"]]
             n["rewritten"] += 1
         changed = {}
@@ -875,7 +875,7 @@ def import_saved_objects(ndjson):
         return 1
     if not (code == 200 and d.get("success")):
         return 1
-    # S5: an import that succeeds is not a dashboard that works (F6 reported success over a pattern that answered 404):
+    # an import that succeeds is not a dashboard that works (F6 reported success over a pattern that answered 404):
     # ask the dashboard for the field list of the retitled pattern, as the browser will.
     q = urllib.parse.urlencode([("pattern", HISTORY_PATTERN), ("meta_fields", "_source"), ("meta_fields", "_id")])
     fcode, fraw = http("GET", dash + "/api/index_patterns/_fields_for_wildcard?" + q, user="admin", password=pw, headers={"osd-xsrf": "true"})
@@ -928,7 +928,7 @@ def rollback_saved_objects(ledger_path, dry_run=""):
             gone.append(key)
             continue
         if code != 200:
-            print("rollback-saved-objects: %s: HTTP %s: cannot read it, nothing changed (rule 19)" % (key, code))
+            print("rollback-saved-objects: %s: HTTP %s: cannot read it, nothing changed" % (key, code))
             return 1
         attrs = (cur or {}).get("attributes", {})
         patch = {}
@@ -957,7 +957,13 @@ def rollback_saved_objects(ledger_path, dry_run=""):
     return 0
 
 
-def policy_unclassified(action):
+def policy_unclassified(action=""):
+    """policy-unclassified get|on|off|keep: raw indexing of unclassified events in the standard policy. keep: read it and
+    switch it on when it is off (the finish's keep-raw answer). Any other word is refused: an unknown action switched raw
+    indexing off."""
+    if action not in ("get", "on", "off", "keep"):
+        print("policy-unclassified: unknown action %r (get, on, off or keep): nothing changed" % action)
+        return 2
     pw = idx_password5()
     code, d = idx("POST", "/wazuh-threatintel-policies/_search?size=10", pw, body={"query": {"term": {"space.name": "standard"}}})
     hits = d.get("hits", {}).get("hits", []) if code == 200 else []
@@ -968,6 +974,12 @@ def policy_unclassified(action):
     print(f"policy-unclassified: standard space: index_unclassified_events={doc.get('index_unclassified_events')} index_discarded_events={doc.get('index_discarded_events')} enabled={doc.get('enabled')}")
     if action == "get":
         return 0
+    if action == "keep":
+        if doc.get("index_unclassified_events") is True:
+            print("policy-unclassified: raw indexing is on (read back): kept")
+            return 0
+        print("policy-unclassified: raw indexing was OFF although the answer keeps it on: switched on again")
+        action = "on"
     body = {"resource": {"enabled": doc.get("enabled", True), "index_unclassified_events": action == "on",
                          "index_discarded_events": doc.get("index_discarded_events", False)}}
     code, d = idx("PUT", "/_plugins/_content_manager/policy/standard", pw, body=body)
@@ -976,7 +988,7 @@ def policy_unclassified(action):
 
 
 def use_password(conf):
-    """E5 fold (E5-aio gap 4): <auth><use_password> of a manager configuration ("yes", "no"), None when not readable."""
+    """E5 fold: <auth><use_password> of a manager configuration ("yes", "no"), None when not readable."""
     try:
         t = open(conf, errors="replace").read()
     except OSError:
@@ -991,10 +1003,13 @@ def enrollment_off_row(e5):
         return ("4.x enrolled without a password; 5.0 too (use_password no, carried by the settings stage). To require one: "
                 "use_password yes in <auth> of /etc/wazuh-manager/wazuh-manager.conf, the password in "
                 "/etc/wazuh-manager/authd.pass (the one the 5.0 install generated, %s, or your own of 16 or more characters), "
-                "restart wazuh-manager, give it to agents that enroll" % ("present" if e5.get("authd_pass_sha256") else "none found"))
+                "restart wazuh-manager; 5.0 agents enroll with tokens: mint them with a credential (wazuh-manager-authd "
+                "--create-enrollment-token, without --no-credential), as tokens made with --no-credential stop working"
+                % ("present" if e5.get("authd_pass_sha256") else "none found"))
     if e5.get("use_password") == "yes":
-        return ("4.x enrolled without a password; 5.0 requires the one in /etc/wazuh-manager/authd.pass (%s): give it to "
-                "agents that enroll from now on" % ("present" if e5.get("authd_pass_sha256") else "NONE FOUND: no agent can enroll"))
+        return ("4.x enrolled without a password; 5.0 requires the one in /etc/wazuh-manager/authd.pass (%s): 5.0 agents that "
+                "enroll from now on need an enrollment token minted with a credential (wazuh-manager-authd --create-enrollment-token, "
+                "without --no-credential), 4.x agents on 1515 the password" % ("present" if e5.get("authd_pass_sha256") else "NONE FOUND: no agent can enroll"))
     return "4.x enrolled without a password; 5.0's use_password could not be read (authd.pass %s)" % (
         "present" if e5.get("authd_pass_sha256") else "none found")
 
@@ -1040,7 +1055,7 @@ def truth5(outdir):
 
 
 def pre_upgrade_confs(bundle):
-    """E2 fold (E2-rpm fix 05, E2-deb fix 1, reconciled): {group: agent.conf the settings stage's pre-upgrade pass
+    """E2 fold (reconciled): {group: agent.conf the settings stage's pre-upgrade pass
     uploaded}, from its record settings/groups-pre/uploaded.json (settings_stage.py record_upload): exact group names,
     only files that were uploaded."""
     p = os.path.join(bundle, "settings", "groups-pre", "uploaded.json")
@@ -1083,7 +1098,7 @@ def history_rows(fp, t5, pending, x4=None):
     hist4 = {k: v for k, v in hist4.items() if k not in left}
     h5 = load(t5, "history.json") or {}
     hist5 = {k: v for k, v in h5.get("per_source_index", {}).items() if k not in left}
-    # F10: with the history loaded after the opening, the verify phase runs before the load: these lines are PENDING
+    # with the history loaded after the opening, the verify phase runs before the load: these lines are PENDING
     # there (HISTORY_PENDING=1) and the history phase compares again with them counted.
     row("alert history: documents per 4.x index (fingerprint against legacy.index on 5.0)", "PENDING" if pending and hist4 != hist5 else hist4 == hist5,
         f"{sum(hist4.values())} alert(s) in {len(hist4)} index(es) at the freeze, {sum(hist5.values())} in {len(hist5)} on 5.0"
@@ -1132,7 +1147,7 @@ def compare(t4, fp, t5):
             continue
         conf_same = f4[g].get("agent.conf") == f5.get(g, {}).get("agent.conf")
         if not conf_same and cleaned.get(g) and cleaned[g] == f5.get(g, {}).get("agent.conf"):
-            # E2 fold (E2-rpm fix 05, E2-deb fix 1): the pre-upgrade pass removed what a 4.x agent or the 5.0 API refuses
+            # the pre-upgrade pass removed what a 4.x agent or the 5.0 API refuses
             # (prefilter_cmd) on purpose; 5.0 holds exactly what it uploaded. Any other content stays LOST.
             row(f"group {g}: agent.conf (compared without indentation)", "CLEANED",
                 "as the pre-upgrade group pass uploaded it (options a 4.x agent or the 5.0 API refuses removed; see settings/groups-pre/)")
@@ -1155,7 +1170,7 @@ def compare(t4, fp, t5):
         f"4.x {sorted(u4)} / 5.0 {sorted(u5)}")
     e4, e5 = load(fp, "enrollment.json"), load(t5, "enrollment.json") or {}
     if e4.get("authd_pass_sha256") is None:
-        # E4-breaker fix 03: a 4.x source that enrolls without a password has nothing to carry; 5.0 generates its own
+        # a 4.x source that enrolls without a password has nothing to carry; 5.0 generates its own
         # (assess says so). Reporting it LOST failed phase 8 on every such source.
         row("enrollment password", "NOT USED ON 4.x", enrollment_off_row(e5))
     else:
@@ -1185,7 +1200,7 @@ def compare(t4, fp, t5):
     other = sorted(k for k, v in x4.items() if not re.match(r"wazuh-alerts-4\.x-", k) and v)
     row("other 4.x indices (vulnerability state, monitoring, statistics)", "NOT CARRIED", f"{other}: rebuilt by 5.0 from the agents, not migrated")
     ms = load(fp, "manager_settings.json")
-    if os.environ.get("SETTINGS_CARRIED") == "1":   # E2-rpm gap 8, E2-deb G7: the settings stage carried them (phase 6)
+    if os.environ.get("SETTINGS_CARRIED") == "1":   # the settings stage carried them (phase 6)
         row("manager settings (ossec.conf, internal options)", "CONVERTED",
             f"4.x blocks {ms['ossec_conf_blocks']}, internal options {ms['local_internal_options']}: converted and merged into the installed 5.0 files "
             "by the settings stage (what was kept, replaced or dropped: settings/candidate/ report, results/import.settings.log)")
@@ -1194,7 +1209,14 @@ def compare(t4, fp, t5):
             f"4.x blocks {ms['ossec_conf_blocks']}, internal options {ms['local_internal_options']}: see the settings converter")
     ev = load(t5, "events.json") or {}
     st = {i: a.get("status") for i, a in a5.items()}
-    row("agents active on 5.0", all(st.get(i) == "active" for i, a in live4.items() if a["status"] == "active"), f"status {st}; events per agent {ev.get('per_agent')}")
+    away = sorted(i for i, a in live4.items() if a["status"] == "active" and st.get(i) != "active")
+    if away and os.environ.get("VERIFY_AGAIN") == "1":
+        # E7-aio U9: the first verification saw these agents active on 5.0 (it passed); one stopped since is not a lost
+        # migration: it keeps its key and group, and the agents phase upgrades it once it connects again
+        row("agents active on 5.0", "AWAY", "active at the first verification, not connected now: %s (they keep their keys and groups; "
+            "each is upgraded once it connects again); status %s" % (", ".join("%s %s" % (i, a5.get(i, {}).get("name", "")) for i in away), st))
+    else:
+        row("agents active on 5.0", not away, f"status {st}; events per agent {ev.get('per_agent')}")
     w = max(len(r[0]) for r in rows)
     bad = 0
     for item, verdict, detail in rows:
@@ -1351,7 +1373,7 @@ _ISM_RO = ("policy_id", "last_updated_time", "schema_version", "seq_no", "primar
 
 
 def ism_record_of(policies, explain):
-    """E3 fold (E3-deb N4): what going back needs to give 4.x its ISM policies back: every policy's body as PUT takes it
+    """E3 fold: what going back needs to give 4.x its ISM policies back: every policy's body as PUT takes it
     (read-only fields dropped) and, per alert index, the policy attached to it. Going back reinstalls the 4.x indexer
     empty and reloads the alerts as new indices, so without this record the site lost its retention, and the next
     bundle read "no policy" and loaded 365 days."""
@@ -1379,7 +1401,7 @@ def ism_record_of(policies, explain):
 
 
 def durable_json(path, obj):
-    """Written so a cut leaves the old file or the new one, never a partial one (E3 fold, item 17)."""
+    """Written so a cut leaves the old file or the new one, never a partial one."""
     d = os.path.dirname(os.path.abspath(path))
     os.makedirs(d, exist_ok=True)
     tmp = path + ".tmp"
@@ -1399,7 +1421,7 @@ def durable_json(path, obj):
 
 
 def ism_restore4(record, chunk=50):
-    """E3 fold (E3-deb N4), going back: put the 4.x ISM policies back on the reinstalled 4.x indexer, then attach each
+    """E3 fold, going back: put the 4.x ISM policies back on the reinstalled 4.x indexer, then attach each
     restored alert index to the policy it had at the pre-copy. The policies go in after the alerts are reloaded, so an
     ism_template does not catch indices that had no policy before. A policy already there is kept, not replaced; an
     index now under another policy is named, not changed. Exit 1 when a policy or an attachment could not be made."""
@@ -1487,7 +1509,7 @@ def _span(ms):
 
 
 def source_creation_dates(history):
-    """E5 fold (E5-aio gap 3): each source index's own creation date on 4.x, as the dump recorded it
+    """E5 fold: each source index's own creation date on 4.x, as the dump recorded it
     (<history>/indices/<index>.json "creation_date", ms); {} when the dump did not record one."""
     out = {}
     for f in glob.glob(os.path.join(history, "indices", "*.json")):
@@ -1506,7 +1528,7 @@ def restored_age_report_of(rec, created, now_ms, source_created=None):
     the day in its name). rec: ism-4x.json; created: index -> creation date (ms) on the reinstalled 4.x. Returns lines:
     indices already past their policy's delete age (ISM deletes them at its next run, as 4.x would have), and indices whose
     age counts from a date more than a day after their own (kept longer than on 4.x), with how much longer.
-    E5 fold (E5-aio gap 3): where the dump recorded the index's own creation date on 4.x (source_created), the extra time
+    E5 fold: where the dump recorded the index's own creation date on 4.x (source_created), the extra time
     is measured from it, not from the day in the index's name: a source whose indices were created after their day (a
     reload, a generator) was told "up to 146 day(s) longer" for 41 minutes. The day in the name stays the measure where
     4.x's date is not recorded."""
@@ -1561,7 +1583,7 @@ def restored_age_report(rec, pw, source_created=None):
 
 
 def retention_4x(out):
-    """Decision 5b: read the 4.x retention into the bundle (pre-copy). Rule 19: a refused read stops. E3 fold (N4): the
+    """Decision 5b: read the 4.x retention into the bundle (pre-copy). Rule 19: a refused read stops. the
     policies' bodies and the alert indices' attachments go to ism-4x.json beside it, for going back."""
     pw = os.environ["V4_INDEXER_ADMIN_PASSWORD"]
     c1, pols = idx("GET", "/_plugins/_ism/policies?size=1000", pw)
@@ -1601,7 +1623,7 @@ def source_policy(manifest=None):
     p = manifest or os.path.join(os.path.dirname(os.path.abspath(__file__)), "manifest", "builds.json")
     with open(p) as f:
         d = json.load(f)
-    return d.get("source_series", "4.14"), d.get("source_min_version") or (d.get("source_4x") or ["4.14.10"])[-1]
+    return d.get("source_series", "4.14"), d.get("source_min_version") or (d.get("source_4x") or ["4.14.11"])[-1]
 
 
 def source_versions_check(rows, series, minimum):
@@ -1621,8 +1643,50 @@ def source_versions_check(rows, series, minimum):
             bad.append("%s %s on %s is older than %s, the newest %s.x this tool was released against: upgrade every node to the "
                        "latest %s.x first, then run the migration again" % (comp, ver, node, minimum, series, series))
         else:
-            good.append("%s %s on %s%s" % (comp, ver, node, "" if t == low else " (a %s.x newer than %s: accepted)" % (series, minimum)))
+            good.append("%s %s on %s%s" % (comp, ver, node, "" if t == low else " (WARNING: a %s.x newer than %s, the latest "
+                                                                                  "this tool was validated on: accepted)" % (series, minimum)))
     return bad, good
+
+
+_ASSISTANT_VERSION = re.compile(r'^[ \t]*(?:readonly[ \t]+)?wazuh_version=["\']?([0-9]+\.[0-9]+\.[0-9]+)["\']?[ \t]*(?:#.*)?$', re.M)
+
+
+def assistant_version(path):
+    """The version a 4.x installation assistant installs: its wazuh_version line ("4.14.11"), None when it has none."""
+    try:
+        m = _ASSISTANT_VERSION.search(open(path, errors="replace").read())
+    except OSError:
+        return None
+    return m.group(1) if m else None
+
+
+def v4_assistant_check(path, source="", how=""):
+    """v4-assistant-check <assistant> <source version> [<how to give another file>]: the 4.x assistant removes 4.x and,
+    when going back, reinstalls it, so it must install the source's own version. packages.wazuh.com/4.14/wazuh-install.sh
+    serves only the latest 4.14.x: once a newer 4.14.x is published, the default URL would reinstall that newer version
+    over a restore of the older one. Exit 1 on a mismatch or a file that names no version; 0 when they agree, or when the
+    source's version is not known here (a bundle made before this check, its 4.x already removed)."""
+    how = how or "V4_ASSISTANT=<path to that file>"
+    a = assistant_version(path)
+    if a is None:
+        print("V4 ASSISTANT REFUSED: %s does not say which version it installs (no wazuh_version line): it is not a 4.x "
+              "installation assistant this tool can check. Give the wazuh-install.sh of the source's own 4.14.x as %s" % (path, how))
+        return 1
+    s = _vtuple(source)
+    if s is None:
+        print("4.x assistant: %s installs %s; the source's version is not on record here, so it was not compared" % (path, a))
+        return 0
+    sv = "%d.%d.%d" % s
+    if _vtuple(a) != s:
+        print("V4 ASSISTANT REFUSED: the 4.x assistant %s installs %s, but this deployment runs %s. The tool removes 4.x "
+              "with this file and, when going back, reinstalls 4.x with it, so it must install the source's own version "
+              "(going back would otherwise put %s under a restore of %s). Give the %s installation assistant as %s: the "
+              "wazuh-install.sh that installed this deployment, or a copy kept from then (https://packages.wazuh.com/4.14/"
+              "wazuh-install.sh serves only the latest 4.14.x)%s. Nothing was changed by this step."
+              % (path, a, sv, a, sv, sv, how, ", or upgrade the source to %s first" % a if _vtuple(a) > s else ""))
+        return 1
+    print("4.x assistant: %s installs %s, the source's own version" % (path, a))
+    return 0
 
 
 def source_version(node, *pairs):
@@ -1638,7 +1702,7 @@ def source_version(node, *pairs):
 
 
 def cluster_nodes_missing(connected, expected, registry):
-    """E3 fold (E3-cluster gap 1): /cluster/nodes lists only the nodes connected to the master, and a 4.x worker of
+    """E3 fold: /cluster/nodes lists only the nodes connected to the master, and a 4.x worker of
     another version cannot connect (Error 3031), so a mixed-version cluster passed the master's check. Every node the
     inventory names (expected) or the agent registry names as an agent's node (registry: {node: agents}) must be
     connected. Returns the refusals."""
@@ -1660,7 +1724,7 @@ def cluster_nodes_missing(connected, expected, registry):
 
 def source_version_cluster(*expect):
     """source-version-cluster [NODE,...]: every manager node of the 4.x cluster, from the 4.x Server API (/cluster/nodes) on
-    the master (V4_API_PASSWORD), so a node that is not the one running the step is checked too; E3 fold (gap 1): a node
+    the master (V4_API_PASSWORD), so a node that is not the one running the step is checked too; a node
     named by the inventory (arguments or CLUSTER_NODES) or by the agent registry that is not connected is refused by
     name. Rule 19: unreadable stops."""
     series, minimum = source_policy()
@@ -1697,14 +1761,14 @@ NEVER_CONNECTED = "never_connected"
 
 
 def group_versions_of(agents):
-    """{group: {agent id: version}} from API agent records (the post-upgrade group pass, C4 D5); agent 000 left out."""
+    """{group: {agent id: version}} from API agent records (the post-upgrade group pass); agent 000 left out."""
     out = {}
     for a in agents:
         if not isinstance(a, dict) or a.get("id") == "000":
             continue
         v = a.get("version")
         if not v and a.get("status") == "never_connected":
-            v = NEVER_CONNECTED        # OF1 (E2-deb G9): named, so the post-upgrade pass can tell it from an unknown version
+            v = NEVER_CONNECTED        # named, so the post-upgrade pass can tell it from an unknown version
         for g in a.get("group") or []:
             out.setdefault(g, {})[a["id"]] = v
     return out
@@ -1719,18 +1783,18 @@ def group_versions():
     return 0
 
 
-RAW_CHOICES = ("activated", "keep-raw", "accept-loss")
+RAW_CHOICES = ("activate-force", "keep-raw", "accept-loss", "activated")
 RAW_FACTS = "raw-at-finish-facts.json"
 _RULE_ROW = re.compile(r"^\|?\s*\d+\s*\|")          # a per-rule row of verification.md: its first cell is a 4.x rule id
 _NOT_ACTIVE = re.compile(r"NOT_REPRODUCED|NOT_SILENCED|NO_SAMPLE")
 
 
 def raw_facts(state, rwork="", ruleset_src=""):
-    """E5 fold (E5-aio gap 7, E5-cluster-rpm gap 4): what the raw-at-finish refusal names, the rules not active (from
+    """E5 fold: what the raw-at-finish refusal names, the rules not active (from
     rmig's verification.md) and the custom decoders (from the bundle's ruleset-src), recorded in <state>/raw-at-finish-
     facts.json while their sources exist, and read from there once they are gone. The first finish's secret sweep deletes
     ruleset-src, so a later refusal said "(no custom decoder found)" for the acmeshop decoders. Each part is taken from its
-    source when the source is there, else from the record. E5 fold (E5-aio gap 5, E5-cluster-deb): only the per-rule rows
+    source when the source is there, else from the record. only the per-rule rows
     of verification.md are rules; the summary table's count rows ("`NOT_REPRODUCED` | 1") were listed as rules too."""
     path = os.path.join(state, RAW_FACTS)
     try:
@@ -1745,6 +1809,14 @@ def raw_facts(state, rwork="", ruleset_src=""):
             if _RULE_ROW.match(line.strip()) and _NOT_ACTIVE.search(line):
                 rules.append(re.sub(r"\s+", " ", line.strip(" |-*\n"))[:160])
         out["rules_not_active"], out["rules_from"] = rules, vf
+    # R1 (items 3, 5): rules rmig left out because stock 5.0 covers them, and telemetry rules (--findings mitre), are no
+    # "rule not active": recorded with the rest, from rmig's report
+    if rwork and os.path.isfile(os.path.join(rwork, "report.json")):
+        k = ruleset_kinds(rwork)
+        out["covered_rules"], out["telemetry_rules"] = k["covered"], sorted(k["telemetry"] + k["untagged"])
+    skip = set(out.get("covered_rules") or {}) | set(out.get("telemetry_rules") or [])
+    if skip and out.get("rules_not_active"):
+        out["rules_not_active"] = [r for r in out["rules_not_active"] if r.split(" ", 1)[0] not in skip]
     dd = os.path.join(ruleset_src, "etc", "decoders") if ruleset_src else ""
     if dd and os.path.isdir(dd):
         decoders = []
@@ -1760,26 +1832,40 @@ def raw_facts(state, rwork="", ruleset_src=""):
 def raw_facts_cmd(state, rwork="", ruleset_src=""):
     """CLI: record the raw-at-finish facts while their sources exist (the finish calls it before anything can delete them)."""
     rules, decoders, _ = raw_facts(state, rwork, ruleset_src)
-    print("raw at the finish: %d rule(s) not active and %d custom decoder(s) on record (%s)" % (len(rules), len(decoders), os.path.join(state, RAW_FACTS)))
+    print("raw at the finish: %d rule(s) without a clean verification and %d custom decoder(s) on record (%s)" % (len(rules), len(decoders), os.path.join(state, RAW_FACTS)))
     return 0
 
 
 def rmig_active(rwork):
-    """E5 fold (E5-aio gap 6): the answer "activated" is checked against rmig's own record on this node
+    """E5 fold: the answer "activated" is checked against rmig's own record on this node
     (<rwork>/work/state.json, written by rmig apply and activate): an activation recorded, every rule of the tool's content
     (outside an integration set aside) in the custom space, and at least one detector. Returns (True, what) or (False,
-    why). Before, the answer was taken on the person's word, and a wrong one dropped every custom-log event (E4-rpm gap 2)."""
+    why). Before, the answer was taken on the person's word, and a wrong one dropped every custom-log event."""
     p = os.path.join(rwork, "work", "state.json")
     try:
         st = json.load(open(p))
     except (OSError, ValueError) as e:
         return False, "rmig's record %s cannot be read (%s): no activation is recorded on this node" % (p, e.__class__.__name__)
     aside = set(st.get("set_aside") or {})
-    rules = [(lid, e) for lid, e in (st.get("resources") or {}).items() if isinstance(e, dict) and e.get("type") == "rule" and e.get("integration") not in aside]
+    res = [(lid, e) for lid, e in (st.get("resources") or {}).items() if isinstance(e, dict) and e.get("integration") not in aside]
+    rules = [(lid, e) for lid, e in res if e.get("type") == "rule"]
     not_custom = sorted((e.get("title") or lid) for lid, e in rules if e.get("space") != "custom")
     dets = st.get("detectors") or {}
     if not st.get("last_activate"):
         return False, "rmig's record shows no activation (last_activate is empty; %d rule(s) in the test space)" % len(not_custom)
+    # with --findings mitre a rule without MITRE is telemetry: its 4.x rule.id, rule.description and
+    # rule.level are written by its decoder, so it is in force once the decoders are in the custom space; it is no
+    # detection rule and has no detector. A build of telemetry only is active without any rule or detector.
+    tele = ruleset_kinds(rwork)["telemetry"]
+    if tele:
+        decs = [(lid, e) for lid, e in res if e.get("type") == "decoder"]
+        dn = sorted((e.get("title") or lid) for lid, e in decs if e.get("space") != "custom")
+        if not decs or dn:
+            return False, "%d telemetry rule(s) are tagged by decoders that are not in the custom space%s" % (
+                len(tele), (": " + ", ".join(dn[:10])) if dn else " (no decoder recorded)")
+        if not rules:
+            return True, "activated %s: %d telemetry rule(s) tagged by %d decoder(s) in the custom space, no detection rule (no detector needed)" % (
+                st["last_activate"], len(tele), len(decs))
     if not rules:
         return False, "rmig's record holds no migrated rule"
     if not_custom:
@@ -1789,12 +1875,48 @@ def rmig_active(rwork):
     return True, "activated %s: %d rule(s) in the custom space, detector(s) %s" % (st["last_activate"], len(rules), ", ".join(sorted(dets)))
 
 
+def verify_summary_md(rwork):
+    """The counts of rmig's latest verification.md ("verify: REPRODUCED 5, NOT_REPRODUCED 1, ..., run <time>"), or "".
+    The tool's own summary is the import's; a verify run since (by hand, after a rule was answered) changed the counts
+    and the finish kept printing the first ones."""
+    try:
+        text = open(os.path.join(rwork, "verification.md"), errors="replace").read() if rwork else ""
+    except OSError:
+        return ""
+    rows = re.findall(r"^\|\s*`([A-Z_]+)`\s*\|\s*(\d+)\s*\|\s*$", text, re.M)
+    if not rows:
+        return ""
+    run = re.search(r"^Run (\S+)", text, re.M)
+    return "verify: %s (rmig's verification.md%s)" % (", ".join("%s %s" % r for r in rows), ", run %s" % run.group(1) if run else "")
+
+
+VERIFY_WORDS = {"NOT_REPRODUCED": "did not match its 4.x alerts on 5.0", "NOT_SILENCED": "did not silence the alerts it silences on 4.x",
+                "NO_SAMPLE": "had no 4.x alert to check it against"}
+
+
+def unverified_rules(rwork):
+    """["rule 100300: did not match its 4.x alerts on 5.0 (<the ruleset tool's reason>)", ...]: every migrated rule the
+    verification did not pass, with the reason the ruleset tool gives (verification.json), in the person's words."""
+    try:
+        doc = json.load(open(os.path.join(rwork, "verification.json")))
+    except (OSError, ValueError):
+        return []
+    out = []
+    for e in doc.get("rules") or []:
+        res = e.get("result")
+        if res not in VERIFY_WORDS:
+            continue
+        why = "; ".join(re.sub(r"\s*\(?RM-[A-Z]-[A-Z0-9-]+\)?:?\s*", " ", w).strip() for w in (e.get("not_met") or [])[:3])
+        out.append("rule %s: %s%s" % (e.get("rule_id_4x"), VERIFY_WORDS[res], (" (%s)" % why[:300]) if why else ""))
+    return out
+
+
 def raw_decision(decisions, state, rwork="", ruleset_src=""):
-    """design decision 3 follow-up (2026-11-25, E4-rpm gap 2): raw event indexing is switched off at the finish only
+    """design decision 3 follow-up: raw event indexing is switched off at the finish only
     when every migrated rule is active, or on an explicit answer. Before, the finish switched it off "once no 4.x agent
     remains" while rmig had activated nothing (one rule NOT_REPRODUCED), and every custom-log event was dropped from
     then on. Exit 0: raw may go off (the rules were activated, or the user answered "activated" and rmig's record agrees,
-    or "accept-loss"); 4: the user answered "keep-raw"; 3: refused, the question written into the decisions file (section
+    or "accept-loss"); 4: the user answered "keep-raw"; 5: "activate-force" (the caller activates, then raw goes off); 3: refused, the question written into the decisions file (section
     "unclassified-finish"), naming the rules not active and the custom decoders whose events would be dropped. Every
     answer taken is recorded in <state>/raw.decision."""
     applied = open(os.path.join(state, "unclassified.applied")).read().split() if os.path.exists(os.path.join(state, "unclassified.applied")) else []
@@ -1802,7 +1924,7 @@ def raw_decision(decisions, state, rwork="", ruleset_src=""):
         print("raw at the finish: the migrated rules are active (%s): raw indexing can go off" % " ".join(applied))
         return 0
     rules, decoders, from_record = raw_facts(state, rwork, ruleset_src)
-    summary = (open(os.path.join(state, "ruleset.verify_summary")).read().strip() if os.path.exists(os.path.join(state, "ruleset.verify_summary")) else "no verification summary")
+    summary = verify_summary_md(rwork) or (open(os.path.join(state, "ruleset.verify_summary")).read().strip() if os.path.exists(os.path.join(state, "ruleset.verify_summary")) else "no verification summary")
     d = load(os.path.dirname(decisions) or ".", os.path.basename(decisions)) or {}
     sec = d.get("unclassified-finish") or []
     ent = next((e for e in sec if e.get("id") == "raw-at-finish"), None) or {}
@@ -1818,28 +1940,514 @@ def raw_decision(decisions, state, rwork="", ruleset_src=""):
         with open(os.path.join(state, "raw.decision"), "w") as f:
             f.write("%s %s\n" % (time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), ans))
         print("raw at the finish: answered \"%s\" in %s (recorded in state/raw.decision)" % (ans, decisions))
-        return 4 if ans == "keep-raw" else 0
+        return 4 if ans == "keep-raw" else (5 if ans == "activate-force" else 0)
     q = {"id": "raw-at-finish", "action": None, "choices": list(RAW_CHOICES),
          "question": "The migrated rules are not active (%s; decision applied: %s), so the events only your custom decoders "
-                     "classify reach 5.0 through raw event indexing alone. Switching raw off drops them. Answer: \"activated\" "
-                     "once you have activated the rules (rmig activate --workdir %s; the tool checks rmig's record), \"keep-raw\" "
-                     "to keep raw indexing on, or \"accept-loss\" to switch it off and lose those events." % (summary, " ".join(applied) or "none", rwork or "<rmig work directory>"),
+                     "classify reach 5.0 through raw event indexing alone. Switching raw off at the finish drops them. Answer: "
+                     "\"activate-force\" to have the tool activate the migrated rules anyway at the finish (their verification is "
+                     "kept in %s/verification.md), \"keep-raw\" to keep raw indexing on, \"accept-loss\" to switch it off and lose those "
+                     "events, or \"activated\" once you have activated them yourself (the tool checks the ruleset tool's record)."
+                     % (summary, " ".join(applied) or "none", rwork or "<the ruleset work directory>")
+                     + ("".join(" Not verified: %s." % u for u in unverified_rules(rwork)[:10]) if rwork else ""),
          "rules_not_active": rules[:50], "custom_decoders": decoders[:100]}
     if refused is not None:
         q["refused"] = {"answer": {"action": "activated"}, "why": refused, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     d["unclassified-finish"] = [e for e in sec if e.get("id") != "raw-at-finish"] + [q]
     write(os.path.dirname(decisions) or ".", os.path.basename(decisions), d)
     if refused is not None:
-        print("RAW INDEXING NOT SWITCHED OFF: you answered \"activated\", but %s. Activate the rules (rmig activate --workdir %s "
-              "--yes, with --force after a failed verification) and run the finish again, or answer keep-raw or accept-loss." % (refused, rwork))
+        print("RAW INDEXING NOT SWITCHED OFF: you answered \"activated\", but %s. Answer \"activate-force\" to have the tool "
+              "activate them at the finish (the ruleset review must be accepted first), or keep-raw or accept-loss, and run %s "
+              "again." % (refused, run_again()))
     else:
         print("RAW INDEXING NOT SWITCHED OFF: the migrated rules are not active (%s)." % summary)
     for r in rules[:20]:
         print("  rule not active: " + r)
+    for u in (unverified_rules(rwork) if rwork else [])[:20]:
+        print("  why: " + u)
     print("  events of these custom decoders would be dropped with raw off: %s%s" % (", ".join(decoders[:30]) or "(no custom decoder found)",
                                                                                    " (as recorded before the bundle's ruleset copy was deleted)" if from_record and decoders else ""))
-    print("  answer the entry \"raw-at-finish\" (section \"unclassified-finish\") in %s: activated, keep-raw or accept-loss, and run the finish again" % decisions)
+    cov, tele = raw_kinds(state)
+    if cov:
+        print("  not counted: %d rule(s) left out because stock 5.0 covers them: %s" % (len(cov), ", ".join(sorted(cov)[:20])))
+    if tele:
+        print("  not counted as detection rules: %d telemetry rule(s), in force through their decoder once activated: %s" % (len(tele), ", ".join(tele[:20])))
+    print("  answer the entry \"raw-at-finish\" (section \"unclassified-finish\") in %s: activate-force, keep-raw, accept-loss or activated, and run %s again" % (os.environ.get("DECISIONS_SHOWN") or decisions, run_again()))
     return 3
+
+
+def raw_kinds(state):
+    try:
+        rec = json.load(open(os.path.join(state, RAW_FACTS)))
+    except (OSError, ValueError):
+        rec = {}
+    return rec.get("covered_rules") or {}, rec.get("telemetry_rules") or []
+
+
+# ------------------------------------------------------------------ the ruleset tool (rmig) at the commit the build manifest pins
+RMIG_REVIEW_BLOCK = "## Review before activate"
+COVERED_CODE, TELEMETRY_CODES = "RM-S-STOCK-COVERED", ("RM-R-TELEMETRY", "RM-R-TELEMETRY-UNTAGGED")
+
+
+def rmig_pin():
+    """The rmig commit this tool was tested with (manifest/builds.json, ruleset_tool)."""
+    return build_manifest().get("ruleset_tool") or {}
+
+
+def rmig_check(rmig_dir):
+    """R1: the ruleset tool at rmig_dir knows what this tool passes it and reads from it: the mandatory review
+    (RM-P-REVIEW-PENDING), --findings on migrate, plan and build, and --engine-limit on activate. An older rmig refuses
+    --findings (exit 2) and never stops for the review. The commit is named when the directory is a git checkout."""
+    pin = rmig_pin()
+    want = (pin.get("commit") or "")[:12] or "the pinned commit"
+    need = {"rmig/reasons.py": "RM-P-REVIEW-PENDING", "rmig/cli.py": "--findings", "rmig/api/commands.py": "--engine-limit"}
+    missing = []
+    for rel, token in need.items():
+        try:
+            txt = open(os.path.join(rmig_dir, rel), errors="replace").read()
+        except OSError:
+            txt = ""
+        if token not in txt:
+            missing.append("%s (%s)" % (token, rel))
+    head = ""
+    try:
+        head = subprocess.run(["git", "-C", rmig_dir, "rev-parse", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                              universal_newlines=True, timeout=10).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    at = (" at commit %s" % head[:12]) if re.fullmatch(r"[0-9a-f]{40}", head or "") else ""
+    if missing:
+        print("ruleset tool %s%s is older than the one this tool was tested with (%s, %s): it lacks %s"
+              % (rmig_dir, at, want, pin.get("source", "tools/ruleset-migration"), ", ".join(missing)))
+        return 1
+    note = "" if not at or head.startswith(pin.get("commit", "-")) else " (tested with %s)" % want
+    print("ruleset tool %s%s: mandatory review, --findings and the detector cap known%s" % (rmig_dir, at, note))
+    return 0
+
+
+def _report_items(rwork):
+    try:
+        return json.load(open(os.path.join(rwork, "report.json"))).get("items") or []
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
+def ruleset_kinds(rwork):
+    """Rule ids rmig left out because stock 5.0 covers them, and the rules it made telemetry (--findings mitre):
+    {"covered": {id: stock rule}, "telemetry": [id], "untagged": [id]} from report.json and decisions.json."""
+    try:
+        cov = json.load(open(os.path.join(rwork, "decisions.json"))).get("covered") or {}
+    except (OSError, ValueError, AttributeError):
+        cov = {}
+    out = {"covered": {}, "telemetry": [], "untagged": []}
+    for it in _report_items(rwork):
+        if it.get("kind") != "rule":
+            continue
+        rid = str(it.get("ref", "")).split(":", 1)[-1]
+        codes = {c.get("code") for c in it.get("codes") or []}
+        if COVERED_CODE in codes:
+            out["covered"][rid] = (cov.get(rid) or {}).get("stock_rule") or "a stock 5.0 rule"
+        elif "RM-R-TELEMETRY" in codes:
+            out["telemetry"].append(rid)
+        elif "RM-R-TELEMETRY-UNTAGGED" in codes:
+            out["untagged"].append(rid)
+    return out
+
+
+def review_state(decisions_file):
+    try:
+        return (json.load(open(decisions_file)) or {}).get("review")
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def run_again():
+    """How the person runs the tool again: the one-file tool's own name (WM_SELF), passed to every node step too."""
+    return os.environ.get("WM_SELF") or "./wazuh-migrate.sh"
+
+
+def review_customer(text, rwork):
+    """rmig's review block speaks of rmig's own commands, files and codes ("then run plan again", "`activate` stops
+    (`RM-P-REVIEW-PENDING`)", "decisions.json", "out/recipes/"): the person runs only this tool and answers in its
+    decisions file. The same block, with each such instruction said the way this tool takes it."""
+    shown = os.environ.get("DECISIONS_SHOWN") or "the decisions file"
+    subs = (
+        (r"The review is mandatory: `activate` stops \(`RM-P-REVIEW-PENDING`\) until decisions\.json has `\"review\": \"accepted\"`( \(accepted\))?",
+         lambda m: "The review is mandatory: the migrated rules are not activated until \"review\" is \"accepted\" in %s, section \"ruleset\"%s"
+         % (shown, " (accepted)" if m.group(1) else "")),
+        (r"compare each pair in decisions\.json \(`covered`\), and set `action` to `migrate`",
+         lambda m: "compare each pair in %s (section \"ruleset\", part \"covered\"), and set \"action\" to \"migrate\"" % shown),
+        (r"Apply, verify, then activate\.", lambda m: "The tool loads them, checks them against your 4.x alerts and activates them."),
+        (r"Answer the entries of decisions\.json, then run plan again\.",
+         lambda m: "Answer the questions listed under QUESTION, then run %s again." % run_again()),
+        (r"\(out/recipes/\)", lambda m: "(%s)" % os.path.join(rwork, "out", "recipes")),
+        (r"`--findings mitre`: ", lambda m: ""),
+        (r"`([^`]*)`", lambda m: m.group(1)),
+    )
+    for rx, f in subs:
+        text = re.sub(rx, f, text)
+    return text
+
+
+def ruleset_review_show(rwork):
+    """R1: the block "Review before activate" of rmig's report.md, as the user must read it, then the rules
+    left out because stock 5.0 covers them (each with its stock rule and how to build it anyway), the telemetry
+    rules and the path to the whole report."""
+    rep = os.path.join(rwork, "report.md")
+    try:
+        lines = open(rep, errors="replace").read().splitlines()
+    except OSError:
+        print("ruleset review: no report.md in %s" % rwork)
+        return 0
+    block, on = [], False
+    for l in lines:
+        if l.startswith(RMIG_REVIEW_BLOCK):
+            on = True
+        elif on and l.startswith("## "):
+            break
+        if on:
+            block.append(l)
+    print("---- the ruleset tool's review (%s) ----" % rep)
+    print(review_customer("\n".join(block).strip(), rwork) or "(the ruleset report has no \"Review before activate\" block: the ruleset tool is older than the one this tool needs)")
+    k = ruleset_kinds(rwork)
+    if k["covered"]:
+        print("left out because stock 5.0 covers them (not built, not \"rules not active\" at the finish):")
+        for rid, stock in sorted(k["covered"].items()):
+            print("  rule %s: %s" % (rid, stock))
+        print("  to build one anyway: \"action\": \"migrate\" in its entry of the \"covered\" part of the ruleset decisions")
+    if k["telemetry"] or k["untagged"]:
+        print("telemetry: %d rule(s) tagged in their decoder (rule.id, rule.description, rule.level of the 4.x rule), "
+              "%d untagged: not detection rules%s" % (len(k["telemetry"]), len(k["untagged"]),
+                                                      (": " + ", ".join(sorted(k["telemetry"] + k["untagged"])[:20]))))
+    print("the whole report: %s" % rep)
+    print("----")
+    return 0
+
+
+def ruleset_review_ask(flow, rwork, own_file=""):
+    """R1: rmig's activate stops (RM-P-REVIEW-PENDING, --force does not skip it) until its decisions.json says
+    "review": "accepted". The question goes into the flow's decisions file, section "ruleset" (rmig's decisions.json,
+    which the next run carries into rmig), or stays in RMIG_DECISIONS when the user keeps a file of their own. Exit 0:
+    accepted; 3: open, the run stops before the freeze. The tool never writes "accepted": only the user does."""
+    if review_state(os.path.join(rwork, "decisions.json")) == "accepted":
+        print("ruleset review: accepted (\"review\": \"accepted\" in %s)" % (own_file or "%s, section \"ruleset\"" % (os.environ.get("DECISIONS_SHOWN") or flow)))
+        return 0
+    if own_file:
+        where = "%s (your own ruleset decisions file)" % own_file
+    else:
+        d = load(os.path.dirname(flow) or ".", os.path.basename(flow)) or {}
+        sec = d.get("ruleset")
+        if not isinstance(sec, dict) or not sec:
+            try:
+                sec = json.load(open(os.path.join(rwork, "decisions.json")))
+            except (OSError, ValueError):
+                sec = {"version": 1}
+        if sec.get("review") != "accepted":
+            sec["review"] = None
+        d["ruleset"] = sec
+        write(os.path.dirname(flow) or ".", os.path.basename(flow), d)
+        where = "%s, section \"ruleset\"" % (os.environ.get("DECISIONS_SHOWN") or flow)
+    print("RULESET REVIEW OPEN: the migrated rules are not activated until you accept the review. Read the block "
+          "\"Review before activate\" above (the whole report: %s), then set \"review\" to \"accepted\" in %s and run %s "
+          "again. The run stops here, before the freeze; nothing is answered for you."
+          % (os.path.join(rwork, "report.md"), where, run_again()))
+    return 3
+
+
+def ruleset_review(action, *args):
+    return {"show": ruleset_review_show, "ask": ruleset_review_ask}[action](*args)
+
+
+def ruleset_answers_differ(answered, fresh):
+    """R1: the flow's ruleset section holds an answer rmig's fresh decisions.json lacks (a null review is no answer)."""
+    def norm(p):
+        d = json.load(open(p))
+        if d.get("review") is None:
+            d.pop("review", None)
+        return d
+    try:
+        return 0 if norm(answered) != norm(fresh) else 1
+    except (OSError, ValueError, AttributeError):
+        return 1
+
+
+def ruleset_open(rwork):
+    """ruleset-open <rmig workdir>: the items rmig's last plan left waiting for an answer (state DECISION), one line each
+    with the entries that would close them. Exit 1 when there is one."""
+    try:
+        items = json.load(open(os.path.join(rwork, "report.json"))).get("items") or []
+    except (OSError, ValueError, AttributeError):
+        return 0
+    n = 0
+    for it in items:
+        if it.get("state") != "DECISION":
+            continue
+        n += 1
+        why = ["%s %s" % (c.get("code"), ", ".join(c.get("details") or [])) for c in it.get("codes") or [] if c.get("state") == "DECISION"]
+        print("  %s (%s): %s" % (it.get("ref") or it.get("uid"), it.get("origin") or it.get("file") or "?", "; ".join(w.strip() for w in why) or "a decision"))
+    return 1 if n else 0
+
+
+def _merge_new(old, new):
+    """Entries of `new` that `old` lacks are added (recursively); every value already in `old` is kept as written."""
+    if not isinstance(old, dict) or not isinstance(new, dict):
+        return old
+    out = dict(old)
+    for k, v in new.items():
+        out[k] = _merge_new(old[k], v) if k in old else v
+    return out
+
+
+def ruleset_merge(where, target, rmig_decisions):
+    """ruleset-merge flow|own <file> <rmig decisions.json>: rmig's plan opened new questions from the first answers (a
+    field once a covered rule is answered "migrate", a findings entry once a stock reference is answered). They go where
+    the user answers: the flow file's "ruleset" section, or the user's own RMIG_DECISIONS file; every answer already
+    there is kept as written."""
+    new = json.load(open(rmig_decisions))
+    d = load(os.path.dirname(target) or ".", os.path.basename(target)) or {}
+    if where == "flow":
+        d["ruleset"] = _merge_new(d.get("ruleset") or {}, new)
+    else:
+        d = _merge_new(d, new)
+    write(os.path.dirname(target) or ".", os.path.basename(target), d)
+    return 0
+
+
+def ruleset_carry(way, cdec, nodefile, out=""):
+    """ruleset-carry to-node|from-node <controller decisions> <node decisions> [<out>]: on a cluster the ruleset tool runs
+    on the master and its questions (the review included) were answered in the master's own file, while every other
+    question is in the controller's decisions file. The person answers the "ruleset" section in the controller's file;
+    to-node writes the node's file with that section in it (to <out>), from-node moves the section the node step left
+    in the node's file into the controller's, keeping every answer already there and adding the new entries."""
+    c = load(os.path.dirname(cdec) or ".", os.path.basename(cdec)) or {}
+    n = load(os.path.dirname(nodefile) or ".", os.path.basename(nodefile)) or {}
+    if way == "to-node":
+        if isinstance(c.get("ruleset"), dict) and c["ruleset"]:
+            n["ruleset"] = _merge_new(c["ruleset"], n.get("ruleset") or {})
+        write(os.path.dirname(out) or ".", os.path.basename(out), n)
+        return 0
+    rs = n.pop("ruleset", None)
+    hints = n.pop("ruleset-hints", None)
+    if isinstance(hints, dict):
+        c["ruleset-hints"] = hints          # the candidates the master found for its stock questions (always the newest)
+    if not isinstance(rs, dict) or not rs:
+        if isinstance(hints, dict):
+            write(os.path.dirname(cdec) or ".", os.path.basename(cdec), c)
+            write(os.path.dirname(nodefile) or ".", os.path.basename(nodefile), n)
+        return 0
+    c["ruleset"] = _merge_new(c.get("ruleset") or {}, rs)
+    write(os.path.dirname(cdec) or ".", os.path.basename(cdec), c)
+    write(os.path.dirname(nodefile) or ".", os.path.basename(nodefile), n)
+    return 0
+
+
+def _stock4_rules(src):
+    """{rule id: {"decoded_as", "if_sid": [...], "groups": [...]}} of the 4.x rule files under <src>/ruleset/rules (and
+    <src>/etc/rules): a line reader, since 4.x rule files are not one XML document."""
+    rules, top, cur = {}, [], None
+    for d in (os.path.join(src, "ruleset", "rules"), os.path.join(src, "etc", "rules")):
+        for f in sorted(glob.glob(os.path.join(d, "*.xml"))):
+            try:
+                text = open(f, errors="replace").read()
+            except OSError:
+                continue
+            text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+            for line in text.splitlines():
+                m = re.search(r'<group\s+name="([^"]*)"', line)
+                if m and cur is None:
+                    top = [g.strip() for g in m.group(1).split(",") if g.strip()]
+                m = re.search(r'<rule\s+id="(\d+)"', line)
+                if m:
+                    cur = rules.setdefault(m.group(1), {"decoded_as": None, "if_sid": [], "groups": list(top)})
+                if cur is not None:
+                    for tag, val in re.findall(r"<(decoded_as|if_sid|if_matched_sid|group|if_group)>([^<]*)</\1>", line):
+                        vals = [v.strip() for v in re.split(r"[,\s]+", val) if v.strip()]
+                        if tag == "decoded_as":
+                            cur["decoded_as"] = val.strip()
+                        elif tag in ("if_sid", "if_matched_sid"):
+                            cur["if_sid"] += vals
+                        else:
+                            cur["groups"] += vals
+                    if "</rule>" in line:
+                        cur = None
+    return rules
+
+
+def _words(s):
+    return [w for w in re.split(r"[^a-z0-9]+", (s or "").lower()) if len(w) >= 3]
+
+
+def stock_candidates(key, rules, integrations):
+    """The 5.0 integrations whose names (or decoders' names) share a word with the 4.x stock rule's decoder and groups,
+    walking its parents: candidates to check, never an answer."""
+    kind, _, name = key.partition(":")
+    seen, todo, dec, groups = set(), [name] if kind == "rule" else [], [], []
+    if kind == "group":
+        groups.append(name)
+    if kind == "decoder":
+        dec.append(name)
+    while todo and len(seen) < 20:
+        r = todo.pop(0)
+        if r in seen or r not in rules:
+            continue
+        seen.add(r)
+        if rules[r]["decoded_as"]:
+            dec.append(rules[r]["decoded_as"])
+        groups += rules[r]["groups"]
+        todo += rules[r]["if_sid"]
+    groups = [g for g in groups if not re.match(r"(gdpr|pci|nist|hipaa|tsc|gpg13)_", g, re.I)]   # compliance tags say nothing of the source
+    stop = {"syslog", "rule", "rules", "alert", "alerts", "event", "events", "failed", "failure", "success", "decoder", "wazuh", "normalized"}
+    dw = set(w for x in dec for w in _words(x)) - stop
+    gw = set(w for x in groups for w in _words(x)) - stop - dw
+
+    def hits(mine, words):
+        return sum(1 for t in mine if any(t == w or (min(len(t), len(w)) >= 4 and (t.startswith(w) or w.startswith(t))) for w in words))
+    scored = []
+    for iname, info in integrations.items():
+        nw = set(_words(iname)) - stop
+        dn = set(w for d2 in (info.get("decoders") or []) for w in _words(d2.split("/")[1] if "/" in d2 else d2)) - stop
+        s = 4 * hits(dw, nw) + 2 * hits(dw, dn) + 2 * hits(gw, nw) + hits(gw, dn)   # the decoder weighs more than a group
+        if s:
+            scored.append((-s, iname))
+    scored.sort()
+    top = -scored[0][0] if scored else 0
+    groups = [g for g in groups if g]
+    return [n for s, n in scored if -s * 2 >= top][:4], sorted(set(dec)), sorted(set(groups))
+
+
+def ruleset_hints(flow, src, rmig_dir):
+    """ruleset-hints <flow decisions> <ruleset source dir> <rmig dir>: for every open "stock" question of the ruleset
+    section, the 5.0 integrations that may match (by name) and where the 5.0 field names are, into the flow file's own
+    "ruleset-hints" section (never into the ruleset section: rmig reads that one). The question then names them."""
+    d = load(os.path.dirname(flow) or ".", os.path.basename(flow)) or {}
+    stock = ((d.get("ruleset") or {}).get("stock") or {}) if isinstance(d.get("ruleset"), dict) else {}
+    try:
+        integ = json.load(open(os.path.join(rmig_dir, "rmig", "data", "stock5-index.json"))).get("integrations") or {}
+    except (OSError, ValueError, AttributeError):
+        integ = {}
+    rules = _stock4_rules(src) if stock else {}
+    fields = os.path.join(rmig_dir, "rmig", "data", "wcs-fields.csv")
+    hints = {}
+    for key in sorted(stock):
+        cands, dec, groups = stock_candidates(key, rules, integ)
+        hints["stock/" + key] = {"candidates": cands, "decoders_4x": dec, "groups_4x": groups[:12],
+                                 "fields_file": fields if os.path.isfile(fields) else None}
+    if hints or "ruleset-hints" in d:
+        d["ruleset-hints"] = hints
+        write(os.path.dirname(flow) or ".", os.path.basename(flow), d)
+    return 0
+
+
+def node_carry(way, cdec, node, nodefile, out=""):
+    """node-carry to-node|from-node <controller decisions> <node> <node decisions> [<out>]: on a cluster every question a
+    node step asks (the settings of each manager, the finish's raw question on the master) is answered in the controller's
+    one decisions file, under "nodes" -> "<node>". from-node takes the node's sections (all but the ruleset's, which
+    ruleset-carry moves) into the controller's file; to-node writes the node's file (to <out>) with the controller's
+    sections, which hold the person's answers. The node's file is the node step's own copy; the person never edits it."""
+    c = load(os.path.dirname(cdec) or ".", os.path.basename(cdec)) or {}
+    n = load(os.path.dirname(nodefile) or ".", os.path.basename(nodefile)) or {}
+    if way == "to-node":
+        for k, v in ((c.get("nodes") or {}).get(node) or {}).items():
+            n[k] = v
+        if n:
+            write(os.path.dirname(out) or ".", os.path.basename(out), n)
+        return 0
+    mine = {k: v for k, v in n.items() if k not in ("ruleset", "ruleset-hints")}
+    nodes = c.get("nodes") if isinstance(c.get("nodes"), dict) else {}
+    if not mine and node not in nodes:
+        return 0
+    if mine:
+        nodes[node] = mine
+    else:
+        nodes.pop(node, None)
+    c["nodes"] = nodes
+    write(os.path.dirname(cdec) or ".", os.path.basename(cdec), c)
+    return 0
+
+
+def rmig_outcome(cmd, log, rc=""):
+    """R1 (items 4, 6): what an rmig exit 1 or 2 means, from its own last lines. rmig's exit codes: 0 done, 1 done with
+    items waiting (apply: an integration set aside; activate: a detector left out), 2 stopped with nothing written. Two
+    stops still exit 1 (activate after a verification with failures, apply when the engine refuses the root decoder's
+    integration): "<cmd>: stopped" tells them apart. Prints rmig's stop line and items; RM-P-ENGINE-LIMIT and
+    RM-P-REVIEW-PENDING get what the user does next. Exit 0: done (with items waiting); 3: stopped on something the user
+    answers or raises; 1: stopped otherwise."""
+    try:
+        lines = open(log, errors="replace").read().splitlines()
+    except OSError:
+        lines = []
+    stop = [i for i, l in enumerate(lines) if l.startswith("%s: stopped" % cmd)]
+    if not stop:
+        last = [l for l in lines if l.startswith("%s:" % cmd)]
+        if str(rc) == "2":
+            # exit 2 is rmig's "stopped, nothing written": never "done with items waiting" (E7-aio, the indexer stopped)
+            tail = [l for l in lines if l.strip()][-3:]
+            print("rmig %s stopped (exit %s), nothing changed: %s" % (cmd, rc or "?", " | ".join(tail) or "no output"))
+            return 1
+        print("rmig %s: done with items waiting: %s" % (cmd, last[-1] if last else "(no result line)"))
+        return 0
+    i = stop[0]
+    print(lines[i])
+    for l in lines[i + 1:]:
+        if not l.startswith("  - "):
+            break
+        print(l)
+    text = lines[i]
+    if "RM-P-ENGINE-LIMIT" in text:
+        print("DETECTOR CAP: rmig changed nothing. Raise the setting it names on the 5.0 indexer (PUT _cluster/settings, "
+              "for example {\"persistent\": {\"plugins.security_analytics.max_detectors\": N}}) or remove detectors you do "
+              "not use, then run again with RMIG_ENGINE_LIMITS=\"max_detectors=N\" (the tool passes it to rmig as "
+              "--engine-limit max_detectors=N)")
+        return 3
+    if "RM-P-REVIEW-PENDING" in text:
+        print("the ruleset review is not accepted: set \"review\": \"accepted\" in the \"ruleset\" section of the decisions "
+              "file (or in RMIG_DECISIONS) after reading \"Review before activate\" in report.md, and run again")
+        return 3
+    return 1
+
+
+# ------------------------------------------------------------------ R1 extra item 10: the 5.0 indexer heap
+# "4 GB" as the 5.0 assistant gives it on a 16 GB host: free -m reads less than the nominal size (the assistant itself
+# allows 700 MB per 8 GB), so a quarter of a 16 GB host is 3,800 to 3,950 MB; E4-breaker's 3,946 MB heap passed
+HEAP_MIN_MB = 3800
+HEAP_WHY = ("E4-breaker (2026-11-25): at 1.85 GB the 5.0 indexer tripped its parent breaker 38 times in 15 minutes with "
+            "no history load at all, and the full 5 M-alert load took 2 h 7 min with 524 trips and 142 HTTP 429s to the "
+            "manager's modules even with the loader's guard; at 3.9 GB, 0 to 2 trips")
+
+
+def heap_lines(stats):
+    """[(node name, heap MB)] from GET _nodes/stats/jvm."""
+    out = []
+    for nid, n in sorted(((stats or {}).get("nodes") or {}).items()):
+        b = (((n or {}).get("jvm") or {}).get("mem") or {}).get("heap_max_in_bytes")
+        if isinstance(b, int):
+            out.append((n.get("name") or nid, b // 1048576))
+    return out
+
+
+def heap_report(stats):
+    """The heap of every 5.0 indexer node and a WARNING per node below 4 GB (a warning, never a stop)."""
+    rows = heap_lines(stats)
+    if not rows:
+        print("heap5: the 5.0 indexer's heap could not be read (no node in _nodes/stats/jvm)")
+        return 0
+    for name, mb in rows:
+        if mb < HEAP_MIN_MB:
+            print("WARNING heap5: indexer node %s has a %d MB heap, below 4 GB: the history load and the manager's own "
+                  "modules meet the indexer's circuit breaker. Raise -Xms and -Xmx in /etc/wazuh-indexer/jvm.options of "
+                  "that node to 4g or more (at most half its RAM; the host needs the RAM for it) and restart "
+                  "wazuh-indexer before the history phase. Why: %s." % (name, mb, HEAP_WHY))
+        else:
+            print("heap5: indexer node %s has a %d MB heap (4 GB or more)" % (name, mb))
+    return 0
+
+
+def heap5():
+    """R1 extra item 10, after the install: the heap the 5.0 indexer runs with (all-in-one replace gate)."""
+    code, d = idx("GET", "/_nodes/stats/jvm?filter_path=nodes.*.name,nodes.*.jvm.mem.heap_max_in_bytes", idx_password5())
+    if code != 200:
+        print("heap5: the 5.0 indexer did not answer _nodes/stats/jvm (HTTP %s): heap not checked" % code)
+        return 0
+    return heap_report(d)
 
 
 def decisions_section(action, path, section, other):
@@ -1857,21 +2465,21 @@ def decisions_section(action, path, section, other):
     old = d.get(section)
     d[section] = old if old else new
     write(os.path.dirname(path) or ".", os.path.basename(path), d)
-    print("decisions: the %s questions are in %s, section \"%s\"" % (section, path, section))
+    print("decisions: the %s questions are in %s, section \"%s\"" % (section, os.environ.get("DECISIONS_SHOWN") or path, section))
     return 0
 
 # ------------------------------------------------------------------------------------------------ rule 14: the feed
 _FEED_RX = re.compile(r"^(\d{4}/\d\d/\d\d \d\d:\d\d:\d\d) .*content-updater.*(Starting feed download|Slice \d+ \(\d+/\d+\) in progress)")
 
 
-# E2-deb G8: this build logs the end of the initial load (E2-deb evidence 20-bundle-b/11-rule14-feed-lines.txt):
+# this build logs the end of the initial load (E2-deb evidence 20-bundle-b/11-rule14-feed-lines.txt):
 # "... vulnerability-scanner: INFO: CVE feed fully loaded — per-agent scans unblocked." (the content updater's
 # "Initial load download phase complete" comes the same second)
 _FEED_DONE_RX = re.compile(r"^(\d{4}/\d\d/\d\d \d\d:\d\d:\d\d) .*vulnerability-scanner.*CVE feed fully loaded")
-# E3 fold (E3-cluster fix 04, E3-deb N7): after a complete load, a manager restart logs "Starting feed download" again,
+# after a complete load, a manager restart logs "Starting feed download" again,
 # then an incremental update from the stored cursor and the scanner's "Feed update process completed (changed=false)",
-# never "CVE feed fully loaded" again (E3-cluster 10-run/64a, 66; E3-deb 30-bundle-b/22). That line also ends the
-# initial load (changed=true, the same second as "CVE feed fully loaded", E3-cluster 64c). It counts as the completion
+# never "CVE feed fully loaded" again. That line also ends the
+# initial load (changed=true, the same second as "CVE feed fully loaded"). It counts as the completion
 # only when this load is one of those two: an incremental update ("Starting incremental update from offset", which the
 # updater starts only from a complete local database) or an initial load whose download phase completed. A database
 # found incomplete or missing at startup, or an interrupted download, starts a full load again: then only its own
@@ -1883,13 +2491,13 @@ _FEED_RESET_RX = re.compile(r"(vulnerability-scanner.*(local feed database is in
 
 
 def feed_load_state(lines, now_s, quiet_s=180):
-    """Rule 14 (MAC1-G6, F6): the vulnerability feed's load, read from the manager log. 'loading' while the content
+    """Rule 14: the vulnerability feed's load, read from the manager log. 'loading' while the content
     updater wrote a 'Starting feed download' or 'Slice … in progress' line in the last quiet_s seconds (a manager restart
     then discards the load and no upgraded agent's packages, OS or vulnerabilities synchronise until a load completes);
     'quiet' when it wrote such lines earlier and none recently; 'unknown' when there is none. 'quiet' is an inference,
     not a proof. 'complete' when a completion line comes after the last progress line (a later download starts a new
-    load): the scanner's 'CVE feed fully loaded' (E2-deb G8), or its 'Feed update process completed' for a load that is
-    an incremental update from a complete database or an initial load whose download completed (E3 fold, N7)."""
+    load): the scanner's 'CVE feed fully loaded', or its 'Feed update process completed' for a load that is
+    an incremental update from a complete database or an initial load whose download completed."""
     last = done = None
     resumable = False          # this load continues a complete database, or its initial download completed
     for line in lines:
@@ -1946,7 +2554,7 @@ def feed_wait(log_path="/var/wazuh-manager/logs/wazuh-manager.log", max_s="3600"
               _now=time.time, _sleep=time.sleep):
     """Rule 14 (decision of 2026-11-24: wait for the feed): block until the scanner logs a completion line after the last load
     started ('CVE feed fully loaded', or 'Feed update process completed' for an incremental update or a completed initial
-    download: feed_load_state; E3 fold, N7: a restart after a complete load logs only the second). A restart during the initial load throws it away (MAC1-G6, F6) and upgraded agents send no packages,
+    download: feed_load_state; E3 fold, N7: a restart after a complete load logs only the second). A restart during the initial load throws it away and upgraded agents send no packages,
     OS or vulnerabilities until a load completes, so phase 10 waits before its gate and the finish before its restart.
     'quiet' (progress stopped, no completion line) keeps waiting: only the completion line proves the load. Exit 0 when
     complete or when vulnerability detection is off; 1 at max_s, naming how to go on without it."""
@@ -2050,8 +2658,10 @@ if __name__ == "__main__":
           "export-security-rest": export_security_rest, "bundle-ids": bundle_ids, "setup-status": setup_status,
           "handshake": handshake, "reconcile-membership": reconcile_membership, "import-security": import_security,
           "import-saved-objects": import_saved_objects, "policy-unclassified": policy_unclassified, "truth5": truth5,
-          "compare": compare, "wait-agents": wait_agents, "wait-in-force": wait_in_force, "agent-registry": agent_registry, "feed-status": feed_status, "feed-wait": feed_wait, "group-versions": group_versions, "retention-4x": retention_4x, "ism-restore4": ism_restore4, "source-version": source_version, "source-version-cluster": source_version_cluster,
+          "compare": compare, "wait-agents": wait_agents, "wait-in-force": wait_in_force, "agent-registry": agent_registry, "feed-status": feed_status, "feed-wait": feed_wait, "group-versions": group_versions, "retention-4x": retention_4x, "ism-restore4": ism_restore4, "source-version": source_version, "source-version-cluster": source_version_cluster, "v4-assistant-check": v4_assistant_check,
           "decisions-section": decisions_section, "wpk-repo": wpk_repo, "settle-agents": settle_agents, "raw-decision": raw_decision, "raw-facts": raw_facts_cmd,
+          "rmig-check": rmig_check, "ruleset-review": ruleset_review, "ruleset-answers-differ": ruleset_answers_differ, "ruleset-open": ruleset_open, "ruleset-merge": ruleset_merge, "ruleset-carry": ruleset_carry, "ruleset-hints": ruleset_hints, "node-carry": node_carry,
+          "rmig-outcome": rmig_outcome, "heap5": heap5,
           "rollback-saved-objects": rollback_saved_objects}.get(cmd)
     if not fn:
         sys.exit(__doc__)

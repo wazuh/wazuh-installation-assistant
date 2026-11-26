@@ -37,7 +37,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-TOOL_VERSION = "0.10-e3"        # E3 fold: an agent 'pending' right after the opening is waited for (E3-deb N5). 0.9-e2: E2 fold: certificate preflight per node (E2-cluster gap 5). 0.8-merge: 0.7-a5 (A5, over MAC1's 0.6-mac1 over AG1) + 0.6-a6 (A6, over AG1)
+TOOL_VERSION = "0.10-e3"        # an agent 'pending' right after the opening is waited for. 0.9-e2: E2 fold: certificate preflight per node. 0.8-merge: 0.7-a5 (over MAC1's 0.6-mac1 over AG1) + 0.6-a6 (over AG1)
 
 # ---- product facts this tool depends on (source: wazuh/wazuh branch 5.0.0) --------------------
 # task_manager/src/upgrade/platform.cpp
@@ -55,7 +55,7 @@ UPGRADE_MAX_AGENTS = 500
 
 TERMINAL_OK = {"upgraded", "upgraded-trust-unconfirmed", "upgraded-not-verifying", "already-target"}
 TERMINAL_BAD = {"failed", "upgraded-not-connecting", "expired", "refused"}
-# merged: A5's host-gone and A6's no-answer-stale are both open states (different causes: a host that went away mid-sweep,
+# A5's host-gone and A6's no-answer-stale are both open states (different causes: a host that went away mid-sweep,
 # against an agent silent past agents_disconnection_time whose push remoted refuses at once)
 OPEN = {"requested", "delivering", "installing", "waiting-for-agent", "no-answer", "host-gone", "no-answer-stale"}
 TERMINAL_BAD.add("dropped")
@@ -393,6 +393,34 @@ class Indexer:
 INDEXER = None
 
 
+def progress_line(play, open_left, st, leave, sweep, t):
+    """The run's line at least every minute (E8-cluster-deb 7, E9-aio U9): every agent it waits for, with when its
+    request is due (the request plus one poll of the manager, and the sweep), and when an agent that is not connected
+    is left for a later run (once the others are done, then --leave-disconnected seconds)."""
+    poll = st.get("poll_interval") or 900
+
+    def by(i):
+        r = (play[i].get("requests") or [{}])[-1]
+        return r["t"] + poll + sweep if r.get("t") else None
+
+    def say(i):
+        r = (play[i].get("requests") or [{}])[-1]
+        if play[i]["state"] == "waiting-for-agent":
+            return "%s (%s) not connected: upgraded once it connects" % (i, play[i].get("name", ""))
+        return ("%s (%s) %s, requested %ss ago, due by %s" % (i, play[i].get("name", ""), play[i]["state"], int(t - r["t"]), iso(by(i)))
+                if r.get("t") else "%s (%s) %s" % (i, play[i].get("name", ""), play[i]["state"]))
+    dues = [by(i) for i in open_left if play[i]["state"] != "waiting-for-agent" and by(i)]
+    gone = [i for i in open_left if play[i]["state"] == "waiting-for-agent"]
+    tail = ""
+    if gone and dues:
+        tail = ("; not connected (%s): left for a later run once the others are done (by %s at the latest), then %ss more"
+                % (", ".join(gone), iso(max(dues)), leave))
+    elif gone:
+        tail = "; not connected: left for a later run at %s" % iso(st.get("parked_since", t) + leave)
+    return ("waiting for %d agent(s): %s; the manager offers an upgrade to a 4.x agent on its poll, every %ss%s"
+            % (len(open_left), "; ".join(say(i) for i in open_left[:20]), poll, tail))
+
+
 def pending_tasks_from_db(path):
     """Optional, local only: agents that still have a pending remote_upgrade task in tasks.db.
     The module owns the live file, so a copy is queried, as the product documentation says."""
@@ -505,8 +533,7 @@ def nodes_reached(addr, nodes, node_addresses=None, resolve=True):
     own: its name, its cluster address (/cluster/nodes "ip"), an address given with --node-address NODE=ADDR, or a name
     that resolves only to that node's address. Every node otherwise: a balancer, or a name the nodes share, can hand the
     agent to any of them. Before this, every node's certificate had to carry every dialled address, which only holds
-    behind a balancer whose name every node carries (F4); in a cluster without one (each agent dials its own node, E2-
-    cluster) the preflight skipped every agent and the upgrade needed --allow-cert-mismatch."""
+    behind a balancer whose name every node carries; in a cluster without one (each agent dials its own node) the preflight skipped every agent and the upgrade needed --allow-cert-mismatch."""
     a = addr.lower().strip("[]")
     own = {}
     for name, n in nodes.items():
@@ -676,7 +703,7 @@ def preflight(api, a, facts_4x):
                 e["warn"].append("the address this agent dials is unknown (no 4.x fleet facts): certificate coverage NOT checked")
             for addr in e["dialed"]:
                 dialed_all.setdefault(addr, []).append(aid)
-                # E2-cluster gap 5: only the nodes this address can reach must carry it
+                # only the nodes this address can reach must carry it
                 missing = cert_missing(addr, sans_by_node, mf["nodes"], parse_node_addresses(getattr(a, "node_address", None)))
                 if missing:
                     msg = (f"dials '{addr}', which is not in the listener certificate of node(s) {','.join(missing)}: "
@@ -787,7 +814,7 @@ def load_state(path):
 
 
 def save_state(path, st):
-    """The state file is the memory that makes reruns safe (rule 16: a requested task is a commitment). E3 fold (item 17):
+    """The state file is the memory that makes reruns safe (rule 16: a requested task is a commitment). E3 fold:
     synced before the rename and the directory after it, so a power cut leaves the old state or the new one."""
     tmp = path + ".tmp"
     with open(tmp, "w") as fh:
@@ -848,7 +875,7 @@ def alive_until(st, r):
     cleanup pass after task_ttl. A task that was fetched and pushed without an answer is no longer in tasks.db as
     pending, but remoted keeps it in its retry list for RETRY_MAX_AGE from the first push and purges it only at the start
     of the first cycle after that; cycles are poll_interval apart from the END of the previous one, which can itself
-    last most of an hour (A6). Asking again before then can give a recovered agent two pushes."""
+    last most of an hour. Asking again before then can give a recovered agent two pushes."""
     first = first_push(r)
     if first:
         return first + RETRY_MAX_AGE + st["poll_interval"] + st.get("longest_cycle", st["task_ttl"])
@@ -879,7 +906,7 @@ def thread_activity(api, st, a):
 
 
 def record_cycles(st, times):
-    """(a6, merged: one implementation for verify and thread_activity, A6-D7's first leftover) remoted's cycles from its
+    """ (merged: one implementation for verify and thread_activity, A6-D7's first leftover) remoted's cycles from its
     push lines: a gap of more than 300 s separates two cycles. The longest cycle bounds how late a retry-list purge can
     come; the last push says whether the delivery thread is busy right now."""
     times = sorted(times)
@@ -1381,7 +1408,7 @@ def run(api, a, facts_4x):
         # rest of this cycle, a whole poll and the next cycle's retry list, which is how batch B expired in A6 (rule 23)
         thread_busy = now() - st.get("thread_busy_until", 0) < RESPONSE_TIMEOUT + 60
         if thread_busy and todo:
-            if not st.get("busy_note"):     # merged: its own key; sharing room_note with A5's lane note printed it every pass
+            if not st.get("busy_note"):     # its own key; sharing room_note with A5's lane note printed it every pass
                 st["busy_note"] = True
                 log(f"{len(todo)} agents ready; not asking while remoted's delivery thread is in a cycle (last push {iso(st['thread_busy_until'])})")
         else:
@@ -1417,6 +1444,24 @@ def run(api, a, facts_4x):
         can_move = [i for i, s in play.items() if s["state"] == "planned" and not s.get("guard") and not brake and gate(i)[0] in ("go", "hold")]
         if not open_left and not can_move:
             break
+        # E7-aio U9: an agent stopped after its request held the run silently until its task expired (task_ttl and the
+        # cleanup pass, 66 minutes) and then failed the gate. When every open agent is only waiting for its host to
+        # connect, the run stops after --leave-disconnected seconds: the request stays with the manager until it
+        # expires, the agent is named, and a re-run continues (or asks again once it has expired)
+        parked = [i for i in open_left if play[i]["state"] == "waiting-for-agent"]
+        if open_left and len(parked) == len(open_left) and not can_move:
+            st.setdefault("parked_since", now())
+            if now() - st["parked_since"] >= a.leave_disconnected:
+                log("stopping: agent(s) %s not connected, their upgrade requested and kept by the manager until it expires; "
+                    "they stay on 4.x until they connect: re-run then" % ", ".join("%s (%s)" % (i, play[i].get("name", "")) for i in parked))
+                st.pop("parked_since", None)
+                break
+        else:
+            st.pop("parked_since", None)
+        if now() - st.get("progress_at", t_start) >= 60 and open_left:      # never silent for more than a minute
+            st["progress_at"] = now()
+
+            log(progress_line(play, open_left, st, a.leave_disconnected, getattr(a, "sweep_allowance", 0), now()))
         if a.once or now() > deadline:
             log(f"stopping with open agents {', '.join(open_left) or '-'} ({'--once' if a.once else 'max wait reached'}); re-run to continue")
             break
@@ -1536,7 +1581,7 @@ def trust_audit(api, node_addresses=None):
         elif not m:
             verdict = "NO configuration report in wazuh-agent-config: unknown"
         else:
-            miss = [d for d in m["dials"] if cert_missing(d, sans, nodes, node_addresses)]   # E2-cluster gap 5: per node
+            miss = [d for d in m["dials"] if cert_missing(d, sans, nodes, node_addresses)]   # per node
             verdict = f"verification_mode={m['mode']}, CA {m['ca'] or 'none'}, dials {','.join(m['dials']) or '?'}"
             if m["mode"] in (None, "none"):
                 verdict += "  <-- VERIFIES NOTHING"
@@ -1638,13 +1683,15 @@ def main():
     t.add_argument("--check-every", type=int, default=30)
     t.add_argument("--max-wait", type=int, default=6 * 3600)
     t.add_argument("--once", action="store_true", help="one pass: request what is due, verify, report, exit")
+    t.add_argument("--leave-disconnected", type=int, default=180,
+                   help="stop when every open agent has only been waiting for its host to connect for this long (seconds)")
     t.add_argument("--include-disconnected", action="store_true", help="request agents that are not active (default: skip them)")
-    t.add_argument("--pending-wait", type=int, default=PENDING_WAIT, help="seconds to wait for agents listed as 'pending' (E3-deb N5)")
+    t.add_argument("--pending-wait", type=int, default=PENDING_WAIT, help="seconds to wait for agents listed as 'pending'")
     t.add_argument("--include-stale", action="store_true", help="(ag1) request 'active' agents whose last keepalive is old")
     t.add_argument("--allow-cert-mismatch", action="store_true", help="request agents whose dialed address is not in the listener certificate")
     t.add_argument("--node-address", action="append", metavar="NODE=ADDR",
                    help="an address that reaches only NODE (a per-node DNS name or NAT address the tool cannot resolve); an agent "
-                        "dialling it is checked against that node's certificate only (E2-cluster gap 5)")
+                        "dialling it is checked against that node's certificate only")
     t.add_argument("--ignore-blockers", action="store_true")
     t.add_argument("--listener-host", help="host to probe for the agent listener; default: the API host")
     t.add_argument("--manager-log", help="read remoted's lines from this file instead of the API (when run on the manager)")

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# settings-node.sh <step> : CL1, the settings stage (rules 21 and 22, C4) on one manager node of a cluster, by the
+# settings-node.sh <step> : CL1, the settings stage (rules 21 and 22) on one manager node of a cluster, by the
 # all-in-one's own functions (migrate.sh, loaded by aio_lib; E4-cluster's lab wrapper tools/settings-cluster.sh was the
 # reference). The node's decisions file is $BUNDLE_DIR/decisions.json; migrate-cluster.sh brings it from and back to
 # the controller ($state_dir/decisions/<node>.json) around every step that can ask.
 #   collect4        4.x node (pre-copy, and again at every freeze through export-manager.sh): pc_settings into this
 #                   attempt's v4/config (E4-cluster gap 2b: a second forward attempt moved v4/ away and the cluster
 #                   export wrote no v4/config, so plan was refused); the indexer and dashboard files only where they exist
-#                   (gap 2a)
 #   plan-precopy <name> <master|worker> <master-address>
 #                   4.x node: pc_settings_plan against the 5.0 files this build installs, with this node's <cluster> as
 #                   the 5.0 install writes it (E5 fold: the all-in-one base asked three false questions per node); exit
@@ -17,11 +16,11 @@
 #                   (order C), so its candidate is checked alone; the restart that applies it is the identity step's own
 #   apply-worker    5.0 WORKER, closed: im_settings against every node already on 5.0 (settings/peers/<node>/, their
 #                   live wazuh-manager.conf streamed host to host), then its restart while it is still closed; a 5.0
-#                   worker runs no Server API (E4-cluster gap 5), so ready is the cluster daemon answering. A restart
+#                   worker runs no Server API, so ready is the cluster daemon answering. A restart
 #                   that fails puts the saved files back (rule 22)
 #   restore         the saved installed files back (rule 22)
 #   groups-pre      MASTER: im_groups_pre (the pre-upgrade group pass, while 4.x agents remain)
-#   groups-post     MASTER (finish): fi_groups_post (every group whose agents all run 5.0; E4-cluster gap 4)
+#   groups-post     MASTER (finish): fi_groups_post (every group whose agents all run 5.0)
 . "$(dirname "$(readlink -f "$0")")/common.sh"
 aio_lib
 cmd=${1:-}; rc=0
@@ -30,8 +29,8 @@ collect4)
   [ -d /var/ossec/etc ] || die "no 4.x manager on this node"
   rm -rf "$BUNDLE_DIR/v4/config"; pc_settings || rc=$?
   [ "$rc" = 0 ] || die "the 4.x settings could not be collected"
-  head -n 1 "$BUNDLE_DIR/v4/config/stock/SOURCE" 2>/dev/null || true; mark settings.collect4;;
-plan-precopy) # <node name> <master|worker> <master address> (E5 fold): planned against a cluster base, not the all-in-one's
+  mark settings.collect4;;   # the stock reference line was printed once by pc_settings
+plan-precopy) # <node name> <master|worker> <master address>: planned against a cluster base, not the all-in-one's
   if [ -n "${2:-}" ] && [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
     PRECOPY_BASE="$BUNDLE_DIR/settings/base-precopy-cluster"
     python3 "$HERE/settings_stage.py" cluster-base --base-from "$HERE/converter/refs/base-5.0.0-aio" --out "$PRECOPY_BASE" \
@@ -44,7 +43,7 @@ stage)
   [ "$rc" = 0 ] || exit $rc; mark settings.staged;;
 apply-worker)
   [ "$CARRY_SETTINGS" = 1 ] || { echo "CARRY_SETTINGS=0: the installed 5.0 settings are kept"; exit 0; }
-  peers=$(ls -d "$BUNDLE_DIR"/settings/peers/*/ 2>/dev/null | tr '\n' ' ')
+  peers=$(ls -d "$BUNDLE_DIR"/settings/peers/*/ 2>/dev/null | tr '\n' ' ' || true)
   [ -n "$peers" ] || die "no other node's wazuh-manager.conf in settings/peers: the cross-node check cannot run"
   CLUSTER_CANDIDATES="$peers"; im_settings || exit $?
   systemctl restart wazuh-manager; ts > "$STATE/T_settings_restart"

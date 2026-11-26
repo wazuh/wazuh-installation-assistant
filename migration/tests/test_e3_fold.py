@@ -22,7 +22,7 @@ H = helpers.load(os.path.join(SRC, "mig_helper.py"), "e3_mig_helper")
 BS = helpers.load(os.path.join(SRC, "bundle_secrets.py"), "e3_bundle_secrets")
 
 KEY = "0123456789abcdef0123456789abcdef01234567"
-CLUSTER_KEY = "3123456789abcdef0123456789abcdef"
+CLUSTER_KEY = "2123456789abcdef0123456789abcdef"
 
 
 def quiet(fn, *a, **k):
@@ -58,7 +58,7 @@ class ClusterWayBackInstallFilesCluster01(_Node):
 
     def reinstall(self, tree):
         n = self.node(tree)
-        cwrite(n.p("/home/ec2-user/v4/wazuh-install.sh"), "#!/bin/bash\necho 'INFO: --- Summary ---'\necho 'INFO: Password: s3cr3t-admin'\nexit 0\n", 0o755)
+        cwrite(n.p("/home/ec2-user/v4/wazuh-install.sh"), "#!/bin/bash\nreadonly wazuh_version=\"4.14.11\"\necho 'INFO: --- Summary ---'\necho 'INFO: Password: s3cr3t-admin'\nexit 0\n", 0o755)
         tgz(n.env["V4_TAR"], {"wazuh-install-files/wazuh-passwords.txt": b"x"}, gz=False)
         rc, out = n.run("goback-install4.sh", "--wazuh-server", "wazuh-1")
         return n, rc, out, n.p("/root/mig-work/v4-reinstall/wazuh-install-files.tar")
@@ -523,10 +523,10 @@ FU = helpers.load(os.path.join(SRC, "fleet-upgrade.py"), "e3_fleet_upgrade")
 class PendingAgentAfterTheOpeningDebN5(unittest.TestCase):
     """`agents` 46 s after the opening skipped the Windows agent as 'pending' (re-applying the new shared configuration)
     with "re-run when it is back" (E3-deb 30-bundle-b/05). Wait for it, else name it."""
-    SANS = ["198.51.100.13", "localhost", "wazuh-1"]
+    SANS = ["198.51.100.14", "localhost", "wazuh-1"]
 
     def preflight(self, mod, statuses, pending_wait=None, ka_age=0):
-        node = {"type": "master", "ip": "198.51.100.13", "poll_interval": 900, "task_manager": {},
+        node = {"type": "master", "ip": "198.51.100.14", "poll_interval": 900, "task_manager": {},
                 "remote": {"legacy": {"enabled": True}, "https": {"bind_addr": "0.0.0.0", "port": 1517, "verification_mode": "none"}},
                 "tls": {"available": True, "listener": {"sans": self.SANS, "seconds_until_expiry": 10 ** 9},
                         "ca_bundle": {"chain_valid": True, "matches_active_leaf": True}}}
@@ -539,7 +539,7 @@ class PendingAgentAfterTheOpeningDebN5(unittest.TestCase):
             reads.append(st)
             return [{"id": "004", "name": "e3deb-win", "version": "Wazuh v4.14.10", "status": st, "lastKeepAlive": ka,
                      "os": {"platform": "windows", "arch": "x86_64", "major": "10", "name": "Windows Server 2022", "version": "10.0"}}]
-        facts = {"004": {"dialed": ["198.51.100.13"]}}
+        facts = {"004": {"dialed": ["198.51.100.14"]}}
         a = types.SimpleNamespace(target="v5.0.0", poll_interval=None, wpk_repo="repo", step_wpk_repo=None, agents=None, groups=None,
                                   package_type=None, step_version=None, include_stale=False, include_disconnected=False,
                                   allow_cert_mismatch=False, listener_host="h", api="https://localhost:55000", canary_key="platform",
@@ -749,8 +749,8 @@ class IdentityStageRestartsOnlyAfterAWriteDebN1(unittest.TestCase):
 # ------------------------------------------------------------------------------------------------ 13. cluster gaps 1 and 6
 class MixedVersionClusterIsRefusedByNameClusterGaps1And6(_Node):
     """A 4.14.9 worker could not join the 4.14.10 master (Error 3031), so /cluster/nodes listed only wazuh-1 and the
-    master's check passed (E3-cluster 02-o12/03, 05); the per-node refusal named ip-198-51-100-10, not wazuh-2."""
-    NODES = [{"name": "wazuh-1", "type": "master", "version": "4.14.10", "ip": "198.51.100.11"}]
+    master's check passed (E3-cluster 02-o12/03, 05); the per-node refusal named ip-198-51-100-11, not wazuh-2."""
+    NODES = [{"name": "wazuh-1", "type": "master", "version": "4.14.11", "ip": "198.51.100.12"}]   # F6 fold: 4.14.11 is the minimum
 
     def cluster(self, mod, agents=(), env=None, *expect):
         class FakeApi:
@@ -785,13 +785,13 @@ class MixedVersionClusterIsRefusedByNameClusterGaps1And6(_Node):
         n = self.node(tree)
         cwrite(n.p("/var/ossec/etc/ossec.conf"), "<ossec_config><cluster>\n  <name>wazuh</name>\n  <node_name>wazuh-2</node_name>\n</cluster></ossec_config>\n")
         n.stub("rpm", 'case "$*" in *wazuh-manager*) echo 4.14.9-1;; *) echo "package not installed";; esac')
-        n.stub("hostname", 'case "$1" in -s) echo ip-198-51-100-10;; *) echo 10.0.0.2;; esac')
+        n.stub("hostname", 'case "$1" in -s) echo ip-198-51-100-11;; *) echo 10.0.0.2;; esac')
         return n.run("source-version.sh")
 
     def test_the_refusal_names_the_cluster_node(self):
         rc, out = self.node_refusal(SRC)
         self.assertNotEqual(rc, 0, out)
-        self.assertIn("wazuh-manager 4.14.9-1 on wazuh-2 (ip-198-51-100-10) is older than 4.14.10", out)
+        self.assertIn("wazuh-manager 4.14.9-1 on wazuh-2 (ip-198-51-100-11) is older than 4.14.11", out)
 
 
     def test_the_controller_passes_its_inventory(self):

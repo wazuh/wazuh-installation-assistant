@@ -9,7 +9,7 @@ log "listening: $(ss -ltnH | awk '{print $4}' | grep -E ':(1514|1515|1516|1517|5
 log "remoted certificate SAN: $(openssl x509 -in $E/certs/remoted.pem -noout -ext subjectAltName 2>/dev/null | tail -n1 | tr -d ' ')"
 log "remoted certificate issuer: $(openssl x509 -in $E/certs/remoted.pem -noout -issuer -fingerprint -sha256 | tr '\n' ' ')"
 log "CA: $(openssl x509 -in $E/ca/root-ca.pem -noout -fingerprint -sha256) ; CA key on this node: $([ -e $E/ca/root-ca.key ] && echo yes || echo no)"
-n=$( { grep -c . $E/client.keys 2>/dev/null || true; } | head -n1)   # E5 fold: grep -c prints 0 AND fails on an empty file ("0" then "0 line(s)")
+n=$( { grep -c . $E/client.keys 2>/dev/null || true; } | head -n1)   # grep -c prints 0 AND fails on an empty file ("0" then "0 line(s)")
 log "client.keys: ${n:-0} line(s), sha256 $(sha256sum $E/client.keys 2>/dev/null | cut -c1-16)"
 log "authd.pass: $(wc -c < $E/authd.pass 2>/dev/null || echo none) bytes, sha256 $(sha256sum $E/authd.pass 2>/dev/null | cut -c1-16)"
 log "groups: $(ls $E/shared 2>/dev/null | tr '\n' ' ')"

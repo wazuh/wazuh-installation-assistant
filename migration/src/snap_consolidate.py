@@ -4,7 +4,7 @@
 A year of daily 4.x indices (3 shards each, about 1,100 shards) cannot be restored into a 5.0 node whose limit is
 1,000 shards, and 5.0 does not refuse such a restore itself (T1). So the history is restored ONE MONTH AT A TIME,
 each restored daily copy is read with a scroll and sent through the loader's own Python shaping (history_load.load_index:
-the corrected field map, the group stamp, the breaker guard; OF1, decision 9) into its monthly indices, and the
+the corrected field map, the group stamp, the breaker guard) into its monthly indices, and the
 restored copies are deleted before the next month is restored. The template is H1's (history_load.build_template:
 5.0 types from the installed findings template, the 4.x mappings under legacy.alert). Same target names, same ids
 ("<source index>:<source _id>"), same aliases, so the three transports give the same documents.
@@ -21,14 +21,13 @@ consolidate is resumable: a month whose two targets already hold the manifest co
 daily copies left by an interrupted run are reused when complete and deleted when not (a killed restore leaves red
 indices: T1 11b). Every step logs the cluster's shard count, and before each restore the tool refuses if the
 month would take the node above --shard-ceiling of its limit.
-Python 3 standard library only (plus history_load.py and history_migrate.py beside this file).
+Python 3 standard library only (plus history_load.py beside this file).
 """
 import argparse, json, os, re, sys, threading, time, urllib.parse
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import history_load as hl          # noqa: E402  (merged: H5/M3 loader; was H1's loader: Bundle, build_template, pipeline_body, State, prove)
-hm = hl.hm                         # S4's history_migrate.py: Api, policy_body, detect_cluster
 
 REPO = "sc1-history"
 DROP = {"uuid", "creation_date", "provided_name", "version", "resize", "routing", "history", "blocks",
@@ -157,17 +156,16 @@ def cmd_consolidate(api, a):
     if missing:
         raise SystemExit("REFUSE: %d source indices are not in snapshot %s, e.g. %s" % (len(missing), a.snapshot, missing[:3]))
     # the shape: H1's template and the loader's (empty) pipeline, the retention policy (exactly as history_load apply)
-    cluster = a.cluster_name or hm.detect_cluster(api)
+    cluster = a.cluster_name or hl.detect_cluster(api)
     if not cluster:
         raise SystemExit("cannot tell the 5.0 cluster name: pass --cluster-name")
     registry = hl.load_registry(a)
     body, nf, copy = hl.build_template(api, b, a.priority, a.agent_ids == "carried", registry)
     must(api("PUT", "/_index_template/%s" % hl.TEMPLATE, body), "PUT template")
     must(api("PUT", "/_ingest/pipeline/%s" % hl.PIPELINE, hl.pipeline_body(cluster, copy, registry)), "PUT pipeline")
-    hm.POLICY = hl.POLICY
     s, o = api("GET", "/_plugins/_ism/policies/%s" % hl.POLICY)
     q = "?if_seq_no=%s&if_primary_term=%s" % (o["_seq_no"], o["_primary_term"]) if s == 200 else ""
-    must(api("PUT", "/_plugins/_ism/policies/%s%s" % (hl.POLICY, q), hm.policy_body(a)), "PUT policy")
+    must(api("PUT", "/_plugins/_ism/policies/%s%s" % (hl.POLICY, q), hl.policy_body(a)), "PUT policy")
     a.cluster_name = cluster
     out("shape: template %s (%d 5.0 fields + legacy.*), Python shaping with the corrected map, %s, policy %s %s; cluster name %s" % (
         hl.TEMPLATE, nf, "group stamp (%d agents)" % len(registry) if registry else "no group stamp", hl.POLICY, a.retention, cluster))
@@ -219,7 +217,7 @@ def cmd_consolidate(api, a):
             rej = {"lock": threading.Lock(), "f": open(os.path.join(sdir, "rejected.ndjson"), "a")}
             order = sorted(x["srcs"], key=lambda n: -b.man["indices"][n]["docs_expected"])
             procs = getattr(a, "procs", 0)
-            if procs:   # PERF1: the shaping in processes, as history_load.py --procs (threads cap near 1-2k docs/s: the GIL)
+            if procs:   # the shaping in processes, as history_load.py --procs (threads cap near 1-2k docs/s: the GIL)
                 import multiprocessing
                 hl.DOWN = hl.Down(shared=True)
                 ex = ProcessPoolExecutor(procs, mp_context=multiprocessing.get_context("fork"), initializer=hl._die_with_parent)
@@ -301,10 +299,10 @@ def main():
     ap.add_argument("--state-dir"); ap.add_argument("--verbose", action="store_true")
     ap.add_argument("--bulk-docs", type=int, default=2000); ap.add_argument("--bulk-bytes", type=int, default=8 << 20)
     ap.add_argument("--breaker-max", type=float, default=0.85); ap.add_argument("--breaker-wait-max", type=float, default=1800)
-    # PERF1: shaping processes, the flow's default (migrate.sh HISTORY_PROCS: half the CPUs, 1 to 8); 0 = --parallel threads
+    # shaping processes, the flow's default (migrate.sh HISTORY_PROCS: half the CPUs, 1 to 8); 0 = --parallel threads
     ap.add_argument("--procs", type=int, default=default_procs(), help="shape in N processes (default: half the CPUs, 1 to 8, as the flow); 0: --parallel threads")
     a = ap.parse_args()
-    api = hm.Api(a)
+    api = hl.Api(a)
     if a.cmd == "export-meta":
         sys.exit(cmd_export_meta(api, a))
     if a.cmd == "snapshot":

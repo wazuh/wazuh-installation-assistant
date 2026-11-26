@@ -16,7 +16,7 @@ from migration_common import (CARRY, CHANGE, DROP, NONE, DECIDE, UNKNOWN, GUIDE,
                               Report, load_decisions, options, parse_xml, write_run, xml_bytes)
 import c4_ext
 
-# C4: run context. base = installed 5.0 files (c4_ext.Base), stock = stock 4.x files (c4_ext.Stock),
+# run context. base = installed 5.0 files (c4_ext.Base), stock = stock 4.x files (c4_ext.Stock),
 # ranges = 5.0 internal-option ranges (c4_ext.Ranges), standalone = the 4.x <cluster> was disabled.
 CTX = dict(base=None, stock=None, ranges=None, standalone=False)
 
@@ -232,7 +232,7 @@ def c4_rule(path, value):
             return None
         if tags[1:] == ['key']:
             if base:
-                return DROP, s, 'The 4.x cluster key is never carried: the 5.0 install generated one key for every node of this cluster, and a node with another key is cut off silently (F3). Kept the installed key.', 'cluster.key-installed', None
+                return DROP, s, 'The 4.x cluster key is never carried: the 5.0 install generated one key for every node of this cluster, and a node with another key is cut off silently. Kept the installed key.', 'cluster.key-installed', None
             return DECIDE, s, 'Supply the 5.0 cluster key that the 5.0 install gave every node. Never the 4.x key: a master with another key cuts its workers off silently.', 'cluster.key-5x', lambda x: bool(re.fullmatch(r'[A-Za-z0-9]{32}', x))
         if base:
             if tags[1:] in (['node_type'], ['node_name']) and bval and value not in bval:
@@ -799,9 +799,9 @@ def main(argv=None):
         parser.add_argument('--' + flag)
     parser.add_argument('--out', required=True, help='New output directory, separate from input')
     parser.add_argument('--decisions', help='JSON object keyed by report option id; see README.md')
-    parser.add_argument('--base-5x', help='C4: directory with the installed 5.0 wazuh-manager.conf, wazuh-manager-internal-options.conf, api.yaml, cluster.json and wazuh-manager.schema.json; output is then complete files merged into them')
-    parser.add_argument('--stock-4x', help='C4: directory with the stock 4.x ossec.conf, internal_options.conf and cluster.json of the same version and OS')
-    parser.add_argument('--ranges', help='C4: 5.0 internal-option range table (tool/ranges-5.0.0.json)')
+    parser.add_argument('--base-5x', help='directory with the installed 5.0 wazuh-manager.conf, wazuh-manager-internal-options.conf, api.yaml, cluster.json and wazuh-manager.schema.json; output is then complete files merged into them')
+    parser.add_argument('--stock-4x', help='directory with the stock 4.x ossec.conf, internal_options.conf and cluster.json of the same version and OS')
+    parser.add_argument('--ranges', help='5.0 internal-option range table (tool/ranges-5.0.0.json)')
     args = parser.parse_args(argv)
     CTX.update(base=None, stock=None, ranges=None, standalone=False)
     CTX.pop('changes', None); CTX.pop('cluster_patch', None)
@@ -813,7 +813,7 @@ def main(argv=None):
         if args.ranges:
             CTX['ranges'] = c4_ext.Ranges(args.ranges)
     except (OSError, ValueError, ET.ParseError) as exc:
-        print('Conversion refused: cannot read a C4 reference input (%s).' % exc, file=sys.stderr)
+        print('Conversion refused: cannot read a reference input (%s).' % exc, file=sys.stderr)
         return 1
     try:
         paths = {}

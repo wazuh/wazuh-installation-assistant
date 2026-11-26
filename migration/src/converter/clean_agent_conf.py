@@ -22,8 +22,8 @@ KNOWN_ATTRS = {('agent_config', 'os'), ('agent_config', 'name'), ('agent_config'
                ('directories', 'check_all'), ('directories', 'realtime'), ('label', 'key'), ('wodle', 'name')}
 
 
-# C4: two passes. `pre-upgrade` runs while any agent of the group is 4.x (phase 6): it removes only what makes a
-# 4.x agent refuse its whole shared configuration (syscheck prefilter_cmd, G1) or what the 5.0 API refuses (a label
+# two passes. `pre-upgrade` runs while any agent of the group is 4.x (phase 6): it removes only what makes a
+# 4.x agent refuse its whole shared configuration (syscheck prefilter_cmd) or what the 5.0 API refuses (a label
 # key starting with "_"), and keeps every option a 4.x agent still applies, such as <client_buffer> (removing it
 # shrank a 4.x agent's buffer from 20000 to 5000, E1). `post-upgrade` (phase 11, every agent of the group on 5.0)
 # is C1's full clean.
@@ -191,9 +191,9 @@ def main(argv=None):
     parser.add_argument('--out', required=True, help='New output directory')
     parser.add_argument('--decisions', help='JSON keep/omit decisions keyed by report option id')
     parser.add_argument('--phase', choices=('pre-upgrade', 'post-upgrade'), default='post-upgrade',
-                        help='C4: pre-upgrade while any agent of the group is 4.x (phase 6); post-upgrade once all run 5.0 (phase 11)')
-    parser.add_argument('--group-dir', help='C4: the 4.x group folder; referenced files it holds are carried (pre-upgrade)')
-    parser.add_argument('--default-group', action='store_true', help='C4: this is the default group: carry its stock rootcheck *.txt files for 4.x agents (pre-upgrade) or list them for deletion (post-upgrade)')
+                        help='pre-upgrade while any agent of the group is 4.x (phase 6); post-upgrade once all run 5.0 (phase 11)')
+    parser.add_argument('--group-dir', help='the 4.x group folder; referenced files it holds are carried (pre-upgrade)')
+    parser.add_argument('--default-group', action='store_true', help='this is the default group: carry its stock rootcheck *.txt files for 4.x agents (pre-upgrade) or list them for deletion (post-upgrade)')
     args = parser.parse_args(argv)
     try:
         PHASE['value'] = args.phase

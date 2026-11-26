@@ -27,7 +27,8 @@ RULES = [
 
     (2, "The 5.0 assistant's -o is never what removes 4.x", [
         ("migrate.sh", r"4\.x is still installed: not running the 5\.0 assistant", "the 5.0 assistant runs only once 4.x is gone"),
-        ("migrate.sh", r"a partial 5\.0 installation is on the host .*adding -o", "-o only over a partial 5.0, never over 4.x")], None),
+        ("migrate.sh", r"a partial 5\.0 installation is on the host .*adding -o", "-o only over a partial 5.0, never over 4.x"),
+        ("migrate.sh", r"^  assistant_wait \"\$d\" \|\| return 1", "never a second 5.0 assistant beside one a killed run left running (F7 fold, E7-aio U5)")], None),
     (3, "5.0 is never installed over a leftover 4.x data directory", [
         ("migrate.sh", r"/var/ossec exists: not installing 5\.0 over 4\.x leftovers", "refuses with /var/ossec present")], None),
     (4, "Installed means setup ready and content synchronised; after every restart the cluster daemon answers; the setup wording comes from the build manifest", [
@@ -42,7 +43,10 @@ RULES = [
         ("migrate.sh", r"done_ freeze\.stop_manager \|\| source_version_or_die", "checked again before the outage starts (also before the pre-copy)"),
         ("cluster/node/source-version.sh", r"source-version-cluster", "cluster: every manager node from /cluster/nodes, every node's own packages"),
         ("mig_helper.py", r"^def cluster_nodes_missing\(", "cluster: a node the inventory or the agent registry names that is not connected is refused by name (E3 fold, E3-cluster gap 1)"),
-        ("cluster/node/freeze-manager.sh", r"^source_version_gate$", "cluster: the freeze checks again on every forward attempt (E3 fold, E3-cluster gap 5)")], None),
+        ("cluster/node/freeze-manager.sh", r"^source_version_gate$", "cluster: the freeze checks again on every forward attempt (E3 fold, E3-cluster gap 5)"),
+        ("mig_helper.py", r"^def v4_assistant_check\(", "the 4.x assistant that removes 4.x, and reinstalls it when going back, installs the source's own version (F6 fold: 4.14.11 published; the default URL serves only the latest 4.14.x)"),
+        ("migrate.sh", r"v4_assistant_ok \"V4_ASSISTANT=<path to that file>\"", "all-in-one: a mismatch refused at the pre-copy, before the freeze; again before the removal and the reinstall"),
+        ("cluster/node/source-version.sh", r"v4_assistant_check \|\| \{ rm -f", "cluster: every node at the pre-copy; again at its removal and its way back")], None),
     (5, "Listeners closed and the 4.x enrollment password off 5.0 until the registry import is verified; a non-empty registry is a cut import only if id, name and key match", [
         ("migrate-cluster.sh", r"step master\.guard ", "cluster (CL1, guide point b): the agent guard on each manager from before its 4.x removal to its opening"),
         ("cluster/node/open-node.sh", r"^op_listeners \|\| die", "cluster: each manager opens through the all-in-one's op_listeners (guard off, firewall, restart)"),
@@ -55,9 +59,11 @@ RULES = [
         ("cluster/node/fleet-facts.sh", r"agent-san-extra\.txt", "cluster (CL1): the dialled names no manager address carries, passed to -g with -as"),
         ("migrate.sh", r"agent-san-extra\.txt", "dialled addresses the certificate lacks, passed with -as"),
         ("mig_helper.py", r"^def handshake\(", "one handshake per dialled address"),
-        ("migrate.sh", r"python3 \"\$HELPER\" handshake ", "called by the replace gate, before any opening")], None),
+        ("migrate.sh", r"python3 \"\$HELPER\" handshake ", "called by the replace gate, before any opening"),
+        ("migrate-cluster.sh", r"^a_v5config\(\)", "cluster: the 5.0 config.yml checked against the inventory at every assess, before any 4.x node is removed (F6 fold, E6-cluster-deb gap 2)")], None),
     (7, "One explicit point of no return, before the first agent upgrade", [
         ("migrate-cluster.sh", r"^cmd_c_confirm\(\)", "cluster (CL1): the confirmation"),
+        ("migrate.sh", r"^nx_new_attempt\(\)", "after going back, a new attempt keeps the earlier bundle and answers; the point of no return is asked again (F7 fold)"),
         ("migrate-cluster.sh", r"done_ confirm\.no_return && die \"the point of no return was confirmed", "cluster: going back refused after it"),
         ("migrate-cluster.sh", r"^cbanner_phase9\(\)", "cluster: the PHASE 9 banner"),
         ("migrate.sh", r"^cmd_confirm\(\)", "the confirmation"),
@@ -70,11 +76,19 @@ RULES = [
         ("mig_helper.py", r"^def raw_facts\(", "the rules and custom decoders a refusal names are recorded before the first finish's sweep (E5 fold, E5-aio gap 7)"),
         ("cluster/node/ruleset-node.sh", r"op_decision \|\| exit", "cluster (CL1): the decision applied on the master"),
         ("cluster/node/open-node.sh", r"op_in_force \|\| die", "cluster: in force on each node's engine before it opens"),
-        ("migrate.sh", r"^op_decision\(\)", "the decision: an explicit UNCLASSIFIED_DECISION, else the default (ask stops with the listeners closed)"),
+        ("migrate.sh", r"^op_decision\(\)", "the decision: an explicit UNCLASSIFIED_DECISION, else the default (ask: a question in the decisions file, the listeners closed until it is answered)"),
+        ("migrate.sh", r"^mostly_no_sample\(\)", "the default activates nothing when most migrated rules had no 4.x alert to check them against (F7 fold, E7-aio forward 2)"),
+        ("migrate.sh", r"^raw_ask\(\)", "the raw-at-finish question is asked with the point of no return, activate-force included (F7 fold)"),
         ("migrate.sh", r"^UNCLASSIFIED_DEFAULT=\"verified\+raw\"", "the default answer: the rules that verified activated, raw indexing on until the finish (decision 3, OF1)"),
         ("migrate.sh", r"^op_in_force\(\)", "waits for the engine's synchronisation of every changed space (F6-D3)"),
         ("mig_helper.py", r"^def wait_in_force\(", "the wait itself"),
-        ("migrate.sh", r"step open\.in_force", "between the decision and the listeners")], None),
+        ("migrate.sh", r"step open\.in_force", "between the decision and the listeners"),
+        ("mig_helper.py", r"^def ruleset_review_ask\(", "rmig's mandatory review is asked in the ruleset decisions before the freeze and never answered for the user; activate stops while it is open (R1)"),
+        ("migrate.sh", r"^rmig_activate\(\)", "rmig activate's exit read as rmig defines it: a review or detector-cap stop keeps the listeners closed with what to do (R1)"),
+        ("migrate.sh", r"^ruleset_still_open\(\)", "a question rmig opens from the first answers stops the ruleset step until it is answered, in the one decisions file: no rule is left out silently (F6 fold, E6-aio gap 1)"),
+        ("migrate-cluster.sh", r"ruleset-carry to-node", "cluster: the ruleset questions are answered in the controller's decisions file like the others (F6 fold)"),
+        ("mig_helper.py", r"if action not in \(\"get\", \"on\", \"off\", \"keep\"\)", "policy-unclassified refuses an unknown word; keep-raw reads the policy back (F6 fold, E6-aio gap 4)"),
+        ("migrate.sh", r"next_flow\.py\" ask \"\$MIGRATION_DECISIONS\" unclassified-decision", "UNCLASSIFIED_DECISION=ask is a question in the decisions file, its answer the decision (F6 fold)")], None),
     (9, "History is switched on only after its proof and the role audit, inside `on` itself; never do_not_fail_on_forbidden", [
         ("history_load.py", r"if cmd_prove\(api, a, b\) != 0:", "the proof inside `on`, no bypass flag"),
         ("history_load.py", r"if cmd_audit_roles\(api, a, b\) != 0:", "the role audit inside `on` (S5)")],
@@ -94,7 +108,9 @@ RULES = [
         ("identity_stage.py", r"^def durable_write\(", "the identity stage's state, saved original and api.yaml fsynced before they replace anything (E2 fold)"),
         ("migrate.sh", r"^stamp\(\) \{", "markers and recorded times written beside, synced, renamed: whole or absent after a cut (E3 fold, E3-rpm 2 and 6)"),
         ("migrate.sh", r"^collect_base\(\) \{", "the settings base collected complete or not at all (E3-rpm fix 01)"),
-        ("settings_stage.py", r"_fsync_path\(os\.path\.join\(saved, name\)\)", "the saved settings a rerun trusts are on disk before saved.json (E3 fold)")], None),
+        ("settings_stage.py", r"_fsync_path\(os\.path\.join\(saved, name\)\)", "the saved settings a rerun trusts are on disk before saved.json (E3 fold)"),
+        ("cluster/node/run-step.sh", r"during the controller's earlier, cut run: not started again", "cluster: a node step that ended with exit 0 while its controller step was cut is reported from the node's record, not started again (F6 fold, E6-cluster-deb gap 3)"),
+        ("migrate-cluster.sh", r"^in_fresh_for\(\)", "cluster: an input corrected in the inventory is staged again before the node step that reads it (F6 fold, E6-cluster-deb fix 01 and gap 1)")], None),
     (11, "Going back proves every agent reconnected with its own id, name and key, behind a guard that is node state surviving a reboot; on a cluster it also covers 1516, and every node's bundle is checked before 5.0 is removed anywhere", [
         ("migrate.sh", r"^bk_verify\(\)", "the proof after the way back"),
         ("guard.sh", r"^persist\(\)", "drop-in re-applying every recorded guard before any manager starts (K5)"),
@@ -102,7 +118,8 @@ RULES = [
         ("guard.sh", r"cluster\) echo \"1516\"", "the cluster port guard"),
         ("cluster/node/node-state.py", r"4\.x REINSTALLED, NOT RESTORED", "cluster: keep every guard until the registry equals the bundle"),
         ("migrate-cluster.sh", r"step back\.check ", "cluster: every node checked, in parallel, before the guard and any removal: one refusal changes nothing anywhere (E5 fold, E5-cluster-deb gap 2)"),
-        ("cluster/node/goback-remove5.sh", r"going back is refused on this node", "cluster: the node's check: its bundle, what its way back needs, no 4.x node without an export (E5 fold)")], None),
+        ("cluster/node/goback-remove5.sh", r"going back is refused on this node", "cluster: the node's check: its bundle, what its way back needs, no 4.x node without an export (E5 fold)"),
+        ("cluster/node/goback-remove5.sh", r"va=\$\(v4_assistant_check\)", "cluster: the way back's check refuses a 4.x assistant of another version than the source (F6 fold)")], None),
     (12, "A bundle is valid only for the source it froze", [
         ("migrate.sh", r"^vb_source\(\)", "refuses a source running again or changed since the freeze (F6)"),
         ("migrate.sh", r"\[ \"\$CUR\" != verify_bundle \]", "never skipped by its marker")], None),
@@ -162,11 +179,11 @@ RULES = [
         ("mig_helper.py", r"^def source_creation_dates\(", "the extra ISM time is measured from each index's own creation date on 4.x where the dump recorded it (E5 fold, E5-aio gap 3)")],
         "product limit (E5-aio, E5-cluster-deb, 2026-11-25): 4.14.10's indexer refuses index.creation_date at index creation (HTTP 400, every form), so after going back every restored 4.x alert index counts its ISM age from the reload and is kept longer than on 4.x; the tool warns and names them, the user deletes them by hand"),
     (19, "A gate whose input cannot be read stops the run and names the missing permission", [
-        ("history_load.py", r"if s == 403:   # H5: a refused count", "a refused count stops"),
-        ("history_load.py", r"H5: strict; \[\] on a refusal", "a refused listing stops"),
+        ("history_load.py", r"if s == 403:   # a refused count", "a refused count stops"),
+        ("history_load.py", r"# strict; \[\] on a refusal", "a refused listing stops"),
         ("mig_helper.py", r"rule 19: an unreadable gate input stops the run", "the in-force wait"),
         ("mig_helper.py", r"retention-4x: reading the ISM policies was refused", "the 4.x retention read (OF1, decision 5b)"),
-        ("cluster/node/retention-4x.sh", r"could not be read \(rule 19\)", "cluster: a refused retention read stops the pre-copy before the dump (F4)")], None),
+        ("cluster/node/retention-4x.sh", r"the 4\.x retention could not be read: nothing written", "cluster: a refused retention read stops the pre-copy before the dump (F4)")], None),
     (20, "Saved objects are rolled back by resetting only the attributes the tool changed", [
         ("mig_helper.py", r"^TOOL_ATTRS = \{", "the attributes the dashboard step rewrites, per type"),
         ("mig_helper.py", r"ledger\[key\] = \{\"type\"", "each changed attribute recorded with its value before and the value written"),

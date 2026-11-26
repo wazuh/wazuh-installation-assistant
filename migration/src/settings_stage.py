@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""settings_stage.py - the manager-config stage inside the flow: C4's converter and group cleaner, driven the way C4's
-live apply did it (save the installed files once, validate the candidate,
-stage, `wazuh-manager-control check`, restart; restore the saved files when the check fails). Rules 21 and 22.
+"""settings_stage.py - the manager-config stage inside the flow: the settings converter and the group cleaner, applied
+this way: save the installed files once, validate the candidate, stage, `wazuh-manager-control check`, restart; restore
+the saved files when the check fails. Rules 21 and 22.
 Python 3.8+, standard library only.
 
     settings_stage.py plan    --v4 DIR --stock DIR --base DIR --decisions FILE --work DIR [--groups DIR]
@@ -92,7 +92,7 @@ OMIT_ONLY = ("xml.duplicate", "internal.syntax")     # the converter accepts onl
 
 
 def question(name, row):
-    """OF1 (E2-deb G6): the question an entry asks, from the converter's report row: the option, what is asked (the
+    """OF1: the question an entry asks, from the converter's report row: the option, what is asked (the
     converter's own text, e.g. "Read by wazuh-manager-modulesd with range 1..600: this value would stop ..."), the
     answers allowed and what each does, and for an internal option the 5.0 build's range. The 4.x value itself is not
     repeated: the converter masks every value, which may hold a credential."""
@@ -112,28 +112,94 @@ def question(name, row):
     return q
 
 
+def removed_section(i, row):
+    """The one entry a row is asked under, or None. A removed-section row belongs to its section
+    ("ossec.conf:/ossec_config[3]/syslog_output[1]"): 5.0 removed the whole section and only "omit" is accepted for each of
+    its options, so the section is asked once, not once per option (syslog_output asked format, level, port and server
+    separately). A duplicate-option row belongs to the option without its positions ("ossec.conf:/ossec_config/remote/
+    queue_size"): every copy takes the same one answer, omit, so the duplicate is asked once, not once per copy."""
+    if not row:
+        return None
+    if row.get("rule") == "xml.duplicate":
+        opt = re.sub(r"\[[0-9]+\]", "", row.get("option") or "")
+        return "%s:%s" % (row.get("source") or i.split(":", 1)[0], opt) if opt else None
+    if row.get("rule") != "xml.remove-section":
+        return None
+    parts = (row.get("option") or "").split("/")
+    if len(parts) < 4:
+        return None
+    return "%s:%s" % (row.get("source") or i.split(":", 1)[0], "/".join(parts[:3]))
+
+
+def section_question(name, key, row, n):
+    """The question of one grouped entry, in the person's words: the converter's own text for these rows names its
+    guide's files and asks to "select an alternative with the owners" or to "reconcile a working copy"."""
+    q = question(name, row)
+    q["option"] = key.split(":", 1)[1] if ":" in key else key
+    src = (row or {}).get("source") or (key.split(":", 1)[0] if ":" in key else "ossec.conf")
+    if (row or {}).get("rule") == "xml.duplicate":
+        opt = q["option"].replace("/ossec_config/", "", 1).strip("/")
+        q["asks"] = ("The 4.x %s sets %s %d times where 5.0 accepts it once, so none of the copies is carried: the 5.0 "
+                     "file keeps its own value. Answer \"omit\" to go on that way; if you need your own value, set it again "
+                     "on 5.0 after the migration. One answer covers every copy." % (src, opt, n))
+        q["allowed"] = "omit only: 5.0 accepts the option once"
+        q["answers"] = {"omit": "do not carry the option; the 5.0 file keeps its own value"}
+        return q
+    sec = re.sub(r"\[[0-9]+\]$", "", q["option"].rsplit("/", 1)[-1])
+    q["asks"] = ("5.0 has no %s section: the 4.x %s sets it (%d option(s) that differ from the 4.x defaults), and it cannot be "
+                 "carried. Answer \"omit\" to go on without it; if you need what it did, set it up again on 5.0 after the "
+                 "migration. One answer covers the whole section." % (sec, src, n))
+    q["allowed"] = "omit only: 5.0 has no such section"
+    q["answers"] = {"omit": "do not carry this section; 5.0 removed it"}
+    return q
+
+
+def group_answer(s, i):
+    """The answer of the removed-section entry that covers option id i, or None."""
+    for k, e in s.items():
+        if isinstance(e, dict) and i in (e.get("covers") or []) and answered(e):
+            return e
+    return None
+
+
 def merge_open(d, name, required, group=None, rows=None):
-    """Add every unresolved id of a run as an entry with action null and its question; never touch an answer. Returns
-    the open ids."""
+    """Add every unresolved id of a run as an entry with action null and its question; never touch an answer. The
+    options of one removed section are one entry ("covers" lists them). Returns the open entries' keys."""
     s = section(d, name, group)
     rows = rows or {}
+    sections, single = {}, []
     for i in required:
-        if not answered(s.get(i)):
-            e = s.get(i) if isinstance(s.get(i), dict) else {}
-            e.update({"action": None, "reason": e.get("reason", ""), "asked_by": "settings stage (C4 converter)",
-                      "question": question(name, rows.get(i))})
-            s[i] = e
-        elif "question" not in s[i]:
-            s[i]["question"] = question(name, rows.get(i))
-    # E5 fold (E5-cluster-deb 05): open = this run's questions not answered. An entry this run does not ask (one the
+        if answered(s.get(i)) or group_answer(s, i):
+            if answered(s.get(i)) and "question" not in s[i]:
+                s[i]["question"] = question(name, rows.get(i))
+            continue
+        k = removed_section(i, rows.get(i))
+        if k:
+            sections.setdefault(k, []).append(i)
+            if isinstance(s.get(i), dict) and not answered(s.get(i)):
+                del s[i]                           # an older run's entry for one option: the section entry replaces it
+        else:
+            single.append(i)
+    for i in single:
+        e = s.get(i) if isinstance(s.get(i), dict) else {}
+        e.update({"action": None, "reason": e.get("reason", ""), "asked_by": "settings stage",
+                  "question": question(name, rows.get(i))})
+        s[i] = e
+    for k, ids in sorted(sections.items()):
+        e = s.get(k) if isinstance(s.get(k), dict) else {}
+        e.update({"action": e.get("action") if answered(e) else None, "reason": e.get("reason", ""), "asked_by": "settings stage",
+                  "covers": sorted(set(e.get("covers") or []) | set(ids)),
+                  "question": section_question(name, k, rows.get(ids[0]), len(ids))})
+        s[k] = e
+    # open = this run's questions not answered. An entry this run does not ask (one the
     # pre-copy's plan asked against the shipped base, perhaps reopened by an older tool) stays in the file as it is and
     # does not stop the run: counting every unanswered entry of the section stopped the cluster master on a question
     # nobody asked any more and no answer could close
-    return sorted(i for i in required if not answered(s.get(i)))
+    return sorted(set(i for i in single) | set(k for k in sections if not answered(s.get(k))))
 
 
 def refuse(d, name, i, why, group=None):
-    """OF1 (E2-deb G6): an answer the converter refused is taken out of force: the entry is open again (action null),
+    """OF1: an answer the converter refused is taken out of force: the entry is open again (action null),
     the refused answer is kept beside it with the reason, so the next run shows what was wrong and where."""
     s = section(d, name, group)
     e = s.get(i) if isinstance(s.get(i), dict) else {}
@@ -150,7 +216,17 @@ def answers_for(d, name, ids, group=None):
     s = (d.get(name) or {})
     if group is not None:
         s = s.get(group) or {}
-    return {i: {k: v for k, v in e.items() if k in ("action", "value", "reason")} for i, e in s.items() if i in ids and answered(e)}
+    out = {i: {k: v for k, v in e.items() if k in ("action", "value", "reason")} for i, e in s.items() if i in ids and answered(e)}
+    for e in s.values():                     # a removed section's one answer, for each of its options
+        if isinstance(e, dict) and e.get("covers") and answered(e):
+            for i in e["covers"]:
+                if i in ids and i not in out:
+                    out[i] = {k: v for k, v in e.items() if k in ("action", "reason")}
+    for e in out.values():                   # "value": 10 is the number the question asks for; the converter reads text
+        v = e.get("value")
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            e["value"] = str(int(v)) if float(v).is_integer() else str(v)
+    return out
 
 
 # ------------------------------------------------------------------------------------------------ the converter
@@ -182,7 +258,7 @@ def manager_args(v4, stock, base):
     return a
 
 
-REFUSED = []        # OF1: "<section> / <id>: why" for every answer refused in this process, printed by the commands
+REFUSED = []        # "<section> / <id>: why" for every answer refused in this process, printed by the commands
 
 
 def _converter_with(args_wo_out, ans, work, label):
@@ -201,7 +277,7 @@ def _converter_with(args_wo_out, ans, work, label):
 
 def two_pass(args_wo_out, d, name, work, label, group=None):
     """Run once without decisions to learn the ids, once with the answers that apply. Returns (rc, out, open ids).
-    OF1 (E2-deb G6): an answer the converter refuses no longer stops the stage with the converter's bare message: the
+    OF1: an answer the converter refuses no longer stops the stage with the converter's bare message: the
     answer that caused it is found (named in the message, or by trying each answer alone), set aside in its entry with
     the reason (refuse), and the run goes on without it, so the entry is reported open with its question."""
     os.makedirs(work, exist_ok=True)
@@ -218,6 +294,10 @@ def two_pass(args_wo_out, d, name, work, label, group=None):
     # its answer was sent anyway, the converter refused the whole set ("Unused decision ids"), the entry was reopened and
     # the run stopped on every attempt with the master's listeners closed. The converter uses a decision only for an
     # unresolved row, which is exactly what decisions.required.json lists, so no answer it could use is held back.
+    s = section(d, name, group)
+    for k, e in sorted(s.items()):          # a removed section's answer without a reason: refused once, as the section
+        if isinstance(e, dict) and e.get("covers") and answered(e) and not (isinstance(e.get("reason"), str) and e["reason"].strip()):
+            REFUSED.append(refuse(d, name, k, "every answer needs a non-empty \"reason\"", group) + ": every answer needs a non-empty \"reason\"")
     ans = answers_for(d, name, set(required), group)
     for i, e in sorted(ans.items()):
         if not isinstance(e.get("reason"), str) or not e["reason"].strip():
@@ -249,7 +329,13 @@ def two_pass(args_wo_out, d, name, work, label, group=None):
     return rc, out, merge_open(d, name, required, group, rows)
 
 
+def shown(path):
+    """The decisions file the person answers: on a cluster node, the controller's (DECISIONS_SHOWN), not the node's copy."""
+    return os.environ.get("DECISIONS_SHOWN") or path
+
+
 def print_refused(path):
+    path = shown(path)
     for r in REFUSED:
         print("REFUSED ANSWER in %s: %s. The entry is open again (\"action\": null); the refused answer is kept under its \"refused\" key" % (path, r))
 
@@ -269,14 +355,14 @@ def cleaner_args(groups, g, phase):
 
 
 def stock_note(stock, out):
-    """OF1 (E2-deb G5): which 4.x stock reference the conversion compared with (migrate.sh settings_stock writes it in
+    """OF1: which 4.x stock reference the conversion compared with (migrate.sh settings_stock writes it in
     <stock>/SOURCE), printed and added to the manager report, so a deb host's shipped reference is said, not silent."""
     try:
         src = open(os.path.join(stock, "SOURCE")).read().strip()
     except OSError:
         src = "not recorded (no SOURCE file beside the reference)"
-    print("settings: %s" % src)
     md = os.path.join(out, "report.md")
+    print("settings: the 4.x stock reference compared with is said in the settings report (%s)" % md)
     if os.path.isfile(md):
         with open(md, "a") as f:
             f.write("\n## Stock 4.x reference\n\n%s\n" % src)
@@ -300,11 +386,11 @@ def cmd_plan(a):
     write_decisions(a.decisions, d)
     print_refused(a.decisions)
     if total:
-        print("DECISIONS NEEDED: %d question(s) of the settings stage are open in %s (entries with \"action\": null; each "
+        print("DECISIONS NEEDED: %d question(s) of the settings stage are open in %s (each "
               "entry's \"question\" says what is asked, the answers allowed and what each does). Answer each with keep, "
-              "replace (with \"value\") or omit and a reason, then run again. Nothing was staged." % (len(total), a.decisions))
+              "replace (with \"value\") or omit and a reason, then run again. Nothing was staged." % (len(total), shown(a.decisions)))
         for sec, grp, i in open_entries(d):
-            if i not in total:           # E5 fold: an entry this run does not ask is not listed as open
+            if i not in total:           # an entry this run does not ask is not listed as open
                 continue
             q = (section(d, sec, grp).get(i) or {}).get("question") or {}
             print("  open: %s%s / %s: %s%s" % (sec, (" / " + grp) if grp else "", i, q.get("asks") or "",
@@ -323,7 +409,7 @@ def cmd_convert(a):
     write_decisions(a.decisions, d)
     print_refused(a.decisions)
     if open_:
-        print("DECISIONS NEEDED: %d settings question(s) open in %s; not staging" % (len(open_), a.decisions))
+        print("DECISIONS NEEDED: %d settings question(s) open in %s; not staging" % (len(open_), shown(a.decisions)))
         return 3
     os.rename(out, a.out)
     print("candidate files in %s: %s" % (a.out, ", ".join(sorted(os.listdir(a.out)))))
@@ -331,7 +417,7 @@ def cmd_convert(a):
 
 
 def cmd_cluster_base(a):
-    """E5 fold (E5-cluster-rpm gap 2, E5-cluster-deb gap 4): a cluster node's pre-copy plan was made against the shipped
+    """E5 fold: a cluster node's pre-copy plan was made against the shipped
     all-in-one base, so every node got questions the installed base never asks: "$topology/mismatch" (cluster against a
     single node), "cluster/node_name" and, on a worker, "node_type" ("This 4.x file is for another node"). The base for a
     cluster node is the shipped one with its <cluster> section as the 5.0 install writes it on that node: the node's
@@ -486,14 +572,14 @@ def major(version):
 
 def cmd_groups(a):
     """Pre-upgrade in phase 6 (while any agent of the group is 4.x), post-upgrade in phase 11 for each group whose agents
-    all run 5.0 (C4 D5). The agent.conf of a group other than default goes through the API; carried files are installed
+    all run 5.0. The agent.conf of a group other than default goes through the API; carried files are installed
     into the group folder; the post-upgrade pass deletes the files it lists."""
     d = read_decisions(a.decisions)
     versions = json.loads(a.versions) if a.versions else {}
     plan, left, open_all = [], [], []
     for g in group_dirs(a.groups):
         if a.phase == "post-upgrade":
-            # OF1 (E2-deb G9): an agent that never connected runs nothing that could refuse the cleaned file, so it does
+            # an agent that never connected runs nothing that could refuse the cleaned file, so it does
             # not hold the pass back (before this, default never got it while such an agent was kept); a key it holds
             # later enrolls a 5.0 agent on 1517 or a 4.x one on the legacy port, which then gets the post-upgrade files
             vs = versions.get(g, {})
@@ -553,7 +639,7 @@ UPLOADED = "uploaded.json"
 
 
 def record_upload(work, group, conf):
-    """E2 fold (E2-rpm fixes 05 and 06, E2-deb fix 1, reconciled): what this pass uploaded, by exact group name, in
+    """E2 fold (reconciled): what this pass uploaded, by exact group name, in
     <work>/uploaded.json ({group: {"agent_conf": path relative to work, "sha256": ..., "at": ...}}). Both comparisons of
     phase 8 (mig_helper.py compare and identity_stage.py --expected-conf) read it to accept a group the pass cleaned on
     purpose. The runs found the pass's output by globbing pre-upgrade-<group>-*: that also matches the directories of a

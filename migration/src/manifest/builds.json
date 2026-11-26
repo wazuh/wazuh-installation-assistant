@@ -1,10 +1,11 @@
 {
   "_comment": "Builds, tool, map and template versions this merged tool's pieces were validated on (design: Supported builds, rule 4). The tool refuses other builds unless FORCE_BUILDS=1. The setup_status words are build vocabulary read by the replace gate.",
   "tool_version": "merge-1 (2026-11-24)",
-  "source_4x": ["4.14.10"],
+  "source_4x": ["4.14.11"],
   "source_series": "4.14",
-  "source_min_version": "4.14.10",
-  "source_min_note": "decision of 2026-11-24: only the latest 4.14.x is a source. The manager, indexer and dashboard of every node must be this version or a newer 4.14.x (one published after the tool); older is refused (upgrade to the latest 4.14.x first), 4.15+ and 5.x are not a 4.14 source. Raise it when a newer 4.14.x is published and validated.",
+  "source_min_version": "4.14.11",
+  "source_min_note": "decision of 2026-11-24: only the latest 4.14.x is a source. The manager, indexer and dashboard of every node must be this version or a newer 4.14.x (one published after the tool); older is refused (upgrade to the latest 4.14.x first), 4.15+ and 5.x are not a 4.14 source. Raise it when a newer 4.14.x is published and validated. 4.14.11 was published on 2026-11-25 (GA 15:19Z): 4.14.10 is no longer a source.",
+  "v4_assistant": {"default": "https://packages.wazuh.com/4.14/wazuh-install.sh", "note": "That URL serves only the latest 4.14.x and no per-version URL is published (2026-11-25: four candidate forms answer 403). The tool reads the staged file's wazuh_version and refuses one that does not install the source's own version (pre-copy, 4.x removal, going back), naming the file to give."},
   "target_5x": ["5.0.0"],
   "target_5x_note": "5.0.0 release candidate and nightlies of 2026-11-22 to 2026-11-24; the nightly manifest hash changes daily and is recorded, not pinned",
   "setup_status": {
@@ -12,8 +13,10 @@
     "accepted": ["ready", "up_to_date"],
     "evidence": "F6-D8: 53 documents on the 2026-11-24 nightly, one 'ready' and 52 'up_to_date'; F7-D3 and F10 read only 20 of them"
   },
-  "field_map": {"file": "history-loader-map.json", "sha256": "8cac2e01a8a07342f8bcdec42c6917854e9bd6fd0ee1a5cd4c21a20eed7577a4", "from": "RD2-fieldmap-live/tool/m3"},
+  "field_map": {"file": "history-loader-map.json", "sha256": "8ec6d6b8883c1003560a70958e8077182f0a54fe962e0ba00d47519023bc3d0a", "from": "RD2-fieldmap-live/tool/m3"},
+  "identity_tool": {"repository": "wazuh/wazuh", "path": "tools/migration/wazuh-migrate-identity.py", "commit": "f3da36e4fda342bab5949897fe1b7ef2eec1c58b", "sha256": "dff28a0fa5f58bf23c5a57baf4a9d1e7c333b6c0cbe2322c459d103a5174c0b0", "note": "the last commit that changed the file on the 5.0.0 branch (2026-11-20); the same bytes the end-to-end runs used. The one-file build embeds it."},
   "fleet_upgrade": "0.8-merge (A5 0.7 + A6 0.6-a6 + MAC1)",
+  "ruleset_tool": {"source": "wazuh/intelligence-data tools/ruleset-migration (rmig), main with the review before activate", "commit": "7976ef5422cdf677b702bf774645b0f6f4be9218", "previous": "1c2e672a94", "windows_map": "rmig/data/windows-map-5.0.json unchanged since 1c2e672a94 (blob dc5360bf3aea)", "rmig_tests": "555 run, OK (10 skipped), 2026-11-25"},
   "ruleset_engine_helpers": {"alpha": "5.0-rc1", "beta": "5.0-rc1", "rc1": "5.0-rc1", "rc2": "5.0-rc1", "default": "5.0"},
   "python_min": [3, 8]
 }

@@ -25,7 +25,7 @@ function getHelp() {
     echo -e "        $(basename "$0") - Builds the Wazuh installation assistant and tools."
     echo -e ""
     echo -e "SYNOPSIS"
-    echo -e "        $(basename "$0") [-v] -i | -c | -p"
+    echo -e "        $(basename "$0") [-v] -i | -c | -p | -m"
     echo -e ""
     echo -e "DESCRIPTION"
     echo -e "        -i,  --installer"
@@ -36,6 +36,9 @@ function getHelp() {
     echo -e ""
     echo -e "        -p,  --passwords-tool"
     echo -e "                Builds the password creation and modification tool wazuh-passwords-tool.sh"
+    echo -e ""
+    echo -e "        -m,  --migration-tool"
+    echo -e "                Builds the 4.x to 5.0 migration tool single file wazuh-migrate.sh"
     echo -e ""
     echo -e "        -h,  --help"
     echo -e "                Shows help."
@@ -204,6 +207,14 @@ function buildCertsTool() {
 
 }
 
+function buildMigrationTool() {
+
+    output_script_path="${base_path_builder}/wazuh-migrate.sh"
+
+    ## The migration tool and the identity tool it embeds (fetched at the commit its build manifest pins)
+    bash "${base_path_builder}/migration/src/build-wazuh-migrate.sh" --out "${output_script_path}" --fetch-identity
+}
+
 function builder_main() {
 
     umask 066
@@ -221,6 +232,10 @@ function builder_main() {
                 ;;
             "-p"|"--passwords-tool")
                 passwordsTool=1
+                shift 1
+                ;;
+            "-m"|"--migration-tool")
+                migrationTool=1
                 shift 1
                 ;;
             "-h"|"--help")
@@ -245,6 +260,11 @@ function builder_main() {
     if [ -n "${certTool}" ]; then
         buildCertsTool
         chmod 644 ${output_script_path}
+    fi
+
+    if [ -n "${migrationTool}" ]; then
+        buildMigrationTool
+        chmod 500 ${output_script_path}
     fi
 }
 

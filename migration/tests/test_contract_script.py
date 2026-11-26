@@ -216,7 +216,7 @@ class GoingBackF7F10(ShellCase):
     def test_offline_4x_reinstall_from_the_bundle_F7(self):
         """F7: with V4_PACKAGES_CACHE=1 going back runs the 4.x assistant in offline mode from the kept packages."""
         args = os.path.join(self.sh.tmp, "assistant-args")
-        self.sh.write("v4/wazuh-install.sh", 'echo "$@" > %s\n' % args)
+        self.sh.write("v4/wazuh-install.sh", 'readonly wazuh_version="4.14.11"\necho "$@" > %s\n' % args)   # F6 fold: the version is checked
         self.sh.write("v4/offline/wazuh-offline.tar.gz", "pkgs")
         subprocess.run("cd %s/v4/offline && sha256sum wazuh-offline.tar.gz > wazuh-offline.tar.gz.sha256" % self.sh.bundle, shell=True)
         self.sh.stub("dpkg", "exit 0")

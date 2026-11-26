@@ -4,8 +4,8 @@ standard library only.
 
     bundle_secrets.py sweep --bundle DIR [--search DIR]... [--outside FILE]... [--keep-parts]
 
-One implementation for every place a bundle's secrets are cleaned (E2 fold): the all-in-one finish (migrate.sh
-fi_secrets, F6-D6), going back (migrate.sh back.secrets, E2-deb G11: before, only a bundle that reached the finish was
+One implementation for every place a bundle's secrets are cleaned: the all-in-one finish (migrate.sh
+fi_secrets), going back (migrate.sh back.secrets, E2-deb G11: before, only a bundle that reached the finish was
 cleaned, so a bundle abandoned after going back kept every carried secret), `migrate.sh discard` (an abandoned bundle),
 and the cluster finish (cluster/node/finish-node.sh secrets, E2-cluster gap 6: the cluster flow had no finish).
 
@@ -20,7 +20,7 @@ and the cluster finish (cluster/node/finish-node.sh secrets, E2-cluster gap 6: t
 4. Outside the bundle, files that hold credentials nothing uses any more, archives of installer credentials, and other
    migration bundles on the host that still hold secret parts are named for the user (never deleted: they are not this
    bundle's). Bundles already cleaned (discarded, gone back, finished) are listed apart, as holding no secret.
-5. E3 fold (E3-cluster gap 4, E3-rpm 7, E3-deb N2): before the parts are deleted, a salted SHA-256 of every value of 16
+5. before the parts are deleted, a salted SHA-256 of every value of 16
    characters or more is recorded in state/secret-digests.json, so a rerun (the cluster finish always runs twice when a
    4.x agent remains) still searches for them: windows of each recorded length over runs of the values' characters.
    Shorter values (a weak enrollment password could be guessed from its digest) are not recorded and the rerun says so.
@@ -256,14 +256,14 @@ def walk(*dirs):
 
 
 def holds_parts(d):
-    """E3 fold (E3-deb N2, E3-rpm 7): a bundle still holds secrets while any of its secret parts is there; a bundle that
+    """E3 fold: a bundle still holds secrets while any of its secret parts is there; a bundle that
     was discarded, went back or finished has had them deleted."""
     return any(glob.glob(os.path.join(d, pat)) for pat in PARTS)
 
 
 def other_bundles(b, roots=("/root", "/home", "/srv", "/opt", "/var/backups")):
     """Migration bundles elsewhere on the host: a directory with state/ and a journal, a manifest or v4/. The identity
-    stage's own state directory inside a bundle (it has a journal.ndjson too) is not one (E2-deb G7)."""
+    stage's own state directory inside a bundle (it has a journal.ndjson too) is not one."""
     me, out = os.path.realpath(b), []
     for root in roots:
         for d in glob.glob(os.path.join(root, "*")) + glob.glob(os.path.join(root, "*", "*")):
@@ -277,8 +277,18 @@ def other_bundles(b, roots=("/root", "/home", "/srv", "/opt", "/var/backups")):
     return sorted(set(out))
 
 
-def sweep(bundle, search=(), outside=(), keep_parts=False, roots=None):
+SAMPLE = "v4/alerts-sample"
+
+
+def sweep(bundle, search=(), outside=(), keep_parts=False, roots=None, keep_sample=False):
+    """keep_sample (the way back): the 4.x alerts copied at the freeze are moved to v4/alerts-sample instead of deleted,
+    so a new attempt's ruleset verification has 4.x samples (a reinstalled 4.x has few alerts of its own). They are
+    searched like the rest; a sample file that holds a carried value is deleted, never kept."""
     b = os.path.abspath(bundle)
+    if keep_sample and not keep_parts and os.path.isdir(os.path.join(b, "v4", "alerts")):
+        shutil.rmtree(os.path.join(b, SAMPLE), ignore_errors=True)
+        os.rename(os.path.join(b, "v4", "alerts"), os.path.join(b, SAMPLE))
+        print("kept %s: the 4.x alerts copied at the freeze, the next attempt's verification samples" % SAMPLE)
     vals = carried_values(b)
     rec = record_digests(b, vals) if vals else load_digests(b)
     by_digest = sorted(k for k in (rec or {}).get("values", {}) if k not in vals)
@@ -311,7 +321,7 @@ def sweep(bundle, search=(), outside=(), keep_parts=False, roots=None):
                 # deployment uses, or a 4.x reinstall's): not this bundle's secret, named for the user
                 named.append("%s (holds installer credentials or private keys; not a value this bundle carried)" % f)
             elif not inside and label == "a private key":
-                # E3-cluster fix 03: a loose private key in the work directory that is no value this bundle carried is
+                # a loose private key in the work directory that is no value this bundle carried is
                 # the 5.0 installer's own output (on a cluster, `-g` on indexer node-1 leaves wazuh-ca/root-ca.key, the
                 # key of the CA it generated): named for the user, not a failure. Carried values still fail
                 # (scan_file gives them their own label, so the same file still lands in `left`).
@@ -320,6 +330,9 @@ def sweep(bundle, search=(), outside=(), keep_parts=False, roots=None):
                 named.append("%s (a private key, not a value this bundle carried: the 5.0 installer's -g leaves its CA "
                              "key in its work directory, and whoever holds a CA key can issue certificates its clients "
                              "trust; keep it offline or delete it)" % f)
+            elif inside and keep_sample and f.startswith(os.path.join(b, SAMPLE) + os.sep):
+                shred(f)
+                print("deleted %s from the kept samples: it holds %s" % (os.path.relpath(f, b), label))
             else:
                 left.append("%s in %s" % (label, where))
     for f in outside:
@@ -335,7 +348,7 @@ def sweep(bundle, search=(), outside=(), keep_parts=False, roots=None):
     if left:
         print("still holding secrets:\n  " + "\n  ".join(sorted(set(left))))
         return 1
-    # E5 fold: worded without "password" before a colon, which the controller's mask takes for a credential's name
+    # worded without "password" before a colon, which the controller's mask takes for a credential's name
     print("kept (checked: none of the carried secret values, no private key and no credential hash in them): %s"
           % " ".join(sorted(os.listdir(b))))
     if named:
@@ -354,11 +367,12 @@ def main(argv=None):
     p.add_argument("--search", action="append", default=[], help="another directory to search (the work directory)")
     p.add_argument("--outside", action="append", default=[], help="a credentials file outside the bundle to name if present")
     p.add_argument("--keep-parts", action="store_true", help="search only, delete nothing")
+    p.add_argument("--keep-sample", action="store_true", help="the way back: keep the 4.x alerts as v4/alerts-sample")
     p.add_argument("--roots", action="append", help="where other bundles are looked for (default /root /home /srv /opt "
                                                        "/var/backups, or MIG_BUNDLE_ROOTS, colon separated: tests)")
     a = ap.parse_args(argv)
     roots = a.roots or [r for r in os.environ.get("MIG_BUNDLE_ROOTS", "").split(":") if r] or None
-    return sweep(a.bundle, a.search, a.outside, a.keep_parts, roots)
+    return sweep(a.bundle, a.search, a.outside, a.keep_parts, roots, a.keep_sample)
 
 
 if __name__ == "__main__":

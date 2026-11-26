@@ -3,7 +3,7 @@
 # the 4.x API (fleet-facts-4x.py) into the bundle (preflight/fleet-facts.json, where the fleet step reads them), and the
 # certificate plan: the names agents dial (and AGENT_ADDRESSES) that are none of the inventory's manager node addresses
 # or names, which the 5.0 -g must add with -as (preflight/agent-san-extra.txt). A per-node name is checked by the fleet
-# preflight against that node only (E2 fold).
+# preflight against that node only.
 . "$(dirname "$(readlink -f "$0")")/common.sh"
 d="$BUNDLE_DIR/preflight"; mkdir -p "$d"
 WAZUH_API_PASSWORD="$(pw4 wazuh)" python3 "$SRC/fleet-facts-4x.py" --insecure --out "$d/fleet-facts.json" || die "the 4.x fleet facts could not be read"

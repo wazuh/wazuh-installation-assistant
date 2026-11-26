@@ -32,7 +32,7 @@ history_retention() { # F4 (decision 5b): migrate.sh history_retention on the cl
   echo "$v"
 }
 ret=$(history_retention); log "$(cat "$STATE/history.retention")"
-# E5 fold (E5-cluster-rpm gap 3): the shaping in worker processes, as the all-in-one's load (migrate.sh HISTORY_PROCS):
+# the shaping in worker processes, as the all-in-one's load (migrate.sh HISTORY_PROCS):
 # HISTORY_PROCS from the inventory's settings, else half this node's CPUs, 1 to 8; 0 uses threads. Before, the cluster's
 # history ran in threads only (E5-aio CL-L15: processes 1.9 times faster on the same month, the same documents)
 if [ "$cmd" = apply ]; then

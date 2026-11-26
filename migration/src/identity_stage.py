@@ -8,11 +8,11 @@ wazuh-migrate-identity.py (manifest.json, authd.pass, rbac.db, groups/<g>/<sca p
 
     identity_stage.py preflight <bundle> [--state DIR] [--with-password] [--with-rbac]
     identity_stage.py run <bundle> --state DIR [--limit-mode stock|raise] [--with-password] [--with-rbac]
-                          [--workers N] [--max-passes N] [--stop-after STEP]
+                          [--workers N] [--max-passes N]
     identity_stage.py verify <bundle> --state DIR          (read only: target vs bundle)
     run and verify also take --expected-conf FILE: the settings stage's record of the agent.conf files its pre-upgrade
     pass uploaded (settings/groups-pre/uploaded.json); for those groups that file is the expected content, not the
-    bundle's (E2 fold). Without it the stage compares with its own bundle only.
+    bundle's. Without it the stage compares with its own bundle only.
     identity_stage.py restore-limit --state DIR             (put the saved api.yaml back and restart)
 
 What it does differently from the identity tool's import (G1's findings):
@@ -67,7 +67,7 @@ RBAC_CONTROL = HOME + "/bin/rbac_control"
 DEFAULT = "default"
 API_NAME_MAX = 128           # POST /groups maxLength (4.x and 5.0); the CLI takes 255
 GROUPS_PER_AGENT_MAX = 128   # MAX_GROUPS_PER_MULTIGROUP, 4.x and 5.0
-CONF_SIZE_WARN = 6 * 1024 * 1024   # G1: 10.4 MB timed out at request_timeout 10 s; 6.1 MB took 6.5 s
+CONF_SIZE_WARN = 6 * 1024 * 1024   # 10.4 MB timed out at request_timeout 10 s; 6.1 MB took 6.5 s
 AUTHD_PASS_MIN = 16
 T0 = time.time()
 
@@ -78,7 +78,7 @@ def log(msg):
 
 # --------------------------------------------------------------------------- durable files
 def durable_write(path, data, ref_stat=None, tmp_suffix=".tmp"):
-    """E2 fold (E2-rpm fix 03, the identity stage's part): write beside the file, fsync, rename, fsync the directory.
+    """E2 fold (the identity stage's part): write beside the file, fsync, rename, fsync the directory.
     A power cut 0.25 s after the stage ended left its state.json, its saved original api.yaml, the live api.yaml and
     authd.pass 0 bytes (XFS keeps renamed files' data in memory up to 30 s); a rerun would then have restored an empty
     api.yaml. Nothing this stage writes may be renamed into place before its data is on disk."""
@@ -114,7 +114,7 @@ class State:
             try:
                 self.data = json.load(open(self.file))
             except ValueError:
-                # E2 fold: a state file emptied by a power cut (written before this stage synced its files) is set aside,
+                # a state file emptied by a power cut (written before this stage synced its files) is set aside,
                 # not a traceback on every rerun; the saved original api.yaml is checked on its own (check_saved_original)
                 aside = "%s.damaged-%s" % (self.file, time.strftime("%Y%m%d%H%M%S"))
                 os.replace(self.file, aside)
@@ -126,7 +126,7 @@ class State:
         durable_write(self.file, json.dumps(self.data, indent=1, sort_keys=True))
 
     def will_write(self, what):
-        """E3 fold (E3-deb N1): recorded before the first write a restart must follow (a secret, a group, its files, an
+        """E3 fold: recorded before the first write a restart must follow (a secret, a group, its files, an
         agent, a membership), so a killed run's writes are still restarted for by the rerun. Cleared by a restart."""
         if self.data.get("restart_pending"):
             return
@@ -140,7 +140,7 @@ class State:
         with self.lock:
             with open(self.journal_path, "a") as h:
                 h.write(json.dumps(rec) + "\n")
-                # E4-rpm gap 5: on disk before the stage goes on (after two cuts the journal was 0 bytes, its lines lost)
+                # on disk before the stage goes on (after two cuts the journal was 0 bytes, its lines lost)
                 h.flush()
                 os.fsync(h.fileno())
 
@@ -340,7 +340,7 @@ def load_bundle(bundle):
 
 
 def load_expected(path):
-    """E2 fold (E2-rpm fix 06, E2-deb fix 1, reconciled): {group: agent.conf text} the flow's pre-upgrade group pass
+    """E2 fold (reconciled): {group: agent.conf text} the flow's pre-upgrade group pass
     uploaded on purpose after the import (settings_stage.py record_upload). For those groups it is the content 5.0 must
     hold: the verify accepts it, and a repair writes it, never the bundle's 4.x file (which holds the option every 4.x
     agent of the group refuses, prefilter_cmd). Exact group names from the record, not a directory glob."""
@@ -483,7 +483,7 @@ def chown_like(path, ref_stat):
 
 
 def restart_cmd():
-    """OF1 (E2-deb G2): the manager is restarted through its unit, so its daemons run inside wazuh-manager.service.
+    """OF1: the manager is restarted through its unit, so its daemons run inside wazuh-manager.service.
     `wazuh-manager-control restart` started them in the caller's cgroup: when the flow ran under a systemd unit or a
     session manager that cleans its cgroup, they were killed with it while the unit still said active. The control
     script stays only where there is no systemd (no systemctl, or systemd not running as init: a container)."""
@@ -526,7 +526,7 @@ def restart_manager(st, why):
     if not up:
         raise SystemExit("the API did not come back after the restart")
     if r.returncode == 0 and st.data.pop("restart_pending", None):
-        st.save()           # E3 fold (N1): everything written before this restart is applied
+        st.save()           # everything written before this restart is applied
     return s
 
 
@@ -576,10 +576,10 @@ def raise_limit(st, value):
     check_saved_original(st)
     cur = open(API_YAML, "rb").read()
     if not os.path.isfile(st.saved_yaml):
-        durable_write(st.saved_yaml, cur)       # on disk before api.yaml changes (E2 fold)
+        durable_write(st.saved_yaml, cur)       # on disk before api.yaml changes
         st.data["limit"] = {"saved_sha": hashlib.sha256(cur).hexdigest(), "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
         st.save()
-    # E2 fold: built from the saved original, never from the live file: after a cut the live file can be empty or the
+    # built from the saved original, never from the live file: after a cut the live file can be empty or the
     # raised copy, and a raise built on an empty file would drop every other setting of api.yaml
     conf = yaml.safe_load(open(st.saved_yaml, "rb").read()) or {}
     live = yaml.safe_load(cur) if cur.strip() else None
@@ -603,7 +603,7 @@ def put_back_yaml(st):
     """Restore the saved api.yaml bytes (no restart). Returns True if it changed anything."""
     if not os.path.isfile(st.saved_yaml):
         return False
-    check_saved_original(st)        # E2 fold: never put back an empty or damaged copy
+    check_saved_original(st)        # never put back an empty or damaged copy
     saved = open(st.saved_yaml, "rb").read()
     cur = open(API_YAML, "rb").read()
     if cur == saved:
@@ -665,7 +665,7 @@ def do_groups(api, st, bundle, m, groups_present, refused, res, expected=None):
                 st.journal(action="policy", group=g["name"], file=n)
                 res["policy_installed"] += 1
     for g in m["groups"]:
-        text = (expected or {}).get(g["name"], g.get("agent_conf") or "")   # E2 fold: the pass's output where it cleaned the group
+        text = (expected or {}).get(g["name"], g.get("agent_conf") or "")   # the pass's output where it cleaned the group
         if g["name"] not in groups_present or g["name"] in refused:
             continue
         cur = read_file(os.path.join(SHARED, g["name"], "agent.conf"))
@@ -868,7 +868,7 @@ def install_secret(st, bundle, name):
         if os.path.exists(backup):
             backup = "%s.pre-migration.%s" % (dst, time.strftime("%Y%m%d%H%M%S"))
         shutil.copy2(dst, backup)
-    durable_write(dst, open(src, "rb").read())   # E2 fold: authd.pass was 0 bytes after the cut and stopped the manager
+    durable_write(dst, open(src, "rb").read())   # authd.pass was 0 bytes after the cut and stopped the manager
     os.chmod(dst, 0o640)
     try:
         os.chown(dst, pwd.getpwnam("wazuh-manager").pw_uid, grp.getgrnam("wazuh-manager").gr_gid)
@@ -950,7 +950,7 @@ def cmd_run(args):
     left_raised = (st.data.get("limit") or {}).get("state") in ("raised", "restored-pending-restart")
     limit, _ = read_api_yaml_limit()
     api = Api(limit)
-    # E4-rpm fix 01: a cut after the carried rbac.db was installed and before reset_service_passwords left 'wazuh' with
+    # a cut after the carried rbac.db was installed and before reset_service_passwords left 'wazuh' with
     # its 4.x password once the manager started again (a reboot 0.25 s after the original api.yaml was written back):
     # every rerun stopped on "API login as wazuh failed: HTTP 401". With the carried rbac.db in place (install_secret
     # kept the 5.0 one as .pre-migration), the service users are set back to the published passwords first, as the
@@ -977,8 +977,6 @@ def cmd_run(args):
     elif left_raised:
         log("limit: an earlier run raised it and did not restore it; it is restored at the end of this run")
         api.set_budget(read_api_yaml_limit()[0])
-    if args.stop_after == "limit":
-        return 0
 
     t_import = time.time()
     t = time.time()
@@ -1005,8 +1003,6 @@ def cmd_run(args):
     log("inserts: %d agents to insert, %d workers" % (len(missing), args.workers))
     done("inserts", do_inserts(api, st, by_id, missing, args.workers, res, args.cooldown_wait))
     log("inserts: %s (api %s)" % ({k: v for k, v in res.items() if k.startswith("insert")}, dict(api.stats)))
-    if args.stop_after == "inserts":
-        return 0
     t = time.time()
     have, _ = read_registry(api)
     plan = plan_memberships(want, {a: v["groups"] for a, v in have.items()})
@@ -1028,12 +1024,10 @@ def cmd_run(args):
         if d["agents_missing"]:
             do_inserts(api, st, by_id, d["agents_missing"], 1, res, args.cooldown_wait)
             have, _ = read_registry(api)
-        safe = {a: w for a, w in want.items() if a not in d["keys_differ"] and a not in d["renamed"]}   # F7: never an impostor's groups
+        safe = {a: w for a, w in want.items() if a not in d["keys_differ"] and a not in d["renamed"]}   # never an impostor's groups
         do_memberships(api, st, safe, plan_memberships(safe, {a: v["groups"] for a, v in have.items()}), args.chunk, res)
     run["verify_passes"] = passes
     done("verify_and_repair", time.time() - t)
-    if args.stop_after == "repair":
-        return 0
 
     # secrets, the limit back, one clean restart for all of them
     t = time.time()
@@ -1046,7 +1040,7 @@ def cmd_run(args):
     run["secrets"] = secrets
     done("secrets_and_limit_files", time.time() - t)
     t = time.time()
-    # E3 fold (E3-deb N1): a run that wrote nothing since the last restart (a repair that found the target equal, a
+    # a run that wrote nothing since the last restart (a repair that found the target equal, a
     # rerun after the gate) does not restart: a restart drops every connected agent and throws away a vulnerability
     # feed load in progress (E3-cluster: three identity-stage restarts discarded 8,400 to 93,300 documents each)
     pending = st.data.get("restart_pending")
@@ -1081,7 +1075,7 @@ def cmd_run(args):
         if d["agents_missing"]:
             do_inserts(api, st, by_id, d["agents_missing"], 1, res, args.cooldown_wait)
             have, _ = read_registry(api)
-        safe = {a: w for a, w in want.items() if a not in d["keys_differ"] and a not in d["renamed"]}   # F7
+        safe = {a: w for a, w in want.items() if a not in d["keys_differ"] and a not in d["renamed"]}
         do_memberships(api, st, safe, plan_memberships(safe, {a: v["groups"] for a, v in have.items()}), args.chunk, res)
     run["after_restart_passes"] = after
     done("verify_after_restart", time.time() - t)
@@ -1137,7 +1131,7 @@ def main():
         p.add_argument("--state")
         p.add_argument("--with-password", action="store_true")
         p.add_argument("--with-rbac", action="store_true")
-        p.add_argument("--expected-conf", help="settings/groups-pre/uploaded.json: agent.conf files the flow's pre-upgrade pass uploaded (E2 fold)")
+        p.add_argument("--expected-conf", help="settings/groups-pre/uploaded.json: agent.conf files the flow's pre-upgrade pass uploaded")
         if name == "run":
             p.add_argument("--limit-mode", choices=("stock", "raise"), default="stock")
             p.add_argument("--raised-value", type=int, default=0, help="max_request_per_minute while raised (0 = off)")
@@ -1145,7 +1139,6 @@ def main():
             p.add_argument("--chunk", type=int, default=500)
             p.add_argument("--max-passes", type=int, default=3)
             p.add_argument("--cooldown-wait", type=int, default=1200)
-            p.add_argument("--stop-after", choices=("limit", "inserts", "repair"))
     p = sub.add_parser("restore-limit")
     p.add_argument("--state", required=True)
     args = ap.parse_args()

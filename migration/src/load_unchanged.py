@@ -10,7 +10,7 @@ bulk `create` every document with its original _id -> restore replicas and refre
 _count with the manifest.  Exactly-once: `create` on an existing _id answers 409, which is counted as
 "already loaded", so a rerun after a kill never duplicates and never overwrites.
 
-The merged tool uses it to reload the 4.x alerts into a reinstalled 4.x when going back. F4: each index is created with
+The merged tool uses it to reload the 4.x alerts into a reinstalled 4.x when going back. each index is created with
 the source index's creation date (recorded by dump.py; else the end of the day in its name), because ISM's min_index_age
 counts from it: created with today's date, a restored index was kept up to its own age longer than the source would have
 kept it. An indexer that refuses the setting gets the index without it, named in the log and in the summary line.
@@ -359,7 +359,7 @@ def main():
         except RuntimeError as e:
             if cd is None or "creation_date" not in str(e) or "HTTP 400" not in str(e):
                 raise
-            # F4: an indexer that refuses the setting at creation: the index is created anyway, its ISM age counted from now
+            # an indexer that refuses the setting at creation: the index is created anyway, its ISM age counted from now
             log("%s: the indexer refused index.creation_date (%s): created without it, its ISM age counts from this load" % (t, str(e)[:200]))
             st.pop("creation_date", None)
             c.request("PUT", "/%s" % q(t), {"settings": {"index": st}, "mappings": mp})

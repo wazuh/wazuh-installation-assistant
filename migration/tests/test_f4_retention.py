@@ -131,7 +131,7 @@ class ClusterReadsAndRestoresThe4xRetention(unittest.TestCase):
         refuse = lambda m, p, pw, body=None, **k: (403, {"error": "no permissions"}) if "/_ism/policies" in p else self.src(m, p, pw, body)
         rc, out = self.read(refuse)
         self.assertNotEqual(rc, 0, out)
-        self.assertIn("rule 19", out)
+        self.assertIn("the 4.x retention could not be read: nothing written", out)   # F7: no design code
         self.assertFalse(os.path.exists(os.path.join(self.n.bundle, "retention-4x.json")))
         self.assertFalse(os.path.exists(os.path.join(self.n.bundle, "state", "retention.read")))
 

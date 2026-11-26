@@ -19,6 +19,7 @@ Use clean M2 targets/state: existing H1 documents are never overwritten.
 Python 3.9+, standard library only; see README.md for offline validation limits.
 """
 import argparse
+import base64
 from pathlib import Path
 import calendar
 import concurrent.futures
@@ -29,6 +30,8 @@ import http.client
 import json
 import os
 import re
+import socket
+import ssl
 import sys
 import threading
 import time
@@ -36,7 +39,6 @@ import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from loader_map import LoaderMapper, MAP_SHA256
-import history_migrate as hm  # noqa: E402  (S4's script: COPY, FIRST, PAINLESS, wcs_types, pipeline_body, policy_body, Api)
 
 MAIN_PREFIX = "wazuh-legacy-4x-alerts-"
 CLOUD_PREFIX = "wazuh-legacy-4x-cloud-"
@@ -59,6 +61,85 @@ def must(res, what):
     if s not in (200, 201):
         raise SystemExit("ERROR %s: HTTP %s %s" % (what, s, json.dumps(o)[:800]))
     return o
+
+
+# ------------------------------------------------------------------------------------------ indexer access and shapes
+FINDINGS_TEMPLATE = "wazuh-findings-v5-system-activity-template"
+LENIENT = {"ip", "long", "date", "geo_point", "integer", "short", "double", "float"}   # types that get ignore_malformed
+
+
+class Api:
+    """The indexer's REST API over HTTPS (basic auth or a client certificate); retries a 429 (circuit breaker)."""
+    def __init__(self, a):
+        u = urllib.parse.urlsplit(a.url)
+        self.host, self.port, self.addr = u.hostname, u.port or 9200, u.hostname
+        for r in a.resolve or []:
+            h, p, ad = r.split(":", 2)
+            if h == self.host and int(p) == self.port: self.addr = ad
+        self.ctx = ssl.create_default_context(cafile=a.cacert)
+        if a.cert: self.ctx.load_cert_chain(a.cert, a.key)
+        pw = a.password or os.environ.get("INDEXER_PASSWORD", "")
+        self.auth = None if a.cert else "Basic " + base64.b64encode(f"{a.user}:{pw}".encode()).decode()
+
+    def __call__(self, method, path, body=None, timeout=600):
+        data = None if body is None else (body if isinstance(body, bytes) else json.dumps(body).encode())
+        h = {"Content-Type": "application/json"}
+        if self.auth: h["Authorization"] = self.auth
+        for attempt in range(8):
+            sock = socket.create_connection((self.addr, self.port), timeout=timeout)
+            conn = http.client.HTTPSConnection(self.host, self.port, context=self.ctx, timeout=timeout)
+            conn.sock = self.ctx.wrap_socket(sock, server_hostname=self.host)
+            try:
+                conn.request(method, path, body=data, headers=h)
+                r = conn.getresponse(); b = r.read()
+            finally:
+                conn.close()
+            if r.status == 429:            # circuit breaker on a 1 GB heap: wait and retry
+                time.sleep(3 + 3 * attempt); continue
+            try: return r.status, json.loads(b or b"{}")
+            except ValueError: return r.status, b.decode(errors="replace")
+        return 429, {"error": "still 429 after retries"}
+
+
+def wcs_types(api):
+    """Every leaf field of the installed findings template with its mapping, and the template's index settings."""
+    t = must(api("GET", f"/_index_template/{FINDINGS_TEMPLATE}"), "read the findings template")
+    it = t["index_templates"][0]["index_template"]["template"]
+    m = it["mappings"]; types = {}
+    for d in m.get("dynamic_templates", []):
+        (_, b), = d.items()
+        if "path_match" in b: types[b["path_match"]] = dict(b["mapping"])
+    def leaves(p, pre=""):
+        for k, v in p.items():
+            if "properties" in v: yield from leaves(v["properties"], pre + k + ".")
+            elif "type" in v and v["type"] != "object": yield pre + k, v
+    for k, v in leaves(m.get("properties", {})): types.setdefault(k, dict(v))
+    return types, it["settings"]["index"]
+
+
+def put_path(props, dotted, leaf):
+    parts = dotted.split(".")
+    for p in parts[:-1]: props = props.setdefault(p, {"properties": {}})["properties"]
+    props[parts[-1]] = leaf
+
+
+def policy_body(a):
+    # No ism_template: the indices carry the data date as creation date, and ISM only auto-attaches newer indices.
+    return {"policy": {"description": f"migrated 4.x alerts are deleted {a.retention} after the newest day they hold "
+                                      "(index.creation_date is the data date).",
+                       "default_state": "keep",
+                       "states": [{"name": "keep", "actions": [],
+                                   "transitions": [{"state_name": "delete", "conditions": {"min_index_age": a.retention}}]},
+                                  {"name": "delete", "actions": [{"delete": {}}], "transitions": []}]}}
+
+
+def detect_cluster(api):
+    """The cluster name the live 5.0 documents carry (wazuh.cluster.name), or None."""
+    s, o = api("POST", "/wazuh-findings-v5*,wazuh-events-v5*/_search",
+               {"size": 0, "query": {"bool": {"must_not": [{"term": {"tags": "v4-legacy"}}]}},
+                "aggs": {"c": {"terms": {"field": "wazuh.cluster.name", "size": 5}}}})
+    b = o.get("aggregations", {}).get("c", {}).get("buckets", []) if s == 200 else []
+    return b[0]["key"] if b else None
 
 
 def sha256_file(path):
@@ -107,7 +188,7 @@ class Bundle:
     def verify(self, allow_incomplete=False, only=None):
         bad, n = [], 0
         for name, ent in self.man["indices"].items():
-            if only is not None and name not in only:      # H5: files of months that will not be loaded are not read
+            if only is not None and name not in only:      # files of months that will not be loaded are not read
                 continue
             if not ent["complete"] and not allow_incomplete:
                 bad.append("%s: dumped while still being written (take the final delta after the write stop)" % name)
@@ -124,7 +205,7 @@ class Bundle:
         return sum(x["docs"] for x in self.months.values())
 
 
-# H5: ------------------------------------------------------------------------------- retention journal
+# ------------------------------------------------------------------------------- retention journal
 def retention_ms(r):
     m = re.match(r"^(\d+)([dhm])$", r or "")
     if not m:
@@ -211,9 +292,9 @@ def classify_months(api, a, b, j, now_ms, quiet=False):
 # ------------------------------------------------------------------------------------------ template
 def build_template(api, b, priority, agent_ids, registry=None):
     """WCS field types from the installed findings template; the 4.x mapping (from the bundle) under legacy.alert."""
-    types, fset = hm.wcs_types(api)
+    types, fset = wcs_types(api)
     copy = {}  # compatibility argument; LoaderMapper owns all shaping
-    copy["message"] = "full_log"        # H1: S3's free-text fix (native findings carry the log line in message)
+    copy["message"] = "full_log"        # S3's free-text fix (native findings carry the log line in message)
     if not agent_ids:
         copy.pop("wazuh.agent.id", None)
     wanted = LoaderMapper().targets()
@@ -222,7 +303,7 @@ def build_template(api, b, priority, agent_ids, registry=None):
     if not registry:
         wanted.discard("wazuh.agent.groups")
     if registry:
-        wanted.add("wazuh.agent.groups")   # H1: group stamp
+        wanted.add("wazuh.agent.groups")   # group stamp
     missing = sorted(w for w in wanted if w not in types)
     if missing:
         raise SystemExit("ERROR: not in the installed findings schema (the shape map is for another build): %s" % missing)
@@ -233,9 +314,9 @@ def build_template(api, b, priority, agent_ids, registry=None):
     props = {}
     for w in sorted(wanted):
         leaf = dict(types[w])
-        if leaf.get("type") in hm.LENIENT:
+        if leaf.get("type") in LENIENT:
             leaf["ignore_malformed"] = True
-        hm.put_path(props, w, leaf)
+        put_path(props, w, leaf)
     old, extra, df4 = {}, {}, []
     conflicts = []
     for month in b.months.values():
@@ -291,14 +372,14 @@ def pipeline_body(cluster, copy, registry=None):
 # -------------------------------------------------------------------------------------------- checks
 def count(api, idx, q=None):
     s, o = api("POST", "/%s/_count?ignore_unavailable=true&allow_no_indices=true" % idx, {"query": q or {"match_all": {}}})
-    if s == 403:   # H5: a refused count read as -1 documents; say which permission is missing
+    if s == 403:   # a refused count read as -1 documents; say which permission is missing
         raise SystemExit("ERROR count %s: HTTP 403 %s" % (idx, json.dumps(o)[:600]))
     return o.get("count", -1) if s == 200 else -1
 
 
 def existing_targets(api):
     s, o = api("GET", "/_cat/indices/%s?format=json&h=index,docs.count,status&expand_wildcards=all&s=index" % ALL)
-    if s != 200 or not isinstance(o, list):   # H5: strict; [] on a refusal hid existing indices from every check
+    if s != 200 or not isinstance(o, list):   # strict; [] on a refusal hid existing indices from every check
         raise SystemExit("ERROR list the history indices: HTTP %s %s" % (s, json.dumps(o)[:600]))
     return o
 
@@ -309,7 +390,7 @@ def precheck(api, b, a):
     h = must(api("GET", "/_cluster/health"), "cluster health")
     if h["status"] == "red":
         fails.append("cluster status is red")
-    # H5: a gate that cannot read its input refuses; with a restricted user H1/M3 silently used defaults here
+    # a gate that cannot read its input refuses; with a restricted user H1/M3 silently used defaults here
     cs = must(api("GET", "/_cluster/settings?include_defaults=true&flat_settings=true&filter_path=**.cluster.max_shards_per_node"), "read the shard limit")
     merged = {}
     for k in ("defaults", "persistent", "transient"):
@@ -320,14 +401,14 @@ def precheck(api, b, a):
     out("shards: %d now, the history adds at most %d, limit %d" % (have, new, limit))
     if have + new > limit:
         fails.append("%d + %d shards exceed the limit %d" % (have, new, limit))
-    fs = must(api("GET", "/_nodes/stats/fs?filter_path=nodes.*.fs.total"), "read the free disk of the data nodes")   # H5: strict
+    fs = must(api("GET", "/_nodes/stats/fs?filter_path=nodes.*.fs.total"), "read the free disk of the data nodes")   # strict
     free = min((n["fs"]["total"].get("available_in_bytes", 0) for n in (fs or {}).get("nodes", {}).values()), default=0)
     raw = sum(f.get("raw_bytes", 0) for e in b.man["indices"].values() for f in e["files"])
     out("disk: %.1f MB free on the data path, the alerts are %.1f MB uncompressed" % (free / 1048576.0, raw / 1048576.0))
     if free and free < 3 * raw:
         fails.append("less than three times the uncompressed size of the alerts is free on the indexer data path")
     for t in existing_targets(api):
-        cur = must(api("GET", "/%s/_mapping?filter_path=*.mappings._meta" % t["index"]), "read the mapping of %s" % t["index"])   # H5: strict
+        cur = must(api("GET", "/%s/_mapping?filter_path=*.mappings._meta" % t["index"]), "read the mapping of %s" % t["index"])   # strict
         if (cur or {}).get(t["index"], {}).get("mappings", {}).get("_meta", {}).get("wazuh_migration_bundle") != b.man["bundle_id"]:
             fails.append("index %s exists and was not created from this bundle" % t["index"])
         if (cur or {}).get(t["index"], {}).get("mappings", {}).get("_meta", {}).get("field_map_sha256") != MAP_SHA256:
@@ -340,7 +421,7 @@ def precheck(api, b, a):
             s, o = api("GET", "/_alias/%s" % alias)
             if s != 200:
                 fails.append("an index is already named %s" % alias)
-    cluster = a.cluster_name or hm.detect_cluster(api)
+    cluster = a.cluster_name or detect_cluster(api)
     if not cluster:
         fails.append("cannot tell the 5.0 cluster name (no native document yet): pass --cluster-name")
     if b.skipped:
@@ -367,7 +448,7 @@ class State:
             write_json(self.path, self.d)
 
 
-# OF1 (decision 10, F10): the loader runs beside live traffic after the opening, and F10 saw the indexer's parent breaker
+# the loader runs beside live traffic after the opening, and F10 saw the indexer's parent breaker
 # at 98 to 99.6 % of its limit during the load: a trip refuses live events too. So the loader reads the parent breaker
 # before it sends, waits while any node is above --breaker-max, and treats a breaker refusal (429, 503,
 # circuit_breaking_exception, es_rejected_execution_exception) as a reason to back off and send again, never as a failure,
@@ -375,7 +456,7 @@ class State:
 SLEEP = time.sleep           # tests replace these two
 CLOCK = time.monotonic
 BACKOFF_TYPES = ("circuit_breaking_exception", "es_rejected_execution_exception")
-# E3 fold (E3-deb N6): an indexer restart during the load refused the connection; the guard's breaker read let the
+# an indexer restart during the load refused the connection; the guard's breaker read let the
 # ConnectionRefusedError through and the load ended with a traceback. A connection refused, reset or timed out, or a
 # broken HTTP answer, means "the indexer is not ready": the load waits and tries again, with the same stop time as a
 # breaker that stays high (--breaker-wait-max), then stops resumable.
@@ -523,7 +604,7 @@ def bulk(api, index, pairs, stats, rejected, breaker=None):
             continue
         DOWN.answered(CLOCK())
         if s in (429, 503) or (s != 200 and _refusal_type(r)):
-            # OF1: the whole batch refused by a breaker or a full queue: back off and send it again
+            # the whole batch refused by a breaker or a full queue: back off and send it again
             if CLOCK() - t_ok > wait_max:
                 raise RuntimeError("bulk to %s: refused for %d s (HTTP %s %s): the load stops here and resumes with the same command" % (
                     index, wait_max, s, json.dumps(r)[:300]))
@@ -632,7 +713,7 @@ def shape_and_send(a, b, src, docs, api, rejected):
 
 
 def load_file(a, b, f, state, rejected):
-    api = hm.Api(a)
+    api = Api(a)
     stats = shape_and_send(a, b, f["index"], _docs_of_file(b, f), api, rejected)
     if stats["docs"] != f["docs"]:
         raise RuntimeError("%s: %d documents read, manifest says %d" % (f["file"], stats["docs"], f["docs"]))
@@ -643,7 +724,7 @@ def load_file(a, b, f, state, rejected):
 
 def load_index(a, b, src, rejected):
     """OF1 (decision 9): one restored 4.x daily index through the Python shaping; the count must equal the manifest's."""
-    api = hm.Api(a)
+    api = Api(a)
     stats = shape_and_send(a, b, src, _docs_of_index(api, src, a.bulk_docs), api, rejected)
     want = b.man["indices"][src]["docs_expected"]
     if stats["docs"] != want:
@@ -687,7 +768,7 @@ def report_sources(b, a):
         out("source indices created by OpenSearch %s.x: %d%s" % (major, len(names), (" (" + ", ".join(names[:5]) + ")") if major < 2 else ""))
     if any(m < 2 for m in by):
         out("  NOTE indices created before OpenSearch 2.0 are copied by value: 5.0 cannot open or restore them, the dump reads them through search")
-    # H5: the months past the retention are decided by classify_months and reported by cmd_plan.
+    # the months past the retention are decided by classify_months and reported by cmd_plan.
 
 
 def cmd_plan(api, a, b, write_journal=False):
@@ -745,7 +826,7 @@ def cmd_apply(api, a, b):
     sdir = state_dir(a, b)
     os.makedirs(sdir, mode=0o700, exist_ok=True)
     cluster, j, load, expired, loaded = cmd_plan(api, a, b, write_journal=True)
-    if cluster is None:     # H5: the bundle's alerts were removed after the proof: only the proof can run
+    if cluster is None:     # the bundle's alerts were removed after the proof: only the proof can run
         return cmd_prove(api, a, b)
     a.cluster_name = cluster
     state = State(os.path.join(sdir, "state.json"))
@@ -759,24 +840,23 @@ def cmd_apply(api, a, b):
     if registry:
         out("group stamp: %d registry agent(s) with groups, matched on id and name: %s" % (
             sum(1 for e in registry.values() if e["groups"]), {k: e for k, e in sorted(registry.items()) if e["groups"]}))
-    hm.POLICY = POLICY
     s, o = api("GET", "/_plugins/_ism/policies/%s" % POLICY)
-    if s not in (200, 404):   # H5: strict (a refused read became a 409 on the PUT)
+    if s not in (200, 404):   # strict (a refused read became a 409 on the PUT)
         raise SystemExit("ERROR read the retention policy: HTTP %s %s" % (s, json.dumps(o)[:600]))
     q = "?if_seq_no=%s&if_primary_term=%s" % (o["_seq_no"], o["_primary_term"]) if s == 200 else ""
-    pol = hm.policy_body(a)
-    pol["policy"]["description"] = "arm E1: migrated 4.x alerts are deleted %s after the newest day they hold." % a.retention
+    pol = policy_body(a)
+    pol["policy"]["description"] = "migrated 4.x alerts are deleted %s after the newest day they hold." % a.retention
     must(api("PUT", "/_plugins/_ism/policies/%s%s" % (POLICY, q), pol), "PUT policy")
     out("pipeline %s, retention policy %s (%s from the data date, no ism_template)" % (PIPELINE, POLICY, a.retention))
     present = target_present(api)
-    for month in expired:     # H5: partial targets of a month that expired before its load completed: never kept
+    for month in expired:     # partial targets of a month that expired before its load completed: never kept
         for dst in (MAIN_PREFIX + month, CLOUD_PREFIX + month):
             if dst in present:
                 api("POST", "/_plugins/_ism/remove/%s" % dst)
                 s, _ = api("DELETE", "/%s" % dst)
                 out("  %s: deleted the partial %s (%s documents): the month is past the retention, its load never completed (HTTP %s)" % (
                     month, dst, present[dst], s))
-    for month in load:        # H5: only months to load are created or reopened; loaded and expired ones are never touched
+    for month in load:        # only months to load are created or reopened; loaded and expired ones are never touched
         x = b.months[month]
         j.month(month).update({"status": "loading", "expires_ms": x["cd"] + ret, "retention": a.retention, "docs": x["docs"]})
         for dst in (MAIN_PREFIX + month, CLOUD_PREFIX + month):
@@ -784,7 +864,7 @@ def cmd_apply(api, a, b):
                 must(api("PUT", "/%s" % dst, {"settings": {"index.creation_date": x["cd"], "index.refresh_interval": "-1",
                                                            "index.plugins.index_state_management.auto_manage": False}}), "create %s" % dst)
             else:   # left by an interrupted run: open it for the rerun
-                must(api("PUT", "/%s/_settings" % dst, {"index.blocks.write": False, "index.refresh_interval": "-1"}), "reopen %s" % dst)   # H5: strict
+                must(api("PUT", "/%s/_settings" % dst, {"index.blocks.write": False, "index.refresh_interval": "-1"}), "reopen %s" % dst)   # strict
     j.save()
     todo, skip = [], 0
     srcs = {s for k in load for s in b.months[k]["srcs"]}
@@ -801,13 +881,13 @@ def cmd_apply(api, a, b):
         len(todo), skip, len(expired), len(loaded)))
     tot = {"docs": 0, "created": 0, "existing": 0, "retried": 0, "rejected": 0, "cloud": 0, "paused_s": 0, "refused_batches": 0, "not_ready_s": 0}
     if a.breaker_max > 0:
-        out("breaker guard: the load pauses while any node's parent breaker is above %.0f %% of its limit (decision 10)" % (100 * a.breaker_max))
+        out("breaker guard: the load pauses while any node's parent breaker is above %.0f %% of its limit" % (100 * a.breaker_max))
     rejected = {"lock": threading.Lock(), "f": open(os.path.join(sdir, "rejected.ndjson"), "a")}
     t1 = time.time()
     nd = 0
     global DOWN
     DOWN = Down(shared=bool(a.procs))   # E4-deb N-F2a: one outage record for every process and thread of this load
-    if a.procs:   # H5: shaping in processes
+    if a.procs:   # shaping in processes
         import multiprocessing
         ex = concurrent.futures.ProcessPoolExecutor(a.procs, mp_context=multiprocessing.get_context("fork"), initializer=_die_with_parent)
         futs = [ex.submit(load_file_proc, a, b, f) for f in todo]
@@ -828,9 +908,6 @@ def cmd_apply(api, a, b):
                 for k in tot:
                     tot[k] += s_.get(k, 0)
                 nd += 1
-                if a.stop_after_files and nd >= a.stop_after_files:
-                    out("TEST: hard exit after %d files" % nd)
-                    os._exit(99)
         except Exception:
             for fu in futs:
                 fu.cancel()
@@ -850,7 +927,7 @@ def cmd_apply(api, a, b):
     if tot["rejected"]:
         raise SystemExit("ERROR: %d document(s) were rejected by the indexer; see %s. The history stays off." % (
             tot["rejected"], os.path.join(sdir, "rejected.ndjson")))
-    must(api("POST", "/%s/_refresh?allow_no_indices=true&ignore_unavailable=true" % ALL), "refresh the history indices")   # H5: strict
+    must(api("POST", "/%s/_refresh?allow_no_indices=true&ignore_unavailable=true" % ALL), "refresh the history indices")   # strict
     for month in load:
         x = b.months[month]
         main, cloud = MAIN_PREFIX + month, CLOUD_PREFIX + month
@@ -859,7 +936,7 @@ def cmd_apply(api, a, b):
         if have != x["docs"]:
             raise SystemExit("ERROR %s: %d documents in the target, the bundle has %d. Rerun apply: it resumes." % (month, have, x["docs"]))
         targets = {}
-        present = target_present(api)   # H5: strict listing; a refused HEAD used to skip the index silently
+        present = target_present(api)   # strict listing; a refused HEAD used to skip the index silently
         for dst in (main, cloud):
             if dst not in present:
                 continue
@@ -869,13 +946,13 @@ def cmd_apply(api, a, b):
             targets[dst] = per_source_counts(api, dst)
         if sum(n for per in targets.values() for n in per.values()) != x["docs"]:
             raise SystemExit("ERROR %s: the per-index counts of %s do not add up to %d" % (month, sorted(targets), x["docs"]))
-        # H5: recorded BEFORE the policy goes on, so a kill between the two cannot leave a month the retention may
+        # recorded BEFORE the policy goes on, so a kill between the two cannot leave a month the retention may
         # delete while the journal still says "loading" (a rerun would then re-create it)
         j.month(month).update({"status": "loaded", "loaded": iso(time.time() * 1000), "targets": targets})
         j.save()
         for dst in targets:
             finish_target(api, a, dst)
-    # H5: loaded months of earlier runs: make sure their retention is on (a kill may have come between journal and policy)
+    # loaded months of earlier runs: make sure their retention is on (a kill may have come between journal and policy)
     present = target_present(api)
     for month in loaded:
         for dst in j.month(month).get("targets", {}):
@@ -888,14 +965,14 @@ def cmd_apply(api, a, b):
 
 
 def finish_target(api, a, dst, merge=True):
-    """Write block, retention policy (H1's end of apply, as one function; H5)."""
+    """Write block, retention policy (H1's end of apply, as one function)."""
     if merge:
-        must(api("PUT", "/%s/_settings" % dst, {"index.refresh_interval": "5s"}), "refresh interval of %s" % dst)   # H5: strict
+        must(api("PUT", "/%s/_settings" % dst, {"index.refresh_interval": "5s"}), "refresh interval of %s" % dst)   # strict
         if a.forcemerge:
             must(api("POST", "/%s/_forcemerge?max_num_segments=1" % dst, timeout=3600), "force merge %s" % dst)
     must(api("PUT", "/%s/_settings" % dst, {"index.blocks.write": True}), "write block %s" % dst)
     s, ex_ = api("GET", "/_plugins/_ism/explain/%s" % dst)
-    if s != 200:   # H5: strict
+    if s != 200:   # strict
         raise SystemExit("ERROR explain the retention of %s: HTTP %s %s" % (dst, s, json.dumps(ex_)[:600]))
     cur = (ex_.get(dst) or {}).get("index.plugins.index_state_management.policy_id")
     if cur and cur != POLICY:
@@ -913,8 +990,8 @@ def cmd_prove(api, a, b):
         nonlocal fails
         out(("  ok   " + good) if ok else ("  FAIL " + bad))
         fails += 0 if ok else 1
-    must(api("POST", "/%s/_refresh?allow_no_indices=true&ignore_unavailable=true" % ALL), "refresh the history indices")   # H5: strict
-    # H5: what should be there now, from the journal: months expired before the load are not expected; a target index
+    must(api("POST", "/%s/_refresh?allow_no_indices=true&ignore_unavailable=true" % ALL), "refresh the history indices")   # strict
+    # what should be there now, from the journal: months expired before the load are not expected; a target index
     # of a loaded month past its retention date may be gone (the retention deleted it), never partial.
     j = Journal(os.path.join(state_dir(a, b), "journal.json"))
     for attempt in (1, 2):    # the retention may delete an index while the proof runs: then count again once
@@ -930,7 +1007,7 @@ def cmd_prove(api, a, b):
                     if b.man["indices"][s_]["docs_expected"]:
                         want[s_] = b.man["indices"][s_]["docs_expected"]
                 continue
-            if sum(n_ for per in e.get("targets", {}).values() for n_ in per.values()) != x["docs"]:   # H5
+            if sum(n_ for per in e.get("targets", {}).values() for n_ in per.values()) != x["docs"]:
                 check(False, "", "journal: month %s is recorded as loaded but its targets do not add up to %d" % (k, x["docs"]))
             for t, per in e.get("targets", {}).items():
                 if t in e.get("deleted_by_retention", {}):
@@ -965,7 +1042,7 @@ def cmd_prove(api, a, b):
                     ({"exists": {"field": "@timestamp"}}, "@timestamp")):
         n = count(api, ALL, {"bool": {"filter": [q, mine]}})
         check(n == tot, "%s on all %d" % (name, n), "%s on %d of %d" % (name, n, tot))
-    # H1: the two additions, reported (not every alert has a full_log or a registry agent)
+    # the two additions, reported (not every alert has a full_log or a registry agent)
     out("  info message (from full_log) on %d; wazuh.agent.groups on %d" % (
         count(api, ALL, {"bool": {"filter": [{"exists": {"field": "message"}}, mine]}}),
         count(api, ALL, {"bool": {"filter": [{"exists": {"field": "wazuh.agent.groups"}}, mine]}})))
@@ -973,12 +1050,12 @@ def cmd_prove(api, a, b):
     check(all(v["settings"].get("index.blocks.write") == "true" for v in st.values()), "index.blocks.write on all %d indices" % len(st),
           "an index is not write-blocked")
     pol = {}
-    for _ in range(30 if target_present(api) else 0):     # _ism/add is asynchronous; H5: no index, nothing to explain
+    for _ in range(30 if target_present(api) else 0):     # _ism/add is asynchronous; no index, nothing to explain
         s, ex_ = api("GET", "/_plugins/_ism/explain/%s" % ALL)
-        if s != 200:   # H5: strict; an empty (refused) answer passed the check
+        if s != 200:   # strict; an empty (refused) answer passed the check
             raise SystemExit("ERROR explain the retention of the history: HTTP %s %s" % (s, json.dumps(ex_)[:600]))
         pol = {k: v.get("index.plugins.index_state_management.policy_id") for k, v in ex_.items() if isinstance(v, dict)}
-        if all(p == POLICY for p in pol.values()):     # H5: no index left (all expired) is fine too
+        if all(p == POLICY for p in pol.values()):     # no index left (all expired) is fine too
             break
         time.sleep(3)
     check(all(p == POLICY for p in pol.values()), "retention: all %d indices on %s" % (len(pol), POLICY), "ISM policies: %s" % pol)
@@ -1047,16 +1124,16 @@ def cmd_on(api, a, b):
     # proof cannot be bypassed (S5 found `on` bypassable by the caller's order; the flag was a second bypass).
     if cmd_prove(api, a, b) != 0:
         raise SystemExit("the history is not proven: not switching it on")
-    # S5: rule 9's second half inside the command, not only in the caller's order (`on` alone switched the history on
+    # rule 9's second half inside the command, not only in the caller's order (`on` alone switched the history on
     # over an exact-name role that then lost every module): refuse while such a role exists, unless accepted.
     if cmd_audit_roles(api, a, b) != 0:
         raise SystemExit("a role would lose every module: not switching the history on (fix it, or --accept-role-loss)")
     acts = alias_actions(api, "add")
     if acts:
         must(api("POST", "/_aliases", {"actions": acts}), "add aliases")
-    # H5: what the proof expected (months expired before the load, or deleted by the retention since, are not expected)
+    # what the proof expected (months expired before the load, or deleted by the retention since, are not expected)
     want, srcs = getattr(a, "_expected", (b.total(), sorted(n for n in b.man["indices"] if n not in b.skipped)))
-    # H5: count through the two alias names, not through wazuh-findings-v5*: the wildcard needs read on every native
+    # count through the two alias names, not through wazuh-findings-v5*: the wildcard needs read on every native
     # finding stream, which the transport user does not otherwise need. The stock pattern covers the aliases by name:
     assert all(fnmatch.fnmatchcase(x, FINDINGS[0]) for x in (ALIAS_MAIN, ALIAS_CLOUD))
     names = ",".join(x["add"]["alias"] for x in acts)
@@ -1076,7 +1153,7 @@ def cmd_on(api, a, b):
 def cmd_off(api, a, b):
     acts = [x for x in alias_actions(api, "remove")]
     s, o = api("POST", "/_aliases", {"actions": acts})
-    seen = count(api, ALIAS_MAIN + "," + ALIAS_CLOUD, {"term": {"tags": "v4-legacy"}})   # H5: the alias names, see cmd_on
+    seen = count(api, ALIAS_MAIN + "," + ALIAS_CLOUD, {"term": {"tags": "v4-legacy"}})   # the alias names, see cmd_on
     out("aliases off: HTTP %s; through the two alias names: %d history documents" % (s, seen))
     return 0
 
@@ -1136,7 +1213,7 @@ def cmd_remove_bundle(api, a, b, proven=False):
 
 def cmd_status(api, a, b):
     j = Journal(os.path.join(state_dir(a, b), "journal.json"))
-    for k, e in sorted(j.d.get("months", {}).items()):     # H5
+    for k, e in sorted(j.d.get("months", {}).items()):
         out("  month %s: %s%s%s" % (k, e.get("status"), (", expires %s" % iso(e["expires_ms"])) if e.get("expires_ms") else "",
                                      (", deleted by the retention: %s" % e["deleted_by_retention"]) if e.get("deleted_by_retention") else ""))
     for x in ("proven", "on", "bundle_data_removed"):
@@ -1146,7 +1223,7 @@ def cmd_status(api, a, b):
         out("  %-40s %8s docs  %s" % (t["index"], t["docs.count"], t["status"]))
     s, o = api("GET", "/_cat/aliases/%s,%s?format=json&h=alias,index" % (ALIAS_MAIN, ALIAS_CLOUD))
     out("aliases: %s" % (sorted("%s->%s" % (x["alias"], x["index"]) for x in o) if s == 200 and isinstance(o, list) else "none"))
-    out("through the two alias names: %d history documents" % count(api, ALIAS_MAIN + "," + ALIAS_CLOUD, {"term": {"tags": "v4-legacy"}}))   # H5
+    out("through the two alias names: %d history documents" % count(api, ALIAS_MAIN + "," + ALIAS_CLOUD, {"term": {"tags": "v4-legacy"}}))
     return 0
 
 
@@ -1163,7 +1240,7 @@ def cmd_rollback(api, a, b):
                        ("policy", "/_plugins/_ism/policies/%s" % POLICY)):
         s, r = api("DELETE", path)
         out("  %s: %s" % (what, s))
-    sdir = state_dir(a, b)    # H5: a new apply must start clean; H1's rollback kept state.json, so apply skipped every file
+    sdir = state_dir(a, b)    # a new apply must start clean; H1's rollback kept state.json, so apply skipped every file
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
     for f in ("state.json", "journal.json", "rejected.ndjson"):
         p = os.path.join(sdir, f)
@@ -1174,9 +1251,8 @@ def cmd_rollback(api, a, b):
 
 
 def _die_with_parent():
-    """E2-deb fix 3: a shaping worker must not outlive the loader. A SIGKILL of the loader (the OOM killer, a crash, the
-    lab switch --stop-after-files) left its --procs workers as orphans of PID 1 holding the step's output pipe, and
-    migrate.sh waited on them forever (E2-deb evidence 20-bundle-b/01, 02). Linux prctl(PR_SET_PDEATHSIG, SIGKILL); a
+    """E2-deb fix 3: a shaping worker must not outlive the loader. A SIGKILL of the loader (the OOM killer, a crash) left its --procs workers as orphans of PID 1 holding the step's output pipe, and
+    migrate.sh waited on them forever. Linux prctl(PR_SET_PDEATHSIG, SIGKILL); a
     worker whose parent is already gone exits at once."""
     import ctypes
     import signal
@@ -1215,17 +1291,16 @@ def main():
     ap.add_argument("--accept-role-loss", action="store_true")
     ap.add_argument("--json", dest="json_out")
     ap.add_argument("--yes", action="store_true")
-    ap.add_argument("--stop-after-files", type=int, help="TEST ONLY: exit hard after N files")
     ap.add_argument("--load-expired", action="store_true", help="H5: also load months already past the retention")
     ap.add_argument("--remove-bundle", action="store_true", help="H5: with on, delete the bundle's alert files once on")
     ap.add_argument("--breaker-max", type=float, default=0.85,
-                    help="OF1 (decision 10): pause while any node's parent breaker is above this fraction of its limit (0: never read it)")
+                    help="pause while any node's parent breaker is above this fraction of its limit (0: never read it)")
     ap.add_argument("--breaker-wait-max", type=float, default=1800,
-                    help="OF1: seconds of continuous breaker pressure or refusals before the load stops (it resumes with the same command)")
+                    help="seconds of continuous breaker pressure or refusals before the load stops (it resumes with the same command)")
     ap.add_argument("--procs", type=int, default=0, help="H5: shape and send in N processes instead of --workers threads")
     a = ap.parse_args()
     b = Bundle(a.bundle)
-    api = hm.Api(a)
+    api = Api(a)
     fn = {"plan": cmd_plan, "apply": cmd_apply, "prove": cmd_prove, "audit-roles": cmd_audit_roles, "on": cmd_on, "off": cmd_off,
           "status": cmd_status, "rollback": cmd_rollback, "remove-bundle": cmd_remove_bundle}[a.cmd]
     try:

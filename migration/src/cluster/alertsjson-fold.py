@@ -27,7 +27,7 @@ import base64, gzip, hashlib, json, os, re, shutil, ssl, sys, urllib.request
 
 def registry_offset(reg, path):
     off = None
-    # E2-cluster fix: no Filebeat registry means Filebeat never shipped anything from this node (the master's 4.x
+    # no Filebeat registry means Filebeat never shipped anything from this node (the master's 4.x
     # reinstall was cut by a reboot before Filebeat first ran, then restored with Filebeat kept stopped): offset 0.
     # The plan crashed instead, the freeze wrote an empty offset record and the fold refused the generation.
     if not os.path.exists(reg):

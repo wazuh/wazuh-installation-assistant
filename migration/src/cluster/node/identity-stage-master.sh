@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # identity-stage-master.sh : E2-cluster wiring (new node step). On the 5.0 MASTER, running, listeners closed: the merged
-# identity stage (src/identity_stage.py, G5 + G1 + F7) in place of the identity tool's import (import-master.sh), followed by
+# identity stage (src/identity_stage.py) in place of the identity tool's import (import-master.sh), followed by
 # what migrate.sh phase 6 does after it on an all-in-one: import.restart (clean stop and start, cluster daemon answering,
 # rule 4), import.passwords, the identity part of import.reconcile (identity_stage.py verify; run again on a difference)
 # and the limit gate of im_gate (rule 15). Mirrors migrate.sh im_identity, im_restart, im_passwords, im_reconcile, im_gate.
@@ -20,13 +20,13 @@ passwords() { local i; for i in 1 2 3 4 5 6 7 8; do
 # authd.pass in the identity bundle, and --with-password then blocks the import; carried only when the source had one
 pwflag() { [ -s "$BUNDLE_DIR/identity/authd.pass" ] && echo --with-password || true; }
 run_stage() { $py "$S/identity_stage.py" run "$BUNDLE_DIR/identity" --state "$BUNDLE_DIR/identity-stage" --limit-mode "$MODE" \
-      --workers "$W" $(pwflag) --with-rbac ${STOP_AFTER:+--stop-after "$STOP_AFTER"} >> "$LOGS/identity-stage-run.log" 2>&1; }
+      --workers "$W" $(pwflag) --with-rbac >> "$LOGS/identity-stage-run.log" 2>&1; }
 [ -e "$STATE/T_import_begin" ] || ts > "$STATE/T_import_begin"
 log "identity stage run (limit mode $MODE, $W worker(s))"
 run_stage || { tail -n 30 "$LOGS/identity-stage-run.log"; die "identity stage failed"; }
 grep -E 'GATE|REFUSE|cut import|preflight:|limit|inserted|repair' "$LOGS/identity-stage-run.log" | cut -c1-300 | tail -n 12
-[ -n "${STOP_AFTER:-}" ] && { log "STOP_AFTER=$STOP_AFTER (lab): stopping here"; exit 0; }
-# CL1 (E4-cluster gap 2c, parity with the all-in-one's import.settings): the master's converted settings are staged now,
+[ -z "${MIG_TEST_STOP_AFTER_STAGE:-}" ] || { log "MIG_TEST_STOP_AFTER_STAGE is set (unit tests only): stopping after the identity stage"; exit 0; }
+# CL1 (parity with the all-in-one's import.settings): the master's converted settings are staged now,
 # after the identity stage's own restarts and before the clean restart below, which applies them (one restart, inside
 # the master's outage, as migrate.sh's import.restart); a manager that does not come up on them gets the saved files back
 N="$(dirname "$(readlink -f "$0")")"; staged=0
@@ -48,12 +48,12 @@ if ! $py "$S/identity_stage.py" verify "$BUNDLE_DIR/identity" --state "$BUNDLE_D
   $py "$S/identity_stage.py" verify "$BUNDLE_DIR/identity" --state "$BUNDLE_DIR/identity-stage" > "$LOGS/identity-verify-2.json" 2>&1 || { cat "$LOGS/identity-verify-2.json"; die "the registry still differs from the identity bundle"; }
 fi
 head -c 1200 "$LOGS/identity-verify-1.json"; echo
-python3 - "$BUNDLE_DIR/identity-stage/state.json" <<'PY' || die "rule 15 gate"
+python3 - "$BUNDLE_DIR/identity-stage/state.json" <<'PY' || die "the API limit gate"
 import json, sys
 st = json.load(open(sys.argv[1])); lim = (st.get("limit") or {}).get("state")
 if lim in ("raised", "restored-pending-restart"):
     print("the Server API limit raised for the identity import is not restored (state %s)" % lim); sys.exit(1)
-print("rule 15: the Server API limit is the original (identity stage state: %s)" % (lim or "never raised"))
+print("the Server API limit is the original (identity stage state: %s)" % (lim or "never raised"))
 PY
 grep -E 'max_request_per_minute' $V5/api/configuration/api.yaml 2>/dev/null | head -n 3 || true; ls -la "$BUNDLE_DIR/identity-stage/" | tail -n +2 | cut -c1-120
 mark import.done; log "identity stage done"

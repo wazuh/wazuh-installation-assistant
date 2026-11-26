@@ -4,9 +4,11 @@
 # or a newer 4.14.x published after the tool); older is refused (upgrade to the latest 4.14.x first), 4.15+ and 5.x are
 # not a 4.14 source. "cluster" (on the master, 4.x API up): also every manager node the 4.x cluster lists in
 # /cluster/nodes, so a mixed-version cluster is refused naming the node before anything is changed anywhere. E3 fold
-# (E3-cluster gap 1): a worker of another version cannot join, so /cluster/nodes hid it; every node CLUSTER_NODES (the
+#: a worker of another version cannot join, so /cluster/nodes hid it; every node CLUSTER_NODES (the
 # inventory, comma separated) or the agent registry names must be connected, else it is refused by name.
+# "assistant": only the staged 4.x assistant against this node's 4.x version (the pre-copy, after staging it).
 . "$(dirname "$(readlink -f "$0")")/common.sh"
+if [ "${1:-}" = assistant ]; then v4_assistant_check || { rm -f "$V4_ASSISTANT_FILE"; die "the 4.x assistant staged on this node does not install its 4.x version: it was removed from this node, nothing else changed"; }; exit 0; fi
 source_version_gate
 if [ "${1:-}" = cluster ]; then
   V4_API_PASSWORD="$(pw4 wazuh)" python3 "$SRC/mig_helper.py" source-version-cluster || die "a manager node of the 4.x cluster is not the latest 4.14.x: nothing changed"

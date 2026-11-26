@@ -493,7 +493,7 @@ class GoingBackKeepsNoSecretG11(unittest.TestCase):
     def install4(self, script):
         sh = self.shell(script)
         try:
-            sh.write("v4/wazuh-install.sh", "echo 'INFO: The filebeat.yml file has been updated to use the Filebeat Keystore username and password.'\n"
+            sh.write("v4/wazuh-install.sh", "readonly wazuh_version=\"4.14.11\"\necho 'INFO: The filebeat.yml file has been updated to use the Filebeat Keystore username and password.'\n"
                                              "echo 'INFO: You can access the web interface https://<wazuh-dashboard-ip>:443'\n"
                                              "echo '    User: admin'\necho '    Password: %s'\ntouch wazuh-install-files.tar\n" % self.PW)
             rc, out = sh.run('pkglist > "$BUNDLE_DIR/v4/packages.txt"; bk_install4')
@@ -603,7 +603,7 @@ class BundleSecretsSweep(unittest.TestCase):
         shutil.rmtree(os.path.join(self.b, "v4", "etc"))
         self.tgz(os.path.join(self.b, "v4", "rollback", "var-ossec.tar.gz"),
                  {"var/ossec/etc/client.keys": ("002 ag2 any %s\n" % self.KEY).encode(),
-                  "var/ossec/etc/ossec.conf": b"<ossec_config><cluster><key>3123456789abcdef0123456789abcdef</key></cluster></ossec_config>",
+                  "var/ossec/etc/ossec.conf": b"<ossec_config><cluster><key>2123456789abcdef0123456789abcdef</key></cluster></ossec_config>",
                   "var/ossec/etc/authd.pass": b"enrollment-password-28-bytes\n"})
         vals = BS.carried_values(self.b)
         self.assertEqual(sorted(vals), ["4.x cluster key", "enrollment password", "key of agent 002"])
@@ -708,12 +708,12 @@ class FeedWaitRule14(unittest.TestCase):
 
 # ------------------------------------------------------------------------------------------------ E2-cluster gap 5
 class CertificatePreflightPerNodeClusterGap5(unittest.TestCase):
-    NODES = {"wazuh-1": {"ip": "198.51.100.13"}, "wazuh-2": {"ip": "198.51.100.12"}}
-    SANS = {"wazuh-1": ["198.51.100.13", "wazuh-1"], "wazuh-2": ["198.51.100.12", "wazuh-2"]}
+    NODES = {"wazuh-1": {"ip": "198.51.100.14"}, "wazuh-2": {"ip": "198.51.100.13"}}
+    SANS = {"wazuh-1": ["198.51.100.14", "wazuh-1"], "wazuh-2": ["198.51.100.13", "wazuh-2"]}
 
     def test_a_node_address_reaches_only_that_node(self):
-        self.assertEqual(FU.nodes_reached("198.51.100.13", self.NODES, resolve=False), ["wazuh-1"])
-        self.assertEqual(FU.cert_missing("198.51.100.13", self.SANS, self.NODES, resolve=False), [])
+        self.assertEqual(FU.nodes_reached("198.51.100.14", self.NODES, resolve=False), ["wazuh-1"])
+        self.assertEqual(FU.cert_missing("198.51.100.14", self.SANS, self.NODES, resolve=False), [])
 
     def test_a_balancer_name_reaches_every_node(self):
         self.assertEqual(FU.nodes_reached("lb.example", self.NODES, resolve=False), ["wazuh-1", "wazuh-2"])
@@ -732,7 +732,7 @@ class CertificatePreflightPerNodeClusterGap5(unittest.TestCase):
         ka = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime())
         agents = [{"id": "002", "name": "ag1", "version": "Wazuh v4.14.10", "status": "active", "lastKeepAlive": ka,
                    "os": {"platform": "ubuntu", "arch": "x86_64", "major": "24", "name": "Ubuntu", "version": "24.04"}}]
-        facts = {"002": {"dialed": ["198.51.100.13"], "openssl": "3.0.13", "curl": "8.5"}}
+        facts = {"002": {"dialed": ["198.51.100.14"], "openssl": "3.0.13", "curl": "8.5"}}
         a = types.SimpleNamespace(target="v5.0.0", poll_interval=None, wpk_repo="repo", step_wpk_repo=None, agents=None, groups=None,
                                   package_type=None, step_version=None, include_stale=False, include_disconnected=False,
                                   allow_cert_mismatch=False, listener_host="h", api="https://localhost:55000", canary_key="platform",

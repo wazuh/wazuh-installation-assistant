@@ -11,6 +11,21 @@ from pathlib import Path
 from apply_map import Mapper, conform, get, matches, nonempty, put_added, values
 
 MAP_PATH = Path(__file__).with_name('history-loader-map.json')
+# 4.x keeps the JSON escaping of the eventchannel decoder in its win.* values, so a separator is two
+# backslashes there (C:\\Windows\\System32: the stock 4.14 rules match four in PCRE2, 0860-sysmon_id_13.xml); the
+# 5.0 Windows integration stores one, as rmig's collapse_doubled_backslash assumes for migrated win.* conditions.
+# A 5.0 field filled from a data.win.* value gets one backslash per pair; legacy.alert.* keeps the 4.x value as it was.
+WIN_PREFIX = 'data.win.'
+
+
+def collapse_doubled_backslash(v):
+    if isinstance(v, str):
+        return v.replace('\\\\', '\\') if '\\\\' in v else v
+    if isinstance(v, list):
+        return [collapse_doubled_backslash(x) for x in v]
+    return v
+
+
 MAP_SHA256 = hashlib.sha256(MAP_PATH.read_bytes()).hexdigest()
 
 
@@ -53,7 +68,9 @@ class LoaderMapper:
         for r in active:
             if r['target'] == 'wazuh.agent.id' and not self.agent_ids:
                 continue
-            value, _ = self.mapper.evaluate(r, alert)
+            value, used = self.mapper.evaluate(r, alert)
+            if used and used[0].startswith(WIN_PREFIX):
+                value = collapse_doubled_backslash(value)
             if r['target'] == 'wazuh.cluster.name':
                 value = self.cluster
             converted = conform(value, self.mapper.schema[r['target']]) if nonempty(value) else None
@@ -86,10 +103,10 @@ class LoaderMapper:
 
 
 def field_hiding_map(spec=None):
-    """Merged (H1 tool gap 2, S5-D1): the 4.x field -> every 5.0 field the loader fills from it, GENERATED from the very
+    """Merged: the 4.x field -> every 5.0 field the loader fills from it, GENERATED from the very
     rules convert() evaluates, plus convert()'s own copies (full_log -> message, timestamp -> @timestamp). The indexer
     stage hides all of them wherever a 4.x role hid the 4.x field (field-level security, masking), so FLS covers exactly
-    what the history holds. Never hand-made: a hand-made copy missed 7 fields (S5)."""
+    what the history holds. Never hand-made: a hand-made copy missed 7 fields."""
     spec = spec if spec is not None else json.loads(MAP_PATH.read_text())
     out = {}
     for r in spec['rules']:

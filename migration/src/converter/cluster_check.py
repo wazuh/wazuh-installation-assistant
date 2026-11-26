@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cross-node check of candidate wazuh-manager.conf files before any is staged (C4).
+"""Cross-node check of candidate wazuh-manager.conf files before any is staged.
 Usage: cluster_check.py <candidate-dir-or-file>...   Exit 0 when every rule holds, 1 otherwise.
 Rules: one cluster name and one key on every node; node names unique; exactly one master; every node's <nodes> lists
 the master's address and only addresses; the master listens beyond loopback when there are workers. The key is never

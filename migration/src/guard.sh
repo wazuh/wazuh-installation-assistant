@@ -4,7 +4,7 @@
 #   guard.sh on|off|status <agent|cluster> <state-dir>
 #   guard.sh reapply <state-dir>            (run by the wazuh-manager drop-in before any manager starts)
 #
-#   agent   : TCP 1514, 1515, 1517 refused to everything but loopback (R2's guard; F7: necessary and sufficient on the way
+#   agent   : TCP 1514, 1515, 1517 refused to everything but loopback (R2's guard; necessary and sufficient on the way
 #             back; phases 5 to 7 hold both halves of rule 5 whatever the manager configuration says)
 #   cluster : TCP 1516 refused to everything but loopback (K5: a reinstalled 4.x master rejoined the live 4.x worker within
 #             seconds, emptied its registry and re-keyed an agent; the master's way back guards 1516 until its registry
@@ -61,15 +61,15 @@ rule_status() {
 }
 persist() { # the drop-in that re-applies every recorded guard before any wazuh-manager unit starts (4.x or 5.0)
   mkdir -p "$DROPIN_DIR"; cp -f "$(readlink -f "$0")" "$COPY"; chmod 755 "$COPY"
-  command -v restorecon >/dev/null 2>&1 && restorecon "$COPY" 2>/dev/null || true   # K5: SELinux enforcing
-  # E2-rpm fix 02: "+" runs this one command with full privileges, outside the unit's sandbox. The 5.0 unit sets
+  command -v restorecon >/dev/null 2>&1 && restorecon "$COPY" 2>/dev/null || true   # SELinux enforcing
+  # "+" runs this one command with full privileges, outside the unit's sandbox. The 5.0 unit sets
   # ProtectHome=yes (a bundle under /root is invisible: the reapply found no record and exited 0) and a capability bounding
   # set without CAP_NET_ADMIN (iptables could not write). systemd 231 or later (RHEL 8+, Ubuntu 18.04+). K5 had proven the
   # drop-in on a 4.x unit only, which has no sandbox.
   printf '[Service]\nExecStartPre=+/bin/bash %s reapply %s\n' "$COPY" "$SD" > "$DROPIN"
   systemctl daemon-reload 2>/dev/null || true
 }
-# E2-rpm gap 7: the copy the drop-in ran goes with the drop-in (it was left in /usr/local/sbin after the finish)
+# the copy the drop-in ran goes with the drop-in (it was left in /usr/local/sbin after the finish)
 unpersist() { rm -f "$DROPIN" "$COPY"; rmdir "$DROPIN_DIR" 2>/dev/null || true; systemctl daemon-reload 2>/dev/null || true; }
 
 case "$ACT" in
