@@ -371,6 +371,8 @@ On every Wazuh indexer node, edit `/etc/wazuh-indexer/opensearch.yml` and replac
       sed -i -e "s/^-Xms.*/-Xms${HEAP_MB}m/" -e "s/^-Xmx.*/-Xmx${HEAP_MB}m/" /etc/wazuh-indexer/jvm.options
       ```
 
+  7. Optionally, change the index settings or the retention policies of the Wazuh indexer, in `/etc/wazuh-indexer/wazuh-indexer-setup/`. Every Wazuh indexer node must have the same files. Edit them on the first node, and copy them to the other nodes before you start the Wazuh indexer there, keeping their owner and mode. A change made after the first start applies only to the indices created afterwards. The rules and the commands are in [Custom index settings and retention policies](../installation-assistant-deployments/clusterized.md#custom-index-settings-and-retention-policies). Skip its step 1 and step 5: the package does not start the Wazuh indexer, and you start it in the next section.
+
 ### Starting the service
 
 Enable and start the Wazuh indexer service.

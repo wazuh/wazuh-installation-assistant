@@ -56,7 +56,7 @@ To create a backup of the Wazuh indexer, follow these steps. Repeat them on ever
 
 #### Backing up the Wazuh indexer
 
-Back up the Wazuh indexer certificates and configuration
+Back up the Wazuh indexer certificates and configuration. The list includes `/etc/wazuh-indexer/wazuh-indexer-setup/`, which holds `setup.yml` and the retention policy files: they keep the index settings and the retention policies you set.
 
 ```bash
 rsync -aREz \
@@ -69,11 +69,11 @@ rsync -aREz \
 /etc/wazuh-indexer/log4j2.properties \
 /etc/wazuh-indexer/opensearch.yml \
 /etc/wazuh-indexer/opensearch.keystore \
-/etc/wazuh-indexer/opensearch-observability/ \
 /etc/wazuh-indexer/opensearch-security/ \
 /etc/wazuh-indexer/wazuh-indexer-reports-scheduler/ \
 /etc/wazuh-indexer/wazuh-indexer-notifications/ \
 /etc/wazuh-indexer/wazuh-indexer-notifications-core/ \
+/etc/wazuh-indexer/wazuh-indexer-setup/ \
 /usr/lib/sysctl.d/wazuh-indexer.conf $backup_folder
 ```
 
@@ -130,11 +130,11 @@ Perform the following steps to restore the Wazuh indexer files on the new server
     cp etc/wazuh-indexer/log4j2.properties /etc/wazuh-indexer/log4j2.properties
     cp etc/wazuh-indexer/opensearch.yml /etc/wazuh-indexer/opensearch.yml
     cp etc/wazuh-indexer/opensearch.keystore /etc/wazuh-indexer/opensearch.keystore
-    cp -r etc/wazuh-indexer/opensearch-observability/. /etc/wazuh-indexer/opensearch-observability/
     cp -r etc/wazuh-indexer/opensearch-security/. /etc/wazuh-indexer/opensearch-security/
     cp -r etc/wazuh-indexer/wazuh-indexer-reports-scheduler/. /etc/wazuh-indexer/wazuh-indexer-reports-scheduler/
     cp -r etc/wazuh-indexer/wazuh-indexer-notifications/. /etc/wazuh-indexer/wazuh-indexer-notifications/
     cp -r etc/wazuh-indexer/wazuh-indexer-notifications-core/. /etc/wazuh-indexer/wazuh-indexer-notifications-core/
+    cp -r etc/wazuh-indexer/wazuh-indexer-setup/. /etc/wazuh-indexer/wazuh-indexer-setup/
     cp usr/lib/sysctl.d/wazuh-indexer.conf /usr/lib/sysctl.d/wazuh-indexer.conf
 
     chown -R root:wazuh-indexer /etc/wazuh-indexer/certs/
@@ -145,15 +145,19 @@ Perform the following steps to restore the Wazuh indexer files on the new server
     chown root:wazuh-indexer /etc/wazuh-indexer/log4j2.properties
     chown root:wazuh-indexer /etc/wazuh-indexer/opensearch.yml
     chown root:wazuh-indexer /etc/wazuh-indexer/opensearch.keystore
-    chown -R root:wazuh-indexer /etc/wazuh-indexer/opensearch-observability/
     chown -R root:wazuh-indexer /etc/wazuh-indexer/opensearch-security/
     chown -R root:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-reports-scheduler/
     chown -R root:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-notifications/
     chown -R root:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-notifications-core/
+    chown -R root:wazuh-indexer /etc/wazuh-indexer/wazuh-indexer-setup/
+    chmod 750 /etc/wazuh-indexer/wazuh-indexer-setup/
+    chmod 640 /etc/wazuh-indexer/wazuh-indexer-setup/*
     chown root:root /usr/lib/sysctl.d/wazuh-indexer.conf
     ```
 
     The configuration directory belongs to `root`, and the Wazuh indexer reads it through its group and writes nothing in it. Do not give the files to the `wazuh-indexer` user: the Wazuh indexer refuses to start when a certificate is not owned by `root` or is writable by its group or others. The admin pair is `root`'s alone, with mode `0600`.
+
+    In a cluster, every Wazuh indexer node must have the same files in `wazuh-indexer-setup/`. They take effect when the Wazuh indexer restarts, and only for the indices created afterwards, as described in [Custom index settings and retention policies](installation-assistant-deployments/clusterized.md#custom-index-settings-and-retention-policies).
 
 3. Start the Wazuh indexer service:
 

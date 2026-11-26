@@ -193,7 +193,9 @@ Follow these steps on every Wazuh indexer node.
     sed -i -e "s/^-Xms.*/-Xms${HEAP_MB}m/" -e "s/^-Xmx.*/-Xmx${HEAP_MB}m/" /etc/wazuh-indexer/jvm.options
     ```
 
-7. Enable and start the Wazuh indexer service.
+7. Optionally, change the index settings or the retention policies of the Wazuh indexer, in `/etc/wazuh-indexer/wazuh-indexer-setup/`. Every Wazuh indexer node must have the same files. Edit them on the first node, and copy them to the other nodes before you start the Wazuh indexer there, keeping their owner and mode. A change made after the first start applies only to the indices created afterwards. The rules and the commands are in [Custom index settings and retention policies](../installation-assistant-deployments/clusterized.md#custom-index-settings-and-retention-policies). Skip its step 1 and step 5: the package does not start the Wazuh indexer, and you start it in the next step.
+
+8. Enable and start the Wazuh indexer service.
 
     ```bash
     systemctl daemon-reload
@@ -201,13 +203,13 @@ Follow these steps on every Wazuh indexer node.
     systemctl start wazuh-indexer
     ```
 
-8. When every Wazuh indexer node is running, run the Wazuh indexer `indexer-security-init.sh` script on one of them. It loads the security configuration, including the users and their passwords, and starts the cluster. Run it only once.
+9. When every Wazuh indexer node is running, run the Wazuh indexer `indexer-security-init.sh` script on one of them. It loads the security configuration, including the users and their passwords, and starts the cluster. Run it only once.
 
     ```bash
     /usr/share/wazuh-indexer/bin/indexer-security-init.sh
     ```
 
-9. Check that every Wazuh indexer node joined the cluster and that its status is `green`. Run the commands on a Wazuh indexer node, and replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`. `curl` verifies the certificate with the CA published in `/etc/wazuh-indexer/export/ca.pem`, which only `root` and the `wazuh-indexer` group can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
+10. Check that every Wazuh indexer node joined the cluster and that its status is `green`. Run the commands on a Wazuh indexer node, and replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of that node in `config.yml`. `curl` verifies the certificate with the CA published in `/etc/wazuh-indexer/export/ca.pem`, which only `root` and the `wazuh-indexer` group can read, so run it with `sudo`. When `curl` asks for the password, enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` (`sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-`).
 
     ```bash
     sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v

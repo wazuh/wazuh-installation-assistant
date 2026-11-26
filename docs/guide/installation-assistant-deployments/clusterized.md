@@ -94,6 +94,9 @@ nodes:
 
 Follow these steps to install and configure a multi-node Wazuh indexer.
 
+> [!NOTE]
+> To change the index settings or the retention policies of the Wazuh indexer, read [Custom index settings and retention policies](#custom-index-settings-and-retention-policies) before you install the nodes: it changes how you run this stage.
+
   1. Run the Wazuh installation assistant with the option `--wazuh-indexer` and the node name to install and configure the Wazuh indexer. The node name must be the same one used in `config.yml` for the initial configuration, for example, `indexer`.
 
       > [!NOTE]
@@ -115,6 +118,94 @@ The assistant sets the Java heap of the Wazuh indexer in `/etc/wazuh-indexer/jvm
 
 > [!NOTE]
 > On hardened endpoints with the `noexec` flag on the `/tmp` directory, the Wazuh indexer needs no additional setup: the package sets `OPENSEARCH_TMPDIR=/var/lib/wazuh-indexer/tmp` in `/etc/sysconfig/wazuh-indexer` (RPM) or `/etc/default/wazuh-indexer` (DEB), so the service does not use `/tmp`. That directory must allow execution.
+
+### Custom index settings and retention policies
+
+This stage is optional. The Wazuh indexer package installs the `/etc/wazuh-indexer/wazuh-indexer-setup/` directory, with these files:
+
+- `setup.yml`: the number of shards and replicas, the refresh interval, the codec and the translog durability of the Wazuh indices, and one switch for each retention (ISM) policy.
+- `<policy-id>.json`: an editable copy of each default retention policy. The Wazuh indexer uses it instead of the default policy when its switch in `setup.yml` is `true`.
+- `README.md`: a summary of the files.
+
+The default values suit a single node. With three or more Wazuh indexer nodes you can, for example, spread each index over more shards and keep more replicas. As installed, every key of `setup.yml` is commented out, and the Wazuh indexer uses the default values. The keys, their default values and more examples are in [Customization](https://github.com/wazuh/wazuh-indexer-plugins/blob/v5.0.0/docs/ref/modules/setup/customization.md), in the Wazuh indexer documentation.
+
+Follow these rules:
+
+- Every Wazuh indexer node must have the same files. The node elected as cluster manager applies its own copy, and any node the assistant installs can be elected.
+- The Wazuh indexer reads the files when it starts and is elected cluster manager. A change takes effect when the Wazuh indexer restarts, and only for the indices created afterwards. The indices that already exist keep their settings and their policy.
+- Keep the owner and the mode of the files as the package installs them: `root` with the `wazuh-indexer` group, mode `0640` for the files and `0750` for the directory. If the Wazuh indexer cannot read them, the setup of the cluster fails and the Wazuh indices are not created.
+
+To create the first indices with your values, place the files on every node before the Wazuh indexer cluster forms. `--wazuh-indexer` starts the Wazuh indexer right after it installs it, and the cluster forms as soon as enough nodes are running. When `config.yml` lists two or more Wazuh indexer nodes, one node alone does not form the cluster. So keep only one node running at a time until every node has the files:
+
+  1. On each Wazuh indexer node, one after another, run `--wazuh-indexer` with the name of that node, and then stop the Wazuh indexer before you install the next node:
+
+      ```bash
+      bash wazuh-install-5.0.0.sh --wazuh-indexer indexer
+      systemctl stop wazuh-indexer
+      ```
+
+  2. On the first Wazuh indexer node, edit `/etc/wazuh-indexer/wazuh-indexer-setup/setup.yml`. Remove the `#` in front of each key you want to change and set its value: the valid values are on the same line. Remove the `#` of each key in one place only: the examples at the top of the file repeat keys of the lists below them, and a key set twice makes the setup fail. To change a retention policy, also edit its `<policy-id>.json` file and set `policies.<policy-id>.custom: true`. For example, with three Wazuh indexer nodes, this spreads each events index over the three nodes and keeps two replicas of each shard:
+
+      ```yaml
+      templates.streams.events.settings.index.number_of_shards: 3
+      templates.streams.events.settings.index.auto_expand_replicas: "0-2"
+      ```
+
+  3. On the first Wazuh indexer node, pack the directory, keeping the owner and the mode of the files. Copy `wazuh-indexer-setup.tar.gz` to the other Wazuh indexer nodes, for example with `scp`.
+
+      ```bash
+      tar -czpf wazuh-indexer-setup.tar.gz -C /etc/wazuh-indexer wazuh-indexer-setup
+      ```
+
+  4. On each of the other Wazuh indexer nodes, extract the file over the directory the package installed, and check the owner and the mode of the files. They belong to `root` with the `wazuh-indexer` group, with mode `-rw-r-----`. The `sha256sum` output must be the same on every node.
+
+      ```bash
+      tar -xzpf wazuh-indexer-setup.tar.gz -C /etc/wazuh-indexer
+      ls -l /etc/wazuh-indexer/wazuh-indexer-setup/
+      sha256sum /etc/wazuh-indexer/wazuh-indexer-setup/*
+      ```
+
+      Then remove `wazuh-indexer-setup.tar.gz` from every node.
+
+  5. Start the Wazuh indexer on every Wazuh indexer node:
+
+      ```bash
+      systemctl start wazuh-indexer
+      ```
+
+Then continue with [Cluster initialization](#cluster-initialization). After it, check that the setup status of the Wazuh indexer is `ready`. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of a Wazuh indexer node in `config.yml`, and enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` when `curl` asks for the password.
+
+```bash
+sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin "https://<WAZUH_INDEXER_IP_ADDRESS>:9200/.wazuh-setup-status/_doc/setup-status?filter_path=_source.status"
+```
+
+```json
+{"_source":{"status":"ready"}}
+```
+
+If the status is `failed`, a file is not valid. The log of the elected cluster manager, `/var/log/wazuh-indexer/wazuh-cluster.log`, names the key or the file. Fix the files on every node and restart the nodes as described in [Change the files later](#change-the-files-later).
+
+With one Wazuh indexer node in `config.yml`, the node forms the cluster and creates the indices with the default values as soon as `--wazuh-indexer` starts it. Edit the files and restart the Wazuh indexer: the change applies to the indices created afterwards.
+
+#### Change the files later
+
+To change the files of a running cluster:
+
+  1. Copy the same files to every Wazuh indexer node, as in steps 3 and 4 above.
+
+  2. Find the elected cluster manager. Its name is in the `node` column. Replace `<WAZUH_INDEXER_IP_ADDRESS>` with the IP address or DNS name of a Wazuh indexer node in `config.yml`, and enter the `WAZUH_INDEXER_ADMIN_PASSWORD` value of `/etc/wazuh-indexer/export/credentials.env` when `curl` asks for the password.
+
+      ```bash
+      sudo curl --cacert /etc/wazuh-indexer/export/ca.pem -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/cluster_manager?v
+      ```
+
+  3. Restart the Wazuh indexer nodes one at a time, the elected cluster manager last. Wait until the cluster is `green` before you restart the next one.
+
+      ```bash
+      systemctl restart wazuh-indexer
+      ```
+
+The change only applies to the indices created afterwards. To apply it to the indices that already exist, see [Applying a change to the indices that exist](https://github.com/wazuh/wazuh-indexer-plugins/blob/v5.0.0/docs/ref/modules/setup/customization.md#applying-a-change-to-the-indices-that-exist).
 
 ## Cluster initialization
 
