@@ -22,7 +22,17 @@ function manager_startCluster() {
     done
 
     key=$(tar -axf "${tar_file}" wazuh-install-files/clusterkey -O)
+    # Only the master listens on the cluster port. It listens on the address the workers
+    # dial, unless that address is not on this host, such as a NAT address.
     bind_address="0.0.0.0"
+    if [[ "${manager_node_types[pos],,}" == "master" ]]; then
+        if manager_isHostAddress "${master_address}"; then
+            bind_address="${master_address}"
+        else
+            common_logger -w "The address of the master node in config.yml, ${master_address}, is not an address of this host, so the Wazuh manager cluster listens on all IPv4 interfaces (0.0.0.0). Set <bind_addr> in the <cluster> block of ${manager_conf_file} to the address of this node on the network between the Wazuh manager nodes, and restart the Wazuh manager."
+        fi
+    fi
+    common_logger -d "Wazuh manager cluster bind address: ${bind_address}."
     port="1516"
     hidden="no"
     disabled="no"
@@ -39,6 +49,42 @@ function manager_startCluster() {
         -e "${lstart},${lend}s/<hidden>.*<\/hidden>/<hidden>${hidden}<\/hidden>/" \
         -e "${lstart},${lend}s/<disabled>.*<\/disabled>/<disabled>${disabled}<\/disabled>/" \
         "${manager_conf_file}"
+
+}
+
+# True when the given IP is an address of this host, or the given name resolves to one
+# and to no address outside the host. The master binds every address a name resolves to,
+# so one that is not on the host stops the cluster from starting.
+function manager_isHostAddress() {
+
+    local address="${1}"
+    local ip
+    local on_host=
+    local -A host_ips=()
+    local -a resolved_ips=()
+
+    while IFS= read -r ip; do
+        if cert_isIP "${ip}"; then
+            host_ips["${ip,,}"]=1
+        fi
+    done < <(cert_hostAddresses)
+
+    if cert_isIP "${address}"; then
+        resolved_ips=("${address}")
+    elif [ -n "${address}" ]; then
+        mapfile -t resolved_ips < <(getent ahosts "${address}" 2>/dev/null | awk '{print $1}' | sort -u)
+    fi
+
+    for ip in "${resolved_ips[@]}"; do
+        [ -n "${ip}" ] || continue
+        if [ -n "${host_ips[${ip,,}]}" ]; then
+            on_host=1
+        elif [[ ! "${ip}" =~ ^127\. ]] && [ "${ip}" != "::1" ]; then
+            return 1
+        fi
+    done
+
+    [ -n "${on_host}" ]
 
 }
 

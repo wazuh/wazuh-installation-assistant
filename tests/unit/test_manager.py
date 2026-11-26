@@ -1,8 +1,8 @@
 """
 Unit tests for install_functions/manager.sh
 
-Covers: manager_install, manager_startCluster, manager_configure, manager_copyCertificates,
-        manager_setRemotedSans, manager_setApidSans, manager_setApiLoopback
+Covers: manager_install, manager_startCluster, manager_isHostAddress, manager_configure,
+        manager_copyCertificates, manager_setRemotedSans, manager_setApidSans, manager_setApiLoopback
 """
 
 import pytest
@@ -114,57 +114,129 @@ class TestManagerInstall:
 class TestManagerStartCluster:
     """Tests for manager_startCluster.
 
-    The function iterates over node name/type arrays, reads the cluster key
-    from a tar file, and patches the manager config with sed.
+    The function reads the cluster key from the tar file and writes the <cluster>
+    block of the manager config. Only the master listens on the cluster port: it
+    binds to its address in config.yml when that address is on the host, and to
+    0.0.0.0 with a warning when it is not.
     """
 
-    def _run(self, extra_mocks=None):
-        mocks = {
-            **IGNORE_LOGGER,
-            "tar": "echo myclusterkey",
-            "grep": "echo 10",
-            "sed": "true",
-            **(extra_mocks or {}),
-        }
-        return run_bash_function(
-            BASE_SOURCES,
-            "manager_startCluster",
-            mocks,
-            {
-                "manager_node_names": "(wazuh-master wazuh-worker)",
-                "manager_node_ips": "(1.1.1.1 2.2.2.2)",
-                "manager_node_types": "(master worker)",
-                "winame": "wazuh-master",
-                "tar_file": "/tmp/wazuh-install-files.tar",
-                "debug": "",
-            },
-        )
+    CONF = """<ossec_config>
+  <cluster>
+    <name>wazuh</name>
+    <node_name>node01</node_name>
+    <node_type>master</node_type>
+    <key>packagekey</key>
+    <port>1516</port>
+    <bind_addr>127.0.0.1</bind_addr>
+    <nodes>
+        <node>NODE_IP</node>
+    </nodes>
+    <hidden>no</hidden>
+    <disabled>no</disabled>
+  </cluster>
+</ossec_config>
+"""
 
-    def test_success_configures_cluster(self):
-        result = self._run()
-        assert_success(result)
-
-    def test_success_with_worker_node(self):
-        mocks = {
-            **IGNORE_LOGGER,
-            "tar": "echo myclusterkey",
-            "grep": "echo 10",
-            "sed": "true",
-        }
+    def _run(self, tmp_path, winame, master_on_host=True):
+        conf = tmp_path / "wazuh-manager.conf"
+        conf.write_text(self.CONF)
+        calls = tmp_path / "calls.log"
+        is_host = "0" if master_on_host else "1"
         result = run_bash_function(
             BASE_SOURCES,
             "manager_startCluster",
-            mocks,
+            {
+                "common_logger": 'echo "$*"',
+                "tar": "echo myclusterkey",
+                "manager_isHostAddress": f'echo "$1" >> "{calls}"; return {is_host}',
+            },
             {
                 "manager_node_names": "(wazuh-master wazuh-worker)",
-                "manager_node_ips": "(1.1.1.1 2.2.2.2)",
+                "manager_node_ips": "(10.0.0.1 10.0.0.2)",
                 "manager_node_types": "(master worker)",
-                "winame": "wazuh-worker",
+                "winame": winame,
                 "tar_file": "/tmp/wazuh-install-files.tar",
+                "manager_conf_file": str(conf),
                 "debug": "",
             },
         )
+        checked = calls.read_text().splitlines() if calls.exists() else []
+        return result, conf.read_text(), checked
+
+    def test_success_master_binds_to_its_address_on_the_host(self, tmp_path):
+        result, conf, checked = self._run(tmp_path, "wazuh-master")
         assert_success(result)
+        assert checked == ["10.0.0.1"]
+        assert "<bind_addr>10.0.0.1</bind_addr>" in conf
+        assert "<node_type>master</node_type>" in conf
+        assert "<node>10.0.0.1</node>" in conf
+        assert "<key>myclusterkey</key>" in conf
+        assert "-w" not in result.stdout
+
+    def test_success_master_address_not_on_host_keeps_all_interfaces(self, tmp_path):
+        result, conf, checked = self._run(tmp_path, "wazuh-master", master_on_host=False)
+        assert_success(result)
+        assert checked == ["10.0.0.1"]
+        assert "<bind_addr>0.0.0.0</bind_addr>" in conf
+        warning = [line for line in result.stdout.splitlines() if line.startswith("-w ")]
+        assert len(warning) == 1
+        assert "10.0.0.1" in warning[0]
+        assert f"<bind_addr> in the <cluster> block of {tmp_path / 'wazuh-manager.conf'}" in warning[0]
+
+    def test_success_worker_keeps_all_interfaces(self, tmp_path):
+        result, conf, checked = self._run(tmp_path, "wazuh-worker")
+        assert_success(result)
+        assert checked == []
+        assert "<bind_addr>0.0.0.0</bind_addr>" in conf
+        assert "<node_type>worker</node_type>" in conf
+        assert "<node_name>wazuh-worker</node_name>" in conf
+        assert "<node>10.0.0.1</node>" in conf
+        assert "-w" not in result.stdout
+
+
+class TestManagerIsHostAddress:
+    """Tests for manager_isHostAddress.
+
+    An IP must be an address of the host. A name must resolve to at least one
+    address of the host and to no address outside it (loopback aside), because
+    the master binds every address the name resolves to.
+    """
+
+    def _run(self, address, resolved=()):
+        lines = "".join(f"{ip}      STREAM {address}\\n" for ip in resolved)
+        return run_bash_function(
+            [*BASE_SOURCES, "cert_tool/certFunctions.sh"],
+            f"manager_isHostAddress '{address}'",
+            {
+                **IGNORE_LOGGER,
+                "cert_hostAddresses": "printf '%s\\n' 10.0.0.5 2001:db8::5 master.example.com",
+                "getent": f"printf '{lines}'",
+            },
+        )
+
+    def test_success_ip_on_host(self):
+        assert_success(self._run("10.0.0.5"))
+
+    def test_success_ipv6_on_host_any_case(self):
+        assert_success(self._run("2001:DB8::5"))
+
+    def test_fail_ip_not_on_host(self):
+        assert_failure(self._run("203.0.113.7"))
+
+    def test_fail_host_name_is_not_compared_as_text(self):
+        assert_failure(self._run("master.example.com"))
+
+    def test_success_name_resolves_to_host(self):
+        assert_success(self._run("master.example.com", ["10.0.0.5", "127.0.1.1"]))
+
+    def test_fail_name_resolves_only_to_loopback(self):
+        assert_failure(self._run("master.example.com", ["127.0.1.1"]))
+
+    def test_fail_name_resolves_also_outside_host(self):
+        assert_failure(self._run("master.example.com", ["10.0.0.5", "203.0.113.7"]))
+
+    def test_fail_name_does_not_resolve(self):
+        assert_failure(self._run("master.example.com"))
 
 
 class TestManagerConfigure:
