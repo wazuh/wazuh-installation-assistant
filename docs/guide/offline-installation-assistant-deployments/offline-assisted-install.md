@@ -246,6 +246,19 @@ bash wazuh-install-5.0.0.sh --offline-installation --wazuh-manager manager
 
 Your Wazuh manager is now successfully installed. Repeat this step on every Wazuh manager node.
 
+In the `<cluster>` block of `/etc/wazuh-manager/wazuh-manager.conf`, the assistant sets `<bind_addr>` on each Wazuh manager node of a cluster:
+
+- On the master node, the address of the master node in `config.yml` (its first `ip`, or its first `dns` if it has no `ip`), so the cluster port 1516 only listens on that address. A DNS name is used when, on the master node, it resolves to an address of the host other than loopback, and to no address outside the host.
+- On worker nodes, `0.0.0.0`. Only the master node listens on the cluster port.
+
+If the address of the master node in `config.yml` is not an address of the host, such as a NAT address, the master node keeps `0.0.0.0`, so the cluster still starts, and the assistant prints a warning:
+
+```
+WARNING: The address of the master node in config.yml, <ADDRESS>, is not an address of this host, so the Wazuh manager cluster listens on all IPv4 interfaces (0.0.0.0). [...]
+```
+
+In that case, on the master node, set `<bind_addr>` in the `<cluster>` block of `/etc/wazuh-manager/wazuh-manager.conf` to the address of the node on the network between the Wazuh manager nodes, and restart the Wazuh manager with `systemctl restart wazuh-manager`.
+
 ### Installing the Wazuh dashboard
 
 #### Required dependencies

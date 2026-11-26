@@ -42,6 +42,7 @@
 
 | Issue | Comment |
 | - | - |
+| [#1246](https://github.com/wazuh/wazuh-installation-assistant/issues/1246) | In a cluster of more than one Wazuh manager node, write the address of the master node in `config.yml` in the `<cluster><bind_addr>` of the master node instead of `0.0.0.0`, when it is an address of the host, and print a warning and keep `0.0.0.0` when it is not; use it in the step-by-step guides and document it in the assisted guides |
 | [#1229](https://github.com/wazuh/wazuh-installation-assistant/issues/1229) | Log the creation of a new root CA as INFO and say that it is expected for a new deployment, and remove the extra dash of the `--- Wazuh dashboard ---` and `--- Dependencies ---` headers |
 | [#1226](https://github.com/wazuh/wazuh-installation-assistant/pull/1226) | Describe the 5.0.0 product in the docs, comments and test docstrings without the pre-release chronology, remove the unused `LAST_STAGE`, align the README and the workflows README with the code, and pin the links to other Wazuh repositories to `v5.0.0` |
 | [#1170](https://github.com/wazuh/wazuh-installation-assistant/issues/1170) | Make the Wazuh server API of an all-in-one install listen only on `127.0.0.1` and `::1`, unless `-ap\|--api-san` is given, and document it, the legacy ports 1514 and 1515, and how to close them |

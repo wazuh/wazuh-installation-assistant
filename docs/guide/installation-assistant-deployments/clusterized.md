@@ -36,7 +36,7 @@ Follow these steps to configure your Wazuh deployment, create SSL certificates t
       curl -fsS -o config.yml https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/installation-assistant/config-5.0.0-<STAGE>.yml
       ```
 
-  2. Edit `./config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed. Use the IP addresses the nodes use to reach each other.
+  2. Edit `./config.yml` and replace the node names and IP values with the corresponding names and IP addresses. You need to do this for all Wazuh manager, Wazuh indexer, and Wazuh dashboard nodes. Add as many node fields as needed. Use the IP addresses the nodes use to reach each other. For the Wazuh manager nodes, the first `ip` of each node is the address the other Wazuh manager nodes use to reach it, so for the master node use its address on the network between the Wazuh manager nodes. The assistant also makes the master node listen for the cluster on that address.
 
   For DNS-based or mixed address configurations, see [Other `config.yml` examples](../../ref/configuration/configuration-files.md#other-configyml-examples).
 
@@ -187,6 +187,19 @@ Install the Wazuh manager as a multi-node cluster on a 64-bit (x86_64/AMD64 or A
         ```
 
 Your Wazuh manager is now successfully installed, repeat this process on every Wazuh manager node.
+
+In the `<cluster>` block of `/etc/wazuh-manager/wazuh-manager.conf`, the assistant sets `<bind_addr>` on each Wazuh manager node of a cluster:
+
+- On the master node, the address of the master node in `config.yml` (its first `ip`, or its first `dns` if it has no `ip`), so the cluster port 1516 only listens on that address. A DNS name is used when, on the master node, it resolves to an address of the host other than loopback, and to no address outside the host.
+- On worker nodes, `0.0.0.0`. Only the master node listens on the cluster port.
+
+If the address of the master node in `config.yml` is not an address of the host, such as a NAT address, the master node keeps `0.0.0.0`, so the cluster still starts, and the assistant prints a warning:
+
+```
+WARNING: The address of the master node in config.yml, <ADDRESS>, is not an address of this host, so the Wazuh manager cluster listens on all IPv4 interfaces (0.0.0.0). [...]
+```
+
+In that case, on the master node, set `<bind_addr>` in the `<cluster>` block of `/etc/wazuh-manager/wazuh-manager.conf` to the address of the node on the network between the Wazuh manager nodes, and restart the Wazuh manager with `systemctl restart wazuh-manager`.
 
   2. On the master node, check that every Wazuh manager node is listed in the cluster:
 

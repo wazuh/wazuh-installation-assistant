@@ -86,7 +86,7 @@ A deployment installed step by step does not need the Wazuh installation assista
 The Wazuh installation assistant keeps the network settings of the Wazuh manager as the package sets them, with two exceptions:
 
 - On an all-in-one installation without `-ap|--api-san`, the Wazuh server API listens only on the local host.
-- In a cluster of more than one Wazuh manager node, the cluster port 1516 listens on all IPv4 interfaces, so the nodes can reach each other. The package sets it to `127.0.0.1`.
+- In a cluster of more than one Wazuh manager node, the master node listens on the cluster port 1516 on its address in `config.yml`, so the worker nodes can reach it. If that address is not an address of the host, such as a NAT address, it listens on all IPv4 interfaces (`0.0.0.0`) and the assistant prints a warning. Worker nodes do not listen on the cluster port. The package sets it to `127.0.0.1`.
 
 After the installation, the Wazuh manager listens on these ports:
 
@@ -95,7 +95,7 @@ After the installation, the Wazuh manager listens on these ports:
 | 1517/tcp | Agent enrollment and connection (HTTPS) | All IPv4 interfaces (`0.0.0.0`) | Wazuh 5.x agents |
 | 1514/tcp | Legacy agent connection | All IPv4 interfaces (`0.0.0.0`) | Wazuh 4.x agents |
 | 1515/tcp | Legacy agent enrollment | All IPv4 interfaces (`0.0.0.0`) | Wazuh 4.x agents |
-| 1516/tcp | Wazuh manager cluster | `127.0.0.1`. In a cluster of more than one Wazuh manager node, all IPv4 interfaces (`0.0.0.0`) | Other Wazuh manager nodes |
+| 1516/tcp | Wazuh manager cluster | `127.0.0.1`. In a cluster of more than one Wazuh manager node, the address of the master node in `config.yml`, or all IPv4 interfaces (`0.0.0.0`) if it is not an address of the host. Worker nodes do not listen on it | Other Wazuh manager nodes |
 | 55000/tcp | Wazuh server API | All IPv4 and IPv6 interfaces (`0.0.0.0` and `::`). On an all-in-one installation without `-ap\|--api-san`, only `127.0.0.1` and `::1` | Wazuh dashboard, and any tool that calls the API |
 
 If your deployment does not need some of them, you can close them as described below. The full list of ports is in [Required ports](../ref/getting-started/requirements.md#required-ports).

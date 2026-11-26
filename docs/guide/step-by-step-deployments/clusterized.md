@@ -638,7 +638,7 @@ yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
       <node_type>master</node_type>
       <key><CLUSTER_KEY></key>
       <port>1516</port>
-      <bind_addr>0.0.0.0</bind_addr>
+      <bind_addr><MASTER_NODE_IP></bind_addr>
       <nodes>
           <node><MASTER_NODE_IP></node>
       </nodes>
@@ -663,7 +663,9 @@ yum -y install ./wazuh-manager-5.0.0-<STAGE>.aarch64.rpm
     </cluster>
     ```
 
-    The package writes a `<cluster>` block with a random key of its own, `node_type` `master` and `bind_addr` `127.0.0.1` on every node, so replace the whole block on each of them. Replace `<CLUSTER_KEY>` with the key, `<MASTER_NODE_IP>` with the IP address of the master node, and use a unique `node_name` for each node, such as its name in `config.yml`.
+    The package writes a `<cluster>` block with a random key of its own, `node_type` `master` and `bind_addr` `127.0.0.1` on every node, so replace the whole block on each of them. Replace `<CLUSTER_KEY>` with the key, `<MASTER_NODE_IP>` with the IP address of the master node on the network between the Wazuh manager nodes, and use a unique `node_name` for each node, such as its name in `config.yml`.
+
+    Only the master node listens on the cluster port, on `<bind_addr>`. Its own address there, instead of `0.0.0.0`, keeps the port closed on the other interfaces of the host, such as the ones that face agents or users. It must be an address of the host, not a NAT address: if it is not, the master logs `Could not start master` and the cluster does not start. Worker nodes keep `0.0.0.0`.
 
 ### Starting the Wazuh manager service
 
