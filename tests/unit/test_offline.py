@@ -94,9 +94,11 @@ class TestOfflinePrerequisites:
         )
         assert_failure(result)
         assert "not installed: gnupg openssl libcap2-bin." in result.stdout
-        assert "apt-get download gnupg openssl libcap2-bin" in result.stdout
+        assert "apt-cache depends --recurse" in result.stdout
+        assert " gnupg openssl libcap2-bin | grep" in result.stdout
+        assert "    sudo dpkg -i ./*.deb" in result.stdout
 
-    def test_yum_suggests_yumdownloader(self):
+    def test_yum_suggests_dnf_download_with_dependencies(self):
         # gnupg2 installed counts as gnupg
         installed = ["curl", "tar", "gnupg2", "openssl", "diffutils", "util-linux"]
         result = self._run(
@@ -105,4 +107,6 @@ class TestOfflinePrerequisites:
         )
         assert_failure(result)
         assert "not installed: libcap." in result.stdout
-        assert "yumdownloader --resolve libcap" in result.stdout
+        assert "dnf download --resolve --alldeps --arch " in result.stdout
+        assert " --arch noarch libcap\n" in result.stdout
+        assert "    sudo dnf install --disablerepo='*' --skip-broken ./*.rpm" in result.stdout

@@ -63,13 +63,21 @@ function offline_reportMissingPrerequisites() {
         common_logger -d "Prerequisites for Offline installation are installed."
         return 0
     fi
+    # The download brings the dependencies too: the packages alone fail to install when this
+    # host lacks one of their dependencies or has an older version of it.
+    local packages="${offline_missing_dependencies[*]}"
     if [ "${sys_type}" == "yum" ]; then
-        download_command="yumdownloader --resolve ${offline_missing_dependencies[*]}"
+        download_command="dnf download --resolve --alldeps --arch $(uname -m) --arch noarch ${packages}"
+        install_command="dnf install --disablerepo='*' --skip-broken ./*.rpm"
     else
-        download_command="apt-get download ${offline_missing_dependencies[*]}"
+        download_command="sudo apt-get update && apt-get download \$(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances ${packages} | grep '^\\w' | sort -u)"
+        install_command="dpkg -i ./*.deb"
     fi
-    common_logger -e "These packages are necessary for the offline installation and are not installed: ${offline_missing_dependencies[*]}."
-    common_logger -e "Download them on a host with Internet access, for example with: ${download_command}. Then copy them to this host, install them and run the assistant again."
+    common_logger -e "These packages are necessary for the offline installation and are not installed: ${packages}."
+    common_logger -e "Download them with their dependencies on a host with Internet access and the same operating system version and architecture as this one:"
+    common_logger -e "    ${download_command}"
+    common_logger -e "Copy the files to a directory of this host, install them from it and run the assistant again:"
+    common_logger -e "    sudo ${install_command}"
     exit 1
 }
 

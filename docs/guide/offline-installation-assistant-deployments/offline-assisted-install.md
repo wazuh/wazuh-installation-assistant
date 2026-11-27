@@ -83,12 +83,13 @@ INFO:     To read the password again, run:
 INFO:         sudo grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' /etc/wazuh-indexer/export/credentials.env | cut -d= -f2-
 INFO: The passwords of the other users are in /etc/wazuh-indexer/export/credentials.env and /etc/wazuh-manager/export/credentials.env.
 INFO: --- Next steps ---
-INFO: To enroll agents, copy the Wazuh agent package to the endpoint and install it with an enrollment token. Create one on this server:
-INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>
-INFO: The token is the first line of the output; the lines after it describe the token.
-INFO: On the endpoint, install the package with the token:
+INFO: To enroll agents, copy the Wazuh agent package to the endpoint, with GPG-KEY-WAZUH of wazuh-offline.tar.gz for an RPM package, and install it with an enrollment token. Create one on this server:
+INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS> 2>/dev/null
+INFO: It prints only the token. Without 2>/dev/null it also prints the token details, before or after the token.
+INFO: On the endpoint, install the package with the token and start the agent:
 INFO:     sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' dpkg -i wazuh-agent_*.deb
 INFO:     sudo rpm --import GPG-KEY-WAZUH && sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' rpm -ivh wazuh-agent-*.rpm
+INFO:     sudo systemctl enable --now wazuh-agent
 INFO: For more information, see https://documentation.wazuh.com/5.0/deployment-options/offline-installation/index.html
 INFO: Installation finished.
 ```
@@ -326,12 +327,13 @@ INFO:     Password: to read it from wazuh-install-files.tar, run:
 INFO:         sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-
 INFO: The passwords of the other users are in wazuh-install-files/credentials.env of wazuh-install-files.tar.
 INFO: --- Next steps ---
-INFO: To enroll agents, copy the Wazuh agent package to the endpoint and install it with an enrollment token. Create one on the Wazuh manager (the master node in a cluster):
-INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>
-INFO: The token is the first line of the output; the lines after it describe the token.
-INFO: On the endpoint, install the package with the token:
+INFO: To enroll agents, copy the Wazuh agent package to the endpoint, with GPG-KEY-WAZUH of wazuh-offline.tar.gz for an RPM package, and install it with an enrollment token. Create one on the Wazuh manager (the master node in a cluster):
+INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS> 2>/dev/null
+INFO: It prints only the token. Without 2>/dev/null it also prints the token details, before or after the token.
+INFO: On the endpoint, install the package with the token and start the agent:
 INFO:     sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' dpkg -i wazuh-agent_*.deb
 INFO:     sudo rpm --import GPG-KEY-WAZUH && sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' rpm -ivh wazuh-agent-*.rpm
+INFO:     sudo systemctl enable --now wazuh-agent
 INFO: For more information, see https://documentation.wazuh.com/5.0/deployment-options/offline-installation/index.html
 INFO: Installation finished.
 ```
