@@ -318,6 +318,7 @@ class TestDashboardInitialize:
         result, _ = self._run(tmp_path, {"AIO": "1"})
         assert_success(result)
         assert "It prints only the token." in result.stdout
+        assert "If it prints nothing, run it without 2>/dev/null to see the error." in result.stdout
         assert "first line" not in result.stdout
 
     def test_offline_next_steps_install_the_agent_package_locally(self, tmp_path):

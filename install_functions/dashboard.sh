@@ -167,7 +167,7 @@ function dashboard_initialize() {
     # The token goes to stdout and its details to stderr. Read together through a pipe or a file,
     # stdout is flushed last, so "the first line" would be a detail, not the token.
     common_logger "    sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS> 2>/dev/null"
-    common_logger "It prints only the token. Without 2>/dev/null it also prints the token details, before or after the token."
+    common_logger "It prints only the token. Without 2>/dev/null it also prints the token details, before or after the token. If it prints nothing, run it without 2>/dev/null to see the error."
     if [ -n "${offline_install}" ]; then
         common_logger "On the endpoint, install the package with the token and start the agent:"
         common_logger "    sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' dpkg -i wazuh-agent_*.deb"

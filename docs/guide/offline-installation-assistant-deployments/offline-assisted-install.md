@@ -1,7 +1,7 @@
 # Offline install using the installation assistant
 
 > [!NOTE]
-> Each Wazuh indexer package ships a snapshot of the ruleset, IoCs and vulnerabilities content, and loads it on its first start without Internet access, so vulnerability detection works offline. The load continues after the installation assistant finishes and can take about half an hour; until it ends, an offline update request is answered with `409` (`A content update is already in progress.`). The content is as recent as the package. To update it later, see [Offline content updates](https://github.com/wazuh/wazuh-indexer-plugins/blob/v5.0.0/docs/ref/modules/content-manager/offline-update.md).
+> Each Wazuh indexer package ships a snapshot of the ruleset, IoCs and vulnerabilities content, and loads it on its first start without Internet access, so vulnerability detection works offline. The load continues after the installation assistant finishes and takes from a few minutes to about 20, depending on the hardware; until it ends, an offline update request is answered with `409` (`A content update is already in progress.`). The content is as recent as the package. To update it later, see [Offline content updates](https://github.com/wazuh/wazuh-indexer-plugins/blob/v5.0.0/docs/ref/modules/content-manager/offline-update.md).
 
 ## Single-node offline installation
 
@@ -85,7 +85,7 @@ INFO: The passwords of the other users are in /etc/wazuh-indexer/export/credenti
 INFO: --- Next steps ---
 INFO: To enroll agents, copy the Wazuh agent package to the endpoint, with GPG-KEY-WAZUH of wazuh-offline.tar.gz for an RPM package, and install it with an enrollment token. Create one on this server:
 INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS> 2>/dev/null
-INFO: It prints only the token. Without 2>/dev/null it also prints the token details, before or after the token.
+INFO: It prints only the token. Without 2>/dev/null it also prints the token details, before or after the token. If it prints nothing, run it without 2>/dev/null to see the error.
 INFO: On the endpoint, install the package with the token and start the agent:
 INFO:     sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' dpkg -i wazuh-agent_*.deb
 INFO:     sudo rpm --import GPG-KEY-WAZUH && sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' rpm -ivh wazuh-agent-*.rpm
@@ -329,7 +329,7 @@ INFO: The passwords of the other users are in wazuh-install-files/credentials.en
 INFO: --- Next steps ---
 INFO: To enroll agents, copy the Wazuh agent package to the endpoint, with GPG-KEY-WAZUH of wazuh-offline.tar.gz for an RPM package, and install it with an enrollment token. Create one on the Wazuh manager (the master node in a cluster):
 INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS> 2>/dev/null
-INFO: It prints only the token. Without 2>/dev/null it also prints the token details, before or after the token.
+INFO: It prints only the token. Without 2>/dev/null it also prints the token details, before or after the token. If it prints nothing, run it without 2>/dev/null to see the error.
 INFO: On the endpoint, install the package with the token and start the agent:
 INFO:     sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' dpkg -i wazuh-agent_*.deb
 INFO:     sudo rpm --import GPG-KEY-WAZUH && sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' rpm -ivh wazuh-agent-*.rpm
