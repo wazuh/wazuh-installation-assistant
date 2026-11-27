@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- None
+- Set the Wazuh indexer JVM heap size from `ram_mb` instead of an unset variable (1/4 of RAM for all-in-one installations and 1/2 of RAM for dedicated nodes) ([#1051](https://github.com/wazuh/wazuh-installation-assistant/issues/1051))
 
 ### Deleted
 
