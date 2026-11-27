@@ -313,6 +313,22 @@ class TestDashboardInitialize:
         assert self.DOCS in result.stdout
         assert result.stdout.endswith(self.DOCS)
 
+    def test_next_steps_say_which_line_is_the_token(self, tmp_path):
+        result, _ = self._run(tmp_path, {"AIO": "1"})
+        assert_success(result)
+        assert "The token is the first line of the output" in result.stdout
+
+    def test_offline_next_steps_install_the_agent_package_locally(self, tmp_path):
+        result, _ = self._run(tmp_path, {"AIO": "1", "offline_install": "1"})
+        assert_success(result)
+        assert "Deploy new agent" not in result.stdout
+        assert "copy the Wazuh agent package to the endpoint and install it with an enrollment token. Create one on this server:\n" in result.stdout
+        assert self.TOKEN_COMMAND in result.stdout
+        assert "    sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' dpkg -i wazuh-agent_*.deb\n" in result.stdout
+        assert "WAZUH_ENROLLMENT_TOKEN='<TOKEN>' rpm -ivh wazuh-agent-*.rpm\n" in result.stdout
+        assert result.stdout.endswith(
+            "For more information, see https://documentation.wazuh.com/5.0/deployment-options/offline-installation/index.html\n")
+
     def test_distributed_next_steps_point_to_the_manager(self, tmp_path):
         result, _ = self._run(tmp_path, self.DISTRIBUTED)
         assert_success(result)

@@ -30,6 +30,7 @@
    INFO: --- Next steps ---
    INFO: To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on this server:
    INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>
+   INFO: The token is the first line of the output; the lines after it describe the token.
    INFO: For more information, see https://documentation.wazuh.com/5.0/installation-guide/wazuh-agent/index.html
    INFO: Installation finished.
    ```

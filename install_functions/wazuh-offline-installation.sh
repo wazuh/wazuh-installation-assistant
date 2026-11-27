@@ -41,21 +41,36 @@ function offline_checkPrerequisites(){
 
     for dep in "${dependencies[@]}"; do
         if [ "${sys_type}" == "yum" ]; then
-            eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
+            # By what the package provides, not its name: gnupg is gnupg2 on RHEL and
+            # gnupg2-minimal on AL2023, curl may be curl-minimal. rpm does not go
+            # through the yum repositories, which time out without Internet access
+            rpm -q --whatprovides "${dep}" >/dev/null 2>&1
         elif [ "${sys_type}" == "apt-get" ]; then
             eval "apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/"
         fi
 
-        if [ "${PIPESTATUS[0]}" != 0 ]; then
-            common_logger -e "${dep} is necessary for the offline installation."
-            exit 1
+        if [ "${PIPESTATUS[0]}" != 0 ] && [[ " ${offline_missing_dependencies[*]} " != *" ${dep} "* ]]; then
+            offline_missing_dependencies+=("${dep}")
         fi
     done
-    if [ "$1" == "wia_offline_dependencies" ]; then
-        common_logger -d "Dependencies for Wazuh installation assistant are installed."
-    else
+}
+
+# Stops with every package the checks above found missing, so a single trip to a host
+# with Internet access brings them all
+function offline_reportMissingPrerequisites() {
+
+    if [ "${#offline_missing_dependencies[@]}" -eq 0 ]; then
         common_logger -d "Prerequisites for Offline installation are installed."
+        return 0
     fi
+    if [ "${sys_type}" == "yum" ]; then
+        download_command="yumdownloader --resolve ${offline_missing_dependencies[*]}"
+    else
+        download_command="apt-get download ${offline_missing_dependencies[*]}"
+    fi
+    common_logger -e "These packages are necessary for the offline installation and are not installed: ${offline_missing_dependencies[*]}."
+    common_logger -e "Download them on a host with Internet access, for example with: ${download_command}. Then copy them to this host, install them and run the assistant again."
+    exit 1
 }
 
 # Checks the necessary files for the installation

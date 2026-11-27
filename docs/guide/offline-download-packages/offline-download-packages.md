@@ -8,9 +8,11 @@ There are some packages that need to be installed in the target system where the
 - `tar`
 - `openssl`
 - `gnupg` (`gnupg2` on RPM-based systems)
-- `setcap`
+- `libcap2-bin` (`libcap` on RPM-based systems), which provides `setcap`
 
 Each Wazuh component also needs other packages. See the required dependencies in [Offline install using the installation assistant](../offline-installation-assistant-deployments/offline-assisted-install.md).
+
+If any is missing, the installation assistant checks all of them first and then names every missing package in a single error, with the command to download them on a host with Internet access, for example `apt-get download gnupg libcap2-bin` or `yumdownloader --resolve gnupg2 libcap`.
 
 The system with Internet access, where you download the packages and run `--generate-config-files`, needs `curl` and `gawk` (and `openssl` for `--generate-config-files`), besides the base tools `tar`, `grep`, `sed`, `coreutils` and `procps`. If any is missing, the assistant names them and stops. Add `-id|--install-dependencies` to install them automatically; the assistant removes them when it finishes.
 

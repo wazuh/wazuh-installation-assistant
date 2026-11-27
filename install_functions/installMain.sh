@@ -332,6 +332,7 @@ function main() {
 
     # Offline installation case: extract the compressed files
     if [ -n "${offline_install}" ]; then
+        offline_reportMissingPrerequisites
         offline_checkPreinstallation
         offline_extractFiles
     elif [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then

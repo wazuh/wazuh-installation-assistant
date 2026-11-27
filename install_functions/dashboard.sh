@@ -158,9 +158,22 @@ function dashboard_initialize() {
     local token_node="this server"
     [ -z "${AIO}" ] && token_node="the Wazuh manager (the master node in a cluster)"
     common_logger "--- Next steps ---"
-    common_logger "To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on ${token_node}:"
+    # Offline, Deploy new agent is no use: its commands download the agent from the Internet.
+    if [ -n "${offline_install}" ]; then
+        common_logger "To enroll agents, copy the Wazuh agent package to the endpoint and install it with an enrollment token. Create one on ${token_node}:"
+    else
+        common_logger "To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on ${token_node}:"
+    fi
     common_logger "    sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>"
-    common_logger "For more information, see https://documentation.wazuh.com/${wazuh_version%.*}/installation-guide/wazuh-agent/index.html"
+    common_logger "The token is the first line of the output; the lines after it describe the token."
+    if [ -n "${offline_install}" ]; then
+        common_logger "On the endpoint, install the package with the token:"
+        common_logger "    sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' dpkg -i wazuh-agent_*.deb"
+        common_logger "    sudo rpm --import GPG-KEY-WAZUH && sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' rpm -ivh wazuh-agent-*.rpm"
+        common_logger "For more information, see https://documentation.wazuh.com/${wazuh_version%.*}/deployment-options/offline-installation/index.html"
+    else
+        common_logger "For more information, see https://documentation.wazuh.com/${wazuh_version%.*}/installation-guide/wazuh-agent/index.html"
+    fi
 
 }
 
