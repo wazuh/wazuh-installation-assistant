@@ -8,9 +8,30 @@ There are some packages that need to be installed in the target system where the
 - `tar`
 - `openssl`
 - `gnupg` (`gnupg2` on RPM-based systems)
-- `setcap`
+- `libcap2-bin` (`libcap` on RPM-based systems), which provides `setcap`
 
 Each Wazuh component also needs other packages. See the required dependencies in [Offline install using the installation assistant](../offline-installation-assistant-deployments/offline-assisted-install.md).
+
+If any is missing, the installation assistant checks all of them first and then names every missing package in a single error, with the commands to download them and install them. Download them on a host with Internet access and the same operating system version and architecture as the target system, with their dependencies: the packages alone fail to install when the target system lacks one of their dependencies or has an older version of it. For example, for `curl` and `libcap2-bin` on a DEB-based system:
+
+```bash
+sudo apt-get update && apt-get download $(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances curl libcap2-bin | grep '^\w' | sort -u)
+```
+
+On an RPM-based system, with the `dnf-plugins-core` package installed, for `tar` and `iproute`:
+
+```bash
+dnf download --resolve --alldeps --arch x86_64 --arch noarch tar iproute
+```
+
+Copy the files to a directory of the target system and install them from it:
+
+```bash
+sudo dpkg -i ./*.deb                                      # DEB-based systems
+sudo dnf install --disablerepo='*' --skip-broken ./*.rpm  # RPM-based systems
+```
+
+`--skip-broken` skips the newer versions of packages already installed that conflict with the target system, and installs the rest.
 
 The system with Internet access, where you download the packages and run `--generate-config-files`, needs `curl` and `gawk` (and `openssl` for `--generate-config-files`), besides the base tools `tar`, `grep`, `sed`, `coreutils` and `procps`. If any is missing, the assistant names them and stops. Add `-id|--install-dependencies` to install them automatically; the assistant removes them when it finishes.
 

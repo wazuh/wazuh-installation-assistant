@@ -301,7 +301,7 @@ class TestDashboardInitialize:
         assert "The passwords of the other users are in wazuh-install-files/credentials.env of wazuh-install-files.tar." in result.stdout
         assert "\n        sudo tar -xOf wazuh-install-files.tar wazuh-install-files/credentials.env | grep '^WAZUH_INDEXER_ADMIN_PASSWORD=' | cut -d= -f2-\n" in result.stdout
 
-    TOKEN_COMMAND = "    sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>\n"
+    TOKEN_COMMAND = "    sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS> 2>/dev/null\n"
     DOCS = "For more information, see https://documentation.wazuh.com/5.0/installation-guide/wazuh-agent/index.html\n"
 
     def test_aio_prints_the_next_steps_to_enroll_agents(self, tmp_path):
@@ -312,6 +312,26 @@ class TestDashboardInitialize:
         assert self.TOKEN_COMMAND in result.stdout
         assert self.DOCS in result.stdout
         assert result.stdout.endswith(self.DOCS)
+
+    def test_next_steps_print_only_the_token(self, tmp_path):
+        # Through a pipe the token comes after its details, so no line number is given
+        result, _ = self._run(tmp_path, {"AIO": "1"})
+        assert_success(result)
+        assert "It prints only the token." in result.stdout
+        assert "If it prints nothing, run it without 2>/dev/null to see the error." in result.stdout
+        assert "first line" not in result.stdout
+
+    def test_offline_next_steps_install_the_agent_package_locally(self, tmp_path):
+        result, _ = self._run(tmp_path, {"AIO": "1", "offline_install": "1"})
+        assert_success(result)
+        assert "Deploy new agent" not in result.stdout
+        assert "copy the Wazuh agent package to the endpoint, with GPG-KEY-WAZUH of wazuh-offline.tar.gz for an RPM package, and install it with an enrollment token. Create one on this server:\n" in result.stdout
+        assert self.TOKEN_COMMAND in result.stdout
+        assert "    sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' dpkg -i wazuh-agent_*.deb\n" in result.stdout
+        assert "WAZUH_ENROLLMENT_TOKEN='<TOKEN>' rpm -ivh wazuh-agent-*.rpm\n" in result.stdout
+        assert "    sudo systemctl enable --now wazuh-agent\n" in result.stdout
+        assert result.stdout.endswith(
+            "For more information, see https://documentation.wazuh.com/5.0/deployment-options/offline-installation/index.html\n")
 
     def test_distributed_next_steps_point_to_the_manager(self, tmp_path):
         result, _ = self._run(tmp_path, self.DISTRIBUTED)

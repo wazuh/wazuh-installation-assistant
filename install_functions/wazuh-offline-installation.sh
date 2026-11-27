@@ -41,21 +41,44 @@ function offline_checkPrerequisites(){
 
     for dep in "${dependencies[@]}"; do
         if [ "${sys_type}" == "yum" ]; then
-            eval "yum list installed 2>/dev/null | grep -q -E ^"${dep}"\\."
+            # By what the package provides, not its name: gnupg is gnupg2 on RHEL and
+            # gnupg2-minimal on AL2023, curl may be curl-minimal. rpm does not go
+            # through the yum repositories, which time out without Internet access
+            rpm -q --whatprovides "${dep}" >/dev/null 2>&1
         elif [ "${sys_type}" == "apt-get" ]; then
             eval "apt list --installed 2>/dev/null | grep -q -E ^"${dep}"\/"
         fi
 
-        if [ "${PIPESTATUS[0]}" != 0 ]; then
-            common_logger -e "${dep} is necessary for the offline installation."
-            exit 1
+        if [ "${PIPESTATUS[0]}" != 0 ] && [[ " ${offline_missing_dependencies[*]} " != *" ${dep} "* ]]; then
+            offline_missing_dependencies+=("${dep}")
         fi
     done
-    if [ "$1" == "wia_offline_dependencies" ]; then
-        common_logger -d "Dependencies for Wazuh installation assistant are installed."
-    else
+}
+
+# Stops with every package the checks above found missing, so a single trip to a host
+# with Internet access brings them all
+function offline_reportMissingPrerequisites() {
+
+    if [ "${#offline_missing_dependencies[@]}" -eq 0 ]; then
         common_logger -d "Prerequisites for Offline installation are installed."
+        return 0
     fi
+    # The download brings the dependencies too: the packages alone fail to install when this
+    # host lacks one of their dependencies or has an older version of it.
+    local packages="${offline_missing_dependencies[*]}"
+    if [ "${sys_type}" == "yum" ]; then
+        download_command="dnf download --resolve --alldeps --arch $(uname -m) --arch noarch ${packages}"
+        install_command="dnf install --disablerepo='*' --skip-broken ./*.rpm"
+    else
+        download_command="sudo apt-get update && apt-get download \$(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances ${packages} | grep '^\\w' | sort -u)"
+        install_command="dpkg -i ./*.deb"
+    fi
+    common_logger -e "These packages are necessary for the offline installation and are not installed: ${packages}."
+    common_logger -e "Download them with their dependencies on a host with Internet access and the same operating system version and architecture as this one:"
+    common_logger -e "    ${download_command}"
+    common_logger -e "Copy the files to a directory of this host, install them from it and run the assistant again:"
+    common_logger -e "    sudo ${install_command}"
+    exit 1
 }
 
 # Checks the necessary files for the installation

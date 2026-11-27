@@ -158,9 +158,25 @@ function dashboard_initialize() {
     local token_node="this server"
     [ -z "${AIO}" ] && token_node="the Wazuh manager (the master node in a cluster)"
     common_logger "--- Next steps ---"
-    common_logger "To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on ${token_node}:"
-    common_logger "    sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>"
-    common_logger "For more information, see https://documentation.wazuh.com/${wazuh_version%.*}/installation-guide/wazuh-agent/index.html"
+    # Offline, Deploy new agent is no use: its commands download the agent from the Internet.
+    if [ -n "${offline_install}" ]; then
+        common_logger "To enroll agents, copy the Wazuh agent package to the endpoint, with GPG-KEY-WAZUH of wazuh-offline.tar.gz for an RPM package, and install it with an enrollment token. Create one on ${token_node}:"
+    else
+        common_logger "To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on ${token_node}:"
+    fi
+    # The token goes to stdout and its details to stderr. Read together through a pipe or a file,
+    # stdout is flushed last, so "the first line" would be a detail, not the token.
+    common_logger "    sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS> 2>/dev/null"
+    common_logger "It prints only the token. Without 2>/dev/null it also prints the token details, before or after the token. If it prints nothing, run it without 2>/dev/null to see the error."
+    if [ -n "${offline_install}" ]; then
+        common_logger "On the endpoint, install the package with the token and start the agent:"
+        common_logger "    sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' dpkg -i wazuh-agent_*.deb"
+        common_logger "    sudo rpm --import GPG-KEY-WAZUH && sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' rpm -ivh wazuh-agent-*.rpm"
+        common_logger "    sudo systemctl enable --now wazuh-agent"
+        common_logger "For more information, see https://documentation.wazuh.com/${wazuh_version%.*}/deployment-options/offline-installation/index.html"
+    else
+        common_logger "For more information, see https://documentation.wazuh.com/${wazuh_version%.*}/installation-guide/wazuh-agent/index.html"
+    fi
 
 }
 

@@ -339,7 +339,8 @@ Install and configure the Wazuh dashboard on a 64-bit (x86_64/AMD64 or AARCH64/A
         INFO: The passwords of the other users are in wazuh-install-files/credentials.env of wazuh-install-files.tar.
         INFO: --- Next steps ---
         INFO: To enroll agents, use Deploy new agent in the Wazuh dashboard, or create an enrollment token on the Wazuh manager (the master node in a cluster):
-        INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS>
+        INFO:     sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <WAZUH_MANAGER_ADDRESS> 2>/dev/null
+        INFO: It prints only the token. Without 2>/dev/null it also prints the token details, before or after the token. If it prints nothing, run it without 2>/dev/null to see the error.
         INFO: For more information, see https://documentation.wazuh.com/5.0/installation-guide/wazuh-agent/index.html
         INFO: Installation finished.
       ```

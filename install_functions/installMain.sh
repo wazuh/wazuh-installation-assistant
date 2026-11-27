@@ -269,7 +269,13 @@ function main() {
         installCommon_installCheckDependencies "wazuh"
         installCommon_determinePorts
     elif [ -n "${offline_install}" ]; then
+        # Every package is checked and reported here, before anything reads the tar files with tar
         offline_checkPrerequisites "wia_offline_dependencies" "${wia_offline_dependencies[@]}"
+        [ -n "${AIO}" ] && offline_checkPrerequisites "AIO"
+        [ -n "${indexer}" ] && offline_checkPrerequisites "indexer"
+        [ -n "${wazuh}" ] && offline_checkPrerequisites "wazuh"
+        [ -n "${dashboard}" ] && offline_checkPrerequisites "dashboard"
+        offline_reportMissingPrerequisites
     fi
 
     if [ -n "${uninstall}" ]; then
@@ -301,30 +307,18 @@ function main() {
             rm -f "${tar_file}"
         fi
         checks_ports "${wazuh_aio_ports[@]}"
-        if [ -n "${offline_install}" ]; then
-            offline_checkPrerequisites "AIO"
-        fi
     fi
 
     if [ -n "${indexer}" ]; then
         checks_ports "${wazuh_indexer_ports[@]}"
-        if [ -n "${offline_install}" ]; then
-            offline_checkPrerequisites "indexer"
-        fi
     fi
 
     if [ -n "${wazuh}" ]; then
         checks_ports "${wazuh_manager_ports[@]}"
-        if [ -n "${offline_install}" ]; then
-            offline_checkPrerequisites "wazuh"
-        fi
     fi
 
     if [ -n "${dashboard}" ]; then
         checks_ports "${wazuh_dashboard_port}"
-        if [ -n "${offline_install}" ]; then
-            offline_checkPrerequisites "dashboard"
-        fi
     fi
 
 
