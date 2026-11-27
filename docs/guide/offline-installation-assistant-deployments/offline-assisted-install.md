@@ -1,5 +1,8 @@
 # Offline install using the installation assistant
 
+> [!NOTE]
+> Each Wazuh indexer package ships a snapshot of the ruleset, IoCs and vulnerabilities content, and loads it on its first start without Internet access, so vulnerability detection works offline. The load continues after the installation assistant finishes and can take about half an hour; until it ends, an offline update request is answered with `409` (`A content update is already in progress.`). The content is as recent as the package. To update it later, see [Offline content updates](https://github.com/wazuh/wazuh-indexer-plugins/blob/v5.0.0/docs/ref/modules/content-manager/offline-update.md).
+
 ## Single-node offline installation
 
 Install and configure the single-node server on a 64-bit (**x86_64/AMD64** or **AARCH64/ARM64**) architecture with the aid of the Wazuh assisted installation method.
